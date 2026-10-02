@@ -469,4 +469,4 @@ Please open issues or email [Alex](mailto:alexmathai@cs.columbia.edu) for TRIM q
 To reproduce the paper's SWE-bench results (Table IV) end to end, follow
 [`reproducing.md`](reproducing.md). It walks through minimizing all 333 SWE-agent
 trajectories, running the hidden SWE-bench oracle, rebuilding the clean agent patches, and printing the
-paper tables.
+paper tables. An example outcome is in the path `results/remin`.

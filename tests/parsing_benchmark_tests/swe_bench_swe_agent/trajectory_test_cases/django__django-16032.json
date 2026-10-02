@@ -1,0 +1,207 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python verify_fix.py",
+      "step_index": 131
+    },
+    {
+      "command": "cd /testbed && python reproduce_error.py",
+      "step_index": 7
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py annotations.tests.NonAggregateAnnotationTestCase.test_alias_sql_injection -v 2",
+      "step_index": 12
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py annotations.tests.NonAggregateAnnotationTestCase.test_annotation_and_alias_filter_in_subquery -v 2",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py annotations -v 1",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python debug_query.py",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py debug_test.DebugTest.test_debug_query -v 2",
+      "step_index": 33
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py annotations.tests.AliasTests.test_annotation_and_alias_filter_in_subquery -v 2",
+      "step_index": 35
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py lookup -v 1",
+      "step_index": 56
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py queries -v 1",
+      "step_index": 57
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py queries.tests.ToFieldTests.test_in_subquery -v 2",
+      "step_index": 73
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py queries.tests.ToFieldTests.test_nested_in_subquery -v 2",
+      "step_index": 74
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py queries.tests.SubqueryTests.test_distinct_ordered_sliced_subquery -v 2",
+      "step_index": 75
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 79
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py annotations.test_edge_cases -v 2",
+      "step_index": 81
+    },
+    {
+      "command": "cd /testbed && python demonstrate_fix.py",
+      "step_index": 84
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py annotations queries lookup -v 1",
+      "step_index": 103
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "    def get_prep_lookup(self):\n        from django.db.models.sql.query import Query  # avoid circular import\n\n        if isinstance(self.rhs, Query):\n            self.rhs.clear_ordering(clear_default=True)\n            # Only preserve explicit field selections (from values/values_list),\n            # not just annotations or aliases. Use default_cols to detect if\n            # the query has explicit field selections.\n            if self.rhs.default_cols:\n                self.rhs.clear_select_clause()\n                self.rhs.add_fields([\"pk\"])\n        return super().get_prep_lookup()",
+          "before": "    def get_prep_lookup(self):\n        from django.db.models.sql.query import Query  # avoid circular import\n\n        if isinstance(self.rhs, Query):\n            self.rhs.clear_ordering(clear_default=True)\n            if not self.rhs.has_select_fields:\n                self.rhs.clear_select_clause()\n                self.rhs.add_fields([\"pk\"])\n        return super().get_prep_lookup()",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/db/models/lookups.py b/django/db/models/lookups.py\nindex 866e38df83..c3e170a3b3 100644\n--- a/django/db/models/lookups.py\n+++ b/django/db/models/lookups.py\n@@ -420,7 +420,10 @@ class In(FieldGetDbPrepValueIterableMixin, BuiltinLookup):\n \n         if isinstance(self.rhs, Query):\n             self.rhs.clear_ordering(clear_default=True)\n-            if not self.rhs.has_select_fields:\n+            # Only preserve explicit field selections (from values/values_list),\n+            # not just annotations or aliases. Use default_cols to detect if\n+            # the query has explicit field selections.\n+            if self.rhs.default_cols:\n                 self.rhs.clear_select_clause()\n                 self.rhs.add_fields([\"pk\"])\n         return super().get_prep_lookup()",
+          "explanation": "classic_swe step 128 #1",
+          "filename": "django/db/models/lookups.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 128
+        },
+        {
+          "after": "#!/usr/bin/env python\n\"\"\"\nSimple script to verify the fix works by reproducing the original error\nand confirming it's fixed.\n\"\"\"\n\nimport os\nimport sys\nimport django\n\n# Add the testbed to the Python path\nsys.path.insert(0, '/testbed')\n\n# Configure Django settings\nif not os.environ.get('DJANGO_SETTINGS_MODULE'):\n    os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.test_sqlite'\n\n# Setup Django\ndjango.setup()\n\nfrom django.db.models import Value\nfrom tests.annotations.models import Book, Publisher, Author\n\ndef verify_fix():\n    print(\"=== Verifying the fix for __in lookup with annotations and aliases ===\")\n    \n    # Create minimal test data\n    author = Author.objects.create(name='Test Author', age=30)\n    publisher = Publisher.objects.create(name='Test Publisher', num_awards=1)\n    \n    # Create a book with pages > 400\n    book = Book.objects.create(\n        isbn='123456789', name='Test Book', pages=500, rating=4.5, \n        price=29.99, contact=author, publisher=publisher, \n        pubdate='2023-01-01'\n    )\n    \n    print(\"Test data created.\")\n    \n    try:\n        # This query used to fail with \"sub-select returns X columns - expected 1\"\n        long_books_qs = (\n            Book.objects.filter(pages__gt=400)\n            .annotate(book_annotate=Value(1))\n            .alias(book_alias=Value(1))\n        )\n        \n        publisher_books_qs = (\n            Publisher.objects.filter(book__in=long_books_qs)\n            .values(\"name\")\n        )\n        \n        # This should now work without errors\n        result = list(publisher_books_qs)\n        print(\"✅ Query executed successfully!\")\n        print(f\"Result: {result}\")\n        \n        if len(result) == 1 and result[0]['name'] == 'Test Publisher':\n            print(\"✅ Results are correct!\")\n            return True\n        else:\n            print(f\"❌ Unexpected result: {result}\")\n            return False\n            \n    except Exception as e:\n        print(f\"❌ Error occurred: {type(e).__name__}: {e}\")\n        return False\n\nif __name__ == '__main__':\n    # Run the verification in a test environment\n    from django.test.utils import setup_test_environment, teardown_test_environment\n    from django.test.runner import DiscoverRunner\n    from django.conf import settings\n    \n    setup_test_environment()\n    runner = DiscoverRunner(verbosity=0, interactive=False, keepdb=False)\n    old_config = runner.setup_databases()\n    \n    try:\n        success = verify_fix()\n        print(f\"\\n{'✅ Fix verified successfully!' if success else '❌ Fix verification failed!'}\")\n        sys.exit(0 if success else 1)\n    finally:\n        runner.teardown_databases(old_config)\n        teardown_test_environment()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/db/models/lookups.py b/django/db/models/lookups.py\nindex 866e38df83..c3e170a3b3 100644\n--- a/django/db/models/lookups.py\n+++ b/django/db/models/lookups.py\n@@ -420,7 +420,10 @@ class In(FieldGetDbPrepValueIterableMixin, BuiltinLookup):\n \n         if isinstance(self.rhs, Query):\n             self.rhs.clear_ordering(clear_default=True)\n-            if not self.rhs.has_select_fields:\n+            # Only preserve explicit field selections (from values/values_list),\n+            # not just annotations or aliases. Use default_cols to detect if\n+            # the query has explicit field selections.\n+            if self.rhs.default_cols:\n                 self.rhs.clear_select_clause()\n                 self.rhs.add_fields([\"pk\"])\n         return super().get_prep_lookup()\ndiff --git a/verify_fix.py b/verify_fix.py\nnew file mode 100644\nindex 0000000000..5aa25e57e0\n--- /dev/null\n+++ b/verify_fix.py\n@@ -0,0 +1,85 @@\n+#!/usr/bin/env python\n+\"\"\"\n+Simple script to verify the fix works by reproducing the original error\n+and confirming it's fixed.\n+\"\"\"\n+\n+import os\n+import sys\n+import django\n+\n+# Add the testbed to the Python path\n+sys.path.insert(0, '/testbed')\n+\n+# Configure Django settings\n+if not os.environ.get('DJANGO_SETTINGS_MODULE'):\n+    os.environ['DJANGO_SETTINGS_MODULE'] = 'tests.test_sqlite'\n+\n+# Setup Django\n+django.setup()\n+\n+from django.db.models import Value\n+from tests.annotations.models import Book, Publisher, Author\n+\n+def verify_fix():\n+    print(\"=== Verifying the fix for __in lookup with annotations and aliases ===\")\n+    \n+    # Create minimal test data\n+    author = Author.objects.create(name='Test Author', age=30)\n+    publisher = Publisher.objects.create(name='Test Publisher', num_awards=1)\n+    \n+    # Create a book with pages > 400\n+    book = Book.objects.create(\n+        isbn='123456789', name='Test Book', pages=500, rating=4.5, \n+        price=29.99, contact=author, publisher=publisher, \n+        pubdate='2023-01-01'\n+    )\n+    \n+    print(\"Test data created.\")\n+    \n+    try:\n+        # This query used to fail with \"sub-select returns X columns - expected 1\"\n+        long_books_qs = (\n+            Book.objects.filter(pages__gt=400)\n+            .annotate(book_annotate=Value(1))\n+            .alias(book_alias=Value(1))\n+        )\n+        \n+        publisher_books_qs = (\n+            Publisher.objects.filter(book__in=long_books_qs)\n+            .values(\"name\")\n+        )\n+        \n+        # This should now work without errors\n+        result = list(publisher_books_qs)\n+        print(\"✅ Query executed successfully!\")\n+        print(f\"Result: {result}\")\n+        \n+        if len(result) == 1 and result[0]['name'] == 'Test Publisher':\n+            print(\"✅ Results are correct!\")\n+            return True\n+        else:\n+            print(f\"❌ Unexpected result: {result}\")\n+            return False\n+            \n+    except Exception as e:\n+        print(f\"❌ Error occurred: {type(e).__name__}: {e}\")\n+        return False\n+\n+if __name__ == '__main__':\n+    # Run the verification in a test environment\n+    from django.test.utils import setup_test_environment, teardown_test_environment\n+    from django.test.runner import DiscoverRunner\n+    from django.conf import settings\n+    \n+    setup_test_environment()\n+    runner = DiscoverRunner(verbosity=0, interactive=False, keepdb=False)\n+    old_config = runner.setup_databases()\n+    \n+    try:\n+        success = verify_fix()\n+        print(f\"\\n{'✅ Fix verified successfully!' if success else '❌ Fix verification failed!'}\")\n+        sys.exit(0 if success else 1)\n+    finally:\n+        runner.teardown_databases(old_config)\n+        teardown_test_environment()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 130 create #1",
+          "filename": "verify_fix.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 130
+        }
+      ],
+      "end_step": 130,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python verify_fix.py",
+          "step_index": 131
+        },
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 7
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py annotations.tests.NonAggregateAnnotationTestCase.test_alias_sql_injection -v 2",
+          "step_index": 12
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py annotations.tests.NonAggregateAnnotationTestCase.test_annotation_and_alias_filter_in_subquery -v 2",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py annotations -v 1",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python debug_query.py",
+          "step_index": 31
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py debug_test.DebugTest.test_debug_query -v 2",
+          "step_index": 33
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py annotations.tests.AliasTests.test_annotation_and_alias_filter_in_subquery -v 2",
+          "step_index": 35
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py lookup -v 1",
+          "step_index": 56
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py queries -v 1",
+          "step_index": 57
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py queries.tests.ToFieldTests.test_in_subquery -v 2",
+          "step_index": 73
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py queries.tests.ToFieldTests.test_nested_in_subquery -v 2",
+          "step_index": 74
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py queries.tests.SubqueryTests.test_distinct_ordered_sliced_subquery -v 2",
+          "step_index": 75
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 79
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py annotations.test_edge_cases -v 2",
+          "step_index": 81
+        },
+        {
+          "command": "cd /testbed && python demonstrate_fix.py",
+          "step_index": 84
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py annotations queries lookup -v 1",
+          "step_index": 103
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 128
+    }
+  ],
+  "sub_paths": [
+    "django/db/models/lookups.py"
+  ],
+  "success_step": 130,
+  "test_files": [
+    "verify_fix.py"
+  ]
+}

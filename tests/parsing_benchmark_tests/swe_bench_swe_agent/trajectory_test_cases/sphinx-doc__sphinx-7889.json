@@ -1,0 +1,223 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python test_fix.py",
+      "step_index": 60
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc_mock.py -v",
+      "step_index": 62
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom typing import TypeVar\nfrom sphinx.ext.autodoc.mock import _make_subclass, _MockObject\n\nT = TypeVar('T')\n\n# Test the fix\nresult = _make_subclass(T, 'test')\nprint('✓ TypeVar works:', result.__name__)\n\nmock = _MockObject()\nmock.__display_name__ = 'test'\nresult = mock[T]\nprint('✓ MockObject[TypeVar] works:', result)\n\nprint('Fix is working correctly!')\n\"",
+      "step_index": 71
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 5
+    },
+    {
+      "command": "cd /testbed && python test_typevar_str.py",
+      "step_index": 8
+    },
+    {
+      "command": "cd /testbed && python test_generic_access.py",
+      "step_index": 12
+    },
+    {
+      "command": "cd /testbed && python test_name_conversion.py",
+      "step_index": 14
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive_fix.py",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python debug_optional.py",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -k \"mock\" -v",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py::test_autodoc_mock_imports -v",
+      "step_index": 29
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -k \"mock\" --collect-only",
+      "step_index": 30
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py::test_autoclass_content_class -v",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sphinx.ext.autodoc.mock import _MockObject, _MockModule\nfrom typing import TypeVar, List\n\n# Test basic functionality\nT = TypeVar('T')\nmock = _MockObject()\n\n# This should work now\nresult = mock[T]\nprint('TypeVar access works:', result)\n\nresult = mock[List[str]]\nprint('Generic type access works:', result)\n\nprint('All basic tests passed!')\n\"",
+      "step_index": 32
+    },
+    {
+      "command": "cd /testbed && python test_real_world_scenario.py",
+      "step_index": 34
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 38
+    },
+    {
+      "command": "cd /testbed && python test_pr_scenario.py",
+      "step_index": 43
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc_mock.py tests/test_util_typing.py -v",
+      "step_index": 44
+    },
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 48
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "def _make_subclass(name: Any, module: str, superclass: Any = _MockObject,\n                   attributes: Any = None) -> Any:\n    # Convert name to string if it's not already a string (e.g., TypeVar, int, etc.)\n    if hasattr(name, '__name__'):\n        # For objects like TypeVar that have a __name__ attribute\n        name_str = name.__name__\n    else:\n        # For other objects, use string representation\n        name_str = str(name)\n    \n    attrs = {'__module__': module, '__display_name__': module + '.' + name_str}\n    attrs.update(attributes or {})\n\n    return type(name_str, (superclass,), attrs)",
+          "before": "def _make_subclass(name: str, module: str, superclass: Any = _MockObject,\n                   attributes: Any = None) -> Any:\n    attrs = {'__module__': module, '__display_name__': module + '.' + name}\n    attrs.update(attributes or {})\n\n    return type(name, (superclass,), attrs)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/ext/autodoc/mock.py b/sphinx/ext/autodoc/mock.py\nindex 98a3a3a96..23145a209 100644\n--- a/sphinx/ext/autodoc/mock.py\n+++ b/sphinx/ext/autodoc/mock.py\n@@ -68,12 +68,20 @@ class _MockObject:\n         return self.__display_name__\n \n \n-def _make_subclass(name: str, module: str, superclass: Any = _MockObject,\n+def _make_subclass(name: Any, module: str, superclass: Any = _MockObject,\n                    attributes: Any = None) -> Any:\n-    attrs = {'__module__': module, '__display_name__': module + '.' + name}\n+    # Convert name to string if it's not already a string (e.g., TypeVar, int, etc.)\n+    if hasattr(name, '__name__'):\n+        # For objects like TypeVar that have a __name__ attribute\n+        name_str = name.__name__\n+    else:\n+        # For other objects, use string representation\n+        name_str = str(name)\n+    \n+    attrs = {'__module__': module, '__display_name__': module + '.' + name_str}\n     attrs.update(attributes or {})\n \n-    return type(name, (superclass,), attrs)\n+    return type(name_str, (superclass,), attrs)\n \n \n class _MockModule(ModuleType):",
+          "explanation": "classic_swe step 58 #1",
+          "filename": "sphinx/ext/autodoc/mock.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 58
+        },
+        {
+          "after": "#!/usr/bin/env python3\n\n\"\"\"\nSimple test to verify the fix works.\n\"\"\"\n\nfrom typing import TypeVar\nfrom sphinx.ext.autodoc.mock import _make_subclass, _MockObject\n\nT = TypeVar('T')\n\n# Test that would have failed before the fix\ntry:\n    result = _make_subclass(T, \"test_module\")\n    print(f\"✓ _make_subclass with TypeVar works: {result.__name__}\")\nexcept TypeError as e:\n    print(f\"✗ Error: {e}\")\n    exit(1)\n\n# Test MockObject access\ntry:\n    mock = _MockObject()\n    mock.__display_name__ = \"test_module\"\n    result = mock[T]\n    print(f\"✓ MockObject[TypeVar] works: {result}\")\nexcept TypeError as e:\n    print(f\"✗ Error: {e}\")\n    exit(1)\n\nprint(\"All tests passed! The fix works correctly.\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/ext/autodoc/mock.py b/sphinx/ext/autodoc/mock.py\nindex 98a3a3a96..23145a209 100644\n--- a/sphinx/ext/autodoc/mock.py\n+++ b/sphinx/ext/autodoc/mock.py\n@@ -68,12 +68,20 @@ class _MockObject:\n         return self.__display_name__\n \n \n-def _make_subclass(name: str, module: str, superclass: Any = _MockObject,\n+def _make_subclass(name: Any, module: str, superclass: Any = _MockObject,\n                    attributes: Any = None) -> Any:\n-    attrs = {'__module__': module, '__display_name__': module + '.' + name}\n+    # Convert name to string if it's not already a string (e.g., TypeVar, int, etc.)\n+    if hasattr(name, '__name__'):\n+        # For objects like TypeVar that have a __name__ attribute\n+        name_str = name.__name__\n+    else:\n+        # For other objects, use string representation\n+        name_str = str(name)\n+    \n+    attrs = {'__module__': module, '__display_name__': module + '.' + name_str}\n     attrs.update(attributes or {})\n \n-    return type(name, (superclass,), attrs)\n+    return type(name_str, (superclass,), attrs)\n \n \n class _MockModule(ModuleType):\ndiff --git a/test_fix.py b/test_fix.py\nnew file mode 100644\nindex 000000000..18ea6180f\n--- /dev/null\n+++ b/test_fix.py\n@@ -0,0 +1,30 @@\n+#!/usr/bin/env python3\n+\n+\"\"\"\n+Simple test to verify the fix works.\n+\"\"\"\n+\n+from typing import TypeVar\n+from sphinx.ext.autodoc.mock import _make_subclass, _MockObject\n+\n+T = TypeVar('T')\n+\n+# Test that would have failed before the fix\n+try:\n+    result = _make_subclass(T, \"test_module\")\n+    print(f\"✓ _make_subclass with TypeVar works: {result.__name__}\")\n+except TypeError as e:\n+    print(f\"✗ Error: {e}\")\n+    exit(1)\n+\n+# Test MockObject access\n+try:\n+    mock = _MockObject()\n+    mock.__display_name__ = \"test_module\"\n+    result = mock[T]\n+    print(f\"✓ MockObject[TypeVar] works: {result}\")\n+except TypeError as e:\n+    print(f\"✗ Error: {e}\")\n+    exit(1)\n+\n+print(\"All tests passed! The fix works correctly.\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 59 create #1",
+          "filename": "test_fix.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_fix.py",
+          "step_index": 60
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc_mock.py -v",
+          "step_index": 62
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom typing import TypeVar\nfrom sphinx.ext.autodoc.mock import _make_subclass, _MockObject\n\nT = TypeVar('T')\n\n# Test the fix\nresult = _make_subclass(T, 'test')\nprint('✓ TypeVar works:', result.__name__)\n\nmock = _MockObject()\nmock.__display_name__ = 'test'\nresult = mock[T]\nprint('✓ MockObject[TypeVar] works:', result)\n\nprint('Fix is working correctly!')\n\"",
+          "step_index": 71
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 5
+        },
+        {
+          "command": "cd /testbed && python test_typevar_str.py",
+          "step_index": 8
+        },
+        {
+          "command": "cd /testbed && python test_generic_access.py",
+          "step_index": 12
+        },
+        {
+          "command": "cd /testbed && python test_name_conversion.py",
+          "step_index": 14
+        },
+        {
+          "command": "cd /testbed && python test_comprehensive_fix.py",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python debug_optional.py",
+          "step_index": 21
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -k \"mock\" -v",
+          "step_index": 28
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py::test_autodoc_mock_imports -v",
+          "step_index": 29
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -k \"mock\" --collect-only",
+          "step_index": 30
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py::test_autoclass_content_class -v",
+          "step_index": 31
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sphinx.ext.autodoc.mock import _MockObject, _MockModule\nfrom typing import TypeVar, List\n\n# Test basic functionality\nT = TypeVar('T')\nmock = _MockObject()\n\n# This should work now\nresult = mock[T]\nprint('TypeVar access works:', result)\n\nresult = mock[List[str]]\nprint('Generic type access works:', result)\n\nprint('All basic tests passed!')\n\"",
+          "step_index": 32
+        },
+        {
+          "command": "cd /testbed && python test_real_world_scenario.py",
+          "step_index": 34
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python test_pr_scenario.py",
+          "step_index": 43
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc_mock.py tests/test_util_typing.py -v",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 48
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 58
+    }
+  ],
+  "sub_paths": [
+    "sphinx/ext/autodoc/mock.py"
+  ],
+  "success_step": 59,
+  "test_files": [
+    "test_fix.py"
+  ]
+}

@@ -1,0 +1,394 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 7
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 15
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/logging/ -v",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/test_fixtures.py -v -k caplog",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/test_capture.py -v -k caplog",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/test_debugging.py -v -k caplog",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/logging/test_fixture.py::test_change_level_undo -v",
+      "step_index": 23
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/logging/test_fixture.py::test_handler_level_restored_between_tests -v",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python -m pytest testing/logging/test_fixture.py -v",
+      "step_index": 32
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 34
+    },
+    {
+      "command": "cd /testbed && python test_at_level_interaction.py",
+      "step_index": 36
+    },
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 43
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pytest\nimport sys\n\ndef test_foo(caplog):\n    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n    caplog.set_level(42)\n    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n\ndef test_bar(caplog):\n    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n\nif __name__ == \"__main__\":\n    # Run the tests\n    pytest.main([__file__, \"-v\", \"-s\"])",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 6 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 6
+        }
+      ],
+      "end_step": 6,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 7
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 6
+    },
+    {
+      "edits": [
+        {
+          "after": "    def __init__(self, item: nodes.Node) -> None:\n        \"\"\"Creates a new funcarg.\"\"\"\n        self._item = item\n        # dict of log name -> log level\n        self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n        self._initial_handler_level = None  # type: Optional[int]",
+          "before": "    def __init__(self, item: nodes.Node) -> None:\n        \"\"\"Creates a new funcarg.\"\"\"\n        self._item = item\n        # dict of log name -> log level\n        self._initial_logger_levels = {}  # type: Dict[Optional[str], int]",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..7649e19df 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "src/_pytest/logging.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        },
+        {
+          "after": "    def _finalize(self) -> None:\n        \"\"\"Finalizes the fixture.\n\n        This restores the log levels changed by :meth:`set_level`.\n        \"\"\"\n        # restore log levels\n        for logger_name, level in self._initial_logger_levels.items():\n            logger = logging.getLogger(logger_name)\n            logger.setLevel(level)\n        # restore handler level\n        if self._initial_handler_level is not None:\n            self.handler.setLevel(self._initial_handler_level)",
+          "before": "    def _finalize(self) -> None:\n        \"\"\"Finalizes the fixture.\n\n        This restores the log levels changed by :meth:`set_level`.\n        \"\"\"\n        # restore log levels\n        for logger_name, level in self._initial_logger_levels.items():\n            logger = logging.getLogger(logger_name)\n            logger.setLevel(level)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1528934e1 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "src/_pytest/logging.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        },
+        {
+          "after": "    def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n        \"\"\"Sets the level for capturing of logs. The level will be restored to its previous value at the end of\n        the test.\n\n        :param int level: the logger to level.\n        :param str logger: the logger to update the level. If not given, the root logger level is updated.\n\n        .. versionchanged:: 3.4\n            The levels of the loggers changed by this function will be restored to their initial values at the\n            end of the test.\n        \"\"\"\n        logger_obj = logging.getLogger(logger)\n        # save the original log-level to restore it during teardown\n        self._initial_logger_levels.setdefault(logger, logger_obj.level)\n        logger_obj.setLevel(level)\n        # save the original handler level to restore it during teardown\n        if self._initial_handler_level is None:\n            self._initial_handler_level = self.handler.level\n        self.handler.setLevel(level)",
+          "before": "    def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n        \"\"\"Sets the level for capturing of logs. The level will be restored to its previous value at the end of\n        the test.\n\n        :param int level: the logger to level.\n        :param str logger: the logger to update the level. If not given, the root logger level is updated.\n\n        .. versionchanged:: 3.4\n            The levels of the loggers changed by this function will be restored to their initial values at the\n            end of the test.\n        \"\"\"\n        logger_obj = logging.getLogger(logger)\n        # save the original log-level to restore it during teardown\n        self._initial_logger_levels.setdefault(logger, logger_obj.level)\n        logger_obj.setLevel(level)\n        self.handler.setLevel(level)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "src/_pytest/logging.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 12
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 9
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pytest\nimport logging\n\ndef test_set_level_once(caplog):\n    \"\"\"Test that handler level is restored after setting it once.\"\"\"\n    original_level = caplog.handler.level\n    print(f\"Original handler level: {original_level}\")\n    \n    caplog.set_level(42)\n    print(f\"After set_level(42): {caplog.handler.level}\")\n    assert caplog.handler.level == 42\n\ndef test_set_level_multiple_times(caplog):\n    \"\"\"Test that handler level is restored after setting it multiple times.\"\"\"\n    original_level = caplog.handler.level\n    print(f\"Original handler level: {original_level}\")\n    \n    caplog.set_level(10)\n    print(f\"After set_level(10): {caplog.handler.level}\")\n    assert caplog.handler.level == 10\n    \n    caplog.set_level(20)\n    print(f\"After set_level(20): {caplog.handler.level}\")\n    assert caplog.handler.level == 20\n    \n    caplog.set_level(30)\n    print(f\"After set_level(30): {caplog.handler.level}\")\n    assert caplog.handler.level == 30\n\ndef test_handler_level_restored(caplog):\n    \"\"\"Test that handler level is restored to original value.\"\"\"\n    print(f\"Handler level in third test: {caplog.handler.level}\")\n    # Should be back to original level (0)\n    assert caplog.handler.level == 0\n\ndef test_at_level_context_manager(caplog):\n    \"\"\"Test that at_level context manager works correctly.\"\"\"\n    original_level = caplog.handler.level\n    print(f\"Original handler level: {original_level}\")\n    \n    with caplog.at_level(50):\n        print(f\"Inside at_level(50): {caplog.handler.level}\")\n        assert caplog.handler.level == 50\n    \n    print(f\"After at_level context: {caplog.handler.level}\")\n    assert caplog.handler.level == original_level\n\ndef test_mixed_usage(caplog):\n    \"\"\"Test mixing set_level and at_level.\"\"\"\n    original_level = caplog.handler.level\n    print(f\"Original handler level: {original_level}\")\n    \n    caplog.set_level(15)\n    print(f\"After set_level(15): {caplog.handler.level}\")\n    assert caplog.handler.level == 15\n    \n    with caplog.at_level(25):\n        print(f\"Inside at_level(25): {caplog.handler.level}\")\n        assert caplog.handler.level == 25\n    \n    print(f\"After at_level context: {caplog.handler.level}\")\n    assert caplog.handler.level == 15  # Should be back to set_level value\n\ndef test_final_restoration(caplog):\n    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n    print(f\"Handler level in final test: {caplog.handler.level}\")\n    # Should be back to original level (0)\n    assert caplog.handler.level == 0\n\nif __name__ == \"__main__\":\n    # Run the tests\n    pytest.main([__file__, \"-v\", \"-s\"])",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 000000000..e79a4ce18\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_set_level_once(caplog):\n+    \"\"\"Test that handler level is restored after setting it once.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(42)\n+    print(f\"After set_level(42): {caplog.handler.level}\")\n+    assert caplog.handler.level == 42\n+\n+def test_set_level_multiple_times(caplog):\n+    \"\"\"Test that handler level is restored after setting it multiple times.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(10)\n+    print(f\"After set_level(10): {caplog.handler.level}\")\n+    assert caplog.handler.level == 10\n+    \n+    caplog.set_level(20)\n+    print(f\"After set_level(20): {caplog.handler.level}\")\n+    assert caplog.handler.level == 20\n+    \n+    caplog.set_level(30)\n+    print(f\"After set_level(30): {caplog.handler.level}\")\n+    assert caplog.handler.level == 30\n+\n+def test_handler_level_restored(caplog):\n+    \"\"\"Test that handler level is restored to original value.\"\"\"\n+    print(f\"Handler level in third test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+def test_at_level_context_manager(caplog):\n+    \"\"\"Test that at_level context manager works correctly.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    with caplog.at_level(50):\n+        print(f\"Inside at_level(50): {caplog.handler.level}\")\n+        assert caplog.handler.level == 50\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == original_level\n+\n+def test_mixed_usage(caplog):\n+    \"\"\"Test mixing set_level and at_level.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(15)\n+    print(f\"After set_level(15): {caplog.handler.level}\")\n+    assert caplog.handler.level == 15\n+    \n+    with caplog.at_level(25):\n+        print(f\"Inside at_level(25): {caplog.handler.level}\")\n+        assert caplog.handler.level == 25\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == 15  # Should be back to set_level value\n+\n+def test_final_restoration(caplog):\n+    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n+    print(f\"Handler level in final test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 14 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 15
+        },
+        {
+          "command": "cd /testbed && python -m pytest testing/logging/ -v",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python -m pytest testing/test_fixtures.py -v -k caplog",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python -m pytest testing/test_capture.py -v -k caplog",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python -m pytest testing/test_debugging.py -v -k caplog",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python -m pytest testing/logging/test_fixture.py::test_change_level_undo -v",
+          "step_index": 23
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 14
+    },
+    {
+      "edits": [
+        {
+          "after": "    result = testdir.runpytest(\"--log-level=INFO\")\n    result.stdout.no_fnmatch_line(\"*Exception: caplog failed to capture DEBUG*\")\n    result.stdout.no_fnmatch_line(\"*DEBUG log message*\")\n    result.stdout.fnmatch_lines(\n        [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n    )\n    assert result.ret == 1\n\n\ndef test_handler_level_restored_between_tests(testdir):\n    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n    testdir.makepyfile(\n        \"\"\"\n        def test_foo(caplog):\n            caplog.set_level(42)\n\n        def test_bar(caplog):\n            assert caplog.handler.level == 0\n    \"\"\"\n    )\n    result = testdir.runpytest()\n    assert result.ret == 0",
+          "before": "    result = testdir.runpytest(\"--log-level=INFO\")\n    result.stdout.no_fnmatch_line(\"*Exception: caplog failed to capture DEBUG*\")\n    result.stdout.no_fnmatch_line(\"*DEBUG log message*\")\n    result.stdout.fnmatch_lines(\n        [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n    )\n    assert result.ret == 1",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 000000000..e79a4ce18\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_set_level_once(caplog):\n+    \"\"\"Test that handler level is restored after setting it once.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(42)\n+    print(f\"After set_level(42): {caplog.handler.level}\")\n+    assert caplog.handler.level == 42\n+\n+def test_set_level_multiple_times(caplog):\n+    \"\"\"Test that handler level is restored after setting it multiple times.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(10)\n+    print(f\"After set_level(10): {caplog.handler.level}\")\n+    assert caplog.handler.level == 10\n+    \n+    caplog.set_level(20)\n+    print(f\"After set_level(20): {caplog.handler.level}\")\n+    assert caplog.handler.level == 20\n+    \n+    caplog.set_level(30)\n+    print(f\"After set_level(30): {caplog.handler.level}\")\n+    assert caplog.handler.level == 30\n+\n+def test_handler_level_restored(caplog):\n+    \"\"\"Test that handler level is restored to original value.\"\"\"\n+    print(f\"Handler level in third test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+def test_at_level_context_manager(caplog):\n+    \"\"\"Test that at_level context manager works correctly.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    with caplog.at_level(50):\n+        print(f\"Inside at_level(50): {caplog.handler.level}\")\n+        assert caplog.handler.level == 50\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == original_level\n+\n+def test_mixed_usage(caplog):\n+    \"\"\"Test mixing set_level and at_level.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(15)\n+    print(f\"After set_level(15): {caplog.handler.level}\")\n+    assert caplog.handler.level == 15\n+    \n+    with caplog.at_level(25):\n+        print(f\"Inside at_level(25): {caplog.handler.level}\")\n+        assert caplog.handler.level == 25\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == 15  # Should be back to set_level value\n+\n+def test_final_restoration(caplog):\n+    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n+    print(f\"Handler level in final test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/testing/logging/test_fixture.py b/testing/logging/test_fixture.py\nindex da5303302..e9dc35f8d 100644\n--- a/testing/logging/test_fixture.py\n+++ b/testing/logging/test_fixture.py\n@@ -274,3 +274,18 @@ def test_log_report_captures_according_to_config_option_upon_failure(testdir):\n         [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n     )\n     assert result.ret == 1\n+\n+\n+def test_handler_level_restored_between_tests(testdir):\n+    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n+    testdir.makepyfile(\n+        \"\"\"\n+        def test_foo(caplog):\n+            caplog.set_level(42)\n+\n+        def test_bar(caplog):\n+            assert caplog.handler.level == 0\n+    \"\"\"\n+    )\n+    result = testdir.runpytest()\n+    assert result.ret == 0",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "testing/logging/test_fixture.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest testing/logging/test_fixture.py::test_handler_level_restored_between_tests -v",
+          "step_index": 31
+        },
+        {
+          "command": "cd /testbed && python -m pytest testing/logging/test_fixture.py -v",
+          "step_index": 32
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pytest\nimport logging\n\ndef test_no_set_level_call(caplog):\n    \"\"\"Test that handler level is not affected if set_level is never called.\"\"\"\n    original_level = caplog.handler.level\n    print(f\"Handler level without set_level: {original_level}\")\n    # Should remain at original level\n    assert caplog.handler.level == 0\n\ndef test_set_level_with_string(caplog):\n    \"\"\"Test that set_level works with string levels.\"\"\"\n    caplog.set_level(\"DEBUG\")\n    print(f\"Handler level after set_level('DEBUG'): {caplog.handler.level}\")\n    assert caplog.handler.level == logging.DEBUG\n\ndef test_handler_level_restored_after_string(caplog):\n    \"\"\"Test that handler level is restored after using string level.\"\"\"\n    print(f\"Handler level after string test: {caplog.handler.level}\")\n    assert caplog.handler.level == 0\n\ndef test_set_level_with_named_logger(caplog):\n    \"\"\"Test that handler level is still restored when using named logger.\"\"\"\n    caplog.set_level(logging.WARNING, logger=\"test.logger\")\n    print(f\"Handler level after set_level with named logger: {caplog.handler.level}\")\n    assert caplog.handler.level == logging.WARNING\n\ndef test_handler_level_restored_after_named_logger(caplog):\n    \"\"\"Test that handler level is restored after using named logger.\"\"\"\n    print(f\"Handler level after named logger test: {caplog.handler.level}\")\n    assert caplog.handler.level == 0\n\ndef test_multiple_set_level_calls_same_test(caplog):\n    \"\"\"Test multiple set_level calls in the same test.\"\"\"\n    original_level = caplog.handler.level\n    \n    caplog.set_level(10)\n    assert caplog.handler.level == 10\n    \n    caplog.set_level(20)\n    assert caplog.handler.level == 20\n    \n    caplog.set_level(30)\n    assert caplog.handler.level == 30\n\ndef test_handler_level_restored_after_multiple_calls(caplog):\n    \"\"\"Test that handler level is restored after multiple set_level calls.\"\"\"\n    print(f\"Handler level after multiple calls test: {caplog.handler.level}\")\n    assert caplog.handler.level == 0\n\nif __name__ == \"__main__\":\n    # Run the tests\n    pytest.main([__file__, \"-v\", \"-s\"])",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 000000000..e79a4ce18\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_set_level_once(caplog):\n+    \"\"\"Test that handler level is restored after setting it once.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(42)\n+    print(f\"After set_level(42): {caplog.handler.level}\")\n+    assert caplog.handler.level == 42\n+\n+def test_set_level_multiple_times(caplog):\n+    \"\"\"Test that handler level is restored after setting it multiple times.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(10)\n+    print(f\"After set_level(10): {caplog.handler.level}\")\n+    assert caplog.handler.level == 10\n+    \n+    caplog.set_level(20)\n+    print(f\"After set_level(20): {caplog.handler.level}\")\n+    assert caplog.handler.level == 20\n+    \n+    caplog.set_level(30)\n+    print(f\"After set_level(30): {caplog.handler.level}\")\n+    assert caplog.handler.level == 30\n+\n+def test_handler_level_restored(caplog):\n+    \"\"\"Test that handler level is restored to original value.\"\"\"\n+    print(f\"Handler level in third test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+def test_at_level_context_manager(caplog):\n+    \"\"\"Test that at_level context manager works correctly.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    with caplog.at_level(50):\n+        print(f\"Inside at_level(50): {caplog.handler.level}\")\n+        assert caplog.handler.level == 50\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == original_level\n+\n+def test_mixed_usage(caplog):\n+    \"\"\"Test mixing set_level and at_level.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(15)\n+    print(f\"After set_level(15): {caplog.handler.level}\")\n+    assert caplog.handler.level == 15\n+    \n+    with caplog.at_level(25):\n+        print(f\"Inside at_level(25): {caplog.handler.level}\")\n+        assert caplog.handler.level == 25\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == 15  # Should be back to set_level value\n+\n+def test_final_restoration(caplog):\n+    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n+    print(f\"Handler level in final test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 000000000..763747d8f\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,55 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_no_set_level_call(caplog):\n+    \"\"\"Test that handler level is not affected if set_level is never called.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Handler level without set_level: {original_level}\")\n+    # Should remain at original level\n+    assert caplog.handler.level == 0\n+\n+def test_set_level_with_string(caplog):\n+    \"\"\"Test that set_level works with string levels.\"\"\"\n+    caplog.set_level(\"DEBUG\")\n+    print(f\"Handler level after set_level('DEBUG'): {caplog.handler.level}\")\n+    assert caplog.handler.level == logging.DEBUG\n+\n+def test_handler_level_restored_after_string(caplog):\n+    \"\"\"Test that handler level is restored after using string level.\"\"\"\n+    print(f\"Handler level after string test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+def test_set_level_with_named_logger(caplog):\n+    \"\"\"Test that handler level is still restored when using named logger.\"\"\"\n+    caplog.set_level(logging.WARNING, logger=\"test.logger\")\n+    print(f\"Handler level after set_level with named logger: {caplog.handler.level}\")\n+    assert caplog.handler.level == logging.WARNING\n+\n+def test_handler_level_restored_after_named_logger(caplog):\n+    \"\"\"Test that handler level is restored after using named logger.\"\"\"\n+    print(f\"Handler level after named logger test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+def test_multiple_set_level_calls_same_test(caplog):\n+    \"\"\"Test multiple set_level calls in the same test.\"\"\"\n+    original_level = caplog.handler.level\n+    \n+    caplog.set_level(10)\n+    assert caplog.handler.level == 10\n+    \n+    caplog.set_level(20)\n+    assert caplog.handler.level == 20\n+    \n+    caplog.set_level(30)\n+    assert caplog.handler.level == 30\n+\n+def test_handler_level_restored_after_multiple_calls(caplog):\n+    \"\"\"Test that handler level is restored after multiple set_level calls.\"\"\"\n+    print(f\"Handler level after multiple calls test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/testing/logging/test_fixture.py b/testing/logging/test_fixture.py\nindex da5303302..e9dc35f8d 100644\n--- a/testing/logging/test_fixture.py\n+++ b/testing/logging/test_fixture.py\n@@ -274,3 +274,18 @@ def test_log_report_captures_according_to_config_option_upon_failure(testdir):\n         [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n     )\n     assert result.ret == 1\n+\n+\n+def test_handler_level_restored_between_tests(testdir):\n+    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n+    testdir.makepyfile(\n+        \"\"\"\n+        def test_foo(caplog):\n+            caplog.set_level(42)\n+\n+        def test_bar(caplog):\n+            assert caplog.handler.level == 0\n+    \"\"\"\n+    )\n+    result = testdir.runpytest()\n+    assert result.ret == 0",
+          "explanation": "classic_swe step 33 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 34
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pytest\nimport logging\n\ndef test_at_level_only(caplog):\n    \"\"\"Test that at_level context manager works correctly.\"\"\"\n    original_level = caplog.handler.level\n    print(f\"Original handler level: {original_level}\")\n    \n    with caplog.at_level(logging.WARNING):\n        print(f\"Inside at_level: {caplog.handler.level}\")\n        assert caplog.handler.level == logging.WARNING\n    \n    print(f\"After at_level: {caplog.handler.level}\")\n    assert caplog.handler.level == original_level\n\ndef test_handler_level_after_at_level_only(caplog):\n    \"\"\"Test that handler level is not affected by at_level in previous test.\"\"\"\n    print(f\"Handler level after at_level test: {caplog.handler.level}\")\n    assert caplog.handler.level == 0\n\ndef test_set_level_then_at_level(caplog):\n    \"\"\"Test set_level followed by at_level.\"\"\"\n    caplog.set_level(logging.INFO)\n    print(f\"After set_level: {caplog.handler.level}\")\n    assert caplog.handler.level == logging.INFO\n    \n    with caplog.at_level(logging.ERROR):\n        print(f\"Inside at_level: {caplog.handler.level}\")\n        assert caplog.handler.level == logging.ERROR\n    \n    print(f\"After at_level: {caplog.handler.level}\")\n    assert caplog.handler.level == logging.INFO\n\ndef test_handler_level_after_mixed_usage(caplog):\n    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n    print(f\"Handler level after mixed usage: {caplog.handler.level}\")\n    assert caplog.handler.level == 0\n\ndef test_nested_at_level(caplog):\n    \"\"\"Test nested at_level context managers.\"\"\"\n    original_level = caplog.handler.level\n    \n    with caplog.at_level(logging.WARNING):\n        assert caplog.handler.level == logging.WARNING\n        \n        with caplog.at_level(logging.ERROR):\n            assert caplog.handler.level == logging.ERROR\n        \n        assert caplog.handler.level == logging.WARNING\n    \n    assert caplog.handler.level == original_level\n\ndef test_handler_level_after_nested_at_level(caplog):\n    \"\"\"Test that handler level is not affected by nested at_level.\"\"\"\n    print(f\"Handler level after nested at_level: {caplog.handler.level}\")\n    assert caplog.handler.level == 0\n\nif __name__ == \"__main__\":\n    # Run the tests\n    pytest.main([__file__, \"-v\", \"-s\"])",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 000000000..753307552\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import sys\n+\n+def test_foo(caplog):\n+    print(f\"Before set_level: handler.level = {caplog.handler.level}\")\n+    caplog.set_level(42)\n+    print(f\"After set_level: handler.level = {caplog.handler.level}\")\n+\n+def test_bar(caplog):\n+    print(f\"In test_bar: handler.level = {caplog.handler.level}\")\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager\ndiff --git a/test_at_level_interaction.py b/test_at_level_interaction.py\nnew file mode 100644\nindex 000000000..4751b56de\n--- /dev/null\n+++ b/test_at_level_interaction.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_at_level_only(caplog):\n+    \"\"\"Test that at_level context manager works correctly.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    with caplog.at_level(logging.WARNING):\n+        print(f\"Inside at_level: {caplog.handler.level}\")\n+        assert caplog.handler.level == logging.WARNING\n+    \n+    print(f\"After at_level: {caplog.handler.level}\")\n+    assert caplog.handler.level == original_level\n+\n+def test_handler_level_after_at_level_only(caplog):\n+    \"\"\"Test that handler level is not affected by at_level in previous test.\"\"\"\n+    print(f\"Handler level after at_level test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+def test_set_level_then_at_level(caplog):\n+    \"\"\"Test set_level followed by at_level.\"\"\"\n+    caplog.set_level(logging.INFO)\n+    print(f\"After set_level: {caplog.handler.level}\")\n+    assert caplog.handler.level == logging.INFO\n+    \n+    with caplog.at_level(logging.ERROR):\n+        print(f\"Inside at_level: {caplog.handler.level}\")\n+        assert caplog.handler.level == logging.ERROR\n+    \n+    print(f\"After at_level: {caplog.handler.level}\")\n+    assert caplog.handler.level == logging.INFO\n+\n+def test_handler_level_after_mixed_usage(caplog):\n+    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n+    print(f\"Handler level after mixed usage: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+def test_nested_at_level(caplog):\n+    \"\"\"Test nested at_level context managers.\"\"\"\n+    original_level = caplog.handler.level\n+    \n+    with caplog.at_level(logging.WARNING):\n+        assert caplog.handler.level == logging.WARNING\n+        \n+        with caplog.at_level(logging.ERROR):\n+            assert caplog.handler.level == logging.ERROR\n+        \n+        assert caplog.handler.level == logging.WARNING\n+    \n+    assert caplog.handler.level == original_level\n+\n+def test_handler_level_after_nested_at_level(caplog):\n+    \"\"\"Test that handler level is not affected by nested at_level.\"\"\"\n+    print(f\"Handler level after nested at_level: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 000000000..e79a4ce18\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_set_level_once(caplog):\n+    \"\"\"Test that handler level is restored after setting it once.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(42)\n+    print(f\"After set_level(42): {caplog.handler.level}\")\n+    assert caplog.handler.level == 42\n+\n+def test_set_level_multiple_times(caplog):\n+    \"\"\"Test that handler level is restored after setting it multiple times.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(10)\n+    print(f\"After set_level(10): {caplog.handler.level}\")\n+    assert caplog.handler.level == 10\n+    \n+    caplog.set_level(20)\n+    print(f\"After set_level(20): {caplog.handler.level}\")\n+    assert caplog.handler.level == 20\n+    \n+    caplog.set_level(30)\n+    print(f\"After set_level(30): {caplog.handler.level}\")\n+    assert caplog.handler.level == 30\n+\n+def test_handler_level_restored(caplog):\n+    \"\"\"Test that handler level is restored to original value.\"\"\"\n+    print(f\"Handler level in third test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+def test_at_level_context_manager(caplog):\n+    \"\"\"Test that at_level context manager works correctly.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    with caplog.at_level(50):\n+        print(f\"Inside at_level(50): {caplog.handler.level}\")\n+        assert caplog.handler.level == 50\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == original_level\n+\n+def test_mixed_usage(caplog):\n+    \"\"\"Test mixing set_level and at_level.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Original handler level: {original_level}\")\n+    \n+    caplog.set_level(15)\n+    print(f\"After set_level(15): {caplog.handler.level}\")\n+    assert caplog.handler.level == 15\n+    \n+    with caplog.at_level(25):\n+        print(f\"Inside at_level(25): {caplog.handler.level}\")\n+        assert caplog.handler.level == 25\n+    \n+    print(f\"After at_level context: {caplog.handler.level}\")\n+    assert caplog.handler.level == 15  # Should be back to set_level value\n+\n+def test_final_restoration(caplog):\n+    \"\"\"Test that handler level is restored after mixed usage.\"\"\"\n+    print(f\"Handler level in final test: {caplog.handler.level}\")\n+    # Should be back to original level (0)\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 000000000..763747d8f\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,55 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import logging\n+\n+def test_no_set_level_call(caplog):\n+    \"\"\"Test that handler level is not affected if set_level is never called.\"\"\"\n+    original_level = caplog.handler.level\n+    print(f\"Handler level without set_level: {original_level}\")\n+    # Should remain at original level\n+    assert caplog.handler.level == 0\n+\n+def test_set_level_with_string(caplog):\n+    \"\"\"Test that set_level works with string levels.\"\"\"\n+    caplog.set_level(\"DEBUG\")\n+    print(f\"Handler level after set_level('DEBUG'): {caplog.handler.level}\")\n+    assert caplog.handler.level == logging.DEBUG\n+\n+def test_handler_level_restored_after_string(caplog):\n+    \"\"\"Test that handler level is restored after using string level.\"\"\"\n+    print(f\"Handler level after string test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+def test_set_level_with_named_logger(caplog):\n+    \"\"\"Test that handler level is still restored when using named logger.\"\"\"\n+    caplog.set_level(logging.WARNING, logger=\"test.logger\")\n+    print(f\"Handler level after set_level with named logger: {caplog.handler.level}\")\n+    assert caplog.handler.level == logging.WARNING\n+\n+def test_handler_level_restored_after_named_logger(caplog):\n+    \"\"\"Test that handler level is restored after using named logger.\"\"\"\n+    print(f\"Handler level after named logger test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+def test_multiple_set_level_calls_same_test(caplog):\n+    \"\"\"Test multiple set_level calls in the same test.\"\"\"\n+    original_level = caplog.handler.level\n+    \n+    caplog.set_level(10)\n+    assert caplog.handler.level == 10\n+    \n+    caplog.set_level(20)\n+    assert caplog.handler.level == 20\n+    \n+    caplog.set_level(30)\n+    assert caplog.handler.level == 30\n+\n+def test_handler_level_restored_after_multiple_calls(caplog):\n+    \"\"\"Test that handler level is restored after multiple set_level calls.\"\"\"\n+    print(f\"Handler level after multiple calls test: {caplog.handler.level}\")\n+    assert caplog.handler.level == 0\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/testing/logging/test_fixture.py b/testing/logging/test_fixture.py\nindex da5303302..e9dc35f8d 100644\n--- a/testing/logging/test_fixture.py\n+++ b/testing/logging/test_fixture.py\n@@ -274,3 +274,18 @@ def test_log_report_captures_according_to_config_option_upon_failure(testdir):\n         [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n     )\n     assert result.ret == 1\n+\n+\n+def test_handler_level_restored_between_tests(testdir):\n+    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n+    testdir.makepyfile(\n+        \"\"\"\n+        def test_foo(caplog):\n+            caplog.set_level(42)\n+\n+        def test_bar(caplog):\n+            assert caplog.handler.level == 0\n+    \"\"\"\n+    )\n+    result = testdir.runpytest()\n+    assert result.ret == 0",
+          "explanation": "classic_swe step 35 create #1",
+          "filename": "test_at_level_interaction.py",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_at_level_interaction.py",
+          "step_index": 36
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 37
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pytest\n\ndef test_foo(caplog):\n    caplog.set_level(42)\n\ndef test_bar(caplog):\n    print(caplog.handler.level)\n\nif __name__ == \"__main__\":\n    # Run the tests\n    pytest.main([__file__, \"-v\", \"-s\"])",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 000000000..c043fd795\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,13 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+\n+def test_foo(caplog):\n+    caplog.set_level(42)\n+\n+def test_bar(caplog):\n+    print(caplog.handler.level)\n+\n+if __name__ == \"__main__\":\n+    # Run the tests\n+    pytest.main([__file__, \"-v\", \"-s\"])\n\\ No newline at end of file\ndiff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager\ndiff --git a/testing/logging/test_fixture.py b/testing/logging/test_fixture.py\nindex da5303302..e9dc35f8d 100644\n--- a/testing/logging/test_fixture.py\n+++ b/testing/logging/test_fixture.py\n@@ -274,3 +274,18 @@ def test_log_report_captures_according_to_config_option_upon_failure(testdir):\n         [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n     )\n     assert result.ret == 1\n+\n+\n+def test_handler_level_restored_between_tests(testdir):\n+    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n+    testdir.makepyfile(\n+        \"\"\"\n+        def test_foo(caplog):\n+            caplog.set_level(42)\n+\n+        def test_bar(caplog):\n+            assert caplog.handler.level == 0\n+    \"\"\"\n+    )\n+    result = testdir.runpytest()\n+    assert result.ret == 0",
+          "explanation": "classic_swe step 42 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 43
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 42
+    }
+  ],
+  "sub_paths": [
+    "src/_pytest/logging.py",
+    "testing/logging/test_fixture.py"
+  ],
+  "success_step": 42,
+  "test_files": [
+    "final_test.py",
+    "reproduce_issue.py",
+    "test_at_level_interaction.py",
+    "test_comprehensive.py",
+    "test_edge_cases.py",
+    "testing/logging/test_fixture.py"
+  ]
+}

@@ -1,0 +1,143 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 44
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py -v",
+      "step_index": 46
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 8
+    },
+    {
+      "command": "cd /testbed && python test_fix_comprehensive.py",
+      "step_index": 14
+    },
+    {
+      "command": "cd /testbed && python test_anchors_disabled.py",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 18
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_defaults -v",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_defaults_json -v",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python test_ssl_errors.py",
+      "step_index": 22
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "            try:\n                if anchor and self.app.config.linkcheck_anchors:\n                    # Read the whole document and see if #anchor exists\n                    response = requests.get(req_url, stream=True, config=self.app.config,\n                                            auth=auth_info, **kwargs)\n                    response.raise_for_status()\n                    found = check_anchor(response, unquote(anchor))\n\n                    if not found:\n                        raise Exception(__(\"Anchor '%s' not found\") % anchor)",
+          "before": "            try:\n                if anchor and self.app.config.linkcheck_anchors:\n                    # Read the whole document and see if #anchor exists\n                    response = requests.get(req_url, stream=True, config=self.app.config,\n                                            auth=auth_info, **kwargs)\n                    found = check_anchor(response, unquote(anchor))\n\n                    if not found:\n                        raise Exception(__(\"Anchor '%s' not found\") % anchor)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/builders/linkcheck.py b/sphinx/builders/linkcheck.py\nindex 9b54afc7c..1083e82ec 100644\n--- a/sphinx/builders/linkcheck.py\n+++ b/sphinx/builders/linkcheck.py\n@@ -166,6 +166,7 @@ class CheckExternalLinksBuilder(Builder):\n                     # Read the whole document and see if #anchor exists\n                     response = requests.get(req_url, stream=True, config=self.app.config,\n                                             auth=auth_info, **kwargs)\n+                    response.raise_for_status()\n                     found = check_anchor(response, unquote(anchor))\n \n                     if not found:",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "sphinx/builders/linkcheck.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        },
+        {
+          "after": "#!/usr/bin/env python3\n\nimport tempfile\nimport subprocess\nfrom pathlib import Path\n\ndef final_test():\n    \"\"\"Final test to confirm the fix is working\"\"\"\n    \n    with tempfile.TemporaryDirectory() as tmpdir:\n        tmpdir = Path(tmpdir)\n        \n        source_dir = tmpdir / \"source\"\n        build_dir = tmpdir / \"build\"\n        source_dir.mkdir()\n        build_dir.mkdir()\n        \n        # Create conf.py\n        conf_py = source_dir / \"conf.py\"\n        conf_py.write_text(\"\"\"\nproject = 'Test Project'\nauthor = 'Test Author'\nrelease = '1.0'\nextensions = []\nlinkcheck_anchors = True\n\"\"\")\n        \n        # Create index.rst with a broken link that has an anchor\n        index_rst = source_dir / \"index.rst\"\n        index_rst.write_text(\"\"\"\nTest Project\n============\n\n`foo <https://google.com/test.txt#test>`_\n\"\"\")\n        \n        # Run linkcheck\n        result = subprocess.run([\n            'python', '-m', 'sphinx.cmd.build',\n            '-b', 'linkcheck',\n            str(source_dir),\n            str(build_dir)\n        ], capture_output=True, text=True, cwd=tmpdir)\n        \n        output_file = build_dir / \"output.txt\"\n        if output_file.exists():\n            output_content = output_file.read_text()\n            print(\"Output:\", output_content)\n            \n            # Should report HTTP error, not anchor error\n            if \"404 Client Error: Not Found for url: https://google.com/test.txt\" in output_content:\n                print(\"✓ SUCCESS: Fix is working correctly!\")\n                return True\n            else:\n                print(\"✗ FAILED: Fix is not working\")\n                return False\n        \n        return False\n\nif __name__ == \"__main__\":\n    final_test()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 000000000..790045afa\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,61 @@\n+#!/usr/bin/env python3\n+\n+import tempfile\n+import subprocess\n+from pathlib import Path\n+\n+def final_test():\n+    \"\"\"Final test to confirm the fix is working\"\"\"\n+    \n+    with tempfile.TemporaryDirectory() as tmpdir:\n+        tmpdir = Path(tmpdir)\n+        \n+        source_dir = tmpdir / \"source\"\n+        build_dir = tmpdir / \"build\"\n+        source_dir.mkdir()\n+        build_dir.mkdir()\n+        \n+        # Create conf.py\n+        conf_py = source_dir / \"conf.py\"\n+        conf_py.write_text(\"\"\"\n+project = 'Test Project'\n+author = 'Test Author'\n+release = '1.0'\n+extensions = []\n+linkcheck_anchors = True\n+\"\"\")\n+        \n+        # Create index.rst with a broken link that has an anchor\n+        index_rst = source_dir / \"index.rst\"\n+        index_rst.write_text(\"\"\"\n+Test Project\n+============\n+\n+`foo <https://google.com/test.txt#test>`_\n+\"\"\")\n+        \n+        # Run linkcheck\n+        result = subprocess.run([\n+            'python', '-m', 'sphinx.cmd.build',\n+            '-b', 'linkcheck',\n+            str(source_dir),\n+            str(build_dir)\n+        ], capture_output=True, text=True, cwd=tmpdir)\n+        \n+        output_file = build_dir / \"output.txt\"\n+        if output_file.exists():\n+            output_content = output_file.read_text()\n+            print(\"Output:\", output_content)\n+            \n+            # Should report HTTP error, not anchor error\n+            if \"404 Client Error: Not Found for url: https://google.com/test.txt\" in output_content:\n+                print(\"✓ SUCCESS: Fix is working correctly!\")\n+                return True\n+            else:\n+                print(\"✗ FAILED: Fix is not working\")\n+                return False\n+        \n+        return False\n+\n+if __name__ == \"__main__\":\n+    final_test()\n\\ No newline at end of file\ndiff --git a/sphinx/builders/linkcheck.py b/sphinx/builders/linkcheck.py\nindex 9b54afc7c..1083e82ec 100644\n--- a/sphinx/builders/linkcheck.py\n+++ b/sphinx/builders/linkcheck.py\n@@ -166,6 +166,7 @@ class CheckExternalLinksBuilder(Builder):\n                     # Read the whole document and see if #anchor exists\n                     response = requests.get(req_url, stream=True, config=self.app.config,\n                                             auth=auth_info, **kwargs)\n+                    response.raise_for_status()\n                     found = check_anchor(response, unquote(anchor))\n \n                     if not found:",
+          "explanation": "classic_swe step 43 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        }
+      ],
+      "end_step": 43,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py -v",
+          "step_index": 46
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 8
+        },
+        {
+          "command": "cd /testbed && python test_fix_comprehensive.py",
+          "step_index": 14
+        },
+        {
+          "command": "cd /testbed && python test_anchors_disabled.py",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 18
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_defaults -v",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_defaults_json -v",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python test_ssl_errors.py",
+          "step_index": 22
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 40
+    }
+  ],
+  "sub_paths": [
+    "sphinx/builders/linkcheck.py"
+  ],
+  "success_step": 43,
+  "test_files": [
+    "final_test.py"
+  ]
+}

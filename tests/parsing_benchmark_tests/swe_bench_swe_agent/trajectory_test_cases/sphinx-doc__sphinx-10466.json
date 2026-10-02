@@ -1,0 +1,192 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_gettext.py -v",
+      "step_index": 45
+    },
+    {
+      "command": "cd /testbed && python final_verification.py",
+      "step_index": 47
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 7
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 10
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build.py -v -k \"gettext\"",
+      "step_index": 15
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_intl.py -v -k \"gettext\" --tb=short",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python test_real_scenario.py",
+      "step_index": 18
+    },
+    {
+      "command": "cd /testbed && python test_original_issue.py",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python test_same_location_duplicates.py",
+      "step_index": 22
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_gettext.py tests/test_intl.py -v --tb=short",
+      "step_index": 23
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_gettext.py tests/test_intl.py -k \"gettext\" -v",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python test_duplicate_locations_fix.py",
+      "step_index": 26
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_duplicate_locations_fix.py -v",
+      "step_index": 27
+    },
+    {
+      "command": "cd /testbed && python test_uuid_consistency.py",
+      "step_index": 29
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "    def __iter__(self) -> Generator[Message, None, None]:\n        for message in self.messages:\n            # Remove duplicate positions while preserving order\n            seen_positions = set()\n            positions = []\n            uuids = []\n            for source, line, uuid in self.metadata[message]:\n                position = (source, line)\n                if position not in seen_positions:\n                    seen_positions.add(position)\n                    positions.append(position)\n                    uuids.append(uuid)\n            yield Message(message, positions, uuids)",
+          "before": "    def __iter__(self) -> Generator[Message, None, None]:\n        for message in self.messages:\n            positions = [(source, line) for source, line, uuid in self.metadata[message]]\n            uuids = [uuid for source, line, uuid in self.metadata[message]]\n            yield Message(message, positions, uuids)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/builders/gettext.py b/sphinx/builders/gettext.py\nindex e8bc547b7..2423e016b 100644\n--- a/sphinx/builders/gettext.py\n+++ b/sphinx/builders/gettext.py\n@@ -57,8 +57,16 @@ class Catalog:\n \n     def __iter__(self) -> Generator[Message, None, None]:\n         for message in self.messages:\n-            positions = [(source, line) for source, line, uuid in self.metadata[message]]\n-            uuids = [uuid for source, line, uuid in self.metadata[message]]\n+            # Remove duplicate positions while preserving order\n+            seen_positions = set()\n+            positions = []\n+            uuids = []\n+            for source, line, uuid in self.metadata[message]:\n+                position = (source, line)\n+                if position not in seen_positions:\n+                    seen_positions.add(position)\n+                    positions.append(position)\n+                    uuids.append(uuid)\n             yield Message(message, positions, uuids)",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "sphinx/builders/gettext.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        }
+      ],
+      "end_step": 43,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_gettext.py -v",
+          "step_index": 45
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 43
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\n\"\"\"\nFinal verification that the duplicate locations issue is fixed.\n\"\"\"\n\nfrom sphinx.builders.gettext import Catalog, MsgOrigin\n\ndef test_fix():\n    \"\"\"Quick test to verify the fix works.\"\"\"\n    catalog = Catalog()\n    \n    # Add same message from same location multiple times (the original issue)\n    origin1 = MsgOrigin(\"hair.rst\", 0)\n    catalog.add(\"Type\", origin1)\n    catalog.add(\"Type\", origin1)  # duplicate\n    catalog.add(\"Type\", origin1)  # duplicate\n    \n    # Add from different location\n    origin2 = MsgOrigin(\"properties.rst\", 92)\n    catalog.add(\"Type\", origin2)\n    \n    messages = list(catalog)\n    message = messages[0]\n    \n    # Should have only unique locations\n    expected = [(\"hair.rst\", 0), (\"properties.rst\", 92)]\n    actual = message.locations\n    \n    if actual == expected:\n        print(\"✅ SUCCESS: Duplicate locations are properly removed!\")\n        print(f\"   Expected: {expected}\")\n        print(f\"   Actual:   {actual}\")\n        return True\n    else:\n        print(\"❌ FAILURE: Duplicate locations still exist!\")\n        print(f\"   Expected: {expected}\")\n        print(f\"   Actual:   {actual}\")\n        return False\n\nif __name__ == \"__main__\":\n    test_fix()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_verification.py b/final_verification.py\nnew file mode 100644\nindex 000000000..b8d907345\n--- /dev/null\n+++ b/final_verification.py\n@@ -0,0 +1,42 @@\n+#!/usr/bin/env python3\n+\n+\"\"\"\n+Final verification that the duplicate locations issue is fixed.\n+\"\"\"\n+\n+from sphinx.builders.gettext import Catalog, MsgOrigin\n+\n+def test_fix():\n+    \"\"\"Quick test to verify the fix works.\"\"\"\n+    catalog = Catalog()\n+    \n+    # Add same message from same location multiple times (the original issue)\n+    origin1 = MsgOrigin(\"hair.rst\", 0)\n+    catalog.add(\"Type\", origin1)\n+    catalog.add(\"Type\", origin1)  # duplicate\n+    catalog.add(\"Type\", origin1)  # duplicate\n+    \n+    # Add from different location\n+    origin2 = MsgOrigin(\"properties.rst\", 92)\n+    catalog.add(\"Type\", origin2)\n+    \n+    messages = list(catalog)\n+    message = messages[0]\n+    \n+    # Should have only unique locations\n+    expected = [(\"hair.rst\", 0), (\"properties.rst\", 92)]\n+    actual = message.locations\n+    \n+    if actual == expected:\n+        print(\"✅ SUCCESS: Duplicate locations are properly removed!\")\n+        print(f\"   Expected: {expected}\")\n+        print(f\"   Actual:   {actual}\")\n+        return True\n+    else:\n+        print(\"❌ FAILURE: Duplicate locations still exist!\")\n+        print(f\"   Expected: {expected}\")\n+        print(f\"   Actual:   {actual}\")\n+        return False\n+\n+if __name__ == \"__main__\":\n+    test_fix()\n\\ No newline at end of file\ndiff --git a/sphinx/builders/gettext.py b/sphinx/builders/gettext.py\nindex e8bc547b7..2423e016b 100644\n--- a/sphinx/builders/gettext.py\n+++ b/sphinx/builders/gettext.py\n@@ -57,8 +57,16 @@ class Catalog:\n \n     def __iter__(self) -> Generator[Message, None, None]:\n         for message in self.messages:\n-            positions = [(source, line) for source, line, uuid in self.metadata[message]]\n-            uuids = [uuid for source, line, uuid in self.metadata[message]]\n+            # Remove duplicate positions while preserving order\n+            seen_positions = set()\n+            positions = []\n+            uuids = []\n+            for source, line, uuid in self.metadata[message]:\n+                position = (source, line)\n+                if position not in seen_positions:\n+                    seen_positions.add(position)\n+                    positions.append(position)\n+                    uuids.append(uuid)\n             yield Message(message, positions, uuids)",
+          "explanation": "classic_swe step 46 create #1",
+          "filename": "final_verification.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        }
+      ],
+      "end_step": 46,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_verification.py",
+          "step_index": 47
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 7
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 10
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build.py -v -k \"gettext\"",
+          "step_index": 15
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_intl.py -v -k \"gettext\" --tb=short",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python test_real_scenario.py",
+          "step_index": 18
+        },
+        {
+          "command": "cd /testbed && python test_original_issue.py",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python test_same_location_duplicates.py",
+          "step_index": 22
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_gettext.py tests/test_intl.py -v --tb=short",
+          "step_index": 23
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_gettext.py tests/test_intl.py -k \"gettext\" -v",
+          "step_index": 24
+        },
+        {
+          "command": "cd /testbed && python test_duplicate_locations_fix.py",
+          "step_index": 26
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_duplicate_locations_fix.py -v",
+          "step_index": 27
+        },
+        {
+          "command": "cd /testbed && python test_uuid_consistency.py",
+          "step_index": 29
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 46
+    }
+  ],
+  "sub_paths": [
+    "sphinx/builders/gettext.py"
+  ],
+  "success_step": 46,
+  "test_files": [
+    "final_verification.py"
+  ]
+}

@@ -1,0 +1,484 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 2
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 27
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_requests.py -v -k \"test_\" | head -50",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_requests.py::TestRequests::test_params_bytes_are_encoded -v",
+      "step_index": 29
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport requests\ntry:\n    request = requests.Request('GET', 'http://example.com', params=b'test=foo').prepare()\n    print('URL:', request.url)\nexcept Exception as e:\n    print('Error:', e)\n    import traceback\n    traceback.print_exc()\n\"",
+      "step_index": 36
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_requests.py -k \"test_basic_building or test_HTTP_200_OK_GET_WITH_PARAMS or test_POSTBIN_GET_POST_FILES\" -v --tb=short",
+      "step_index": 46
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_requests.py -k \"test_basic_building or test_entry_points or test_invalid_url or test_params\" -v --tb=short",
+      "step_index": 47
+    },
+    {
+      "command": "cd /testbed && python test_final.py",
+      "step_index": 49
+    },
+    {
+      "command": "cd /testbed && python test_url_params.py",
+      "step_index": 51
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7,
+      8
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n\nimport requests\n\nprint(\"Testing binary payload request...\")\ntry:\n    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n    print(\"Success! Status code:\", response.status_code)\nexcept Exception as e:\n    print(\"Error:\", str(e))\n    print(\"Type:\", type(e))\n    import traceback\n    traceback.print_exc()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 1 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 1
+        }
+      ],
+      "end_step": 1,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 2
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 1
+    },
+    {
+      "edits": [
+        {
+          "after": "        if isinstance(data, bytes):\n            return data\n        elif isinstance(data, str):\n            return to_native_string(data)",
+          "before": "        if isinstance(data, (str, bytes)):\n            return to_native_string(data)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..157e2b54 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -80,7 +80,9 @@ class RequestEncodingMixin(object):\n         if parameters are supplied as a dict.\n         \"\"\"\n \n-        if isinstance(data, (str, bytes)):\n+        if isinstance(data, bytes):\n+            return data\n+        elif isinstance(data, str):\n             return to_native_string(data)\n         elif hasattr(data, 'read'):\n             return data",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 18
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n\nimport requests\nimport sys\n\ndef test_case(description, data):\n    print(f\"\\nTesting: {description}\")\n    print(f\"Data type: {type(data)}\")\n    print(f\"Data: {repr(data)}\")\n    try:\n        # Use a local test instead of httpbin to avoid network issues\n        # We'll just test the encoding part\n        from requests.models import PreparedRequest\n        req = PreparedRequest()\n        req.prepare_method('PUT')\n        req.prepare_url('http://example.com', {})\n        req.prepare_body(data, None)\n        print(f\"Success! Body type: {type(req.body)}\")\n        print(f\"Body: {repr(req.body)}\")\n    except Exception as e:\n        print(f\"Error: {str(e)}\")\n        print(f\"Type: {type(e)}\")\n        import traceback\n        traceback.print_exc()\n\n# Test cases\nprint(\"Python version:\", sys.version)\n\n# Test 1: Binary data (the original failing case)\ntest_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n\n# Test 2: Unicode string\ntest_case(\"Unicode string\", u\"ööö\")\n\n# Test 3: ASCII string\ntest_case(\"ASCII string\", \"hello\")\n\n# Test 4: ASCII bytes\ntest_case(\"ASCII bytes\", b\"hello\")\n\n# Test 5: Empty bytes\ntest_case(\"Empty bytes\", b\"\")\n\n# Test 6: Empty string\ntest_case(\"Empty string\", \"\")\n\n# Test 7: Dict (should use different code path)\ntest_case(\"Dict data\", {\"key\": \"value\"})\n\n# Test 8: List (should use different code path)\ntest_case(\"List data\", [(\"key\", \"value\")])",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..157e2b54 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -80,7 +80,9 @@ class RequestEncodingMixin(object):\n         if parameters are supplied as a dict.\n         \"\"\"\n \n-        if isinstance(data, (str, bytes)):\n+        if isinstance(data, bytes):\n+            return data\n+        elif isinstance(data, str):\n             return to_native_string(data)\n         elif hasattr(data, 'read'):\n             return data\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..06fea0aa\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 19 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 20
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "        # Use a local test instead of httpbin to avoid network issues\n        # We'll just test the encoding part\n        from requests.models import PreparedRequest\n        req = PreparedRequest()\n        req.prepare_method('PUT')\n        req.prepare_url('http://example.com', {})\n        req.prepare_headers({})\n        req.prepare_body(data, None)",
+          "before": "        # Use a local test instead of httpbin to avoid network issues\n        # We'll just test the encoding part\n        from requests.models import PreparedRequest\n        req = PreparedRequest()\n        req.prepare_method('PUT')\n        req.prepare_url('http://example.com', {})\n        req.prepare_body(data, None)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..157e2b54 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -80,7 +80,9 @@ class RequestEncodingMixin(object):\n         if parameters are supplied as a dict.\n         \"\"\"\n \n-        if isinstance(data, (str, bytes)):\n+        if isinstance(data, bytes):\n+            return data\n+        elif isinstance(data, str):\n             return to_native_string(data)\n         elif hasattr(data, 'read'):\n             return data\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 22
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 23
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 21
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n\nimport sys\nfrom requests.models import PreparedRequest\n\ndef test_encode_params():\n    \"\"\"Test the _encode_params method directly\"\"\"\n    \n    print(\"Python version:\", sys.version)\n    print(\"Testing _encode_params method...\")\n    \n    # Test binary data (the original failing case)\n    binary_data = u\"ööö\".encode(\"utf-8\")\n    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n    print(f\"Type: {type(binary_data)}\")\n    \n    result = PreparedRequest._encode_params(binary_data)\n    print(f\"Result: {repr(result)}\")\n    print(f\"Result type: {type(result)}\")\n    print(f\"Same object? {result is binary_data}\")\n    \n    # Test unicode string\n    unicode_data = u\"ööö\"\n    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n    print(f\"Type: {type(unicode_data)}\")\n    \n    result = PreparedRequest._encode_params(unicode_data)\n    print(f\"Result: {repr(result)}\")\n    print(f\"Result type: {type(result)}\")\n    \n    # Test ASCII string\n    ascii_data = \"hello\"\n    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n    print(f\"Type: {type(ascii_data)}\")\n    \n    result = PreparedRequest._encode_params(ascii_data)\n    print(f\"Result: {repr(result)}\")\n    print(f\"Result type: {type(result)}\")\n    \n    # Test ASCII bytes\n    ascii_bytes = b\"hello\"\n    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n    print(f\"Type: {type(ascii_bytes)}\")\n    \n    result = PreparedRequest._encode_params(ascii_bytes)\n    print(f\"Result: {repr(result)}\")\n    print(f\"Result type: {type(result)}\")\n    print(f\"Same object? {result is ascii_bytes}\")\n\nif __name__ == \"__main__\":\n    test_encode_params()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..157e2b54 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -80,7 +80,9 @@ class RequestEncodingMixin(object):\n         if parameters are supplied as a dict.\n         \"\"\"\n \n-        if isinstance(data, (str, bytes)):\n+        if isinstance(data, bytes):\n+            return data\n+        elif isinstance(data, str):\n             return to_native_string(data)\n         elif hasattr(data, 'read'):\n             return data\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 26 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 27
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py -v -k \"test_\" | head -50",
+          "step_index": 28
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py::TestRequests::test_params_bytes_are_encoded -v",
+          "step_index": 29
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "        if isinstance(data, (str, bytes)):\n            return to_native_string(data)",
+          "before": "        if isinstance(data, bytes):\n            return data\n        elif isinstance(data, str):\n            return to_native_string(data)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py::TestRequests::test_params_bytes_are_encoded -v",
+          "step_index": 32
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 33
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "        if isinstance(data, bytes):\n            return data\n        elif isinstance(data, str):\n            return to_native_string(data)",
+          "before": "        if isinstance(data, (str, bytes)):\n            return to_native_string(data)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..157e2b54 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -80,7 +80,9 @@ class RequestEncodingMixin(object):\n         if parameters are supplied as a dict.\n         \"\"\"\n \n-        if isinstance(data, (str, bytes)):\n+        if isinstance(data, bytes):\n+            return data\n+        elif isinstance(data, str):\n             return to_native_string(data)\n         elif hasattr(data, 'read'):\n             return data\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 35
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport requests\ntry:\n    request = requests.Request('GET', 'http://example.com', params=b'test=foo').prepare()\n    print('URL:', request.url)\nexcept Exception as e:\n    print('Error:', e)\n    import traceback\n    traceback.print_exc()\n\"",
+          "step_index": 36
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 34
+    },
+    {
+      "edits": [
+        {
+          "after": "        if isinstance(data, (str, bytes)):\n            return to_native_string(data)",
+          "before": "        if isinstance(data, bytes):\n            return data\n        elif isinstance(data, str):\n            return to_native_string(data)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        },
+        {
+          "after": "                if data:\n                    if isinstance(data, bytes):\n                        body = data\n                    else:\n                        body = self._encode_params(data)\n                    if isinstance(data, basestring) or hasattr(data, 'read'):\n                        content_type = None\n                    else:\n                        content_type = 'application/x-www-form-urlencoded'",
+          "before": "                if data:\n                    body = self._encode_params(data)\n                    if isinstance(data, basestring) or hasattr(data, 'read'):\n                        content_type = None\n                    else:\n                        content_type = 'application/x-www-form-urlencoded'",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..8ddfa2f1 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -444,7 +444,10 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n                 (body, content_type) = self._encode_files(files, data)\n             else:\n                 if data:\n-                    body = self._encode_params(data)\n+                    if isinstance(data, bytes):\n+                        body = data\n+                    else:\n+                        body = self._encode_params(data)\n                     if isinstance(data, basestring) or hasattr(data, 'read'):\n                         content_type = None\n                     else:\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 43
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py::TestRequests::test_params_bytes_are_encoded -v",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 45
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py -k \"test_basic_building or test_HTTP_200_OK_GET_WITH_PARAMS or test_POSTBIN_GET_POST_FILES\" -v --tb=short",
+          "step_index": 46
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py -k \"test_basic_building or test_entry_points or test_invalid_url or test_params\" -v --tb=short",
+          "step_index": 47
+        }
+      ],
+      "revision_index": 7,
+      "start_step": 41
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n\nimport requests\nimport sys\n\ndef test_binary_payload_issue():\n    \"\"\"Test the specific issue mentioned in the PR description\"\"\"\n    \n    print(\"Python version:\", sys.version)\n    print(\"\\n=== Testing the specific issue from PR description ===\")\n    \n    # This is the exact code from the PR description that was failing\n    try:\n        response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n        print(\"✓ SUCCESS: Binary payload request worked!\")\n        print(f\"  Status code: {response.status_code}\")\n        print(f\"  Response length: {len(response.content)} bytes\")\n        \n        # Verify the data was sent correctly\n        response_json = response.json()\n        sent_data = response_json.get('data', '')\n        print(f\"  Data sent: {repr(sent_data)}\")\n        \n        # The data should be the UTF-8 encoded string\n        expected = u\"ööö\".encode(\"utf-8\").decode(\"utf-8\")\n        if sent_data == expected:\n            print(\"✓ Data was transmitted correctly!\")\n        else:\n            print(f\"✗ Data mismatch. Expected: {repr(expected)}, Got: {repr(sent_data)}\")\n            \n    except Exception as e:\n        print(f\"✗ FAILED: {str(e)}\")\n        print(f\"  Error type: {type(e)}\")\n        import traceback\n        traceback.print_exc()\n        return False\n    \n    print(\"\\n=== Testing related edge cases ===\")\n    \n    # Test other binary data\n    test_cases = [\n        (\"ASCII bytes\", b\"hello world\"),\n        (\"UTF-8 bytes\", \"Hello 世界\".encode(\"utf-8\")),\n        (\"Empty bytes\", b\"\"),\n        (\"Unicode string\", u\"ööö\"),\n        (\"ASCII string\", \"hello\"),\n    ]\n    \n    for description, data in test_cases:\n        print(f\"\\nTesting {description}: {repr(data)}\")\n        try:\n            # Use a local test to avoid network issues\n            from requests.models import PreparedRequest\n            req = PreparedRequest()\n            req.prepare_method('PUT')\n            req.prepare_url('http://example.com', {})\n            req.prepare_headers({})\n            req.prepare_body(data, None)\n            \n            print(f\"  ✓ Body type: {type(req.body)}\")\n            print(f\"  ✓ Body: {repr(req.body)}\")\n            \n            # For bytes input, body should be bytes and same object\n            if isinstance(data, bytes) and data:  # non-empty bytes\n                if req.body is data:\n                    print(\"  ✓ Bytes passed through unchanged (same object)\")\n                else:\n                    print(\"  ✗ Bytes were modified\")\n                    \n        except Exception as e:\n            print(f\"  ✗ Failed: {str(e)}\")\n            return False\n    \n    print(\"\\n=== All tests passed! ===\")\n    return True\n\nif __name__ == \"__main__\":\n    success = test_binary_payload_issue()\n    sys.exit(0 if success else 1)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..8ddfa2f1 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -444,7 +444,10 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n                 (body, content_type) = self._encode_files(files, data)\n             else:\n                 if data:\n-                    body = self._encode_params(data)\n+                    if isinstance(data, bytes):\n+                        body = data\n+                    else:\n+                        body = self._encode_params(data)\n                     if isinstance(data, basestring) or hasattr(data, 'read'):\n                         content_type = None\n                     else:\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file\ndiff --git a/test_final.py b/test_final.py\nnew file mode 100644\nindex 00000000..43a1308f\n--- /dev/null\n+++ b/test_final.py\n@@ -0,0 +1,80 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_binary_payload_issue():\n+    \"\"\"Test the specific issue mentioned in the PR description\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"\\n=== Testing the specific issue from PR description ===\")\n+    \n+    # This is the exact code from the PR description that was failing\n+    try:\n+        response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+        print(\"✓ SUCCESS: Binary payload request worked!\")\n+        print(f\"  Status code: {response.status_code}\")\n+        print(f\"  Response length: {len(response.content)} bytes\")\n+        \n+        # Verify the data was sent correctly\n+        response_json = response.json()\n+        sent_data = response_json.get('data', '')\n+        print(f\"  Data sent: {repr(sent_data)}\")\n+        \n+        # The data should be the UTF-8 encoded string\n+        expected = u\"ööö\".encode(\"utf-8\").decode(\"utf-8\")\n+        if sent_data == expected:\n+            print(\"✓ Data was transmitted correctly!\")\n+        else:\n+            print(f\"✗ Data mismatch. Expected: {repr(expected)}, Got: {repr(sent_data)}\")\n+            \n+    except Exception as e:\n+        print(f\"✗ FAILED: {str(e)}\")\n+        print(f\"  Error type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+        return False\n+    \n+    print(\"\\n=== Testing related edge cases ===\")\n+    \n+    # Test other binary data\n+    test_cases = [\n+        (\"ASCII bytes\", b\"hello world\"),\n+        (\"UTF-8 bytes\", \"Hello 世界\".encode(\"utf-8\")),\n+        (\"Empty bytes\", b\"\"),\n+        (\"Unicode string\", u\"ööö\"),\n+        (\"ASCII string\", \"hello\"),\n+    ]\n+    \n+    for description, data in test_cases:\n+        print(f\"\\nTesting {description}: {repr(data)}\")\n+        try:\n+            # Use a local test to avoid network issues\n+            from requests.models import PreparedRequest\n+            req = PreparedRequest()\n+            req.prepare_method('PUT')\n+            req.prepare_url('http://example.com', {})\n+            req.prepare_headers({})\n+            req.prepare_body(data, None)\n+            \n+            print(f\"  ✓ Body type: {type(req.body)}\")\n+            print(f\"  ✓ Body: {repr(req.body)}\")\n+            \n+            # For bytes input, body should be bytes and same object\n+            if isinstance(data, bytes) and data:  # non-empty bytes\n+                if req.body is data:\n+                    print(\"  ✓ Bytes passed through unchanged (same object)\")\n+                else:\n+                    print(\"  ✗ Bytes were modified\")\n+                    \n+        except Exception as e:\n+            print(f\"  ✗ Failed: {str(e)}\")\n+            return False\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+    return True\n+\n+if __name__ == \"__main__\":\n+    success = test_binary_payload_issue()\n+    sys.exit(0 if success else 1)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 48 create #1",
+          "filename": "test_final.py",
+          "global_edit_idx": 9,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_final.py",
+          "step_index": 49
+        }
+      ],
+      "revision_index": 8,
+      "start_step": 48
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n# -*- coding: utf-8 -*-\n\nimport requests\n\ndef test_url_params():\n    \"\"\"Test that URL parameters still work correctly\"\"\"\n    \n    print(\"Testing URL parameters...\")\n    \n    # Test string params\n    try:\n        req = requests.Request('GET', 'http://example.com', params='test=foo').prepare()\n        print(f\"String params: {req.url}\")\n        assert 'test=foo' in req.url\n        print(\"✓ String params work\")\n    except Exception as e:\n        print(f\"✗ String params failed: {e}\")\n        return False\n    \n    # Test bytes params (this should work after our fix)\n    try:\n        req = requests.Request('GET', 'http://example.com', params=b'test=foo').prepare()\n        print(f\"Bytes params: {req.url}\")\n        assert 'test=foo' in req.url\n        print(\"✓ Bytes params work\")\n    except Exception as e:\n        print(f\"✗ Bytes params failed: {e}\")\n        return False\n    \n    # Test dict params\n    try:\n        req = requests.Request('GET', 'http://example.com', params={'test': 'foo'}).prepare()\n        print(f\"Dict params: {req.url}\")\n        assert 'test=foo' in req.url\n        print(\"✓ Dict params work\")\n    except Exception as e:\n        print(f\"✗ Dict params failed: {e}\")\n        return False\n    \n    print(\"All URL parameter tests passed!\")\n    return True\n\nif __name__ == \"__main__\":\n    test_url_params()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..c2b02042\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+print(\"Testing binary payload request...\")\n+try:\n+    response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+    print(\"Success! Status code:\", response.status_code)\n+except Exception as e:\n+    print(\"Error:\", str(e))\n+    print(\"Type:\", type(e))\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 9c624d3c..8ddfa2f1 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -444,7 +444,10 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n                 (body, content_type) = self._encode_files(files, data)\n             else:\n                 if data:\n-                    body = self._encode_params(data)\n+                    if isinstance(data, bytes):\n+                        body = data\n+                    else:\n+                        body = self._encode_params(data)\n                     if isinstance(data, basestring) or hasattr(data, 'read'):\n                         content_type = None\n                     else:\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 00000000..1d2a5b84\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import sys\n+from requests.models import PreparedRequest\n+\n+def test_encode_params():\n+    \"\"\"Test the _encode_params method directly\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"Testing _encode_params method...\")\n+    \n+    # Test binary data (the original failing case)\n+    binary_data = u\"ööö\".encode(\"utf-8\")\n+    print(f\"\\nTesting binary data: {repr(binary_data)}\")\n+    print(f\"Type: {type(binary_data)}\")\n+    \n+    result = PreparedRequest._encode_params(binary_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is binary_data}\")\n+    \n+    # Test unicode string\n+    unicode_data = u\"ööö\"\n+    print(f\"\\nTesting unicode data: {repr(unicode_data)}\")\n+    print(f\"Type: {type(unicode_data)}\")\n+    \n+    result = PreparedRequest._encode_params(unicode_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII string\n+    ascii_data = \"hello\"\n+    print(f\"\\nTesting ASCII data: {repr(ascii_data)}\")\n+    print(f\"Type: {type(ascii_data)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_data)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    \n+    # Test ASCII bytes\n+    ascii_bytes = b\"hello\"\n+    print(f\"\\nTesting ASCII bytes: {repr(ascii_bytes)}\")\n+    print(f\"Type: {type(ascii_bytes)}\")\n+    \n+    result = PreparedRequest._encode_params(ascii_bytes)\n+    print(f\"Result: {repr(result)}\")\n+    print(f\"Result type: {type(result)}\")\n+    print(f\"Same object? {result is ascii_bytes}\")\n+\n+if __name__ == \"__main__\":\n+    test_encode_params()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..0ef6a711\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,53 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_case(description, data):\n+    print(f\"\\nTesting: {description}\")\n+    print(f\"Data type: {type(data)}\")\n+    print(f\"Data: {repr(data)}\")\n+    try:\n+        # Use a local test instead of httpbin to avoid network issues\n+        # We'll just test the encoding part\n+        from requests.models import PreparedRequest\n+        req = PreparedRequest()\n+        req.prepare_method('PUT')\n+        req.prepare_url('http://example.com', {})\n+        req.prepare_headers({})\n+        req.prepare_body(data, None)\n+        print(f\"Success! Body type: {type(req.body)}\")\n+        print(f\"Body: {repr(req.body)}\")\n+    except Exception as e:\n+        print(f\"Error: {str(e)}\")\n+        print(f\"Type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+\n+# Test cases\n+print(\"Python version:\", sys.version)\n+\n+# Test 1: Binary data (the original failing case)\n+test_case(\"Binary UTF-8 data\", u\"ööö\".encode(\"utf-8\"))\n+\n+# Test 2: Unicode string\n+test_case(\"Unicode string\", u\"ööö\")\n+\n+# Test 3: ASCII string\n+test_case(\"ASCII string\", \"hello\")\n+\n+# Test 4: ASCII bytes\n+test_case(\"ASCII bytes\", b\"hello\")\n+\n+# Test 5: Empty bytes\n+test_case(\"Empty bytes\", b\"\")\n+\n+# Test 6: Empty string\n+test_case(\"Empty string\", \"\")\n+\n+# Test 7: Dict (should use different code path)\n+test_case(\"Dict data\", {\"key\": \"value\"})\n+\n+# Test 8: List (should use different code path)\n+test_case(\"List data\", [(\"key\", \"value\")])\n\\ No newline at end of file\ndiff --git a/test_final.py b/test_final.py\nnew file mode 100644\nindex 00000000..43a1308f\n--- /dev/null\n+++ b/test_final.py\n@@ -0,0 +1,80 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+import sys\n+\n+def test_binary_payload_issue():\n+    \"\"\"Test the specific issue mentioned in the PR description\"\"\"\n+    \n+    print(\"Python version:\", sys.version)\n+    print(\"\\n=== Testing the specific issue from PR description ===\")\n+    \n+    # This is the exact code from the PR description that was failing\n+    try:\n+        response = requests.put(\"http://httpbin.org/put\", data=u\"ööö\".encode(\"utf-8\"))\n+        print(\"✓ SUCCESS: Binary payload request worked!\")\n+        print(f\"  Status code: {response.status_code}\")\n+        print(f\"  Response length: {len(response.content)} bytes\")\n+        \n+        # Verify the data was sent correctly\n+        response_json = response.json()\n+        sent_data = response_json.get('data', '')\n+        print(f\"  Data sent: {repr(sent_data)}\")\n+        \n+        # The data should be the UTF-8 encoded string\n+        expected = u\"ööö\".encode(\"utf-8\").decode(\"utf-8\")\n+        if sent_data == expected:\n+            print(\"✓ Data was transmitted correctly!\")\n+        else:\n+            print(f\"✗ Data mismatch. Expected: {repr(expected)}, Got: {repr(sent_data)}\")\n+            \n+    except Exception as e:\n+        print(f\"✗ FAILED: {str(e)}\")\n+        print(f\"  Error type: {type(e)}\")\n+        import traceback\n+        traceback.print_exc()\n+        return False\n+    \n+    print(\"\\n=== Testing related edge cases ===\")\n+    \n+    # Test other binary data\n+    test_cases = [\n+        (\"ASCII bytes\", b\"hello world\"),\n+        (\"UTF-8 bytes\", \"Hello 世界\".encode(\"utf-8\")),\n+        (\"Empty bytes\", b\"\"),\n+        (\"Unicode string\", u\"ööö\"),\n+        (\"ASCII string\", \"hello\"),\n+    ]\n+    \n+    for description, data in test_cases:\n+        print(f\"\\nTesting {description}: {repr(data)}\")\n+        try:\n+            # Use a local test to avoid network issues\n+            from requests.models import PreparedRequest\n+            req = PreparedRequest()\n+            req.prepare_method('PUT')\n+            req.prepare_url('http://example.com', {})\n+            req.prepare_headers({})\n+            req.prepare_body(data, None)\n+            \n+            print(f\"  ✓ Body type: {type(req.body)}\")\n+            print(f\"  ✓ Body: {repr(req.body)}\")\n+            \n+            # For bytes input, body should be bytes and same object\n+            if isinstance(data, bytes) and data:  # non-empty bytes\n+                if req.body is data:\n+                    print(\"  ✓ Bytes passed through unchanged (same object)\")\n+                else:\n+                    print(\"  ✗ Bytes were modified\")\n+                    \n+        except Exception as e:\n+            print(f\"  ✗ Failed: {str(e)}\")\n+            return False\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+    return True\n+\n+if __name__ == \"__main__\":\n+    success = test_binary_payload_issue()\n+    sys.exit(0 if success else 1)\n\\ No newline at end of file\ndiff --git a/test_url_params.py b/test_url_params.py\nnew file mode 100644\nindex 00000000..c0369047\n--- /dev/null\n+++ b/test_url_params.py\n@@ -0,0 +1,45 @@\n+#!/usr/bin/env python\n+# -*- coding: utf-8 -*-\n+\n+import requests\n+\n+def test_url_params():\n+    \"\"\"Test that URL parameters still work correctly\"\"\"\n+    \n+    print(\"Testing URL parameters...\")\n+    \n+    # Test string params\n+    try:\n+        req = requests.Request('GET', 'http://example.com', params='test=foo').prepare()\n+        print(f\"String params: {req.url}\")\n+        assert 'test=foo' in req.url\n+        print(\"✓ String params work\")\n+    except Exception as e:\n+        print(f\"✗ String params failed: {e}\")\n+        return False\n+    \n+    # Test bytes params (this should work after our fix)\n+    try:\n+        req = requests.Request('GET', 'http://example.com', params=b'test=foo').prepare()\n+        print(f\"Bytes params: {req.url}\")\n+        assert 'test=foo' in req.url\n+        print(\"✓ Bytes params work\")\n+    except Exception as e:\n+        print(f\"✗ Bytes params failed: {e}\")\n+        return False\n+    \n+    # Test dict params\n+    try:\n+        req = requests.Request('GET', 'http://example.com', params={'test': 'foo'}).prepare()\n+        print(f\"Dict params: {req.url}\")\n+        assert 'test=foo' in req.url\n+        print(\"✓ Dict params work\")\n+    except Exception as e:\n+        print(f\"✗ Dict params failed: {e}\")\n+        return False\n+    \n+    print(\"All URL parameter tests passed!\")\n+    return True\n+\n+if __name__ == \"__main__\":\n+    test_url_params()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 50 create #1",
+          "filename": "test_url_params.py",
+          "global_edit_idx": 10,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_url_params.py",
+          "step_index": 51
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 53
+        }
+      ],
+      "revision_index": 9,
+      "start_step": 50
+    }
+  ],
+  "sub_paths": [
+    "requests/models.py"
+  ],
+  "success_step": 50,
+  "test_files": [
+    "reproduce_issue.py",
+    "test_comprehensive.py",
+    "test_edge_cases.py",
+    "test_final.py",
+    "test_url_params.py"
+  ]
+}

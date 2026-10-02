@@ -1,0 +1,214 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 71
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 8
+    },
+    {
+      "command": "cd /testbed && python test_linkcheck_redirect.py",
+      "step_index": 10
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_defaults -xvs",
+      "step_index": 15
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_follows_redirects_on_HEAD -xvs",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_follows_redirects_on_GET -xvs",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py 2>&1 | grep -A 20 \"Linkcheck output:\"",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python test_simple_edge_case.py",
+      "step_index": 26
+    },
+    {
+      "command": "cd /testbed && python test_both_fail.py",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py -k \"test_defaults or test_follows_redirects\" -v",
+      "step_index": 30
+    },
+    {
+      "command": "cd /testbed && python3 -c \"import requests.exceptions; print([attr for attr in dir(requests.exceptions) if 'redirect' in attr.lower() or 'too' in attr.lower()])\"",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python3 -c \"\nimport requests.exceptions as exc\nimport inspect\n\n# Get all exception classes\nexceptions = []\nfor name in dir(exc):\n    obj = getattr(exc, name)\n    if inspect.isclass(obj) and issubclass(obj, Exception) and obj != Exception:\n        exceptions.append(name)\n\nprint('All requests exceptions:')\nfor e in sorted(exceptions):\n    print(f'  {e}')\n\"",
+      "step_index": 32
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py -x",
+      "step_index": 38
+    },
+    {
+      "command": "cd /testbed && python test_final_comprehensive.py",
+      "step_index": 40
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "from requests.exceptions import HTTPError, TooManyRedirects",
+          "before": "from requests.exceptions import HTTPError",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/builders/linkcheck.py b/sphinx/builders/linkcheck.py\nindex 1dc0337c3..991de19c7 100644\n--- a/sphinx/builders/linkcheck.py\n+++ b/sphinx/builders/linkcheck.py\n@@ -20,7 +20,7 @@ from urllib.parse import unquote, urlparse\n \n from docutils import nodes\n from docutils.nodes import Node\n-from requests.exceptions import HTTPError\n+from requests.exceptions import HTTPError, TooManyRedirects\n \n from sphinx.application import Sphinx\n from sphinx.builders import Builder",
+          "explanation": "classic_swe step 66 #1",
+          "filename": "sphinx/builders/linkcheck.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        },
+        {
+          "after": "                    except (HTTPError, TooManyRedirects):\n                        # retry with GET request if that fails, some servers\n                        # don't like HEAD requests or cause infinite redirects.",
+          "before": "                    except HTTPError:\n                        # retry with GET request if that fails, some servers\n                        # don't like HEAD requests.",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/builders/linkcheck.py b/sphinx/builders/linkcheck.py\nindex 1dc0337c3..c7ec70c91 100644\n--- a/sphinx/builders/linkcheck.py\n+++ b/sphinx/builders/linkcheck.py\n@@ -20,7 +20,7 @@ from urllib.parse import unquote, urlparse\n \n from docutils import nodes\n from docutils.nodes import Node\n-from requests.exceptions import HTTPError\n+from requests.exceptions import HTTPError, TooManyRedirects\n \n from sphinx.application import Sphinx\n from sphinx.builders import Builder\n@@ -172,9 +172,9 @@ class CheckExternalLinksBuilder(Builder):\n                                                  config=self.app.config, auth=auth_info,\n                                                  **kwargs)\n                         response.raise_for_status()\n-                    except HTTPError:\n+                    except (HTTPError, TooManyRedirects):\n                         # retry with GET request if that fails, some servers\n-                        # don't like HEAD requests.\n+                        # don't like HEAD requests or cause infinite redirects.\n                         response = requests.get(req_url, stream=True, config=self.app.config,\n                                                 auth=auth_info, **kwargs)\n                         response.raise_for_status()",
+          "explanation": "classic_swe step 67 #1",
+          "filename": "sphinx/builders/linkcheck.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "#!/usr/bin/env python3\n\"\"\"\nFinal test to confirm the TooManyRedirects fix works.\n\"\"\"\n\nimport tempfile\nimport http.server\nimport threading\nimport time\nfrom pathlib import Path\nfrom sphinx.application import Sphinx\nfrom sphinx.util.docutils import docutils_namespace\n\nclass TestHandler(http.server.BaseHTTPRequestHandler):\n    \"\"\"Handler that creates infinite redirects for HEAD requests but works for GET.\"\"\"\n    \n    def do_HEAD(self):\n        # Create infinite redirect loop for HEAD requests\n        self.send_response(302, \"Found\")\n        self.send_header(\"Location\", \"http://localhost:7777/\")\n        self.end_headers()\n    \n    def do_GET(self):\n        # GET requests work fine\n        self.send_response(200, \"OK\")\n        self.send_header(\"Content-Type\", \"text/html\")\n        self.end_headers()\n        self.wfile.write(b\"<html><body>This is a test page</body></html>\")\n    \n    def log_message(self, format, *args):\n        # Suppress log messages\n        pass\n\ndef test_fix():\n    \"\"\"Test that the TooManyRedirects fix works.\"\"\"\n    \n    # Start the server\n    server = http.server.HTTPServer(('localhost', 7777), TestHandler)\n    server_thread = threading.Thread(target=server.serve_forever, daemon=True)\n    server_thread.start()\n    \n    time.sleep(0.1)  # Give server time to start\n    \n    try:\n        with tempfile.TemporaryDirectory() as tmpdir:\n            srcdir = Path(tmpdir) / \"source\"\n            outdir = Path(tmpdir) / \"build\"\n            doctreedir = outdir / \".doctrees\"\n            \n            srcdir.mkdir()\n            outdir.mkdir()\n            \n            # Create a simple RST file with the problematic link\n            index_rst = srcdir / \"index.rst\"\n            index_rst.write_text(\"\"\"\nTest Document\n=============\n\nThis link should work with GET but fail with HEAD: http://localhost:7777/\n\"\"\")\n            \n            # Create conf.py\n            conf_py = srcdir / \"conf.py\"\n            conf_py.write_text(\"\"\"\nextensions = []\n\"\"\")\n            \n            # Run linkcheck\n            with docutils_namespace():\n                app = Sphinx(\n                    srcdir=str(srcdir),\n                    confdir=str(srcdir),\n                    outdir=str(outdir),\n                    doctreedir=str(doctreedir),\n                    buildername='linkcheck',\n                    confoverrides={'linkcheck_timeout': 5}\n                )\n                app.build()\n            \n            # Check the output\n            output_file = outdir / \"output.txt\"\n            if output_file.exists():\n                content = output_file.read_text()\n                if content.strip():\n                    print(\"❌ FAIL: Link is marked as broken\")\n                    print(f\"Content: {content}\")\n                    return False\n                else:\n                    print(\"✅ SUCCESS: Link is working (no broken links)\")\n                    return True\n            else:\n                print(\"✅ SUCCESS: No output file (no broken links)\")\n                return True\n                \n    finally:\n        server.shutdown()\n        server.server_close()\n\nif __name__ == \"__main__\":\n    success = test_fix()\n    exit(0 if success else 1)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 000000000..d5fb12236\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,101 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Final test to confirm the TooManyRedirects fix works.\n+\"\"\"\n+\n+import tempfile\n+import http.server\n+import threading\n+import time\n+from pathlib import Path\n+from sphinx.application import Sphinx\n+from sphinx.util.docutils import docutils_namespace\n+\n+class TestHandler(http.server.BaseHTTPRequestHandler):\n+    \"\"\"Handler that creates infinite redirects for HEAD requests but works for GET.\"\"\"\n+    \n+    def do_HEAD(self):\n+        # Create infinite redirect loop for HEAD requests\n+        self.send_response(302, \"Found\")\n+        self.send_header(\"Location\", \"http://localhost:7777/\")\n+        self.end_headers()\n+    \n+    def do_GET(self):\n+        # GET requests work fine\n+        self.send_response(200, \"OK\")\n+        self.send_header(\"Content-Type\", \"text/html\")\n+        self.end_headers()\n+        self.wfile.write(b\"<html><body>This is a test page</body></html>\")\n+    \n+    def log_message(self, format, *args):\n+        # Suppress log messages\n+        pass\n+\n+def test_fix():\n+    \"\"\"Test that the TooManyRedirects fix works.\"\"\"\n+    \n+    # Start the server\n+    server = http.server.HTTPServer(('localhost', 7777), TestHandler)\n+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)\n+    server_thread.start()\n+    \n+    time.sleep(0.1)  # Give server time to start\n+    \n+    try:\n+        with tempfile.TemporaryDirectory() as tmpdir:\n+            srcdir = Path(tmpdir) / \"source\"\n+            outdir = Path(tmpdir) / \"build\"\n+            doctreedir = outdir / \".doctrees\"\n+            \n+            srcdir.mkdir()\n+            outdir.mkdir()\n+            \n+            # Create a simple RST file with the problematic link\n+            index_rst = srcdir / \"index.rst\"\n+            index_rst.write_text(\"\"\"\n+Test Document\n+=============\n+\n+This link should work with GET but fail with HEAD: http://localhost:7777/\n+\"\"\")\n+            \n+            # Create conf.py\n+            conf_py = srcdir / \"conf.py\"\n+            conf_py.write_text(\"\"\"\n+extensions = []\n+\"\"\")\n+            \n+            # Run linkcheck\n+            with docutils_namespace():\n+                app = Sphinx(\n+                    srcdir=str(srcdir),\n+                    confdir=str(srcdir),\n+                    outdir=str(outdir),\n+                    doctreedir=str(doctreedir),\n+                    buildername='linkcheck',\n+                    confoverrides={'linkcheck_timeout': 5}\n+                )\n+                app.build()\n+            \n+            # Check the output\n+            output_file = outdir / \"output.txt\"\n+            if output_file.exists():\n+                content = output_file.read_text()\n+                if content.strip():\n+                    print(\"❌ FAIL: Link is marked as broken\")\n+                    print(f\"Content: {content}\")\n+                    return False\n+                else:\n+                    print(\"✅ SUCCESS: Link is working (no broken links)\")\n+                    return True\n+            else:\n+                print(\"✅ SUCCESS: No output file (no broken links)\")\n+                return True\n+                \n+    finally:\n+        server.shutdown()\n+        server.server_close()\n+\n+if __name__ == \"__main__\":\n+    success = test_fix()\n+    exit(0 if success else 1)\n\\ No newline at end of file\ndiff --git a/sphinx/builders/linkcheck.py b/sphinx/builders/linkcheck.py\nindex 1dc0337c3..c7ec70c91 100644\n--- a/sphinx/builders/linkcheck.py\n+++ b/sphinx/builders/linkcheck.py\n@@ -20,7 +20,7 @@ from urllib.parse import unquote, urlparse\n \n from docutils import nodes\n from docutils.nodes import Node\n-from requests.exceptions import HTTPError\n+from requests.exceptions import HTTPError, TooManyRedirects\n \n from sphinx.application import Sphinx\n from sphinx.builders import Builder\n@@ -172,9 +172,9 @@ class CheckExternalLinksBuilder(Builder):\n                                                  config=self.app.config, auth=auth_info,\n                                                  **kwargs)\n                         response.raise_for_status()\n-                    except HTTPError:\n+                    except (HTTPError, TooManyRedirects):\n                         # retry with GET request if that fails, some servers\n-                        # don't like HEAD requests.\n+                        # don't like HEAD requests or cause infinite redirects.\n                         response = requests.get(req_url, stream=True, config=self.app.config,\n                                                 auth=auth_info, **kwargs)\n                         response.raise_for_status()",
+          "explanation": "classic_swe step 70 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        }
+      ],
+      "end_step": 70,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 71
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 8
+        },
+        {
+          "command": "cd /testbed && python test_linkcheck_redirect.py",
+          "step_index": 10
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_defaults -xvs",
+          "step_index": 15
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_follows_redirects_on_HEAD -xvs",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py::test_follows_redirects_on_GET -xvs",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py 2>&1 | grep -A 20 \"Linkcheck output:\"",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python test_simple_edge_case.py",
+          "step_index": 26
+        },
+        {
+          "command": "cd /testbed && python test_both_fail.py",
+          "step_index": 28
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py -k \"test_defaults or test_follows_redirects\" -v",
+          "step_index": 30
+        },
+        {
+          "command": "cd /testbed && python3 -c \"import requests.exceptions; print([attr for attr in dir(requests.exceptions) if 'redirect' in attr.lower() or 'too' in attr.lower()])\"",
+          "step_index": 31
+        },
+        {
+          "command": "cd /testbed && python3 -c \"\nimport requests.exceptions as exc\nimport inspect\n\n# Get all exception classes\nexceptions = []\nfor name in dir(exc):\n    obj = getattr(exc, name)\n    if inspect.isclass(obj) and issubclass(obj, Exception) and obj != Exception:\n        exceptions.append(name)\n\nprint('All requests exceptions:')\nfor e in sorted(exceptions):\n    print(f'  {e}')\n\"",
+          "step_index": 32
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_build_linkcheck.py -x",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python test_final_comprehensive.py",
+          "step_index": 40
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 66
+    }
+  ],
+  "sub_paths": [
+    "sphinx/builders/linkcheck.py"
+  ],
+  "success_step": 70,
+  "test_files": [
+    "final_test.py"
+  ]
+}

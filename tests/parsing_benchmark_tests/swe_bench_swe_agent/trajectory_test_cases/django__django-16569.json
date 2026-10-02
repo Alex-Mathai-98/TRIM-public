@@ -1,0 +1,240 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 7
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 11
+    },
+    {
+      "command": "cd /testbed && python test_ordering.py",
+      "step_index": 14
+    },
+    {
+      "command": "cd /testbed && python -m django test forms_tests.tests.test_formsets --settings=tests.test_sqlite",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py forms_tests.tests.test_formsets",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py forms_tests.tests.test_forms",
+      "step_index": 18
+    },
+    {
+      "command": "cd /testbed && python test_our_fix.py",
+      "step_index": 20
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\nimport os\nimport django\nfrom django import forms\n\nclass MyForm(forms.Form):\n    my_field = forms.CharField()\n\nif __name__ == \"__main__\":\n    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n    django.conf.settings.configure(\n        DEBUG=True,\n        MIDDLEWARE_CLASSES=[],\n        ROOT_URLCONF=settings_file,\n    )\n    django.setup()\n    \n    MyFormSet = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=False,\n    )\n    my_formset = MyFormSet(\n        initial=None,\n    )\n    print(my_formset.empty_form)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..f3f9112d5e\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,26 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(\n+        initial=None,\n+    )\n+    print(my_formset.empty_form)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 6 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 6
+        }
+      ],
+      "end_step": 6,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 7
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 6
+    },
+    {
+      "edits": [
+        {
+          "after": "        if self.can_delete and (self.can_delete_extra or (index is not None and index < initial_form_count)):",
+          "before": "        if self.can_delete and (self.can_delete_extra or index < initial_form_count):",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/forms/formsets.py b/django/forms/formsets.py\nindex 235aaf844c..02d040ee03 100644\n--- a/django/forms/formsets.py\n+++ b/django/forms/formsets.py\n@@ -490,7 +490,7 @@ class BaseFormSet(RenderableFormMixin):\n                     required=False,\n                     widget=self.get_ordering_widget(),\n                 )\n-        if self.can_delete and (self.can_delete_extra or index < initial_form_count):\n+        if self.can_delete and (self.can_delete_extra or (index is not None and index < initial_form_count)):\n             form.fields[DELETION_FIELD_NAME] = BooleanField(\n                 label=_(\"Delete\"),\n                 required=False,\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..f3f9112d5e\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,26 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(\n+        initial=None,\n+    )\n+    print(my_formset.empty_form)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 8 #1",
+          "filename": "django/forms/formsets.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 8
+        }
+      ],
+      "end_step": 8,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 9
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 8
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\nimport os\nimport django\nfrom django import forms\n\nclass MyForm(forms.Form):\n    my_field = forms.CharField()\n\nif __name__ == \"__main__\":\n    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n    django.conf.settings.configure(\n        DEBUG=True,\n        MIDDLEWARE_CLASSES=[],\n        ROOT_URLCONF=settings_file,\n    )\n    django.setup()\n    \n    print(\"Testing various formset configurations...\")\n    \n    # Test case 1: can_delete=True, can_delete_extra=False (original failing case)\n    print(\"\\n1. Testing can_delete=True, can_delete_extra=False:\")\n    MyFormSet1 = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=False,\n    )\n    my_formset1 = MyFormSet1(initial=None)\n    try:\n        empty_form1 = my_formset1.empty_form\n        print(\"   ✓ empty_form works\")\n        # Check if DELETE field is present (should not be for empty form when can_delete_extra=False)\n        has_delete_field = 'DELETE' in empty_form1.fields\n        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n    except Exception as e:\n        print(f\"   ✗ Error: {e}\")\n    \n    # Test case 2: can_delete=True, can_delete_extra=True\n    print(\"\\n2. Testing can_delete=True, can_delete_extra=True:\")\n    MyFormSet2 = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=True,\n    )\n    my_formset2 = MyFormSet2(initial=None)\n    try:\n        empty_form2 = my_formset2.empty_form\n        print(\"   ✓ empty_form works\")\n        # Check if DELETE field is present (should be for empty form when can_delete_extra=True)\n        has_delete_field = 'DELETE' in empty_form2.fields\n        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: True)\")\n    except Exception as e:\n        print(f\"   ✗ Error: {e}\")\n    \n    # Test case 3: can_delete=False\n    print(\"\\n3. Testing can_delete=False:\")\n    MyFormSet3 = forms.formset_factory(\n        form=MyForm,\n        can_delete=False,\n    )\n    my_formset3 = MyFormSet3(initial=None)\n    try:\n        empty_form3 = my_formset3.empty_form\n        print(\"   ✓ empty_form works\")\n        # Check if DELETE field is present (should not be when can_delete=False)\n        has_delete_field = 'DELETE' in empty_form3.fields\n        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n    except Exception as e:\n        print(f\"   ✗ Error: {e}\")\n    \n    # Test case 4: Test with initial data and regular forms\n    print(\"\\n4. Testing with initial data:\")\n    MyFormSet4 = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=False,\n    )\n    my_formset4 = MyFormSet4(initial=[{'my_field': 'test'}])\n    try:\n        # Test regular forms\n        form0 = my_formset4.forms[0]\n        has_delete_field = 'DELETE' in form0.fields\n        print(f\"   ✓ Initial form DELETE field present: {has_delete_field} (expected: True)\")\n        \n        # Test empty form\n        empty_form4 = my_formset4.empty_form\n        has_delete_field = 'DELETE' in empty_form4.fields\n        print(f\"   ✓ Empty form DELETE field present: {has_delete_field} (expected: False)\")\n    except Exception as e:\n        print(f\"   ✗ Error: {e}\")\n    \n    print(\"\\nAll tests completed!\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/forms/formsets.py b/django/forms/formsets.py\nindex 235aaf844c..02d040ee03 100644\n--- a/django/forms/formsets.py\n+++ b/django/forms/formsets.py\n@@ -490,7 +490,7 @@ class BaseFormSet(RenderableFormMixin):\n                     required=False,\n                     widget=self.get_ordering_widget(),\n                 )\n-        if self.can_delete and (self.can_delete_extra or index < initial_form_count):\n+        if self.can_delete and (self.can_delete_extra or (index is not None and index < initial_form_count)):\n             form.fields[DELETION_FIELD_NAME] = BooleanField(\n                 label=_(\"Delete\"),\n                 required=False,\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..f3f9112d5e\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,26 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(\n+        initial=None,\n+    )\n+    print(my_formset.empty_form)\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..f290e6f434\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,91 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    print(\"Testing various formset configurations...\")\n+    \n+    # Test case 1: can_delete=True, can_delete_extra=False (original failing case)\n+    print(\"\\n1. Testing can_delete=True, can_delete_extra=False:\")\n+    MyFormSet1 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset1 = MyFormSet1(initial=None)\n+    try:\n+        empty_form1 = my_formset1.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should not be for empty form when can_delete_extra=False)\n+        has_delete_field = 'DELETE' in empty_form1.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 2: can_delete=True, can_delete_extra=True\n+    print(\"\\n2. Testing can_delete=True, can_delete_extra=True:\")\n+    MyFormSet2 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=True,\n+    )\n+    my_formset2 = MyFormSet2(initial=None)\n+    try:\n+        empty_form2 = my_formset2.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should be for empty form when can_delete_extra=True)\n+        has_delete_field = 'DELETE' in empty_form2.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: True)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 3: can_delete=False\n+    print(\"\\n3. Testing can_delete=False:\")\n+    MyFormSet3 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=False,\n+    )\n+    my_formset3 = MyFormSet3(initial=None)\n+    try:\n+        empty_form3 = my_formset3.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should not be when can_delete=False)\n+        has_delete_field = 'DELETE' in empty_form3.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 4: Test with initial data and regular forms\n+    print(\"\\n4. Testing with initial data:\")\n+    MyFormSet4 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset4 = MyFormSet4(initial=[{'my_field': 'test'}])\n+    try:\n+        # Test regular forms\n+        form0 = my_formset4.forms[0]\n+        has_delete_field = 'DELETE' in form0.fields\n+        print(f\"   ✓ Initial form DELETE field present: {has_delete_field} (expected: True)\")\n+        \n+        # Test empty form\n+        empty_form4 = my_formset4.empty_form\n+        has_delete_field = 'DELETE' in empty_form4.fields\n+        print(f\"   ✓ Empty form DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    print(\"\\nAll tests completed!\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 10 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        }
+      ],
+      "end_step": 10,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 11
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 10
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\nimport os\nimport django\nfrom django import forms\n\nclass MyForm(forms.Form):\n    my_field = forms.CharField()\n\nif __name__ == \"__main__\":\n    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n    django.conf.settings.configure(\n        DEBUG=True,\n        MIDDLEWARE_CLASSES=[],\n        ROOT_URLCONF=settings_file,\n    )\n    django.setup()\n    \n    print(\"Testing ordering functionality...\")\n    \n    # Test case: can_order=True\n    print(\"\\nTesting can_order=True:\")\n    MyFormSet = forms.formset_factory(\n        form=MyForm,\n        can_order=True,\n    )\n    my_formset = MyFormSet(initial=[{'my_field': 'test1'}, {'my_field': 'test2'}])\n    try:\n        # Test regular forms\n        form0 = my_formset.forms[0]\n        has_order_field = 'ORDER' in form0.fields\n        print(f\"   ✓ Initial form 0 ORDER field present: {has_order_field} (expected: True)\")\n        if has_order_field:\n            print(f\"   ✓ Initial form 0 ORDER field initial value: {form0.fields['ORDER'].initial}\")\n        \n        form1 = my_formset.forms[1]\n        has_order_field = 'ORDER' in form1.fields\n        print(f\"   ✓ Initial form 1 ORDER field present: {has_order_field} (expected: True)\")\n        if has_order_field:\n            print(f\"   ✓ Initial form 1 ORDER field initial value: {form1.fields['ORDER'].initial}\")\n        \n        # Test empty form\n        empty_form = my_formset.empty_form\n        has_order_field = 'ORDER' in empty_form.fields\n        print(f\"   ✓ Empty form ORDER field present: {has_order_field} (expected: True)\")\n        if has_order_field:\n            print(f\"   ✓ Empty form ORDER field initial value: {empty_form.fields['ORDER'].initial}\")\n    except Exception as e:\n        print(f\"   ✗ Error: {e}\")\n    \n    print(\"\\nOrdering functionality test completed!\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/forms/formsets.py b/django/forms/formsets.py\nindex 235aaf844c..02d040ee03 100644\n--- a/django/forms/formsets.py\n+++ b/django/forms/formsets.py\n@@ -490,7 +490,7 @@ class BaseFormSet(RenderableFormMixin):\n                     required=False,\n                     widget=self.get_ordering_widget(),\n                 )\n-        if self.can_delete and (self.can_delete_extra or index < initial_form_count):\n+        if self.can_delete and (self.can_delete_extra or (index is not None and index < initial_form_count)):\n             form.fields[DELETION_FIELD_NAME] = BooleanField(\n                 label=_(\"Delete\"),\n                 required=False,\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..f3f9112d5e\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,26 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(\n+        initial=None,\n+    )\n+    print(my_formset.empty_form)\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..f290e6f434\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,91 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    print(\"Testing various formset configurations...\")\n+    \n+    # Test case 1: can_delete=True, can_delete_extra=False (original failing case)\n+    print(\"\\n1. Testing can_delete=True, can_delete_extra=False:\")\n+    MyFormSet1 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset1 = MyFormSet1(initial=None)\n+    try:\n+        empty_form1 = my_formset1.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should not be for empty form when can_delete_extra=False)\n+        has_delete_field = 'DELETE' in empty_form1.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 2: can_delete=True, can_delete_extra=True\n+    print(\"\\n2. Testing can_delete=True, can_delete_extra=True:\")\n+    MyFormSet2 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=True,\n+    )\n+    my_formset2 = MyFormSet2(initial=None)\n+    try:\n+        empty_form2 = my_formset2.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should be for empty form when can_delete_extra=True)\n+        has_delete_field = 'DELETE' in empty_form2.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: True)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 3: can_delete=False\n+    print(\"\\n3. Testing can_delete=False:\")\n+    MyFormSet3 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=False,\n+    )\n+    my_formset3 = MyFormSet3(initial=None)\n+    try:\n+        empty_form3 = my_formset3.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should not be when can_delete=False)\n+        has_delete_field = 'DELETE' in empty_form3.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 4: Test with initial data and regular forms\n+    print(\"\\n4. Testing with initial data:\")\n+    MyFormSet4 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset4 = MyFormSet4(initial=[{'my_field': 'test'}])\n+    try:\n+        # Test regular forms\n+        form0 = my_formset4.forms[0]\n+        has_delete_field = 'DELETE' in form0.fields\n+        print(f\"   ✓ Initial form DELETE field present: {has_delete_field} (expected: True)\")\n+        \n+        # Test empty form\n+        empty_form4 = my_formset4.empty_form\n+        has_delete_field = 'DELETE' in empty_form4.fields\n+        print(f\"   ✓ Empty form DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    print(\"\\nAll tests completed!\")\n\\ No newline at end of file\ndiff --git a/test_ordering.py b/test_ordering.py\nnew file mode 100644\nindex 0000000000..25d0b624e2\n--- /dev/null\n+++ b/test_ordering.py\n@@ -0,0 +1,50 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    print(\"Testing ordering functionality...\")\n+    \n+    # Test case: can_order=True\n+    print(\"\\nTesting can_order=True:\")\n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_order=True,\n+    )\n+    my_formset = MyFormSet(initial=[{'my_field': 'test1'}, {'my_field': 'test2'}])\n+    try:\n+        # Test regular forms\n+        form0 = my_formset.forms[0]\n+        has_order_field = 'ORDER' in form0.fields\n+        print(f\"   ✓ Initial form 0 ORDER field present: {has_order_field} (expected: True)\")\n+        if has_order_field:\n+            print(f\"   ✓ Initial form 0 ORDER field initial value: {form0.fields['ORDER'].initial}\")\n+        \n+        form1 = my_formset.forms[1]\n+        has_order_field = 'ORDER' in form1.fields\n+        print(f\"   ✓ Initial form 1 ORDER field present: {has_order_field} (expected: True)\")\n+        if has_order_field:\n+            print(f\"   ✓ Initial form 1 ORDER field initial value: {form1.fields['ORDER'].initial}\")\n+        \n+        # Test empty form\n+        empty_form = my_formset.empty_form\n+        has_order_field = 'ORDER' in empty_form.fields\n+        print(f\"   ✓ Empty form ORDER field present: {has_order_field} (expected: True)\")\n+        if has_order_field:\n+            print(f\"   ✓ Empty form ORDER field initial value: {empty_form.fields['ORDER'].initial}\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    print(\"\\nOrdering functionality test completed!\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 13 create #1",
+          "filename": "test_ordering.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        }
+      ],
+      "end_step": 13,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_ordering.py",
+          "step_index": 14
+        },
+        {
+          "command": "cd /testbed && python -m django test forms_tests.tests.test_formsets --settings=tests.test_sqlite",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py forms_tests.tests.test_formsets",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py forms_tests.tests.test_forms",
+          "step_index": 18
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\nimport os\nimport django\nfrom django import forms\n\nclass MyForm(forms.Form):\n    my_field = forms.CharField()\n\ndef test_empty_form_with_can_delete_and_can_delete_extra_false():\n    \"\"\"\n    Test that empty_form works when can_delete=True and can_delete_extra=False.\n    This was the original failing case reported in the issue.\n    \"\"\"\n    MyFormSet = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=False,\n    )\n    my_formset = MyFormSet(initial=None)\n    \n    # This should not raise a TypeError\n    empty_form = my_formset.empty_form\n    \n    # The empty form should not have a DELETE field when can_delete_extra=False\n    assert 'DELETE' not in empty_form.fields, \"Empty form should not have DELETE field when can_delete_extra=False\"\n    \n    print(\"✓ Test passed: empty_form works with can_delete=True and can_delete_extra=False\")\n\ndef test_empty_form_with_can_delete_and_can_delete_extra_true():\n    \"\"\"\n    Test that empty_form works when can_delete=True and can_delete_extra=True.\n    \"\"\"\n    MyFormSet = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=True,\n    )\n    my_formset = MyFormSet(initial=None)\n    \n    # This should not raise a TypeError\n    empty_form = my_formset.empty_form\n    \n    # The empty form should have a DELETE field when can_delete_extra=True\n    assert 'DELETE' in empty_form.fields, \"Empty form should have DELETE field when can_delete_extra=True\"\n    \n    print(\"✓ Test passed: empty_form works with can_delete=True and can_delete_extra=True\")\n\ndef test_regular_forms_still_work():\n    \"\"\"\n    Test that regular forms (non-empty) still work correctly.\n    \"\"\"\n    MyFormSet = forms.formset_factory(\n        form=MyForm,\n        can_delete=True,\n        can_delete_extra=False,\n    )\n    my_formset = MyFormSet(initial=[{'my_field': 'test'}])\n    \n    # Regular forms should have DELETE field when can_delete=True\n    form = my_formset.forms[0]\n    assert 'DELETE' in form.fields, \"Regular form should have DELETE field when can_delete=True\"\n    \n    print(\"✓ Test passed: regular forms still work correctly\")\n\nif __name__ == \"__main__\":\n    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n    django.conf.settings.configure(\n        DEBUG=True,\n        MIDDLEWARE_CLASSES=[],\n        ROOT_URLCONF=settings_file,\n    )\n    django.setup()\n    \n    print(\"Running specific tests for our fix...\")\n    \n    test_empty_form_with_can_delete_and_can_delete_extra_false()\n    test_empty_form_with_can_delete_and_can_delete_extra_true()\n    test_regular_forms_still_work()\n    \n    print(\"\\nAll tests passed! ✓\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/forms/formsets.py b/django/forms/formsets.py\nindex 235aaf844c..02d040ee03 100644\n--- a/django/forms/formsets.py\n+++ b/django/forms/formsets.py\n@@ -490,7 +490,7 @@ class BaseFormSet(RenderableFormMixin):\n                     required=False,\n                     widget=self.get_ordering_widget(),\n                 )\n-        if self.can_delete and (self.can_delete_extra or index < initial_form_count):\n+        if self.can_delete and (self.can_delete_extra or (index is not None and index < initial_form_count)):\n             form.fields[DELETION_FIELD_NAME] = BooleanField(\n                 label=_(\"Delete\"),\n                 required=False,\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..f3f9112d5e\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,26 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(\n+        initial=None,\n+    )\n+    print(my_formset.empty_form)\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..f290e6f434\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,91 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    print(\"Testing various formset configurations...\")\n+    \n+    # Test case 1: can_delete=True, can_delete_extra=False (original failing case)\n+    print(\"\\n1. Testing can_delete=True, can_delete_extra=False:\")\n+    MyFormSet1 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset1 = MyFormSet1(initial=None)\n+    try:\n+        empty_form1 = my_formset1.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should not be for empty form when can_delete_extra=False)\n+        has_delete_field = 'DELETE' in empty_form1.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 2: can_delete=True, can_delete_extra=True\n+    print(\"\\n2. Testing can_delete=True, can_delete_extra=True:\")\n+    MyFormSet2 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=True,\n+    )\n+    my_formset2 = MyFormSet2(initial=None)\n+    try:\n+        empty_form2 = my_formset2.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should be for empty form when can_delete_extra=True)\n+        has_delete_field = 'DELETE' in empty_form2.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: True)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 3: can_delete=False\n+    print(\"\\n3. Testing can_delete=False:\")\n+    MyFormSet3 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=False,\n+    )\n+    my_formset3 = MyFormSet3(initial=None)\n+    try:\n+        empty_form3 = my_formset3.empty_form\n+        print(\"   ✓ empty_form works\")\n+        # Check if DELETE field is present (should not be when can_delete=False)\n+        has_delete_field = 'DELETE' in empty_form3.fields\n+        print(f\"   ✓ DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    # Test case 4: Test with initial data and regular forms\n+    print(\"\\n4. Testing with initial data:\")\n+    MyFormSet4 = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset4 = MyFormSet4(initial=[{'my_field': 'test'}])\n+    try:\n+        # Test regular forms\n+        form0 = my_formset4.forms[0]\n+        has_delete_field = 'DELETE' in form0.fields\n+        print(f\"   ✓ Initial form DELETE field present: {has_delete_field} (expected: True)\")\n+        \n+        # Test empty form\n+        empty_form4 = my_formset4.empty_form\n+        has_delete_field = 'DELETE' in empty_form4.fields\n+        print(f\"   ✓ Empty form DELETE field present: {has_delete_field} (expected: False)\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    print(\"\\nAll tests completed!\")\n\\ No newline at end of file\ndiff --git a/test_ordering.py b/test_ordering.py\nnew file mode 100644\nindex 0000000000..25d0b624e2\n--- /dev/null\n+++ b/test_ordering.py\n@@ -0,0 +1,50 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    print(\"Testing ordering functionality...\")\n+    \n+    # Test case: can_order=True\n+    print(\"\\nTesting can_order=True:\")\n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_order=True,\n+    )\n+    my_formset = MyFormSet(initial=[{'my_field': 'test1'}, {'my_field': 'test2'}])\n+    try:\n+        # Test regular forms\n+        form0 = my_formset.forms[0]\n+        has_order_field = 'ORDER' in form0.fields\n+        print(f\"   ✓ Initial form 0 ORDER field present: {has_order_field} (expected: True)\")\n+        if has_order_field:\n+            print(f\"   ✓ Initial form 0 ORDER field initial value: {form0.fields['ORDER'].initial}\")\n+        \n+        form1 = my_formset.forms[1]\n+        has_order_field = 'ORDER' in form1.fields\n+        print(f\"   ✓ Initial form 1 ORDER field present: {has_order_field} (expected: True)\")\n+        if has_order_field:\n+            print(f\"   ✓ Initial form 1 ORDER field initial value: {form1.fields['ORDER'].initial}\")\n+        \n+        # Test empty form\n+        empty_form = my_formset.empty_form\n+        has_order_field = 'ORDER' in empty_form.fields\n+        print(f\"   ✓ Empty form ORDER field present: {has_order_field} (expected: True)\")\n+        if has_order_field:\n+            print(f\"   ✓ Empty form ORDER field initial value: {empty_form.fields['ORDER'].initial}\")\n+    except Exception as e:\n+        print(f\"   ✗ Error: {e}\")\n+    \n+    print(\"\\nOrdering functionality test completed!\")\n\\ No newline at end of file\ndiff --git a/test_our_fix.py b/test_our_fix.py\nnew file mode 100644\nindex 0000000000..6d40681798\n--- /dev/null\n+++ b/test_our_fix.py\n@@ -0,0 +1,80 @@\n+#!/usr/bin/env python3\n+import os\n+import django\n+from django import forms\n+\n+class MyForm(forms.Form):\n+    my_field = forms.CharField()\n+\n+def test_empty_form_with_can_delete_and_can_delete_extra_false():\n+    \"\"\"\n+    Test that empty_form works when can_delete=True and can_delete_extra=False.\n+    This was the original failing case reported in the issue.\n+    \"\"\"\n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(initial=None)\n+    \n+    # This should not raise a TypeError\n+    empty_form = my_formset.empty_form\n+    \n+    # The empty form should not have a DELETE field when can_delete_extra=False\n+    assert 'DELETE' not in empty_form.fields, \"Empty form should not have DELETE field when can_delete_extra=False\"\n+    \n+    print(\"✓ Test passed: empty_form works with can_delete=True and can_delete_extra=False\")\n+\n+def test_empty_form_with_can_delete_and_can_delete_extra_true():\n+    \"\"\"\n+    Test that empty_form works when can_delete=True and can_delete_extra=True.\n+    \"\"\"\n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=True,\n+    )\n+    my_formset = MyFormSet(initial=None)\n+    \n+    # This should not raise a TypeError\n+    empty_form = my_formset.empty_form\n+    \n+    # The empty form should have a DELETE field when can_delete_extra=True\n+    assert 'DELETE' in empty_form.fields, \"Empty form should have DELETE field when can_delete_extra=True\"\n+    \n+    print(\"✓ Test passed: empty_form works with can_delete=True and can_delete_extra=True\")\n+\n+def test_regular_forms_still_work():\n+    \"\"\"\n+    Test that regular forms (non-empty) still work correctly.\n+    \"\"\"\n+    MyFormSet = forms.formset_factory(\n+        form=MyForm,\n+        can_delete=True,\n+        can_delete_extra=False,\n+    )\n+    my_formset = MyFormSet(initial=[{'my_field': 'test'}])\n+    \n+    # Regular forms should have DELETE field when can_delete=True\n+    form = my_formset.forms[0]\n+    assert 'DELETE' in form.fields, \"Regular form should have DELETE field when can_delete=True\"\n+    \n+    print(\"✓ Test passed: regular forms still work correctly\")\n+\n+if __name__ == \"__main__\":\n+    settings_file = os.path.splitext(os.path.basename(__file__))[0]\n+    django.conf.settings.configure(\n+        DEBUG=True,\n+        MIDDLEWARE_CLASSES=[],\n+        ROOT_URLCONF=settings_file,\n+    )\n+    django.setup()\n+    \n+    print(\"Running specific tests for our fix...\")\n+    \n+    test_empty_form_with_can_delete_and_can_delete_extra_false()\n+    test_empty_form_with_can_delete_and_can_delete_extra_true()\n+    test_regular_forms_still_work()\n+    \n+    print(\"\\nAll tests passed! ✓\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 19 create #1",
+          "filename": "test_our_fix.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_our_fix.py",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 23
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 19
+    }
+  ],
+  "sub_paths": [
+    "django/forms/formsets.py"
+  ],
+  "success_step": 19,
+  "test_files": [
+    "reproduce_issue.py",
+    "test_edge_cases.py",
+    "test_ordering.py",
+    "test_our_fix.py"
+  ]
+}

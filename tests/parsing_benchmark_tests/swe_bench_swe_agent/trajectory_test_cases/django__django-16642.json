@@ -1,0 +1,312 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 7
+    },
+    {
+      "command": "python3 -c \"import mimetypes; print('Z encoding:', mimetypes.guess_type('test.html.Z')); print('br encoding:', mimetypes.guess_type('test.html.br'))\"",
+      "step_index": 15
+    },
+    {
+      "command": "python3 -c \"\nimport mimetypes\n# Check what mimetypes knows about these extensions\nprint('Known types for .Z:', mimetypes.types_map.get('.Z', 'Not found'))\nprint('Known types for .br:', mimetypes.types_map.get('.br', 'Not found'))\nprint('Known encodings for .Z:', mimetypes.encodings_map.get('.Z', 'Not found'))\nprint('Known encodings for .br:', mimetypes.encodings_map.get('.br', 'Not found'))\n\"",
+      "step_index": 16
+    },
+    {
+      "command": "python3 -c \"\n# Let's see what MIME types are commonly used for these formats\n# Based on RFC standards and common usage:\n# .Z files (compress) - application/x-compress\n# .br files (brotli) - application/x-brotli or application/brotli\n\nprint('Standard MIME types:')\nprint('.Z (compress): application/x-compress')\nprint('.br (brotli): application/x-brotli')\n\"",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python -m django test tests.responses.test_fileresponse --settings=tests.settings",
+      "step_index": 23
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py responses.test_fileresponse",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python test_pr_issue.py",
+      "step_index": 30
+    }
+  ],
+  "patch_list_shape": [
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport tempfile\nfrom django.http import FileResponse\n\n# Create test files\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n    f.write('<html><body>Test content</body></html>')\n    test_file_z = f.name\n\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n    f.write('<html><body>Test content</body></html>')\n    test_file_br = f.name\n\nprint(\"Testing FileResponse with .Z and .br extensions:\")\nprint(\"=\" * 50)\n\n# Test .Z file\nprint(f\"Testing file: {test_file_z}\")\nwith open(test_file_z, 'rb') as f:\n    response_z = FileResponse(f)\n    print(f\"Content-Type for .html.Z file: {response_z.headers.get('Content-Type')}\")\n\n# Test .br file  \nprint(f\"Testing file: {test_file_br}\")\nwith open(test_file_br, 'rb') as f:\n    response_br = FileResponse(f)\n    print(f\"Content-Type for .html.br file: {response_br.headers.get('Content-Type')}\")\n\n# Test what mimetypes.guess_type returns for these files\nimport mimetypes\nprint(\"\\nDirect mimetypes.guess_type() results:\")\nprint(\"=\" * 40)\nprint(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\nprint(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n\n# Clean up\nos.unlink(test_file_z)\nos.unlink(test_file_br)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..492f506beb\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,40 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 6 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 6
+        }
+      ],
+      "end_step": 6,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 7
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 6
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport tempfile\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DEFAULT_CHARSET='utf-8',\n    )\n    django.setup()\n\nfrom django.http import FileResponse",
+          "before": "#!/usr/bin/env python3\n\nimport os\nimport tempfile\nfrom django.http import FileResponse",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..ff855edb51\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,51 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 8 #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 8
+        }
+      ],
+      "end_step": 8,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 9
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 8
+    },
+    {
+      "edits": [
+        {
+          "after": "# Create test files\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n    f.write('<html><body>Test content</body></html>')\n    test_file_html_z = f.name\n\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n    f.write('<html><body>Test content</body></html>')\n    test_file_html_br = f.name\n\n# Create files with just compression extensions (no base type)\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.Z', delete=False) as f:\n    f.write('Some compressed content')\n    test_file_z = f.name\n\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.br', delete=False) as f:\n    f.write('Some brotli compressed content')\n    test_file_br = f.name",
+          "before": "# Create test files\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n    f.write('<html><body>Test content</body></html>')\n    test_file_z = f.name\n\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n    f.write('<html><body>Test content</body></html>')\n    test_file_br = f.name",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..636698aafb\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_br = f.name\n+\n+# Create files with just compression extensions (no base type)\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.Z', delete=False) as f:\n+    f.write('Some compressed content')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.br', delete=False) as f:\n+    f.write('Some brotli compressed content')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        },
+        {
+          "after": "print(\"Testing FileResponse with .Z and .br extensions:\")\nprint(\"=\" * 50)\n\n# Test .html.Z file\nprint(f\"Testing file: {test_file_html_z}\")\nwith open(test_file_html_z, 'rb') as f:\n    response_html_z = FileResponse(f)\n    print(f\"Content-Type for .html.Z file: {response_html_z.headers.get('Content-Type')}\")\n\n# Test .html.br file  \nprint(f\"Testing file: {test_file_html_br}\")\nwith open(test_file_html_br, 'rb') as f:\n    response_html_br = FileResponse(f)\n    print(f\"Content-Type for .html.br file: {response_html_br.headers.get('Content-Type')}\")\n\n# Test .Z file\nprint(f\"Testing file: {test_file_z}\")\nwith open(test_file_z, 'rb') as f:\n    response_z = FileResponse(f)\n    print(f\"Content-Type for .Z file: {response_z.headers.get('Content-Type')}\")\n\n# Test .br file  \nprint(f\"Testing file: {test_file_br}\")\nwith open(test_file_br, 'rb') as f:\n    response_br = FileResponse(f)\n    print(f\"Content-Type for .br file: {response_br.headers.get('Content-Type')}\")\n\n# Test what mimetypes.guess_type returns for these files\nimport mimetypes\nprint(\"\\nDirect mimetypes.guess_type() results:\")\nprint(\"=\" * 40)\nprint(f\"mimetypes.guess_type('{test_file_html_z}'): {mimetypes.guess_type(test_file_html_z)}\")\nprint(f\"mimetypes.guess_type('{test_file_html_br}'): {mimetypes.guess_type(test_file_html_br)}\")\nprint(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\nprint(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n\n# Clean up\nos.unlink(test_file_html_z)\nos.unlink(test_file_html_br)\nos.unlink(test_file_z)\nos.unlink(test_file_br)",
+          "before": "print(\"Testing FileResponse with .Z and .br extensions:\")\nprint(\"=\" * 50)\n\n# Test .Z file\nprint(f\"Testing file: {test_file_z}\")\nwith open(test_file_z, 'rb') as f:\n    response_z = FileResponse(f)\n    print(f\"Content-Type for .html.Z file: {response_z.headers.get('Content-Type')}\")\n\n# Test .br file  \nprint(f\"Testing file: {test_file_br}\")\nwith open(test_file_br, 'rb') as f:\n    response_br = FileResponse(f)\n    print(f\"Content-Type for .html.br file: {response_br.headers.get('Content-Type')}\")\n\n# Test what mimetypes.guess_type returns for these files\nimport mimetypes\nprint(\"\\nDirect mimetypes.guess_type() results:\")\nprint(\"=\" * 40)\nprint(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\nprint(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n\n# Clean up\nos.unlink(test_file_z)\nos.unlink(test_file_br)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..74b259c4bd\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,76 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_br = f.name\n+\n+# Create files with just compression extensions (no base type)\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.Z', delete=False) as f:\n+    f.write('Some compressed content')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.br', delete=False) as f:\n+    f.write('Some brotli compressed content')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .html.Z file\n+print(f\"Testing file: {test_file_html_z}\")\n+with open(test_file_html_z, 'rb') as f:\n+    response_html_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_html_z.headers.get('Content-Type')}\")\n+\n+# Test .html.br file  \n+print(f\"Testing file: {test_file_html_br}\")\n+with open(test_file_html_br, 'rb') as f:\n+    response_html_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_html_br.headers.get('Content-Type')}\")\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_html_z}'): {mimetypes.guess_type(test_file_html_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_html_br}'): {mimetypes.guess_type(test_file_html_br)}\")\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_html_z)\n+os.unlink(test_file_html_br)\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 12
+        },
+        {
+          "command": "python3 -c \"import mimetypes; print('Z encoding:', mimetypes.guess_type('test.html.Z')); print('br encoding:', mimetypes.guess_type('test.html.br'))\"",
+          "step_index": 15
+        },
+        {
+          "command": "python3 -c \"\nimport mimetypes\n# Check what mimetypes knows about these extensions\nprint('Known types for .Z:', mimetypes.types_map.get('.Z', 'Not found'))\nprint('Known types for .br:', mimetypes.types_map.get('.br', 'Not found'))\nprint('Known encodings for .Z:', mimetypes.encodings_map.get('.Z', 'Not found'))\nprint('Known encodings for .br:', mimetypes.encodings_map.get('.br', 'Not found'))\n\"",
+          "step_index": 16
+        },
+        {
+          "command": "python3 -c \"\n# Let's see what MIME types are commonly used for these formats\n# Based on RFC standards and common usage:\n# .Z files (compress) - application/x-compress\n# .br files (brotli) - application/x-brotli or application/brotli\n\nprint('Standard MIME types:')\nprint('.Z (compress): application/x-compress')\nprint('.br (brotli): application/x-brotli')\n\"",
+          "step_index": 17
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 10
+    },
+    {
+      "edits": [
+        {
+          "after": "                content_type = {\n                    \"bzip2\": \"application/x-bzip\",\n                    \"gzip\": \"application/gzip\",\n                    \"xz\": \"application/x-xz\",\n                    \"compress\": \"application/x-compress\",\n                    \"br\": \"application/x-brotli\",\n                }.get(encoding, content_type)",
+          "before": "                content_type = {\n                    \"bzip2\": \"application/x-bzip\",\n                    \"gzip\": \"application/gzip\",\n                    \"xz\": \"application/x-xz\",\n                }.get(encoding, content_type)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/http/response.py b/django/http/response.py\nindex f62dec8ce9..17e630be37 100644\n--- a/django/http/response.py\n+++ b/django/http/response.py\n@@ -612,6 +612,8 @@ class FileResponse(StreamingHttpResponse):\n                     \"bzip2\": \"application/x-bzip\",\n                     \"gzip\": \"application/gzip\",\n                     \"xz\": \"application/x-xz\",\n+                    \"compress\": \"application/x-compress\",\n+                    \"br\": \"application/x-brotli\",\n                 }.get(encoding, content_type)\n                 self.headers[\"Content-Type\"] = (\n                     content_type or \"application/octet-stream\"\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..74b259c4bd\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,76 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_br = f.name\n+\n+# Create files with just compression extensions (no base type)\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.Z', delete=False) as f:\n+    f.write('Some compressed content')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.br', delete=False) as f:\n+    f.write('Some brotli compressed content')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .html.Z file\n+print(f\"Testing file: {test_file_html_z}\")\n+with open(test_file_html_z, 'rb') as f:\n+    response_html_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_html_z.headers.get('Content-Type')}\")\n+\n+# Test .html.br file  \n+print(f\"Testing file: {test_file_html_br}\")\n+with open(test_file_html_br, 'rb') as f:\n+    response_html_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_html_br.headers.get('Content-Type')}\")\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_html_z}'): {mimetypes.guess_type(test_file_html_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_html_br}'): {mimetypes.guess_type(test_file_html_br)}\")\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_html_z)\n+os.unlink(test_file_html_br)\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "django/http/response.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 19
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 18
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport tempfile\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DEFAULT_CHARSET='utf-8',\n    )\n    django.setup()\n\nfrom django.http import FileResponse\n\ndef test_compression_mime_types():\n    \"\"\"Test that compression extensions get the correct MIME types.\"\"\"\n    \n    test_cases = [\n        # (suffix, expected_content_type)\n        ('.html.Z', 'application/x-compress'),\n        ('.html.br', 'application/x-brotli'),\n        ('.txt.Z', 'application/x-compress'),\n        ('.txt.br', 'application/x-brotli'),\n        ('.js.Z', 'application/x-compress'),\n        ('.js.br', 'application/x-brotli'),\n        ('.css.Z', 'application/x-compress'),\n        ('.css.br', 'application/x-brotli'),\n        ('.Z', 'application/x-compress'),\n        ('.br', 'application/x-brotli'),\n        # Test existing compression formats still work\n        ('.tar.gz', 'application/gzip'),\n        ('.tar.bz2', 'application/x-bzip'),\n        ('.tar.xz', 'application/x-xz'),\n        # Test non-compressed files still work\n        ('.html', 'text/html'),\n        ('.txt', 'text/plain'),\n        ('.js', 'text/javascript'),\n        ('.css', 'text/css'),\n    ]\n    \n    print(\"Testing compression MIME types:\")\n    print(\"=\" * 50)\n    \n    for suffix, expected_content_type in test_cases:\n        with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False) as f:\n            f.write('test content')\n            test_file = f.name\n        \n        try:\n            with open(test_file, 'rb') as f:\n                response = FileResponse(f)\n                actual_content_type = response.headers.get('Content-Type')\n                \n                status = \"✓\" if actual_content_type == expected_content_type else \"✗\"\n                print(f\"{status} {suffix:12} -> {actual_content_type:25} (expected: {expected_content_type})\")\n                \n                if actual_content_type != expected_content_type:\n                    print(f\"  ERROR: Expected {expected_content_type}, got {actual_content_type}\")\n        finally:\n            os.unlink(test_file)\n\ndef test_explicit_content_type():\n    \"\"\"Test that explicit content type overrides compression detection.\"\"\"\n    \n    print(\"\\nTesting explicit content type override:\")\n    print(\"=\" * 50)\n    \n    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n        f.write('<html><body>Test</body></html>')\n        test_file = f.name\n    \n    try:\n        # Test with explicit content type\n        with open(test_file, 'rb') as f:\n            response = FileResponse(f, content_type='text/html')\n            actual_content_type = response.headers.get('Content-Type')\n            print(f\"✓ Explicit content_type='text/html' -> {actual_content_type}\")\n            assert actual_content_type == 'text/html', f\"Expected text/html, got {actual_content_type}\"\n            \n        # Test without explicit content type (should use compression type)\n        with open(test_file, 'rb') as f:\n            response = FileResponse(f)\n            actual_content_type = response.headers.get('Content-Type')\n            print(f\"✓ No explicit content_type -> {actual_content_type}\")\n            assert actual_content_type == 'application/x-compress', f\"Expected application/x-compress, got {actual_content_type}\"\n            \n    finally:\n        os.unlink(test_file)\n\nif __name__ == '__main__':\n    test_compression_mime_types()\n    test_explicit_content_type()\n    print(\"\\nAll tests passed! ✓\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/http/response.py b/django/http/response.py\nindex f62dec8ce9..17e630be37 100644\n--- a/django/http/response.py\n+++ b/django/http/response.py\n@@ -612,6 +612,8 @@ class FileResponse(StreamingHttpResponse):\n                     \"bzip2\": \"application/x-bzip\",\n                     \"gzip\": \"application/gzip\",\n                     \"xz\": \"application/x-xz\",\n+                    \"compress\": \"application/x-compress\",\n+                    \"br\": \"application/x-brotli\",\n                 }.get(encoding, content_type)\n                 self.headers[\"Content-Type\"] = (\n                     content_type or \"application/octet-stream\"\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..74b259c4bd\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,76 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_br = f.name\n+\n+# Create files with just compression extensions (no base type)\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.Z', delete=False) as f:\n+    f.write('Some compressed content')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.br', delete=False) as f:\n+    f.write('Some brotli compressed content')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .html.Z file\n+print(f\"Testing file: {test_file_html_z}\")\n+with open(test_file_html_z, 'rb') as f:\n+    response_html_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_html_z.headers.get('Content-Type')}\")\n+\n+# Test .html.br file  \n+print(f\"Testing file: {test_file_html_br}\")\n+with open(test_file_html_br, 'rb') as f:\n+    response_html_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_html_br.headers.get('Content-Type')}\")\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_html_z}'): {mimetypes.guess_type(test_file_html_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_html_br}'): {mimetypes.guess_type(test_file_html_br)}\")\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_html_z)\n+os.unlink(test_file_html_br)\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..7ea64c2793\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,96 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+def test_compression_mime_types():\n+    \"\"\"Test that compression extensions get the correct MIME types.\"\"\"\n+    \n+    test_cases = [\n+        # (suffix, expected_content_type)\n+        ('.html.Z', 'application/x-compress'),\n+        ('.html.br', 'application/x-brotli'),\n+        ('.txt.Z', 'application/x-compress'),\n+        ('.txt.br', 'application/x-brotli'),\n+        ('.js.Z', 'application/x-compress'),\n+        ('.js.br', 'application/x-brotli'),\n+        ('.css.Z', 'application/x-compress'),\n+        ('.css.br', 'application/x-brotli'),\n+        ('.Z', 'application/x-compress'),\n+        ('.br', 'application/x-brotli'),\n+        # Test existing compression formats still work\n+        ('.tar.gz', 'application/gzip'),\n+        ('.tar.bz2', 'application/x-bzip'),\n+        ('.tar.xz', 'application/x-xz'),\n+        # Test non-compressed files still work\n+        ('.html', 'text/html'),\n+        ('.txt', 'text/plain'),\n+        ('.js', 'text/javascript'),\n+        ('.css', 'text/css'),\n+    ]\n+    \n+    print(\"Testing compression MIME types:\")\n+    print(\"=\" * 50)\n+    \n+    for suffix, expected_content_type in test_cases:\n+        with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False) as f:\n+            f.write('test content')\n+            test_file = f.name\n+        \n+        try:\n+            with open(test_file, 'rb') as f:\n+                response = FileResponse(f)\n+                actual_content_type = response.headers.get('Content-Type')\n+                \n+                status = \"✓\" if actual_content_type == expected_content_type else \"✗\"\n+                print(f\"{status} {suffix:12} -> {actual_content_type:25} (expected: {expected_content_type})\")\n+                \n+                if actual_content_type != expected_content_type:\n+                    print(f\"  ERROR: Expected {expected_content_type}, got {actual_content_type}\")\n+        finally:\n+            os.unlink(test_file)\n+\n+def test_explicit_content_type():\n+    \"\"\"Test that explicit content type overrides compression detection.\"\"\"\n+    \n+    print(\"\\nTesting explicit content type override:\")\n+    print(\"=\" * 50)\n+    \n+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+        f.write('<html><body>Test</body></html>')\n+        test_file = f.name\n+    \n+    try:\n+        # Test with explicit content type\n+        with open(test_file, 'rb') as f:\n+            response = FileResponse(f, content_type='text/html')\n+            actual_content_type = response.headers.get('Content-Type')\n+            print(f\"✓ Explicit content_type='text/html' -> {actual_content_type}\")\n+            assert actual_content_type == 'text/html', f\"Expected text/html, got {actual_content_type}\"\n+            \n+        # Test without explicit content type (should use compression type)\n+        with open(test_file, 'rb') as f:\n+            response = FileResponse(f)\n+            actual_content_type = response.headers.get('Content-Type')\n+            print(f\"✓ No explicit content_type -> {actual_content_type}\")\n+            assert actual_content_type == 'application/x-compress', f\"Expected application/x-compress, got {actual_content_type}\"\n+            \n+    finally:\n+        os.unlink(test_file)\n+\n+if __name__ == '__main__':\n+    test_compression_mime_types()\n+    test_explicit_content_type()\n+    print(\"\\nAll tests passed! ✓\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 20 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 21
+        },
+        {
+          "command": "cd /testbed && python -m django test tests.responses.test_fileresponse --settings=tests.settings",
+          "step_index": 23
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py responses.test_fileresponse",
+          "step_index": 24
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\"\"\"\nTest script to verify the exact issue described in the PR is fixed.\n\nPR Description:\nBelow FileResponse will set the content type as text/html, even if the last file extension is \"Z' or \"br\".\nFileResponse(open('test.html.Z', 'rb'))\nFileResponse(open('test.html.br', 'rb'))\n\"\"\"\n\nimport os\nimport tempfile\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DEFAULT_CHARSET='utf-8',\n    )\n    django.setup()\n\nfrom django.http import FileResponse\n\ndef test_pr_issue():\n    \"\"\"Test the exact scenario described in the PR.\"\"\"\n    \n    # Create test.html.Z file\n    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n        f.write('<html><body>Test content</body></html>')\n        test_html_z = f.name\n    \n    # Create test.html.br file\n    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n        f.write('<html><body>Test content</body></html>')\n        test_html_br = f.name\n    \n    try:\n        print(\"Testing the exact PR issue scenario:\")\n        print(\"=\" * 50)\n        \n        # Test FileResponse(open('test.html.Z', 'rb'))\n        print(f\"Testing: FileResponse(open('{os.path.basename(test_html_z)}', 'rb'))\")\n        with open(test_html_z, 'rb') as f:\n            response_z = FileResponse(f)\n            content_type_z = response_z.headers.get('Content-Type')\n            print(f\"Content-Type: {content_type_z}\")\n            \n            # Before fix: would be 'text/html'\n            # After fix: should be 'application/x-compress'\n            if content_type_z == 'text/html':\n                print(\"❌ ISSUE NOT FIXED: Still returning text/html\")\n                return False\n            elif content_type_z == 'application/x-compress':\n                print(\"✅ ISSUE FIXED: Now correctly returns application/x-compress\")\n            else:\n                print(f\"❓ UNEXPECTED: Got {content_type_z}\")\n                return False\n        \n        print()\n        \n        # Test FileResponse(open('test.html.br', 'rb'))\n        print(f\"Testing: FileResponse(open('{os.path.basename(test_html_br)}', 'rb'))\")\n        with open(test_html_br, 'rb') as f:\n            response_br = FileResponse(f)\n            content_type_br = response_br.headers.get('Content-Type')\n            print(f\"Content-Type: {content_type_br}\")\n            \n            # Before fix: would be 'text/html'\n            # After fix: should be 'application/x-brotli'\n            if content_type_br == 'text/html':\n                print(\"❌ ISSUE NOT FIXED: Still returning text/html\")\n                return False\n            elif content_type_br == 'application/x-brotli':\n                print(\"✅ ISSUE FIXED: Now correctly returns application/x-brotli\")\n            else:\n                print(f\"❓ UNEXPECTED: Got {content_type_br}\")\n                return False\n        \n        return True\n        \n    finally:\n        # Clean up\n        os.unlink(test_html_z)\n        os.unlink(test_html_br)\n\nif __name__ == '__main__':\n    success = test_pr_issue()\n    print()\n    if success:\n        print(\"🎉 PR issue has been successfully fixed!\")\n    else:\n        print(\"💥 PR issue is NOT fixed!\")\n        exit(1)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/http/response.py b/django/http/response.py\nindex f62dec8ce9..17e630be37 100644\n--- a/django/http/response.py\n+++ b/django/http/response.py\n@@ -612,6 +612,8 @@ class FileResponse(StreamingHttpResponse):\n                     \"bzip2\": \"application/x-bzip\",\n                     \"gzip\": \"application/gzip\",\n                     \"xz\": \"application/x-xz\",\n+                    \"compress\": \"application/x-compress\",\n+                    \"br\": \"application/x-brotli\",\n                 }.get(encoding, content_type)\n                 self.headers[\"Content-Type\"] = (\n                     content_type or \"application/octet-stream\"\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..74b259c4bd\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,76 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+# Create test files\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+    f.write('<html><body>Test content</body></html>')\n+    test_file_html_br = f.name\n+\n+# Create files with just compression extensions (no base type)\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.Z', delete=False) as f:\n+    f.write('Some compressed content')\n+    test_file_z = f.name\n+\n+with tempfile.NamedTemporaryFile(mode='w', suffix='.br', delete=False) as f:\n+    f.write('Some brotli compressed content')\n+    test_file_br = f.name\n+\n+print(\"Testing FileResponse with .Z and .br extensions:\")\n+print(\"=\" * 50)\n+\n+# Test .html.Z file\n+print(f\"Testing file: {test_file_html_z}\")\n+with open(test_file_html_z, 'rb') as f:\n+    response_html_z = FileResponse(f)\n+    print(f\"Content-Type for .html.Z file: {response_html_z.headers.get('Content-Type')}\")\n+\n+# Test .html.br file  \n+print(f\"Testing file: {test_file_html_br}\")\n+with open(test_file_html_br, 'rb') as f:\n+    response_html_br = FileResponse(f)\n+    print(f\"Content-Type for .html.br file: {response_html_br.headers.get('Content-Type')}\")\n+\n+# Test .Z file\n+print(f\"Testing file: {test_file_z}\")\n+with open(test_file_z, 'rb') as f:\n+    response_z = FileResponse(f)\n+    print(f\"Content-Type for .Z file: {response_z.headers.get('Content-Type')}\")\n+\n+# Test .br file  \n+print(f\"Testing file: {test_file_br}\")\n+with open(test_file_br, 'rb') as f:\n+    response_br = FileResponse(f)\n+    print(f\"Content-Type for .br file: {response_br.headers.get('Content-Type')}\")\n+\n+# Test what mimetypes.guess_type returns for these files\n+import mimetypes\n+print(\"\\nDirect mimetypes.guess_type() results:\")\n+print(\"=\" * 40)\n+print(f\"mimetypes.guess_type('{test_file_html_z}'): {mimetypes.guess_type(test_file_html_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_html_br}'): {mimetypes.guess_type(test_file_html_br)}\")\n+print(f\"mimetypes.guess_type('{test_file_z}'): {mimetypes.guess_type(test_file_z)}\")\n+print(f\"mimetypes.guess_type('{test_file_br}'): {mimetypes.guess_type(test_file_br)}\")\n+\n+# Clean up\n+os.unlink(test_file_html_z)\n+os.unlink(test_file_html_br)\n+os.unlink(test_file_z)\n+os.unlink(test_file_br)\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..7ea64c2793\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,96 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+def test_compression_mime_types():\n+    \"\"\"Test that compression extensions get the correct MIME types.\"\"\"\n+    \n+    test_cases = [\n+        # (suffix, expected_content_type)\n+        ('.html.Z', 'application/x-compress'),\n+        ('.html.br', 'application/x-brotli'),\n+        ('.txt.Z', 'application/x-compress'),\n+        ('.txt.br', 'application/x-brotli'),\n+        ('.js.Z', 'application/x-compress'),\n+        ('.js.br', 'application/x-brotli'),\n+        ('.css.Z', 'application/x-compress'),\n+        ('.css.br', 'application/x-brotli'),\n+        ('.Z', 'application/x-compress'),\n+        ('.br', 'application/x-brotli'),\n+        # Test existing compression formats still work\n+        ('.tar.gz', 'application/gzip'),\n+        ('.tar.bz2', 'application/x-bzip'),\n+        ('.tar.xz', 'application/x-xz'),\n+        # Test non-compressed files still work\n+        ('.html', 'text/html'),\n+        ('.txt', 'text/plain'),\n+        ('.js', 'text/javascript'),\n+        ('.css', 'text/css'),\n+    ]\n+    \n+    print(\"Testing compression MIME types:\")\n+    print(\"=\" * 50)\n+    \n+    for suffix, expected_content_type in test_cases:\n+        with tempfile.NamedTemporaryFile(mode='w', suffix=suffix, delete=False) as f:\n+            f.write('test content')\n+            test_file = f.name\n+        \n+        try:\n+            with open(test_file, 'rb') as f:\n+                response = FileResponse(f)\n+                actual_content_type = response.headers.get('Content-Type')\n+                \n+                status = \"✓\" if actual_content_type == expected_content_type else \"✗\"\n+                print(f\"{status} {suffix:12} -> {actual_content_type:25} (expected: {expected_content_type})\")\n+                \n+                if actual_content_type != expected_content_type:\n+                    print(f\"  ERROR: Expected {expected_content_type}, got {actual_content_type}\")\n+        finally:\n+            os.unlink(test_file)\n+\n+def test_explicit_content_type():\n+    \"\"\"Test that explicit content type overrides compression detection.\"\"\"\n+    \n+    print(\"\\nTesting explicit content type override:\")\n+    print(\"=\" * 50)\n+    \n+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+        f.write('<html><body>Test</body></html>')\n+        test_file = f.name\n+    \n+    try:\n+        # Test with explicit content type\n+        with open(test_file, 'rb') as f:\n+            response = FileResponse(f, content_type='text/html')\n+            actual_content_type = response.headers.get('Content-Type')\n+            print(f\"✓ Explicit content_type='text/html' -> {actual_content_type}\")\n+            assert actual_content_type == 'text/html', f\"Expected text/html, got {actual_content_type}\"\n+            \n+        # Test without explicit content type (should use compression type)\n+        with open(test_file, 'rb') as f:\n+            response = FileResponse(f)\n+            actual_content_type = response.headers.get('Content-Type')\n+            print(f\"✓ No explicit content_type -> {actual_content_type}\")\n+            assert actual_content_type == 'application/x-compress', f\"Expected application/x-compress, got {actual_content_type}\"\n+            \n+    finally:\n+        os.unlink(test_file)\n+\n+if __name__ == '__main__':\n+    test_compression_mime_types()\n+    test_explicit_content_type()\n+    print(\"\\nAll tests passed! ✓\")\n\\ No newline at end of file\ndiff --git a/test_pr_issue.py b/test_pr_issue.py\nnew file mode 100644\nindex 0000000000..feeec74933\n--- /dev/null\n+++ b/test_pr_issue.py\n@@ -0,0 +1,95 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Test script to verify the exact issue described in the PR is fixed.\n+\n+PR Description:\n+Below FileResponse will set the content type as text/html, even if the last file extension is \"Z' or \"br\".\n+FileResponse(open('test.html.Z', 'rb'))\n+FileResponse(open('test.html.br', 'rb'))\n+\"\"\"\n+\n+import os\n+import tempfile\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DEFAULT_CHARSET='utf-8',\n+    )\n+    django.setup()\n+\n+from django.http import FileResponse\n+\n+def test_pr_issue():\n+    \"\"\"Test the exact scenario described in the PR.\"\"\"\n+    \n+    # Create test.html.Z file\n+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.Z', delete=False) as f:\n+        f.write('<html><body>Test content</body></html>')\n+        test_html_z = f.name\n+    \n+    # Create test.html.br file\n+    with tempfile.NamedTemporaryFile(mode='w', suffix='.html.br', delete=False) as f:\n+        f.write('<html><body>Test content</body></html>')\n+        test_html_br = f.name\n+    \n+    try:\n+        print(\"Testing the exact PR issue scenario:\")\n+        print(\"=\" * 50)\n+        \n+        # Test FileResponse(open('test.html.Z', 'rb'))\n+        print(f\"Testing: FileResponse(open('{os.path.basename(test_html_z)}', 'rb'))\")\n+        with open(test_html_z, 'rb') as f:\n+            response_z = FileResponse(f)\n+            content_type_z = response_z.headers.get('Content-Type')\n+            print(f\"Content-Type: {content_type_z}\")\n+            \n+            # Before fix: would be 'text/html'\n+            # After fix: should be 'application/x-compress'\n+            if content_type_z == 'text/html':\n+                print(\"❌ ISSUE NOT FIXED: Still returning text/html\")\n+                return False\n+            elif content_type_z == 'application/x-compress':\n+                print(\"✅ ISSUE FIXED: Now correctly returns application/x-compress\")\n+            else:\n+                print(f\"❓ UNEXPECTED: Got {content_type_z}\")\n+                return False\n+        \n+        print()\n+        \n+        # Test FileResponse(open('test.html.br', 'rb'))\n+        print(f\"Testing: FileResponse(open('{os.path.basename(test_html_br)}', 'rb'))\")\n+        with open(test_html_br, 'rb') as f:\n+            response_br = FileResponse(f)\n+            content_type_br = response_br.headers.get('Content-Type')\n+            print(f\"Content-Type: {content_type_br}\")\n+            \n+            # Before fix: would be 'text/html'\n+            # After fix: should be 'application/x-brotli'\n+            if content_type_br == 'text/html':\n+                print(\"❌ ISSUE NOT FIXED: Still returning text/html\")\n+                return False\n+            elif content_type_br == 'application/x-brotli':\n+                print(\"✅ ISSUE FIXED: Now correctly returns application/x-brotli\")\n+            else:\n+                print(f\"❓ UNEXPECTED: Got {content_type_br}\")\n+                return False\n+        \n+        return True\n+        \n+    finally:\n+        # Clean up\n+        os.unlink(test_html_z)\n+        os.unlink(test_html_br)\n+\n+if __name__ == '__main__':\n+    success = test_pr_issue()\n+    print()\n+    if success:\n+        print(\"🎉 PR issue has been successfully fixed!\")\n+    else:\n+        print(\"💥 PR issue is NOT fixed!\")\n+        exit(1)\n\\ No newline at end of file\ndiff --git a/tests/responses/test_fileresponse.py b/tests/responses/test_fileresponse.py\nindex 952fe4dd7c..a91e9e97e4 100644\n--- a/tests/responses/test_fileresponse.py\n+++ b/tests/responses/test_fileresponse.py\n@@ -255,6 +255,8 @@ class FileResponseTests(SimpleTestCase):\n             (\".tar.gz\", \"application/gzip\"),\n             (\".tar.bz2\", \"application/x-bzip\"),\n             (\".tar.xz\", \"application/x-xz\"),\n+            (\".html.Z\", \"application/x-compress\"),\n+            (\".html.br\", \"application/x-brotli\"),\n         )\n         for extension, mimetype in test_tuples:\n             with self.subTest(ext=extension):",
+          "explanation": "classic_swe step 29 create #1",
+          "filename": "test_pr_issue.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pr_issue.py",
+          "step_index": 30
+        },
+        {
+          "command": "cd /testbed && python test_pr_issue.py",
+          "step_index": 33
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py responses.test_fileresponse",
+          "step_index": 40
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 29
+    }
+  ],
+  "sub_paths": [
+    "django/http/response.py"
+  ],
+  "success_step": 29,
+  "test_files": [
+    "reproduce_issue.py",
+    "test_comprehensive.py",
+    "test_pr_issue.py"
+  ]
+}

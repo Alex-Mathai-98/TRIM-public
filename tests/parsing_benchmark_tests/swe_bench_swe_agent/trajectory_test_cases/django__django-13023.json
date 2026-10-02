@@ -1,0 +1,304 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_error.py",
+      "step_index": 10
+    },
+    {
+      "command": "cd /testbed && python test_decimal_exceptions.py",
+      "step_index": 13
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python -m django test model_fields.test_decimalfield --settings=tests.test_sqlite",
+      "step_index": 23
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py model_fields.test_decimalfield",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py model_fields --parallel 1",
+      "step_index": 25
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py forms_tests.field_tests.test_decimalfield --parallel 1",
+      "step_index": 26
+    },
+    {
+      "command": "cd /testbed && python test_model_save.py",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python test_float_edge_cases.py",
+      "step_index": 33
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py validation --parallel 1",
+      "step_index": 34
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py serializers --parallel 1",
+      "step_index": 35
+    }
+  ],
+  "patch_list_shape": [
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DATABASES={\n            'default': {\n                'ENGINE': 'django.db.backends.sqlite3',\n                'NAME': ':memory:',\n            }\n        },\n        INSTALLED_APPS=[\n            'django.contrib.contenttypes',\n            'django.contrib.auth',\n        ],\n        SECRET_KEY='test-secret-key',\n    )\n\ndjango.setup()\n\nfrom django.db import models\nfrom django.core.exceptions import ValidationError\n\n# Test the DecimalField.to_python() method with a dictionary\ndef test_decimal_field_with_dict():\n    print(\"Testing DecimalField.to_python() with dictionary value...\")\n    \n    # Create a DecimalField instance\n    field = models.DecimalField(max_digits=10, decimal_places=2)\n    \n    # Test with a dictionary value - this should raise ValidationError, not TypeError\n    test_dict = {'invalid': 'value'}\n    \n    try:\n        result = field.to_python(test_dict)\n        print(f\"Unexpected success: {result}\")\n    except ValidationError as e:\n        print(f\"Expected ValidationError: {e}\")\n    except TypeError as e:\n        print(f\"Unexpected TypeError: {e}\")\n        print(\"This is the bug we need to fix!\")\n    except Exception as e:\n        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n\nif __name__ == \"__main__\":\n    test_decimal_field_with_dict()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 0000000000..70939e7546\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Test the DecimalField.to_python() method with a dictionary\n+def test_decimal_field_with_dict():\n+    print(\"Testing DecimalField.to_python() with dictionary value...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test with a dictionary value - this should raise ValidationError, not TypeError\n+    test_dict = {'invalid': 'value'}\n+    \n+    try:\n+        result = field.to_python(test_dict)\n+        print(f\"Unexpected success: {result}\")\n+    except ValidationError as e:\n+        print(f\"Expected ValidationError: {e}\")\n+    except TypeError as e:\n+        print(f\"Unexpected TypeError: {e}\")\n+        print(\"This is the bug we need to fix!\")\n+    except Exception as e:\n+        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_with_dict()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 9 create #1",
+          "filename": "reproduce_error.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        }
+      ],
+      "end_step": 9,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 10
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 9
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport decimal\n\n# Test what exceptions decimal.Decimal() can raise with different invalid inputs\ntest_values = [\n    {'invalid': 'dict'},\n    ['invalid', 'list'],\n    object(),\n    'invalid_string',\n    None,  # This should work\n    '',    # This might raise an exception\n    float('inf'),\n    float('nan'),\n]\n\nfor value in test_values:\n    try:\n        result = decimal.Decimal(value)\n        print(f\"{repr(value)} -> {result}\")\n    except Exception as e:\n        print(f\"{repr(value)} -> {type(e).__name__}: {e}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 0000000000..70939e7546\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Test the DecimalField.to_python() method with a dictionary\n+def test_decimal_field_with_dict():\n+    print(\"Testing DecimalField.to_python() with dictionary value...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test with a dictionary value - this should raise ValidationError, not TypeError\n+    test_dict = {'invalid': 'value'}\n+    \n+    try:\n+        result = field.to_python(test_dict)\n+        print(f\"Unexpected success: {result}\")\n+    except ValidationError as e:\n+        print(f\"Expected ValidationError: {e}\")\n+    except TypeError as e:\n+        print(f\"Unexpected TypeError: {e}\")\n+        print(\"This is the bug we need to fix!\")\n+    except Exception as e:\n+        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_with_dict()\n\\ No newline at end of file\ndiff --git a/test_decimal_exceptions.py b/test_decimal_exceptions.py\nnew file mode 100644\nindex 0000000000..d294616bf4\n--- /dev/null\n+++ b/test_decimal_exceptions.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import decimal\n+\n+# Test what exceptions decimal.Decimal() can raise with different invalid inputs\n+test_values = [\n+    {'invalid': 'dict'},\n+    ['invalid', 'list'],\n+    object(),\n+    'invalid_string',\n+    None,  # This should work\n+    '',    # This might raise an exception\n+    float('inf'),\n+    float('nan'),\n+]\n+\n+for value in test_values:\n+    try:\n+        result = decimal.Decimal(value)\n+        print(f\"{repr(value)} -> {result}\")\n+    except Exception as e:\n+        print(f\"{repr(value)} -> {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 12 create #1",
+          "filename": "test_decimal_exceptions.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        }
+      ],
+      "end_step": 12,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_decimal_exceptions.py",
+          "step_index": 13
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 12
+    },
+    {
+      "edits": [
+        {
+          "after": "    def to_python(self, value):\n        if value is None:\n            return value\n        if isinstance(value, float):\n            return self.context.create_decimal_from_float(value)\n        try:\n            return decimal.Decimal(value)\n        except (decimal.InvalidOperation, TypeError, ValueError):\n            raise exceptions.ValidationError(\n                self.error_messages['invalid'],\n                code='invalid',\n                params={'value': value},\n            )",
+          "before": "    def to_python(self, value):\n        if value is None:\n            return value\n        if isinstance(value, float):\n            return self.context.create_decimal_from_float(value)\n        try:\n            return decimal.Decimal(value)\n        except decimal.InvalidOperation:\n            raise exceptions.ValidationError(\n                self.error_messages['invalid'],\n                code='invalid',\n                params={'value': value},\n            )",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 0fd69059ee..28374272f4 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -1501,7 +1501,7 @@ class DecimalField(Field):\n             return self.context.create_decimal_from_float(value)\n         try:\n             return decimal.Decimal(value)\n-        except decimal.InvalidOperation:\n+        except (decimal.InvalidOperation, TypeError, ValueError):\n             raise exceptions.ValidationError(\n                 self.error_messages['invalid'],\n                 code='invalid',\ndiff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 0000000000..70939e7546\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Test the DecimalField.to_python() method with a dictionary\n+def test_decimal_field_with_dict():\n+    print(\"Testing DecimalField.to_python() with dictionary value...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test with a dictionary value - this should raise ValidationError, not TypeError\n+    test_dict = {'invalid': 'value'}\n+    \n+    try:\n+        result = field.to_python(test_dict)\n+        print(f\"Unexpected success: {result}\")\n+    except ValidationError as e:\n+        print(f\"Expected ValidationError: {e}\")\n+    except TypeError as e:\n+        print(f\"Unexpected TypeError: {e}\")\n+        print(\"This is the bug we need to fix!\")\n+    except Exception as e:\n+        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_with_dict()\n\\ No newline at end of file\ndiff --git a/test_decimal_exceptions.py b/test_decimal_exceptions.py\nnew file mode 100644\nindex 0000000000..d294616bf4\n--- /dev/null\n+++ b/test_decimal_exceptions.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import decimal\n+\n+# Test what exceptions decimal.Decimal() can raise with different invalid inputs\n+test_values = [\n+    {'invalid': 'dict'},\n+    ['invalid', 'list'],\n+    object(),\n+    'invalid_string',\n+    None,  # This should work\n+    '',    # This might raise an exception\n+    float('inf'),\n+    float('nan'),\n+]\n+\n+for value in test_values:\n+    try:\n+        result = decimal.Decimal(value)\n+        print(f\"{repr(value)} -> {result}\")\n+    except Exception as e:\n+        print(f\"{repr(value)} -> {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "django/db/models/fields/__init__.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 19
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 18
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DATABASES={\n            'default': {\n                'ENGINE': 'django.db.backends.sqlite3',\n                'NAME': ':memory:',\n            }\n        },\n        INSTALLED_APPS=[\n            'django.contrib.contenttypes',\n            'django.contrib.auth',\n        ],\n        SECRET_KEY='test-secret-key',\n    )\n\ndjango.setup()\n\nfrom django.db import models\nfrom django.core.exceptions import ValidationError\nimport decimal\n\ndef test_decimal_field_comprehensive():\n    print(\"Testing DecimalField.to_python() with various invalid inputs...\")\n    \n    # Create a DecimalField instance\n    field = models.DecimalField(max_digits=10, decimal_places=2)\n    \n    # Test cases that should raise ValidationError\n    test_cases = [\n        ({'invalid': 'dict'}, \"dictionary\"),\n        (['invalid', 'list'], \"list\"),\n        (object(), \"object\"),\n        ('invalid_string', \"invalid string\"),\n        ('', \"empty string\"),\n    ]\n    \n    for value, description in test_cases:\n        try:\n            result = field.to_python(value)\n            print(f\"❌ {description}: Unexpected success: {result}\")\n        except ValidationError as e:\n            print(f\"✅ {description}: Expected ValidationError: {e}\")\n        except Exception as e:\n            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n    \n    # Test cases that should work\n    valid_cases = [\n        (None, \"None\"),\n        (3, \"integer\"),\n        ('3.14', \"valid string\"),\n        (3.14, \"float\"),\n        (decimal.Decimal('3.14'), \"Decimal\"),\n    ]\n    \n    print(\"\\nTesting valid inputs...\")\n    for value, description in valid_cases:\n        try:\n            result = field.to_python(value)\n            print(f\"✅ {description}: {result}\")\n        except Exception as e:\n            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n\nif __name__ == \"__main__\":\n    test_decimal_field_comprehensive()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 0fd69059ee..28374272f4 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -1501,7 +1501,7 @@ class DecimalField(Field):\n             return self.context.create_decimal_from_float(value)\n         try:\n             return decimal.Decimal(value)\n-        except decimal.InvalidOperation:\n+        except (decimal.InvalidOperation, TypeError, ValueError):\n             raise exceptions.ValidationError(\n                 self.error_messages['invalid'],\n                 code='invalid',\ndiff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 0000000000..70939e7546\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Test the DecimalField.to_python() method with a dictionary\n+def test_decimal_field_with_dict():\n+    print(\"Testing DecimalField.to_python() with dictionary value...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test with a dictionary value - this should raise ValidationError, not TypeError\n+    test_dict = {'invalid': 'value'}\n+    \n+    try:\n+        result = field.to_python(test_dict)\n+        print(f\"Unexpected success: {result}\")\n+    except ValidationError as e:\n+        print(f\"Expected ValidationError: {e}\")\n+    except TypeError as e:\n+        print(f\"Unexpected TypeError: {e}\")\n+        print(\"This is the bug we need to fix!\")\n+    except Exception as e:\n+        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_with_dict()\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..5c889c540e\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,73 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+import decimal\n+\n+def test_decimal_field_comprehensive():\n+    print(\"Testing DecimalField.to_python() with various invalid inputs...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test cases that should raise ValidationError\n+    test_cases = [\n+        ({'invalid': 'dict'}, \"dictionary\"),\n+        (['invalid', 'list'], \"list\"),\n+        (object(), \"object\"),\n+        ('invalid_string', \"invalid string\"),\n+        ('', \"empty string\"),\n+    ]\n+    \n+    for value, description in test_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"❌ {description}: Unexpected success: {result}\")\n+        except ValidationError as e:\n+            print(f\"✅ {description}: Expected ValidationError: {e}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+    \n+    # Test cases that should work\n+    valid_cases = [\n+        (None, \"None\"),\n+        (3, \"integer\"),\n+        ('3.14', \"valid string\"),\n+        (3.14, \"float\"),\n+        (decimal.Decimal('3.14'), \"Decimal\"),\n+    ]\n+    \n+    print(\"\\nTesting valid inputs...\")\n+    for value, description in valid_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"✅ {description}: {result}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_comprehensive()\n\\ No newline at end of file\ndiff --git a/test_decimal_exceptions.py b/test_decimal_exceptions.py\nnew file mode 100644\nindex 0000000000..d294616bf4\n--- /dev/null\n+++ b/test_decimal_exceptions.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import decimal\n+\n+# Test what exceptions decimal.Decimal() can raise with different invalid inputs\n+test_values = [\n+    {'invalid': 'dict'},\n+    ['invalid', 'list'],\n+    object(),\n+    'invalid_string',\n+    None,  # This should work\n+    '',    # This might raise an exception\n+    float('inf'),\n+    float('nan'),\n+]\n+\n+for value in test_values:\n+    try:\n+        result = decimal.Decimal(value)\n+        print(f\"{repr(value)} -> {result}\")\n+    except Exception as e:\n+        print(f\"{repr(value)} -> {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 20 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 21
+        },
+        {
+          "command": "cd /testbed && python -m django test model_fields.test_decimalfield --settings=tests.test_sqlite",
+          "step_index": 23
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py model_fields.test_decimalfield",
+          "step_index": 24
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py model_fields --parallel 1",
+          "step_index": 25
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py forms_tests.field_tests.test_decimalfield --parallel 1",
+          "step_index": 26
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DATABASES={\n            'default': {\n                'ENGINE': 'django.db.backends.sqlite3',\n                'NAME': ':memory:',\n            }\n        },\n        INSTALLED_APPS=[\n            'django.contrib.contenttypes',\n            'django.contrib.auth',\n            '__main__',  # This module\n        ],\n        SECRET_KEY='test-secret-key',\n    )\n\ndjango.setup()\n\nfrom django.db import models\nfrom django.core.exceptions import ValidationError\n\n# Define a test model\nclass TestModel(models.Model):\n    name = models.CharField(max_length=100)\n    price = models.DecimalField(max_digits=10, decimal_places=2)\n    \n    class Meta:\n        app_label = '__main__'\n\ndef test_model_save_with_invalid_decimal():\n    print(\"Testing model save with invalid decimal field value...\")\n    \n    # Create the table\n    from django.db import connection\n    with connection.schema_editor() as schema_editor:\n        schema_editor.create_model(TestModel)\n    \n    # Test saving a model with a dictionary in the decimal field\n    obj = TestModel(name=\"Test Product\", price={'invalid': 'dict'})\n    \n    try:\n        obj.save()\n        print(\"❌ Unexpected success: Model saved with invalid decimal value\")\n    except ValidationError as e:\n        print(f\"✅ Expected ValidationError during save: {e}\")\n    except TypeError as e:\n        print(f\"❌ Unexpected TypeError during save: {e}\")\n        print(\"This would be the old behavior that made debugging difficult!\")\n    except Exception as e:\n        print(f\"❓ Other exception during save: {type(e).__name__}: {e}\")\n\nif __name__ == \"__main__\":\n    test_model_save_with_invalid_decimal()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 0fd69059ee..28374272f4 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -1501,7 +1501,7 @@ class DecimalField(Field):\n             return self.context.create_decimal_from_float(value)\n         try:\n             return decimal.Decimal(value)\n-        except decimal.InvalidOperation:\n+        except (decimal.InvalidOperation, TypeError, ValueError):\n             raise exceptions.ValidationError(\n                 self.error_messages['invalid'],\n                 code='invalid',\ndiff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 0000000000..70939e7546\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Test the DecimalField.to_python() method with a dictionary\n+def test_decimal_field_with_dict():\n+    print(\"Testing DecimalField.to_python() with dictionary value...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test with a dictionary value - this should raise ValidationError, not TypeError\n+    test_dict = {'invalid': 'value'}\n+    \n+    try:\n+        result = field.to_python(test_dict)\n+        print(f\"Unexpected success: {result}\")\n+    except ValidationError as e:\n+        print(f\"Expected ValidationError: {e}\")\n+    except TypeError as e:\n+        print(f\"Unexpected TypeError: {e}\")\n+        print(\"This is the bug we need to fix!\")\n+    except Exception as e:\n+        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_with_dict()\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..5c889c540e\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,73 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+import decimal\n+\n+def test_decimal_field_comprehensive():\n+    print(\"Testing DecimalField.to_python() with various invalid inputs...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test cases that should raise ValidationError\n+    test_cases = [\n+        ({'invalid': 'dict'}, \"dictionary\"),\n+        (['invalid', 'list'], \"list\"),\n+        (object(), \"object\"),\n+        ('invalid_string', \"invalid string\"),\n+        ('', \"empty string\"),\n+    ]\n+    \n+    for value, description in test_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"❌ {description}: Unexpected success: {result}\")\n+        except ValidationError as e:\n+            print(f\"✅ {description}: Expected ValidationError: {e}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+    \n+    # Test cases that should work\n+    valid_cases = [\n+        (None, \"None\"),\n+        (3, \"integer\"),\n+        ('3.14', \"valid string\"),\n+        (3.14, \"float\"),\n+        (decimal.Decimal('3.14'), \"Decimal\"),\n+    ]\n+    \n+    print(\"\\nTesting valid inputs...\")\n+    for value, description in valid_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"✅ {description}: {result}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_comprehensive()\n\\ No newline at end of file\ndiff --git a/test_decimal_exceptions.py b/test_decimal_exceptions.py\nnew file mode 100644\nindex 0000000000..d294616bf4\n--- /dev/null\n+++ b/test_decimal_exceptions.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import decimal\n+\n+# Test what exceptions decimal.Decimal() can raise with different invalid inputs\n+test_values = [\n+    {'invalid': 'dict'},\n+    ['invalid', 'list'],\n+    object(),\n+    'invalid_string',\n+    None,  # This should work\n+    '',    # This might raise an exception\n+    float('inf'),\n+    float('nan'),\n+]\n+\n+for value in test_values:\n+    try:\n+        result = decimal.Decimal(value)\n+        print(f\"{repr(value)} -> {result}\")\n+    except Exception as e:\n+        print(f\"{repr(value)} -> {type(e).__name__}: {e}\")\n\\ No newline at end of file\ndiff --git a/test_model_save.py b/test_model_save.py\nnew file mode 100644\nindex 0000000000..aa9248e6c4\n--- /dev/null\n+++ b/test_model_save.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+            '__main__',  # This module\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Define a test model\n+class TestModel(models.Model):\n+    name = models.CharField(max_length=100)\n+    price = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    class Meta:\n+        app_label = '__main__'\n+\n+def test_model_save_with_invalid_decimal():\n+    print(\"Testing model save with invalid decimal field value...\")\n+    \n+    # Create the table\n+    from django.db import connection\n+    with connection.schema_editor() as schema_editor:\n+        schema_editor.create_model(TestModel)\n+    \n+    # Test saving a model with a dictionary in the decimal field\n+    obj = TestModel(name=\"Test Product\", price={'invalid': 'dict'})\n+    \n+    try:\n+        obj.save()\n+        print(\"❌ Unexpected success: Model saved with invalid decimal value\")\n+    except ValidationError as e:\n+        print(f\"✅ Expected ValidationError during save: {e}\")\n+    except TypeError as e:\n+        print(f\"❌ Unexpected TypeError during save: {e}\")\n+        print(\"This would be the old behavior that made debugging difficult!\")\n+    except Exception as e:\n+        print(f\"❓ Other exception during save: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_model_save_with_invalid_decimal()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 30 create #1",
+          "filename": "test_model_save.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_model_save.py",
+          "step_index": 31
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DATABASES={\n            'default': {\n                'ENGINE': 'django.db.backends.sqlite3',\n                'NAME': ':memory:',\n            }\n        },\n        INSTALLED_APPS=[\n            'django.contrib.contenttypes',\n            'django.contrib.auth',\n        ],\n        SECRET_KEY='test-secret-key',\n    )\n\ndjango.setup()\n\nfrom django.db import models\nfrom django.core.exceptions import ValidationError\nimport decimal\n\ndef test_float_edge_cases():\n    print(\"Testing DecimalField.to_python() with float edge cases...\")\n    \n    # Create a DecimalField instance\n    field = models.DecimalField(max_digits=10, decimal_places=2)\n    \n    # Test cases with special float values\n    test_cases = [\n        (float('inf'), \"positive infinity\"),\n        (float('-inf'), \"negative infinity\"),\n        (float('nan'), \"NaN\"),\n    ]\n    \n    for value, description in test_cases:\n        try:\n            result = field.to_python(value)\n            print(f\"✅ {description}: {result}\")\n        except ValidationError as e:\n            print(f\"✅ {description}: ValidationError: {e}\")\n        except Exception as e:\n            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n\nif __name__ == \"__main__\":\n    test_float_edge_cases()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 0fd69059ee..28374272f4 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -1501,7 +1501,7 @@ class DecimalField(Field):\n             return self.context.create_decimal_from_float(value)\n         try:\n             return decimal.Decimal(value)\n-        except decimal.InvalidOperation:\n+        except (decimal.InvalidOperation, TypeError, ValueError):\n             raise exceptions.ValidationError(\n                 self.error_messages['invalid'],\n                 code='invalid',\ndiff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 0000000000..70939e7546\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,52 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Test the DecimalField.to_python() method with a dictionary\n+def test_decimal_field_with_dict():\n+    print(\"Testing DecimalField.to_python() with dictionary value...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test with a dictionary value - this should raise ValidationError, not TypeError\n+    test_dict = {'invalid': 'value'}\n+    \n+    try:\n+        result = field.to_python(test_dict)\n+        print(f\"Unexpected success: {result}\")\n+    except ValidationError as e:\n+        print(f\"Expected ValidationError: {e}\")\n+    except TypeError as e:\n+        print(f\"Unexpected TypeError: {e}\")\n+        print(\"This is the bug we need to fix!\")\n+    except Exception as e:\n+        print(f\"Other unexpected exception: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_with_dict()\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..5c889c540e\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,73 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+import decimal\n+\n+def test_decimal_field_comprehensive():\n+    print(\"Testing DecimalField.to_python() with various invalid inputs...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test cases that should raise ValidationError\n+    test_cases = [\n+        ({'invalid': 'dict'}, \"dictionary\"),\n+        (['invalid', 'list'], \"list\"),\n+        (object(), \"object\"),\n+        ('invalid_string', \"invalid string\"),\n+        ('', \"empty string\"),\n+    ]\n+    \n+    for value, description in test_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"❌ {description}: Unexpected success: {result}\")\n+        except ValidationError as e:\n+            print(f\"✅ {description}: Expected ValidationError: {e}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+    \n+    # Test cases that should work\n+    valid_cases = [\n+        (None, \"None\"),\n+        (3, \"integer\"),\n+        ('3.14', \"valid string\"),\n+        (3.14, \"float\"),\n+        (decimal.Decimal('3.14'), \"Decimal\"),\n+    ]\n+    \n+    print(\"\\nTesting valid inputs...\")\n+    for value, description in valid_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"✅ {description}: {result}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_decimal_field_comprehensive()\n\\ No newline at end of file\ndiff --git a/test_decimal_exceptions.py b/test_decimal_exceptions.py\nnew file mode 100644\nindex 0000000000..d294616bf4\n--- /dev/null\n+++ b/test_decimal_exceptions.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import decimal\n+\n+# Test what exceptions decimal.Decimal() can raise with different invalid inputs\n+test_values = [\n+    {'invalid': 'dict'},\n+    ['invalid', 'list'],\n+    object(),\n+    'invalid_string',\n+    None,  # This should work\n+    '',    # This might raise an exception\n+    float('inf'),\n+    float('nan'),\n+]\n+\n+for value in test_values:\n+    try:\n+        result = decimal.Decimal(value)\n+        print(f\"{repr(value)} -> {result}\")\n+    except Exception as e:\n+        print(f\"{repr(value)} -> {type(e).__name__}: {e}\")\n\\ No newline at end of file\ndiff --git a/test_float_edge_cases.py b/test_float_edge_cases.py\nnew file mode 100644\nindex 0000000000..4745bdc573\n--- /dev/null\n+++ b/test_float_edge_cases.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+import decimal\n+\n+def test_float_edge_cases():\n+    print(\"Testing DecimalField.to_python() with float edge cases...\")\n+    \n+    # Create a DecimalField instance\n+    field = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    # Test cases with special float values\n+    test_cases = [\n+        (float('inf'), \"positive infinity\"),\n+        (float('-inf'), \"negative infinity\"),\n+        (float('nan'), \"NaN\"),\n+    ]\n+    \n+    for value, description in test_cases:\n+        try:\n+            result = field.to_python(value)\n+            print(f\"✅ {description}: {result}\")\n+        except ValidationError as e:\n+            print(f\"✅ {description}: ValidationError: {e}\")\n+        except Exception as e:\n+            print(f\"❌ {description}: Unexpected {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_float_edge_cases()\n\\ No newline at end of file\ndiff --git a/test_model_save.py b/test_model_save.py\nnew file mode 100644\nindex 0000000000..aa9248e6c4\n--- /dev/null\n+++ b/test_model_save.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python3\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.contenttypes',\n+            'django.contrib.auth',\n+            '__main__',  # This module\n+        ],\n+        SECRET_KEY='test-secret-key',\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.core.exceptions import ValidationError\n+\n+# Define a test model\n+class TestModel(models.Model):\n+    name = models.CharField(max_length=100)\n+    price = models.DecimalField(max_digits=10, decimal_places=2)\n+    \n+    class Meta:\n+        app_label = '__main__'\n+\n+def test_model_save_with_invalid_decimal():\n+    print(\"Testing model save with invalid decimal field value...\")\n+    \n+    # Create the table\n+    from django.db import connection\n+    with connection.schema_editor() as schema_editor:\n+        schema_editor.create_model(TestModel)\n+    \n+    # Test saving a model with a dictionary in the decimal field\n+    obj = TestModel(name=\"Test Product\", price={'invalid': 'dict'})\n+    \n+    try:\n+        obj.save()\n+        print(\"❌ Unexpected success: Model saved with invalid decimal value\")\n+    except ValidationError as e:\n+        print(f\"✅ Expected ValidationError during save: {e}\")\n+    except TypeError as e:\n+        print(f\"❌ Unexpected TypeError during save: {e}\")\n+        print(\"This would be the old behavior that made debugging difficult!\")\n+    except Exception as e:\n+        print(f\"❓ Other exception during save: {type(e).__name__}: {e}\")\n+\n+if __name__ == \"__main__\":\n+    test_model_save_with_invalid_decimal()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 32 create #1",
+          "filename": "test_float_edge_cases.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_float_edge_cases.py",
+          "step_index": 33
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py validation --parallel 1",
+          "step_index": 34
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py serializers --parallel 1",
+          "step_index": 35
+        },
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 38
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 32
+    }
+  ],
+  "sub_paths": [
+    "django/db/models/fields/__init__.py"
+  ],
+  "success_step": 32,
+  "test_files": [
+    "reproduce_error.py",
+    "test_comprehensive.py",
+    "test_decimal_exceptions.py",
+    "test_float_edge_cases.py",
+    "test_model_save.py"
+  ]
+}

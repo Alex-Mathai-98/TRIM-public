@@ -1,0 +1,190 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 69
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 9
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 14
+    },
+    {
+      "command": "cd /testbed && python test_requests_api.py",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_requests.py -v",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python test_content_length_fix.py",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python debug_encode_params.py",
+      "step_index": 23
+    },
+    {
+      "command": "cd /testbed && python debug_request_creation.py",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python debug_data_none.py",
+      "step_index": 32
+    },
+    {
+      "command": "cd /testbed && python debug_stream_detection.py",
+      "step_index": 38
+    },
+    {
+      "command": "cd /testbed && python test_streaming.py",
+      "step_index": 49
+    },
+    {
+      "command": "cd /testbed && python test_amazon_case.py",
+      "step_index": 51
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "        is_stream = all([\n            hasattr(data, '__iter__'),\n            not isinstance(data, basestring),\n            not isinstance(data, dict),\n            data  # Exclude empty iterables like []\n        ])",
+          "before": "        is_stream = all([\n            hasattr(data, '__iter__'),\n            not isinstance(data, basestring),\n            not isinstance(data, dict)\n        ])",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/requests/models.py b/requests/models.py\nindex 99260453..1003d092 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -344,7 +344,8 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n         is_stream = all([\n             hasattr(data, '__iter__'),\n             not isinstance(data, basestring),\n-            not isinstance(data, dict)\n+            not isinstance(data, dict),\n+            data  # Exclude empty iterables like []\n         ])\n \n         try:",
+          "explanation": "classic_swe step 66 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        },
+        {
+          "after": "    def prepare_content_length(self, body):\n        # Methods that typically don't have a body\n        methods_without_body = ('GET', 'HEAD', 'DELETE', 'OPTIONS')\n        \n        # Check if body is effectively empty (None, empty string, empty list, etc.)\n        is_empty_body = (\n            body is None or \n            body == '' or \n            body == [] or \n            (hasattr(body, '__len__') and len(body) == 0)\n        )\n        \n        # Only set Content-Length if there's actually a body or if it's a method that expects a body\n        if not is_empty_body:\n            if hasattr(body, 'seek') and hasattr(body, 'tell'):\n                body.seek(0, 2)\n                self.headers['Content-Length'] = str(body.tell())\n                body.seek(0, 0)\n            else:\n                self.headers['Content-Length'] = str(len(body))\n        elif self.method not in methods_without_body:\n            # For methods that typically have a body (POST, PUT, PATCH), set Content-Length to 0\n            self.headers['Content-Length'] = '0'",
+          "before": "    def prepare_content_length(self, body):\n        self.headers['Content-Length'] = '0'\n        if hasattr(body, 'seek') and hasattr(body, 'tell'):\n            body.seek(0, 2)\n            self.headers['Content-Length'] = str(body.tell())\n            body.seek(0, 0)\n        elif body is not None:\n            self.headers['Content-Length'] = str(len(body))",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/requests/models.py b/requests/models.py\nindex 99260453..e59118df 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -344,7 +344,8 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n         is_stream = all([\n             hasattr(data, '__iter__'),\n             not isinstance(data, basestring),\n-            not isinstance(data, dict)\n+            not isinstance(data, dict),\n+            data  # Exclude empty iterables like []\n         ])\n \n         try:\n@@ -386,13 +387,28 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n         self.body = body\n \n     def prepare_content_length(self, body):\n-        self.headers['Content-Length'] = '0'\n-        if hasattr(body, 'seek') and hasattr(body, 'tell'):\n-            body.seek(0, 2)\n-            self.headers['Content-Length'] = str(body.tell())\n-            body.seek(0, 0)\n-        elif body is not None:\n-            self.headers['Content-Length'] = str(len(body))\n+        # Methods that typically don't have a body\n+        methods_without_body = ('GET', 'HEAD', 'DELETE', 'OPTIONS')\n+        \n+        # Check if body is effectively empty (None, empty string, empty list, etc.)\n+        is_empty_body = (\n+            body is None or \n+            body == '' or \n+            body == [] or \n+            (hasattr(body, '__len__') and len(body) == 0)\n+        )\n+        \n+        # Only set Content-Length if there's actually a body or if it's a method that expects a body\n+        if not is_empty_body:\n+            if hasattr(body, 'seek') and hasattr(body, 'tell'):\n+                body.seek(0, 2)\n+                self.headers['Content-Length'] = str(body.tell())\n+                body.seek(0, 0)\n+            else:\n+                self.headers['Content-Length'] = str(len(body))\n+        elif self.method not in methods_without_body:\n+            # For methods that typically have a body (POST, PUT, PATCH), set Content-Length to 0\n+            self.headers['Content-Length'] = '0'\n \n     def prepare_auth(self, auth):\n         \"\"\"Prepares the given HTTP auth data.\"\"\"",
+          "explanation": "classic_swe step 67 #1",
+          "filename": "requests/models.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "#!/usr/bin/env python\n\"\"\"Final test to confirm the fix is working.\"\"\"\n\nimport requests\n\ndef test_fix():\n    \"\"\"Test that the fix is working correctly.\"\"\"\n    \n    # Test GET request without data\n    req = requests.Request('GET', 'http://example.com')\n    prepared = req.prepare()\n    \n    print(\"GET request without data:\")\n    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n    print(f\"  Body: {prepared.body}\")\n    \n    # Test GET request with data\n    req = requests.Request('GET', 'http://example.com', data={'key': 'value'})\n    prepared = req.prepare()\n    \n    print(\"\\nGET request with data:\")\n    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n    print(f\"  Content-Length value: {prepared.headers.get('Content-Length', 'N/A')}\")\n    print(f\"  Body: {prepared.body}\")\n    \n    # Test POST request without data\n    req = requests.Request('POST', 'http://example.com')\n    prepared = req.prepare()\n    \n    print(\"\\nPOST request without data:\")\n    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n    print(f\"  Content-Length value: {prepared.headers.get('Content-Length', 'N/A')}\")\n    print(f\"  Body: {prepared.body}\")\n    \n    # Test POST request with data\n    req = requests.Request('POST', 'http://example.com', data={'key': 'value'})\n    prepared = req.prepare()\n    \n    print(\"\\nPOST request with data:\")\n    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n    print(f\"  Content-Length value: {prepared.headers.get('Content-Length', 'N/A')}\")\n    print(f\"  Body: {prepared.body}\")\n\nif __name__ == \"__main__\":\n    test_fix()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 00000000..d3625e39\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,45 @@\n+#!/usr/bin/env python\n+\"\"\"Final test to confirm the fix is working.\"\"\"\n+\n+import requests\n+\n+def test_fix():\n+    \"\"\"Test that the fix is working correctly.\"\"\"\n+    \n+    # Test GET request without data\n+    req = requests.Request('GET', 'http://example.com')\n+    prepared = req.prepare()\n+    \n+    print(\"GET request without data:\")\n+    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n+    print(f\"  Body: {prepared.body}\")\n+    \n+    # Test GET request with data\n+    req = requests.Request('GET', 'http://example.com', data={'key': 'value'})\n+    prepared = req.prepare()\n+    \n+    print(\"\\nGET request with data:\")\n+    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n+    print(f\"  Content-Length value: {prepared.headers.get('Content-Length', 'N/A')}\")\n+    print(f\"  Body: {prepared.body}\")\n+    \n+    # Test POST request without data\n+    req = requests.Request('POST', 'http://example.com')\n+    prepared = req.prepare()\n+    \n+    print(\"\\nPOST request without data:\")\n+    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n+    print(f\"  Content-Length value: {prepared.headers.get('Content-Length', 'N/A')}\")\n+    print(f\"  Body: {prepared.body}\")\n+    \n+    # Test POST request with data\n+    req = requests.Request('POST', 'http://example.com', data={'key': 'value'})\n+    prepared = req.prepare()\n+    \n+    print(\"\\nPOST request with data:\")\n+    print(f\"  Content-Length header present: {'Content-Length' in prepared.headers}\")\n+    print(f\"  Content-Length value: {prepared.headers.get('Content-Length', 'N/A')}\")\n+    print(f\"  Body: {prepared.body}\")\n+\n+if __name__ == \"__main__\":\n+    test_fix()\n\\ No newline at end of file\ndiff --git a/requests/models.py b/requests/models.py\nindex 99260453..e59118df 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -344,7 +344,8 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n         is_stream = all([\n             hasattr(data, '__iter__'),\n             not isinstance(data, basestring),\n-            not isinstance(data, dict)\n+            not isinstance(data, dict),\n+            data  # Exclude empty iterables like []\n         ])\n \n         try:\n@@ -386,13 +387,28 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n         self.body = body\n \n     def prepare_content_length(self, body):\n-        self.headers['Content-Length'] = '0'\n-        if hasattr(body, 'seek') and hasattr(body, 'tell'):\n-            body.seek(0, 2)\n-            self.headers['Content-Length'] = str(body.tell())\n-            body.seek(0, 0)\n-        elif body is not None:\n-            self.headers['Content-Length'] = str(len(body))\n+        # Methods that typically don't have a body\n+        methods_without_body = ('GET', 'HEAD', 'DELETE', 'OPTIONS')\n+        \n+        # Check if body is effectively empty (None, empty string, empty list, etc.)\n+        is_empty_body = (\n+            body is None or \n+            body == '' or \n+            body == [] or \n+            (hasattr(body, '__len__') and len(body) == 0)\n+        )\n+        \n+        # Only set Content-Length if there's actually a body or if it's a method that expects a body\n+        if not is_empty_body:\n+            if hasattr(body, 'seek') and hasattr(body, 'tell'):\n+                body.seek(0, 2)\n+                self.headers['Content-Length'] = str(body.tell())\n+                body.seek(0, 0)\n+            else:\n+                self.headers['Content-Length'] = str(len(body))\n+        elif self.method not in methods_without_body:\n+            # For methods that typically have a body (POST, PUT, PATCH), set Content-Length to 0\n+            self.headers['Content-Length'] = '0'\n \n     def prepare_auth(self, auth):\n         \"\"\"Prepares the given HTTP auth data.\"\"\"",
+          "explanation": "classic_swe step 68 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 68
+        }
+      ],
+      "end_step": 68,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 69
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 9
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 14
+        },
+        {
+          "command": "cd /testbed && python test_requests_api.py",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_requests.py -v",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python test_content_length_fix.py",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python debug_encode_params.py",
+          "step_index": 23
+        },
+        {
+          "command": "cd /testbed && python debug_request_creation.py",
+          "step_index": 28
+        },
+        {
+          "command": "cd /testbed && python debug_data_none.py",
+          "step_index": 32
+        },
+        {
+          "command": "cd /testbed && python debug_stream_detection.py",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python test_streaming.py",
+          "step_index": 49
+        },
+        {
+          "command": "cd /testbed && python test_amazon_case.py",
+          "step_index": 51
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 66
+    }
+  ],
+  "sub_paths": [
+    "requests/models.py"
+  ],
+  "success_step": 68,
+  "test_files": [
+    "final_test.py"
+  ]
+}

@@ -1,0 +1,329 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_error.py",
+      "step_index": 15
+    },
+    {
+      "command": "cd /testbed && python -c \"import xarray as xr; da = xr.DataArray(1, name='test'); print(hasattr(da, 'to_dataset')); print(da.to_dataset())\"",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_merge.py -v",
+      "step_index": 38
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::TestDataset::test_merge -v",
+      "step_index": 39
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::TestDataset::test_coords_merge -v",
+      "step_index": 41
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataarray.py -k \"merge\" -v",
+      "step_index": 42
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_merge.py::TestMergeMethod::test_merge_dataarray -v",
+      "step_index": 52
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport xarray as xr\nds = xr.Dataset({'a': 0})\nda = xr.DataArray(1, name='b')\nresult = ds.merge(da)\nprint('SUCCESS: Dataset merge method works')\nprint('Result:', result)\n\"",
+      "step_index": 59
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1,
+      2
+    ],
+    [
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport xarray as xr\n\nprint(\"Testing merge functionality...\")\n\n# Create test data\nds = xr.Dataset({'a': 0})\nda = xr.DataArray(1, name='b')\n\nprint(\"Dataset:\", ds)\nprint(\"DataArray:\", da)\n\n# This should work (top-level merge function)\nprint(\"\\n1. Testing top-level merge function:\")\ntry:\n    expected = xr.merge([ds, da])\n    print(\"SUCCESS: Top-level merge works\")\n    print(\"Result:\", expected)\nexcept Exception as e:\n    print(\"ERROR in top-level merge:\", e)\n\n# This should fail (dataset method)\nprint(\"\\n2. Testing dataset merge method:\")\ntry:\n    actual = ds.merge(da)\n    print(\"SUCCESS: Dataset merge method works\")\n    print(\"Result:\", actual)\nexcept Exception as e:\n    print(\"ERROR in dataset merge method:\", e)\n    import traceback\n    traceback.print_exc()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 14 create #1",
+          "filename": "reproduce_error.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 15
+        },
+        {
+          "command": "cd /testbed && python -c \"import xarray as xr; da = xr.DataArray(1, name='test'); print(hasattr(da, 'to_dataset')); print(da.to_dataset())\"",
+          "step_index": 24
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 14
+    },
+    {
+      "edits": [
+        {
+          "after": "    out = []\n    for obj in objects:\n        if isinstance(obj, Dataset):\n            variables: \"DatasetLike\" = obj\n        elif isinstance(obj, DataArray):\n            # Convert DataArray to Dataset\n            variables = obj.to_dataset()\n        else:\n            variables = {}\n            if isinstance(obj, PANDAS_TYPES):\n                obj = dict(obj.iteritems())\n            for k, v in obj.items():\n                if isinstance(v, PANDAS_TYPES):\n                    v = DataArray(v)\n                variables[k] = v\n        out.append(variables)\n    return out",
+          "before": "    out = []\n    for obj in objects:\n        if isinstance(obj, Dataset):\n            variables: \"DatasetLike\" = obj\n        else:\n            variables = {}\n            if isinstance(obj, PANDAS_TYPES):\n                obj = dict(obj.iteritems())\n            for k, v in obj.items():\n                if isinstance(v, PANDAS_TYPES):\n                    v = DataArray(v)\n                variables[k] = v\n        out.append(variables)\n    return out",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/xarray/core/merge.py b/xarray/core/merge.py\nindex 10c7804d..cf350894 100644\n--- a/xarray/core/merge.py\n+++ b/xarray/core/merge.py\n@@ -387,6 +387,9 @@ def coerce_pandas_values(objects: Iterable[\"CoercibleMapping\"]) -> List[\"Dataset\n     for obj in objects:\n         if isinstance(obj, Dataset):\n             variables: \"DatasetLike\" = obj\n+        elif isinstance(obj, DataArray):\n+            # Convert DataArray to Dataset\n+            variables = obj.to_dataset()\n         else:\n             variables = {}\n             if isinstance(obj, PANDAS_TYPES):",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "xarray/core/merge.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "def dataset_merge_method(\n    dataset: \"Dataset\",\n    other: \"CoercibleMapping\",\n    overwrite_vars: Union[Hashable, Iterable[Hashable]],\n    compat: str,\n    join: str,\n    fill_value: Any,\n) -> _MergeResult:\n    \"\"\"Guts of the Dataset.merge method.\n    \"\"\"\n    from .dataarray import DataArray\n    \n    # we are locked into supporting overwrite_vars for the Dataset.merge\n    # method due for backwards compatibility\n    # TODO: consider deprecating it?\n\n    if isinstance(overwrite_vars, Iterable) and not isinstance(overwrite_vars, str):\n        overwrite_vars = set(overwrite_vars)\n    else:\n        overwrite_vars = {overwrite_vars}\n\n    if not overwrite_vars:\n        objs = [dataset, other]\n        priority_arg = None\n    elif isinstance(other, DataArray):\n        # For DataArray, we can't use set(other) since DataArray doesn't support iteration\n        # Convert to dataset and check if overwrite_vars matches the variable names\n        other_as_dataset = other.to_dataset()\n        if overwrite_vars == set(other_as_dataset):\n            objs = [dataset, other]\n            priority_arg = 1\n        else:\n            other_overwrite: Dict[Hashable, CoercibleValue] = {}\n            other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n            for k, v in other_as_dataset.items():\n                if k in overwrite_vars:\n                    other_overwrite[k] = v\n                else:\n                    other_no_overwrite[k] = v\n            objs = [dataset, other_no_overwrite, other_overwrite]\n            priority_arg = 2\n    elif overwrite_vars == set(other):\n        objs = [dataset, other]\n        priority_arg = 1\n    else:\n        other_overwrite: Dict[Hashable, CoercibleValue] = {}\n        other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n        for k, v in other.items():\n            if k in overwrite_vars:\n                other_overwrite[k] = v\n            else:\n                other_no_overwrite[k] = v\n        objs = [dataset, other_no_overwrite, other_overwrite]\n        priority_arg = 2\n\n    return merge_core(\n        objs, compat, join, priority_arg=priority_arg, fill_value=fill_value\n    )",
+          "before": "def dataset_merge_method(\n    dataset: \"Dataset\",\n    other: \"CoercibleMapping\",\n    overwrite_vars: Union[Hashable, Iterable[Hashable]],\n    compat: str,\n    join: str,\n    fill_value: Any,\n) -> _MergeResult:\n    \"\"\"Guts of the Dataset.merge method.\n    \"\"\"\n    # we are locked into supporting overwrite_vars for the Dataset.merge\n    # method due for backwards compatibility\n    # TODO: consider deprecating it?\n\n    if isinstance(overwrite_vars, Iterable) and not isinstance(overwrite_vars, str):\n        overwrite_vars = set(overwrite_vars)\n    else:\n        overwrite_vars = {overwrite_vars}\n\n    if not overwrite_vars:\n        objs = [dataset, other]\n        priority_arg = None\n    elif overwrite_vars == set(other):\n        objs = [dataset, other]\n        priority_arg = 1\n    else:\n        other_overwrite: Dict[Hashable, CoercibleValue] = {}\n        other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n        for k, v in other.items():\n            if k in overwrite_vars:\n                other_overwrite[k] = v\n            else:\n                other_no_overwrite[k] = v\n        objs = [dataset, other_no_overwrite, other_overwrite]\n        priority_arg = 2\n\n    return merge_core(\n        objs, compat, join, priority_arg=priority_arg, fill_value=fill_value\n    )",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/xarray/core/merge.py b/xarray/core/merge.py\nindex 10c7804d..afe98155 100644\n--- a/xarray/core/merge.py\n+++ b/xarray/core/merge.py\n@@ -387,6 +387,9 @@ def coerce_pandas_values(objects: Iterable[\"CoercibleMapping\"]) -> List[\"Dataset\n     for obj in objects:\n         if isinstance(obj, Dataset):\n             variables: \"DatasetLike\" = obj\n+        elif isinstance(obj, DataArray):\n+            # Convert DataArray to Dataset\n+            variables = obj.to_dataset()\n         else:\n             variables = {}\n             if isinstance(obj, PANDAS_TYPES):\n@@ -805,6 +808,8 @@ def dataset_merge_method(\n ) -> _MergeResult:\n     \"\"\"Guts of the Dataset.merge method.\n     \"\"\"\n+    from .dataarray import DataArray\n+    \n     # we are locked into supporting overwrite_vars for the Dataset.merge\n     # method due for backwards compatibility\n     # TODO: consider deprecating it?\n@@ -817,6 +822,23 @@ def dataset_merge_method(\n     if not overwrite_vars:\n         objs = [dataset, other]\n         priority_arg = None\n+    elif isinstance(other, DataArray):\n+        # For DataArray, we can't use set(other) since DataArray doesn't support iteration\n+        # Convert to dataset and check if overwrite_vars matches the variable names\n+        other_as_dataset = other.to_dataset()\n+        if overwrite_vars == set(other_as_dataset):\n+            objs = [dataset, other]\n+            priority_arg = 1\n+        else:\n+            other_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            for k, v in other_as_dataset.items():\n+                if k in overwrite_vars:\n+                    other_overwrite[k] = v\n+                else:\n+                    other_no_overwrite[k] = v\n+            objs = [dataset, other_no_overwrite, other_overwrite]\n+            priority_arg = 2\n     elif overwrite_vars == set(other):\n         objs = [dataset, other]\n         priority_arg = 1",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "xarray/core/merge.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 29
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport xarray as xr\nimport numpy as np\n\ndef test_basic_merge():\n    \"\"\"Test basic merge functionality\"\"\"\n    print(\"=== Test 1: Basic merge ===\")\n    ds = xr.Dataset({'a': 0})\n    da = xr.DataArray(1, name='b')\n    \n    expected = xr.merge([ds, da])\n    actual = ds.merge(da)\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")\n\ndef test_merge_with_coords():\n    \"\"\"Test merge with coordinates\"\"\"\n    print(\"=== Test 2: Merge with coordinates ===\")\n    ds = xr.Dataset({'a': ('x', [1, 2, 3])}, coords={'x': [0, 1, 2]})\n    da = xr.DataArray([4, 5, 6], dims=['x'], coords={'x': [0, 1, 2]}, name='b')\n    \n    expected = xr.merge([ds, da])\n    actual = ds.merge(da)\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")\n\ndef test_merge_with_overwrite_vars():\n    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n    print(\"=== Test 3: Merge with overwrite_vars ===\")\n    ds = xr.Dataset({'a': 0, 'b': 10})\n    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n    \n    expected = xr.merge([ds, da])\n    actual = ds.merge(da, overwrite_vars=['b'])\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")\n\ndef test_merge_unnamed_dataarray():\n    \"\"\"Test merge with unnamed DataArray (should fail)\"\"\"\n    print(\"=== Test 4: Merge with unnamed DataArray ===\")\n    ds = xr.Dataset({'a': 0})\n    da = xr.DataArray(1)  # No name\n    \n    try:\n        result = ds.merge(da)\n        print(\"ERROR: Should have failed with unnamed DataArray\")\n        assert False, \"Should have failed\"\n    except ValueError as e:\n        print(\"Expected error:\", e)\n        print(\"✓ PASSED\\n\")\n\ndef test_merge_multiple_dataarrays():\n    \"\"\"Test merge with multiple DataArrays in sequence\"\"\"\n    print(\"=== Test 5: Merge multiple DataArrays ===\")\n    ds = xr.Dataset({'a': 0})\n    da1 = xr.DataArray(1, name='b')\n    da2 = xr.DataArray(2, name='c')\n    \n    # Chain merges\n    result = ds.merge(da1).merge(da2)\n    expected = xr.merge([ds, da1, da2])\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", result)\n    print(\"Equal:\", expected.equals(result))\n    assert expected.equals(result)\n    print(\"✓ PASSED\\n\")\n\ndef test_merge_with_different_compat():\n    \"\"\"Test merge with different compat options\"\"\"\n    print(\"=== Test 6: Merge with different compat options ===\")\n    ds = xr.Dataset({'a': 0})\n    da = xr.DataArray(1, name='b')\n    \n    for compat in ['no_conflicts', 'equals', 'identical', 'broadcast_equals']:\n        try:\n            result = ds.merge(da, compat=compat)\n            expected = xr.merge([ds, da], compat=compat)\n            assert expected.equals(result)\n            print(f\"✓ compat='{compat}' PASSED\")\n        except Exception as e:\n            print(f\"✗ compat='{compat}' FAILED: {e}\")\n    print()\n\ndef test_merge_with_different_joins():\n    \"\"\"Test merge with different join options\"\"\"\n    print(\"=== Test 7: Merge with different join options ===\")\n    ds = xr.Dataset({'a': ('x', [1, 2])}, coords={'x': [0, 1]})\n    da = xr.DataArray([3, 4, 5], dims=['x'], coords={'x': [1, 2, 3]}, name='b')\n    \n    for join in ['outer', 'inner', 'left', 'right']:\n        try:\n            result = ds.merge(da, join=join)\n            expected = xr.merge([ds, da], join=join)\n            assert expected.equals(result)\n            print(f\"✓ join='{join}' PASSED\")\n        except Exception as e:\n            print(f\"✗ join='{join}' FAILED: {e}\")\n    print()\n\nif __name__ == \"__main__\":\n    test_basic_merge()\n    test_merge_with_coords()\n    test_merge_with_overwrite_vars()\n    test_merge_unnamed_dataarray()\n    test_merge_multiple_dataarrays()\n    test_merge_with_different_compat()\n    test_merge_with_different_joins()\n    print(\"All tests completed!\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..b17b004d\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,122 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+def test_basic_merge():\n+    \"\"\"Test basic merge functionality\"\"\"\n+    print(\"=== Test 1: Basic merge ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_coords():\n+    \"\"\"Test merge with coordinates\"\"\"\n+    print(\"=== Test 2: Merge with coordinates ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2, 3])}, coords={'x': [0, 1, 2]})\n+    da = xr.DataArray([4, 5, 6], dims=['x'], coords={'x': [0, 1, 2]}, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_overwrite_vars():\n+    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n+    print(\"=== Test 3: Merge with overwrite_vars ===\")\n+    ds = xr.Dataset({'a': 0, 'b': 10})\n+    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da, overwrite_vars=['b'])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_unnamed_dataarray():\n+    \"\"\"Test merge with unnamed DataArray (should fail)\"\"\"\n+    print(\"=== Test 4: Merge with unnamed DataArray ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1)  # No name\n+    \n+    try:\n+        result = ds.merge(da)\n+        print(\"ERROR: Should have failed with unnamed DataArray\")\n+        assert False, \"Should have failed\"\n+    except ValueError as e:\n+        print(\"Expected error:\", e)\n+        print(\"✓ PASSED\\n\")\n+\n+def test_merge_multiple_dataarrays():\n+    \"\"\"Test merge with multiple DataArrays in sequence\"\"\"\n+    print(\"=== Test 5: Merge multiple DataArrays ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da1 = xr.DataArray(1, name='b')\n+    da2 = xr.DataArray(2, name='c')\n+    \n+    # Chain merges\n+    result = ds.merge(da1).merge(da2)\n+    expected = xr.merge([ds, da1, da2])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", result)\n+    print(\"Equal:\", expected.equals(result))\n+    assert expected.equals(result)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_different_compat():\n+    \"\"\"Test merge with different compat options\"\"\"\n+    print(\"=== Test 6: Merge with different compat options ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    for compat in ['no_conflicts', 'equals', 'identical', 'broadcast_equals']:\n+        try:\n+            result = ds.merge(da, compat=compat)\n+            expected = xr.merge([ds, da], compat=compat)\n+            assert expected.equals(result)\n+            print(f\"✓ compat='{compat}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ compat='{compat}' FAILED: {e}\")\n+    print()\n+\n+def test_merge_with_different_joins():\n+    \"\"\"Test merge with different join options\"\"\"\n+    print(\"=== Test 7: Merge with different join options ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2])}, coords={'x': [0, 1]})\n+    da = xr.DataArray([3, 4, 5], dims=['x'], coords={'x': [1, 2, 3]}, name='b')\n+    \n+    for join in ['outer', 'inner', 'left', 'right']:\n+        try:\n+            result = ds.merge(da, join=join)\n+            expected = xr.merge([ds, da], join=join)\n+            assert expected.equals(result)\n+            print(f\"✓ join='{join}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ join='{join}' FAILED: {e}\")\n+    print()\n+\n+if __name__ == \"__main__\":\n+    test_basic_merge()\n+    test_merge_with_coords()\n+    test_merge_with_overwrite_vars()\n+    test_merge_unnamed_dataarray()\n+    test_merge_multiple_dataarrays()\n+    test_merge_with_different_compat()\n+    test_merge_with_different_joins()\n+    print(\"All tests completed!\")\n\\ No newline at end of file\ndiff --git a/xarray/core/merge.py b/xarray/core/merge.py\nindex 10c7804d..afe98155 100644\n--- a/xarray/core/merge.py\n+++ b/xarray/core/merge.py\n@@ -387,6 +387,9 @@ def coerce_pandas_values(objects: Iterable[\"CoercibleMapping\"]) -> List[\"Dataset\n     for obj in objects:\n         if isinstance(obj, Dataset):\n             variables: \"DatasetLike\" = obj\n+        elif isinstance(obj, DataArray):\n+            # Convert DataArray to Dataset\n+            variables = obj.to_dataset()\n         else:\n             variables = {}\n             if isinstance(obj, PANDAS_TYPES):\n@@ -805,6 +808,8 @@ def dataset_merge_method(\n ) -> _MergeResult:\n     \"\"\"Guts of the Dataset.merge method.\n     \"\"\"\n+    from .dataarray import DataArray\n+    \n     # we are locked into supporting overwrite_vars for the Dataset.merge\n     # method due for backwards compatibility\n     # TODO: consider deprecating it?\n@@ -817,6 +822,23 @@ def dataset_merge_method(\n     if not overwrite_vars:\n         objs = [dataset, other]\n         priority_arg = None\n+    elif isinstance(other, DataArray):\n+        # For DataArray, we can't use set(other) since DataArray doesn't support iteration\n+        # Convert to dataset and check if overwrite_vars matches the variable names\n+        other_as_dataset = other.to_dataset()\n+        if overwrite_vars == set(other_as_dataset):\n+            objs = [dataset, other]\n+            priority_arg = 1\n+        else:\n+            other_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            for k, v in other_as_dataset.items():\n+                if k in overwrite_vars:\n+                    other_overwrite[k] = v\n+                else:\n+                    other_no_overwrite[k] = v\n+            objs = [dataset, other_no_overwrite, other_overwrite]\n+            priority_arg = 2\n     elif overwrite_vars == set(other):\n         objs = [dataset, other]\n         priority_arg = 1",
+          "explanation": "classic_swe step 30 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 31
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "def test_merge_with_overwrite_vars():\n    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n    print(\"=== Test 3: Merge with overwrite_vars ===\")\n    ds = xr.Dataset({'a': 0, 'b': 10})\n    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n    \n    expected = xr.merge([ds, da], compat='override')\n    actual = ds.merge(da, overwrite_vars=['b'])\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")",
+          "before": "def test_merge_with_overwrite_vars():\n    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n    print(\"=== Test 3: Merge with overwrite_vars ===\")\n    ds = xr.Dataset({'a': 0, 'b': 10})\n    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n    \n    expected = xr.merge([ds, da])\n    actual = ds.merge(da, overwrite_vars=['b'])\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..cbb6a586\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,122 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+def test_basic_merge():\n+    \"\"\"Test basic merge functionality\"\"\"\n+    print(\"=== Test 1: Basic merge ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_coords():\n+    \"\"\"Test merge with coordinates\"\"\"\n+    print(\"=== Test 2: Merge with coordinates ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2, 3])}, coords={'x': [0, 1, 2]})\n+    da = xr.DataArray([4, 5, 6], dims=['x'], coords={'x': [0, 1, 2]}, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_overwrite_vars():\n+    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n+    print(\"=== Test 3: Merge with overwrite_vars ===\")\n+    ds = xr.Dataset({'a': 0, 'b': 10})\n+    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n+    \n+    expected = xr.merge([ds, da], compat='override')\n+    actual = ds.merge(da, overwrite_vars=['b'])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_unnamed_dataarray():\n+    \"\"\"Test merge with unnamed DataArray (should fail)\"\"\"\n+    print(\"=== Test 4: Merge with unnamed DataArray ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1)  # No name\n+    \n+    try:\n+        result = ds.merge(da)\n+        print(\"ERROR: Should have failed with unnamed DataArray\")\n+        assert False, \"Should have failed\"\n+    except ValueError as e:\n+        print(\"Expected error:\", e)\n+        print(\"✓ PASSED\\n\")\n+\n+def test_merge_multiple_dataarrays():\n+    \"\"\"Test merge with multiple DataArrays in sequence\"\"\"\n+    print(\"=== Test 5: Merge multiple DataArrays ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da1 = xr.DataArray(1, name='b')\n+    da2 = xr.DataArray(2, name='c')\n+    \n+    # Chain merges\n+    result = ds.merge(da1).merge(da2)\n+    expected = xr.merge([ds, da1, da2])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", result)\n+    print(\"Equal:\", expected.equals(result))\n+    assert expected.equals(result)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_different_compat():\n+    \"\"\"Test merge with different compat options\"\"\"\n+    print(\"=== Test 6: Merge with different compat options ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    for compat in ['no_conflicts', 'equals', 'identical', 'broadcast_equals']:\n+        try:\n+            result = ds.merge(da, compat=compat)\n+            expected = xr.merge([ds, da], compat=compat)\n+            assert expected.equals(result)\n+            print(f\"✓ compat='{compat}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ compat='{compat}' FAILED: {e}\")\n+    print()\n+\n+def test_merge_with_different_joins():\n+    \"\"\"Test merge with different join options\"\"\"\n+    print(\"=== Test 7: Merge with different join options ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2])}, coords={'x': [0, 1]})\n+    da = xr.DataArray([3, 4, 5], dims=['x'], coords={'x': [1, 2, 3]}, name='b')\n+    \n+    for join in ['outer', 'inner', 'left', 'right']:\n+        try:\n+            result = ds.merge(da, join=join)\n+            expected = xr.merge([ds, da], join=join)\n+            assert expected.equals(result)\n+            print(f\"✓ join='{join}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ join='{join}' FAILED: {e}\")\n+    print()\n+\n+if __name__ == \"__main__\":\n+    test_basic_merge()\n+    test_merge_with_coords()\n+    test_merge_with_overwrite_vars()\n+    test_merge_unnamed_dataarray()\n+    test_merge_multiple_dataarrays()\n+    test_merge_with_different_compat()\n+    test_merge_with_different_joins()\n+    print(\"All tests completed!\")\n\\ No newline at end of file\ndiff --git a/xarray/core/merge.py b/xarray/core/merge.py\nindex 10c7804d..afe98155 100644\n--- a/xarray/core/merge.py\n+++ b/xarray/core/merge.py\n@@ -387,6 +387,9 @@ def coerce_pandas_values(objects: Iterable[\"CoercibleMapping\"]) -> List[\"Dataset\n     for obj in objects:\n         if isinstance(obj, Dataset):\n             variables: \"DatasetLike\" = obj\n+        elif isinstance(obj, DataArray):\n+            # Convert DataArray to Dataset\n+            variables = obj.to_dataset()\n         else:\n             variables = {}\n             if isinstance(obj, PANDAS_TYPES):\n@@ -805,6 +808,8 @@ def dataset_merge_method(\n ) -> _MergeResult:\n     \"\"\"Guts of the Dataset.merge method.\n     \"\"\"\n+    from .dataarray import DataArray\n+    \n     # we are locked into supporting overwrite_vars for the Dataset.merge\n     # method due for backwards compatibility\n     # TODO: consider deprecating it?\n@@ -817,6 +822,23 @@ def dataset_merge_method(\n     if not overwrite_vars:\n         objs = [dataset, other]\n         priority_arg = None\n+    elif isinstance(other, DataArray):\n+        # For DataArray, we can't use set(other) since DataArray doesn't support iteration\n+        # Convert to dataset and check if overwrite_vars matches the variable names\n+        other_as_dataset = other.to_dataset()\n+        if overwrite_vars == set(other_as_dataset):\n+            objs = [dataset, other]\n+            priority_arg = 1\n+        else:\n+            other_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            for k, v in other_as_dataset.items():\n+                if k in overwrite_vars:\n+                    other_overwrite[k] = v\n+                else:\n+                    other_no_overwrite[k] = v\n+            objs = [dataset, other_no_overwrite, other_overwrite]\n+            priority_arg = 2\n     elif overwrite_vars == set(other):\n         objs = [dataset, other]\n         priority_arg = 1",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 33
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "def test_merge_with_overwrite_vars():\n    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n    print(\"=== Test 3: Merge with overwrite_vars ===\")\n    ds = xr.Dataset({'a': 0, 'b': 10})\n    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n    \n    # When using overwrite_vars, the value from 'other' (da) should take precedence\n    expected = xr.Dataset({'a': 0, 'b': 1})\n    actual = ds.merge(da, overwrite_vars=['b'])\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")",
+          "before": "def test_merge_with_overwrite_vars():\n    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n    print(\"=== Test 3: Merge with overwrite_vars ===\")\n    ds = xr.Dataset({'a': 0, 'b': 10})\n    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n    \n    expected = xr.merge([ds, da], compat='override')\n    actual = ds.merge(da, overwrite_vars=['b'])\n    \n    print(\"Expected:\", expected)\n    print(\"Actual:\", actual)\n    print(\"Equal:\", expected.equals(actual))\n    assert expected.equals(actual)\n    print(\"✓ PASSED\\n\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..9b97fc55\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,123 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+def test_basic_merge():\n+    \"\"\"Test basic merge functionality\"\"\"\n+    print(\"=== Test 1: Basic merge ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_coords():\n+    \"\"\"Test merge with coordinates\"\"\"\n+    print(\"=== Test 2: Merge with coordinates ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2, 3])}, coords={'x': [0, 1, 2]})\n+    da = xr.DataArray([4, 5, 6], dims=['x'], coords={'x': [0, 1, 2]}, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_overwrite_vars():\n+    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n+    print(\"=== Test 3: Merge with overwrite_vars ===\")\n+    ds = xr.Dataset({'a': 0, 'b': 10})\n+    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n+    \n+    # When using overwrite_vars, the value from 'other' (da) should take precedence\n+    expected = xr.Dataset({'a': 0, 'b': 1})\n+    actual = ds.merge(da, overwrite_vars=['b'])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_unnamed_dataarray():\n+    \"\"\"Test merge with unnamed DataArray (should fail)\"\"\"\n+    print(\"=== Test 4: Merge with unnamed DataArray ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1)  # No name\n+    \n+    try:\n+        result = ds.merge(da)\n+        print(\"ERROR: Should have failed with unnamed DataArray\")\n+        assert False, \"Should have failed\"\n+    except ValueError as e:\n+        print(\"Expected error:\", e)\n+        print(\"✓ PASSED\\n\")\n+\n+def test_merge_multiple_dataarrays():\n+    \"\"\"Test merge with multiple DataArrays in sequence\"\"\"\n+    print(\"=== Test 5: Merge multiple DataArrays ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da1 = xr.DataArray(1, name='b')\n+    da2 = xr.DataArray(2, name='c')\n+    \n+    # Chain merges\n+    result = ds.merge(da1).merge(da2)\n+    expected = xr.merge([ds, da1, da2])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", result)\n+    print(\"Equal:\", expected.equals(result))\n+    assert expected.equals(result)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_different_compat():\n+    \"\"\"Test merge with different compat options\"\"\"\n+    print(\"=== Test 6: Merge with different compat options ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    for compat in ['no_conflicts', 'equals', 'identical', 'broadcast_equals']:\n+        try:\n+            result = ds.merge(da, compat=compat)\n+            expected = xr.merge([ds, da], compat=compat)\n+            assert expected.equals(result)\n+            print(f\"✓ compat='{compat}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ compat='{compat}' FAILED: {e}\")\n+    print()\n+\n+def test_merge_with_different_joins():\n+    \"\"\"Test merge with different join options\"\"\"\n+    print(\"=== Test 7: Merge with different join options ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2])}, coords={'x': [0, 1]})\n+    da = xr.DataArray([3, 4, 5], dims=['x'], coords={'x': [1, 2, 3]}, name='b')\n+    \n+    for join in ['outer', 'inner', 'left', 'right']:\n+        try:\n+            result = ds.merge(da, join=join)\n+            expected = xr.merge([ds, da], join=join)\n+            assert expected.equals(result)\n+            print(f\"✓ join='{join}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ join='{join}' FAILED: {e}\")\n+    print()\n+\n+if __name__ == \"__main__\":\n+    test_basic_merge()\n+    test_merge_with_coords()\n+    test_merge_with_overwrite_vars()\n+    test_merge_unnamed_dataarray()\n+    test_merge_multiple_dataarrays()\n+    test_merge_with_different_compat()\n+    test_merge_with_different_joins()\n+    print(\"All tests completed!\")\n\\ No newline at end of file\ndiff --git a/xarray/core/merge.py b/xarray/core/merge.py\nindex 10c7804d..afe98155 100644\n--- a/xarray/core/merge.py\n+++ b/xarray/core/merge.py\n@@ -387,6 +387,9 @@ def coerce_pandas_values(objects: Iterable[\"CoercibleMapping\"]) -> List[\"Dataset\n     for obj in objects:\n         if isinstance(obj, Dataset):\n             variables: \"DatasetLike\" = obj\n+        elif isinstance(obj, DataArray):\n+            # Convert DataArray to Dataset\n+            variables = obj.to_dataset()\n         else:\n             variables = {}\n             if isinstance(obj, PANDAS_TYPES):\n@@ -805,6 +808,8 @@ def dataset_merge_method(\n ) -> _MergeResult:\n     \"\"\"Guts of the Dataset.merge method.\n     \"\"\"\n+    from .dataarray import DataArray\n+    \n     # we are locked into supporting overwrite_vars for the Dataset.merge\n     # method due for backwards compatibility\n     # TODO: consider deprecating it?\n@@ -817,6 +822,23 @@ def dataset_merge_method(\n     if not overwrite_vars:\n         objs = [dataset, other]\n         priority_arg = None\n+    elif isinstance(other, DataArray):\n+        # For DataArray, we can't use set(other) since DataArray doesn't support iteration\n+        # Convert to dataset and check if overwrite_vars matches the variable names\n+        other_as_dataset = other.to_dataset()\n+        if overwrite_vars == set(other_as_dataset):\n+            objs = [dataset, other]\n+            priority_arg = 1\n+        else:\n+            other_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            for k, v in other_as_dataset.items():\n+                if k in overwrite_vars:\n+                    other_overwrite[k] = v\n+                else:\n+                    other_no_overwrite[k] = v\n+            objs = [dataset, other_no_overwrite, other_overwrite]\n+            priority_arg = 2\n     elif overwrite_vars == set(other):\n         objs = [dataset, other]\n         priority_arg = 1",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 36
+        },
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 37
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_merge.py -v",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::TestDataset::test_merge -v",
+          "step_index": 39
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::TestDataset::test_coords_merge -v",
+          "step_index": 41
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataarray.py -k \"merge\" -v",
+          "step_index": 42
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "        with pytest.raises(xr.MergeError):\n            ds3 = xr.Dataset({\"a\": (\"y\", [2, 3]), \"y\": [1, 2]})\n            ds1.merge(ds3, compat=\"no_conflicts\")\n\n    def test_merge_dataarray(self):\n        # Test merging DataArray into Dataset using dataset method\n        ds = xr.Dataset({\"a\": 0})\n        da = xr.DataArray(1, name=\"b\")\n        \n        # Test basic merge\n        expected = xr.merge([ds, da])\n        actual = ds.merge(da)\n        assert expected.identical(actual)\n        \n        # Test merge with coordinates\n        ds_coords = xr.Dataset({\"a\": (\"x\", [1, 2, 3])}, coords={\"x\": [0, 1, 2]})\n        da_coords = xr.DataArray([4, 5, 6], dims=[\"x\"], coords={\"x\": [0, 1, 2]}, name=\"b\")\n        expected_coords = xr.merge([ds_coords, da_coords])\n        actual_coords = ds_coords.merge(da_coords)\n        assert expected_coords.identical(actual_coords)\n        \n        # Test merge with overwrite_vars\n        ds_overwrite = xr.Dataset({\"a\": 0, \"b\": 10})\n        da_overwrite = xr.DataArray(1, name=\"b\")\n        expected_overwrite = xr.Dataset({\"a\": 0, \"b\": 1})\n        actual_overwrite = ds_overwrite.merge(da_overwrite, overwrite_vars=[\"b\"])\n        assert expected_overwrite.identical(actual_overwrite)\n        \n        # Test merge with unnamed DataArray should fail\n        da_unnamed = xr.DataArray(1)\n        with pytest.raises(ValueError, match=\"unable to convert unnamed DataArray\"):\n            ds.merge(da_unnamed)",
+          "before": "        with pytest.raises(xr.MergeError):\n            ds3 = xr.Dataset({\"a\": (\"y\", [2, 3]), \"y\": [1, 2]})\n            ds1.merge(ds3, compat=\"no_conflicts\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 00000000..e953f817\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+\n+print(\"Testing merge functionality...\")\n+\n+# Create test data\n+ds = xr.Dataset({'a': 0})\n+da = xr.DataArray(1, name='b')\n+\n+print(\"Dataset:\", ds)\n+print(\"DataArray:\", da)\n+\n+# This should work (top-level merge function)\n+print(\"\\n1. Testing top-level merge function:\")\n+try:\n+    expected = xr.merge([ds, da])\n+    print(\"SUCCESS: Top-level merge works\")\n+    print(\"Result:\", expected)\n+except Exception as e:\n+    print(\"ERROR in top-level merge:\", e)\n+\n+# This should fail (dataset method)\n+print(\"\\n2. Testing dataset merge method:\")\n+try:\n+    actual = ds.merge(da)\n+    print(\"SUCCESS: Dataset merge method works\")\n+    print(\"Result:\", actual)\n+except Exception as e:\n+    print(\"ERROR in dataset merge method:\", e)\n+    import traceback\n+    traceback.print_exc()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..9b97fc55\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,123 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+def test_basic_merge():\n+    \"\"\"Test basic merge functionality\"\"\"\n+    print(\"=== Test 1: Basic merge ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_coords():\n+    \"\"\"Test merge with coordinates\"\"\"\n+    print(\"=== Test 2: Merge with coordinates ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2, 3])}, coords={'x': [0, 1, 2]})\n+    da = xr.DataArray([4, 5, 6], dims=['x'], coords={'x': [0, 1, 2]}, name='b')\n+    \n+    expected = xr.merge([ds, da])\n+    actual = ds.merge(da)\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_overwrite_vars():\n+    \"\"\"Test merge with overwrite_vars parameter\"\"\"\n+    print(\"=== Test 3: Merge with overwrite_vars ===\")\n+    ds = xr.Dataset({'a': 0, 'b': 10})\n+    da = xr.DataArray(1, name='b')  # This should overwrite 'b' in ds\n+    \n+    # When using overwrite_vars, the value from 'other' (da) should take precedence\n+    expected = xr.Dataset({'a': 0, 'b': 1})\n+    actual = ds.merge(da, overwrite_vars=['b'])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", actual)\n+    print(\"Equal:\", expected.equals(actual))\n+    assert expected.equals(actual)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_unnamed_dataarray():\n+    \"\"\"Test merge with unnamed DataArray (should fail)\"\"\"\n+    print(\"=== Test 4: Merge with unnamed DataArray ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1)  # No name\n+    \n+    try:\n+        result = ds.merge(da)\n+        print(\"ERROR: Should have failed with unnamed DataArray\")\n+        assert False, \"Should have failed\"\n+    except ValueError as e:\n+        print(\"Expected error:\", e)\n+        print(\"✓ PASSED\\n\")\n+\n+def test_merge_multiple_dataarrays():\n+    \"\"\"Test merge with multiple DataArrays in sequence\"\"\"\n+    print(\"=== Test 5: Merge multiple DataArrays ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da1 = xr.DataArray(1, name='b')\n+    da2 = xr.DataArray(2, name='c')\n+    \n+    # Chain merges\n+    result = ds.merge(da1).merge(da2)\n+    expected = xr.merge([ds, da1, da2])\n+    \n+    print(\"Expected:\", expected)\n+    print(\"Actual:\", result)\n+    print(\"Equal:\", expected.equals(result))\n+    assert expected.equals(result)\n+    print(\"✓ PASSED\\n\")\n+\n+def test_merge_with_different_compat():\n+    \"\"\"Test merge with different compat options\"\"\"\n+    print(\"=== Test 6: Merge with different compat options ===\")\n+    ds = xr.Dataset({'a': 0})\n+    da = xr.DataArray(1, name='b')\n+    \n+    for compat in ['no_conflicts', 'equals', 'identical', 'broadcast_equals']:\n+        try:\n+            result = ds.merge(da, compat=compat)\n+            expected = xr.merge([ds, da], compat=compat)\n+            assert expected.equals(result)\n+            print(f\"✓ compat='{compat}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ compat='{compat}' FAILED: {e}\")\n+    print()\n+\n+def test_merge_with_different_joins():\n+    \"\"\"Test merge with different join options\"\"\"\n+    print(\"=== Test 7: Merge with different join options ===\")\n+    ds = xr.Dataset({'a': ('x', [1, 2])}, coords={'x': [0, 1]})\n+    da = xr.DataArray([3, 4, 5], dims=['x'], coords={'x': [1, 2, 3]}, name='b')\n+    \n+    for join in ['outer', 'inner', 'left', 'right']:\n+        try:\n+            result = ds.merge(da, join=join)\n+            expected = xr.merge([ds, da], join=join)\n+            assert expected.equals(result)\n+            print(f\"✓ join='{join}' PASSED\")\n+        except Exception as e:\n+            print(f\"✗ join='{join}' FAILED: {e}\")\n+    print()\n+\n+if __name__ == \"__main__\":\n+    test_basic_merge()\n+    test_merge_with_coords()\n+    test_merge_with_overwrite_vars()\n+    test_merge_unnamed_dataarray()\n+    test_merge_multiple_dataarrays()\n+    test_merge_with_different_compat()\n+    test_merge_with_different_joins()\n+    print(\"All tests completed!\")\n\\ No newline at end of file\ndiff --git a/xarray/core/merge.py b/xarray/core/merge.py\nindex 10c7804d..afe98155 100644\n--- a/xarray/core/merge.py\n+++ b/xarray/core/merge.py\n@@ -387,6 +387,9 @@ def coerce_pandas_values(objects: Iterable[\"CoercibleMapping\"]) -> List[\"Dataset\n     for obj in objects:\n         if isinstance(obj, Dataset):\n             variables: \"DatasetLike\" = obj\n+        elif isinstance(obj, DataArray):\n+            # Convert DataArray to Dataset\n+            variables = obj.to_dataset()\n         else:\n             variables = {}\n             if isinstance(obj, PANDAS_TYPES):\n@@ -805,6 +808,8 @@ def dataset_merge_method(\n ) -> _MergeResult:\n     \"\"\"Guts of the Dataset.merge method.\n     \"\"\"\n+    from .dataarray import DataArray\n+    \n     # we are locked into supporting overwrite_vars for the Dataset.merge\n     # method due for backwards compatibility\n     # TODO: consider deprecating it?\n@@ -817,6 +822,23 @@ def dataset_merge_method(\n     if not overwrite_vars:\n         objs = [dataset, other]\n         priority_arg = None\n+    elif isinstance(other, DataArray):\n+        # For DataArray, we can't use set(other) since DataArray doesn't support iteration\n+        # Convert to dataset and check if overwrite_vars matches the variable names\n+        other_as_dataset = other.to_dataset()\n+        if overwrite_vars == set(other_as_dataset):\n+            objs = [dataset, other]\n+            priority_arg = 1\n+        else:\n+            other_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            other_no_overwrite: Dict[Hashable, CoercibleValue] = {}\n+            for k, v in other_as_dataset.items():\n+                if k in overwrite_vars:\n+                    other_overwrite[k] = v\n+                else:\n+                    other_no_overwrite[k] = v\n+            objs = [dataset, other_no_overwrite, other_overwrite]\n+            priority_arg = 2\n     elif overwrite_vars == set(other):\n         objs = [dataset, other]\n         priority_arg = 1\ndiff --git a/xarray/tests/test_merge.py b/xarray/tests/test_merge.py\nindex c1e6c7a5..ba4c2bd8 100644\n--- a/xarray/tests/test_merge.py\n+++ b/xarray/tests/test_merge.py\n@@ -253,3 +253,32 @@ class TestMergeMethod:\n         with pytest.raises(xr.MergeError):\n             ds3 = xr.Dataset({\"a\": (\"y\", [2, 3]), \"y\": [1, 2]})\n             ds1.merge(ds3, compat=\"no_conflicts\")\n+\n+    def test_merge_dataarray(self):\n+        # Test merging DataArray into Dataset using dataset method\n+        ds = xr.Dataset({\"a\": 0})\n+        da = xr.DataArray(1, name=\"b\")\n+        \n+        # Test basic merge\n+        expected = xr.merge([ds, da])\n+        actual = ds.merge(da)\n+        assert expected.identical(actual)\n+        \n+        # Test merge with coordinates\n+        ds_coords = xr.Dataset({\"a\": (\"x\", [1, 2, 3])}, coords={\"x\": [0, 1, 2]})\n+        da_coords = xr.DataArray([4, 5, 6], dims=[\"x\"], coords={\"x\": [0, 1, 2]}, name=\"b\")\n+        expected_coords = xr.merge([ds_coords, da_coords])\n+        actual_coords = ds_coords.merge(da_coords)\n+        assert expected_coords.identical(actual_coords)\n+        \n+        # Test merge with overwrite_vars\n+        ds_overwrite = xr.Dataset({\"a\": 0, \"b\": 10})\n+        da_overwrite = xr.DataArray(1, name=\"b\")\n+        expected_overwrite = xr.Dataset({\"a\": 0, \"b\": 1})\n+        actual_overwrite = ds_overwrite.merge(da_overwrite, overwrite_vars=[\"b\"])\n+        assert expected_overwrite.identical(actual_overwrite)\n+        \n+        # Test merge with unnamed DataArray should fail\n+        da_unnamed = xr.DataArray(1)\n+        with pytest.raises(ValueError, match=\"unable to convert unnamed DataArray\"):\n+            ds.merge(da_unnamed)",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "xarray/tests/test_merge.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        }
+      ],
+      "end_step": 51,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_merge.py::TestMergeMethod::test_merge_dataarray -v",
+          "step_index": 52
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_merge.py -v",
+          "step_index": 53
+        },
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 56
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport xarray as xr\nds = xr.Dataset({'a': 0})\nda = xr.DataArray(1, name='b')\nresult = ds.merge(da)\nprint('SUCCESS: Dataset merge method works')\nprint('Result:', result)\n\"",
+          "step_index": 59
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 51
+    }
+  ],
+  "sub_paths": [
+    "xarray/core/merge.py",
+    "xarray/tests/test_merge.py"
+  ],
+  "success_step": 51,
+  "test_files": [
+    "reproduce_error.py",
+    "test_edge_cases.py",
+    "xarray/tests/test_merge.py"
+  ]
+}

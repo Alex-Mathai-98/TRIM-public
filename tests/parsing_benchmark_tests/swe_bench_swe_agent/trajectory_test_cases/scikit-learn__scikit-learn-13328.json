@@ -1,0 +1,378 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_error.py",
+      "step_index": 6
+    },
+    {
+      "command": "cd /testbed && python test_linear_regression.py",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 29
+    },
+    {
+      "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py -v",
+      "step_index": 30
+    },
+    {
+      "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py::test_huber_boolean_input -v",
+      "step_index": 35
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom sklearn.linear_model import HuberRegressor, LinearRegression\nfrom sklearn.datasets import make_regression\n\n# Test that our fix doesn't affect normal usage\nX, y = make_regression(n_samples=100, n_features=5, random_state=42)\n\n# Test HuberRegressor with float data\nhuber = HuberRegressor()\nhuber.fit(X, y)\nprint('HuberRegressor with float data: SUCCESS')\n\n# Test HuberRegressor with boolean data\nX_bool = X > 0\nhuber_bool = HuberRegressor()\nhuber_bool.fit(X_bool, y)\nprint('HuberRegressor with boolean data: SUCCESS')\n\n# Test that LinearRegression still works\nlr = LinearRegression()\nlr.fit(X_bool, y)\nprint('LinearRegression with boolean data: SUCCESS')\n\nprint('All tests passed!')\n\"",
+      "step_index": 40
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom sklearn.linear_model import HuberRegressor\nfrom sklearn.datasets import make_regression\n\n# Test that float32 input is preserved as float32\nX, y = make_regression(n_samples=100, n_features=3, random_state=42)\nX_float32 = X.astype(np.float32)\n\nprint('Original X dtype:', X_float32.dtype)\n\nhuber = HuberRegressor()\nhuber.fit(X_float32, y)\n\nprint('X dtype after fit:', X_float32.dtype)\nprint('SUCCESS: float32 dtype preserved')\n\n# Test that float64 input is preserved as float64\nX_float64 = X.astype(np.float64)\nprint('Original X dtype:', X_float64.dtype)\n\nhuber = HuberRegressor()\nhuber.fit(X_float64, y)\n\nprint('X dtype after fit:', X_float64.dtype)\nprint('SUCCESS: float64 dtype preserved')\n\"",
+      "step_index": 41
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom scipy import sparse\nfrom sklearn.linear_model import HuberRegressor\nfrom sklearn.datasets import make_regression\n\n# Test with sparse matrices\nX, y = make_regression(n_samples=100, n_features=5, random_state=42)\nX_sparse = sparse.csr_matrix(X)\n\nprint('Testing HuberRegressor with sparse matrix...')\nhuber = HuberRegressor()\nhuber.fit(X_sparse, y)\nprint('SUCCESS: HuberRegressor works with sparse matrices')\n\n# Test prediction\ny_pred = huber.predict(X_sparse)\nprint('SUCCESS: Prediction works with sparse matrices')\nprint('Prediction shape:', y_pred.shape)\n\"",
+      "step_index": 42
+    },
+    {
+      "command": "cd /testbed && python test_pr_description.py",
+      "step_index": 44
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport time\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\n# Test with larger dataset\nprint('Testing performance with larger dataset...')\nX, y = make_regression(n_samples=5000, n_features=20, random_state=42)\n\n# Test with float data\nstart_time = time.time()\nhuber_float = HuberRegressor().fit(X, y)\nfloat_time = time.time() - start_time\n\n# Test with boolean data (converted internally)\nX_bool = X > 0\nstart_time = time.time()\nhuber_bool = HuberRegressor().fit(X_bool, y)\nbool_time = time.time() - start_time\n\nprint(f'Float data fit time: {float_time:.3f} seconds')\nprint(f'Boolean data fit time: {bool_time:.3f} seconds')\nprint(f'Ratio: {bool_time/float_time:.2f}x')\n\nif bool_time/float_time < 2.0:  # Allow up to 2x slower\n    print('✓ Performance is acceptable')\nelse:\n    print('⚠ Performance may be degraded')\n\"",
+      "step_index": 45
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\n# Test the exact case from the PR description\nX, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\nX_bool = X > 0\n\nprint('Testing HuberRegressor with boolean X...')\ntry:\n    huber = HuberRegressor().fit(X_bool, y)\n    print('SUCCESS: HuberRegressor now works with boolean X!')\n    print('Coefficients:', huber.coef_)\nexcept Exception as e:\n    print(f'FAILED: {e}')\n\"",
+      "step_index": 59
+    }
+  ],
+  "patch_list_shape": [
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\nprint(\"Testing HuberRegressor with boolean X...\")\n\n# Random data\nX, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\nX_bool = X > 0\nX_bool_as_float = np.asarray(X_bool, dtype=float)\n\nprint(\"X shape:\", X.shape)\nprint(\"X_bool shape:\", X_bool.shape)\nprint(\"X_bool dtype:\", X_bool.dtype)\nprint(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n\n# Test 1: Works with float X\nprint(\"\\nTest 1: Fitting with float X...\")\ntry:\n    huber = HuberRegressor().fit(X, y)\n    print(\"SUCCESS: HuberRegressor works with float X\")\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 2: Fails with boolean X\nprint(\"\\nTest 2: Fitting with boolean X...\")\ntry:\n    huber = HuberRegressor().fit(X_bool, y)\n    print(\"SUCCESS: HuberRegressor works with boolean X\")\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 3: Works with boolean X converted to float\nprint(\"\\nTest 3: Fitting with boolean X converted to float...\")\ntry:\n    huber = HuberRegressor().fit(X_bool_as_float, y)\n    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\nexcept Exception as e:\n    print(f\"FAILED: {e}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 5 create #1",
+          "filename": "reproduce_error.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 5
+        }
+      ],
+      "end_step": 5,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 6
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 5
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import LinearRegression\n\nprint(\"Testing LinearRegression with boolean X...\")\n\n# Random data\nX, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\nX_bool = X > 0\n\nprint(\"X_bool dtype:\", X_bool.dtype)\n\n# Test: LinearRegression with boolean X\nprint(\"\\nTest: Fitting LinearRegression with boolean X...\")\ntry:\n    lr = LinearRegression().fit(X_bool, y)\n    print(\"SUCCESS: LinearRegression works with boolean X\")\n    print(\"Coefficients:\", lr.coef_)\nexcept Exception as e:\n    print(f\"FAILED: {e}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/test_linear_regression.py b/test_linear_regression.py\nnew file mode 100644\nindex 000000000..ca3c0f581\n--- /dev/null\n+++ b/test_linear_regression.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import LinearRegression\n+\n+print(\"Testing LinearRegression with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+\n+print(\"X_bool dtype:\", X_bool.dtype)\n+\n+# Test: LinearRegression with boolean X\n+print(\"\\nTest: Fitting LinearRegression with boolean X...\")\n+try:\n+    lr = LinearRegression().fit(X_bool, y)\n+    print(\"SUCCESS: LinearRegression works with boolean X\")\n+    print(\"Coefficients:\", lr.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 20 create #1",
+          "filename": "test_linear_regression.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_linear_regression.py",
+          "step_index": 21
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "        X, y = check_X_y(\n            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n            dtype=[np.float64, np.float32])",
+          "before": "        X, y = check_X_y(\n            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/sklearn/linear_model/huber.py b/sklearn/linear_model/huber.py\nindex 65c686400..892b57eef 100644\n--- a/sklearn/linear_model/huber.py\n+++ b/sklearn/linear_model/huber.py\n@@ -251,7 +251,8 @@ class HuberRegressor(LinearModel, RegressorMixin, BaseEstimator):\n         self : object\n         \"\"\"\n         X, y = check_X_y(\n-            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)\n+            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n+            dtype=[np.float64, np.float32])\n         if sample_weight is not None:\n             sample_weight = np.array(sample_weight)\n             check_consistent_length(y, sample_weight)\ndiff --git a/test_linear_regression.py b/test_linear_regression.py\nnew file mode 100644\nindex 000000000..ca3c0f581\n--- /dev/null\n+++ b/test_linear_regression.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import LinearRegression\n+\n+print(\"Testing LinearRegression with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+\n+print(\"X_bool dtype:\", X_bool.dtype)\n+\n+# Test: LinearRegression with boolean X\n+print(\"\\nTest: Fitting LinearRegression with boolean X...\")\n+try:\n+    lr = LinearRegression().fit(X_bool, y)\n+    print(\"SUCCESS: LinearRegression works with boolean X\")\n+    print(\"Coefficients:\", lr.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "sklearn/linear_model/huber.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 27
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\nprint(\"Testing HuberRegressor edge cases...\")\n\n# Test 1: Boolean array with all True\nprint(\"\\nTest 1: Boolean array with all True\")\nX_all_true = np.ones((100, 3), dtype=bool)\ny = np.random.randn(100)\ntry:\n    huber = HuberRegressor().fit(X_all_true, y)\n    print(\"SUCCESS: Works with all True boolean array\")\n    print(\"Coefficients:\", huber.coef_)\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 2: Boolean array with all False\nprint(\"\\nTest 2: Boolean array with all False\")\nX_all_false = np.zeros((100, 3), dtype=bool)\ny = np.random.randn(100)\ntry:\n    huber = HuberRegressor().fit(X_all_false, y)\n    print(\"SUCCESS: Works with all False boolean array\")\n    print(\"Coefficients:\", huber.coef_)\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 3: Mixed boolean array\nprint(\"\\nTest 3: Mixed boolean array\")\nX_mixed = np.random.rand(100, 3) > 0.5\ny = np.random.randn(100)\ntry:\n    huber = HuberRegressor().fit(X_mixed, y)\n    print(\"SUCCESS: Works with mixed boolean array\")\n    print(\"Coefficients:\", huber.coef_)\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 4: Integer array (should still work)\nprint(\"\\nTest 4: Integer array\")\nX_int = np.random.randint(0, 10, (100, 3))\ny = np.random.randn(100)\ntry:\n    huber = HuberRegressor().fit(X_int, y)\n    print(\"SUCCESS: Works with integer array\")\n    print(\"Coefficients:\", huber.coef_)\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 5: Float32 array (should still work)\nprint(\"\\nTest 5: Float32 array\")\nX_float32 = np.random.randn(100, 3).astype(np.float32)\ny = np.random.randn(100)\ntry:\n    huber = HuberRegressor().fit(X_float32, y)\n    print(\"SUCCESS: Works with float32 array\")\n    print(\"Coefficients:\", huber.coef_)\n    print(\"X dtype after fit:\", X_float32.dtype)  # Should remain float32\nexcept Exception as e:\n    print(f\"FAILED: {e}\")\n\n# Test 6: Float64 array (should still work)\nprint(\"\\nTest 6: Float64 array\")\nX_float64 = np.random.randn(100, 3).astype(np.float64)\ny = np.random.randn(100)\ntry:\n    huber = HuberRegressor().fit(X_float64, y)\n    print(\"SUCCESS: Works with float64 array\")\n    print(\"Coefficients:\", huber.coef_)\n    print(\"X dtype after fit:\", X_float64.dtype)  # Should remain float64\nexcept Exception as e:\n    print(f\"FAILED: {e}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/sklearn/linear_model/huber.py b/sklearn/linear_model/huber.py\nindex 65c686400..892b57eef 100644\n--- a/sklearn/linear_model/huber.py\n+++ b/sklearn/linear_model/huber.py\n@@ -251,7 +251,8 @@ class HuberRegressor(LinearModel, RegressorMixin, BaseEstimator):\n         self : object\n         \"\"\"\n         X, y = check_X_y(\n-            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)\n+            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n+            dtype=[np.float64, np.float32])\n         if sample_weight is not None:\n             sample_weight = np.array(sample_weight)\n             check_consistent_length(y, sample_weight)\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 000000000..64dc9d7e0\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,75 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor edge cases...\")\n+\n+# Test 1: Boolean array with all True\n+print(\"\\nTest 1: Boolean array with all True\")\n+X_all_true = np.ones((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_true, y)\n+    print(\"SUCCESS: Works with all True boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Boolean array with all False\n+print(\"\\nTest 2: Boolean array with all False\")\n+X_all_false = np.zeros((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_false, y)\n+    print(\"SUCCESS: Works with all False boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Mixed boolean array\n+print(\"\\nTest 3: Mixed boolean array\")\n+X_mixed = np.random.rand(100, 3) > 0.5\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_mixed, y)\n+    print(\"SUCCESS: Works with mixed boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 4: Integer array (should still work)\n+print(\"\\nTest 4: Integer array\")\n+X_int = np.random.randint(0, 10, (100, 3))\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_int, y)\n+    print(\"SUCCESS: Works with integer array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 5: Float32 array (should still work)\n+print(\"\\nTest 5: Float32 array\")\n+X_float32 = np.random.randn(100, 3).astype(np.float32)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float32, y)\n+    print(\"SUCCESS: Works with float32 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float32.dtype)  # Should remain float32\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 6: Float64 array (should still work)\n+print(\"\\nTest 6: Float64 array\")\n+X_float64 = np.random.randn(100, 3).astype(np.float64)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float64, y)\n+    print(\"SUCCESS: Works with float64 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float64.dtype)  # Should remain float64\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/test_linear_regression.py b/test_linear_regression.py\nnew file mode 100644\nindex 000000000..ca3c0f581\n--- /dev/null\n+++ b/test_linear_regression.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import LinearRegression\n+\n+print(\"Testing LinearRegression with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+\n+print(\"X_bool dtype:\", X_bool.dtype)\n+\n+# Test: LinearRegression with boolean X\n+print(\"\\nTest: Fitting LinearRegression with boolean X...\")\n+try:\n+    lr = LinearRegression().fit(X_bool, y)\n+    print(\"SUCCESS: LinearRegression works with boolean X\")\n+    print(\"Coefficients:\", lr.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 28 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 29
+        },
+        {
+          "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py -v",
+          "step_index": 30
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "    # The huber model should also fit poorly on the outliers.\n    assert_greater(ridge_outlier_score, huber_outlier_score)\n\n\ndef test_huber_boolean_input():\n    \"\"\"Test that HuberRegressor works with boolean input arrays.\"\"\"\n    # Generate some data\n    X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, \n                                coef=True, random_state=0)\n    \n    # Convert X to boolean\n    X_bool = X > 0\n    \n    # Test that HuberRegressor can fit boolean data without error\n    huber = HuberRegressor()\n    huber.fit(X_bool, y)\n    \n    # Test that it produces reasonable results\n    assert hasattr(huber, 'coef_')\n    assert hasattr(huber, 'intercept_')\n    assert hasattr(huber, 'scale_')\n    assert len(huber.coef_) == X_bool.shape[1]\n    \n    # Test that predictions work\n    y_pred = huber.predict(X_bool)\n    assert len(y_pred) == len(y)\n    \n    # Test that it gives the same results as manually converted data\n    X_bool_as_float = X_bool.astype(np.float64)\n    huber_manual = HuberRegressor(random_state=0)\n    huber_manual.fit(X_bool_as_float, y)\n    \n    # Results should be very close (allowing for small numerical differences)\n    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)",
+          "before": "    # The huber model should also fit poorly on the outliers.\n    assert_greater(ridge_outlier_score, huber_outlier_score)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/sklearn/linear_model/huber.py b/sklearn/linear_model/huber.py\nindex 65c686400..892b57eef 100644\n--- a/sklearn/linear_model/huber.py\n+++ b/sklearn/linear_model/huber.py\n@@ -251,7 +251,8 @@ class HuberRegressor(LinearModel, RegressorMixin, BaseEstimator):\n         self : object\n         \"\"\"\n         X, y = check_X_y(\n-            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)\n+            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n+            dtype=[np.float64, np.float32])\n         if sample_weight is not None:\n             sample_weight = np.array(sample_weight)\n             check_consistent_length(y, sample_weight)\ndiff --git a/sklearn/linear_model/tests/test_huber.py b/sklearn/linear_model/tests/test_huber.py\nindex 6a8b26133..61c56f5fc 100644\n--- a/sklearn/linear_model/tests/test_huber.py\n+++ b/sklearn/linear_model/tests/test_huber.py\n@@ -199,3 +199,36 @@ def test_huber_better_r2_score():\n \n     # The huber model should also fit poorly on the outliers.\n     assert_greater(ridge_outlier_score, huber_outlier_score)\n+\n+\n+def test_huber_boolean_input():\n+    \"\"\"Test that HuberRegressor works with boolean input arrays.\"\"\"\n+    # Generate some data\n+    X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, \n+                                coef=True, random_state=0)\n+    \n+    # Convert X to boolean\n+    X_bool = X > 0\n+    \n+    # Test that HuberRegressor can fit boolean data without error\n+    huber = HuberRegressor()\n+    huber.fit(X_bool, y)\n+    \n+    # Test that it produces reasonable results\n+    assert hasattr(huber, 'coef_')\n+    assert hasattr(huber, 'intercept_')\n+    assert hasattr(huber, 'scale_')\n+    assert len(huber.coef_) == X_bool.shape[1]\n+    \n+    # Test that predictions work\n+    y_pred = huber.predict(X_bool)\n+    assert len(y_pred) == len(y)\n+    \n+    # Test that it gives the same results as manually converted data\n+    X_bool_as_float = X_bool.astype(np.float64)\n+    huber_manual = HuberRegressor(random_state=0)\n+    huber_manual.fit(X_bool_as_float, y)\n+    \n+    # Results should be very close (allowing for small numerical differences)\n+    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n+    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 000000000..64dc9d7e0\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,75 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor edge cases...\")\n+\n+# Test 1: Boolean array with all True\n+print(\"\\nTest 1: Boolean array with all True\")\n+X_all_true = np.ones((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_true, y)\n+    print(\"SUCCESS: Works with all True boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Boolean array with all False\n+print(\"\\nTest 2: Boolean array with all False\")\n+X_all_false = np.zeros((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_false, y)\n+    print(\"SUCCESS: Works with all False boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Mixed boolean array\n+print(\"\\nTest 3: Mixed boolean array\")\n+X_mixed = np.random.rand(100, 3) > 0.5\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_mixed, y)\n+    print(\"SUCCESS: Works with mixed boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 4: Integer array (should still work)\n+print(\"\\nTest 4: Integer array\")\n+X_int = np.random.randint(0, 10, (100, 3))\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_int, y)\n+    print(\"SUCCESS: Works with integer array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 5: Float32 array (should still work)\n+print(\"\\nTest 5: Float32 array\")\n+X_float32 = np.random.randn(100, 3).astype(np.float32)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float32, y)\n+    print(\"SUCCESS: Works with float32 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float32.dtype)  # Should remain float32\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 6: Float64 array (should still work)\n+print(\"\\nTest 6: Float64 array\")\n+X_float64 = np.random.randn(100, 3).astype(np.float64)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float64, y)\n+    print(\"SUCCESS: Works with float64 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float64.dtype)  # Should remain float64\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/test_linear_regression.py b/test_linear_regression.py\nnew file mode 100644\nindex 000000000..ca3c0f581\n--- /dev/null\n+++ b/test_linear_regression.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import LinearRegression\n+\n+print(\"Testing LinearRegression with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+\n+print(\"X_bool dtype:\", X_bool.dtype)\n+\n+# Test: LinearRegression with boolean X\n+print(\"\\nTest: Fitting LinearRegression with boolean X...\")\n+try:\n+    lr = LinearRegression().fit(X_bool, y)\n+    print(\"SUCCESS: LinearRegression works with boolean X\")\n+    print(\"Coefficients:\", lr.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "sklearn/linear_model/tests/test_huber.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py::test_huber_boolean_input -v",
+          "step_index": 35
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 34
+    },
+    {
+      "edits": [
+        {
+          "after": "    # Test that it gives the same results as manually converted data\n    X_bool_as_float = X_bool.astype(np.float64)\n    huber_manual = HuberRegressor()\n    huber_manual.fit(X_bool_as_float, y)\n    \n    # Results should be very close (allowing for small numerical differences)\n    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)",
+          "before": "    # Test that it gives the same results as manually converted data\n    X_bool_as_float = X_bool.astype(np.float64)\n    huber_manual = HuberRegressor(random_state=0)\n    huber_manual.fit(X_bool_as_float, y)\n    \n    # Results should be very close (allowing for small numerical differences)\n    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/sklearn/linear_model/huber.py b/sklearn/linear_model/huber.py\nindex 65c686400..892b57eef 100644\n--- a/sklearn/linear_model/huber.py\n+++ b/sklearn/linear_model/huber.py\n@@ -251,7 +251,8 @@ class HuberRegressor(LinearModel, RegressorMixin, BaseEstimator):\n         self : object\n         \"\"\"\n         X, y = check_X_y(\n-            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)\n+            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n+            dtype=[np.float64, np.float32])\n         if sample_weight is not None:\n             sample_weight = np.array(sample_weight)\n             check_consistent_length(y, sample_weight)\ndiff --git a/sklearn/linear_model/tests/test_huber.py b/sklearn/linear_model/tests/test_huber.py\nindex 6a8b26133..2530d01e6 100644\n--- a/sklearn/linear_model/tests/test_huber.py\n+++ b/sklearn/linear_model/tests/test_huber.py\n@@ -199,3 +199,36 @@ def test_huber_better_r2_score():\n \n     # The huber model should also fit poorly on the outliers.\n     assert_greater(ridge_outlier_score, huber_outlier_score)\n+\n+\n+def test_huber_boolean_input():\n+    \"\"\"Test that HuberRegressor works with boolean input arrays.\"\"\"\n+    # Generate some data\n+    X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, \n+                                coef=True, random_state=0)\n+    \n+    # Convert X to boolean\n+    X_bool = X > 0\n+    \n+    # Test that HuberRegressor can fit boolean data without error\n+    huber = HuberRegressor()\n+    huber.fit(X_bool, y)\n+    \n+    # Test that it produces reasonable results\n+    assert hasattr(huber, 'coef_')\n+    assert hasattr(huber, 'intercept_')\n+    assert hasattr(huber, 'scale_')\n+    assert len(huber.coef_) == X_bool.shape[1]\n+    \n+    # Test that predictions work\n+    y_pred = huber.predict(X_bool)\n+    assert len(y_pred) == len(y)\n+    \n+    # Test that it gives the same results as manually converted data\n+    X_bool_as_float = X_bool.astype(np.float64)\n+    huber_manual = HuberRegressor()\n+    huber_manual.fit(X_bool_as_float, y)\n+    \n+    # Results should be very close (allowing for small numerical differences)\n+    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n+    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 000000000..64dc9d7e0\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,75 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor edge cases...\")\n+\n+# Test 1: Boolean array with all True\n+print(\"\\nTest 1: Boolean array with all True\")\n+X_all_true = np.ones((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_true, y)\n+    print(\"SUCCESS: Works with all True boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Boolean array with all False\n+print(\"\\nTest 2: Boolean array with all False\")\n+X_all_false = np.zeros((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_false, y)\n+    print(\"SUCCESS: Works with all False boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Mixed boolean array\n+print(\"\\nTest 3: Mixed boolean array\")\n+X_mixed = np.random.rand(100, 3) > 0.5\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_mixed, y)\n+    print(\"SUCCESS: Works with mixed boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 4: Integer array (should still work)\n+print(\"\\nTest 4: Integer array\")\n+X_int = np.random.randint(0, 10, (100, 3))\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_int, y)\n+    print(\"SUCCESS: Works with integer array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 5: Float32 array (should still work)\n+print(\"\\nTest 5: Float32 array\")\n+X_float32 = np.random.randn(100, 3).astype(np.float32)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float32, y)\n+    print(\"SUCCESS: Works with float32 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float32.dtype)  # Should remain float32\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 6: Float64 array (should still work)\n+print(\"\\nTest 6: Float64 array\")\n+X_float64 = np.random.randn(100, 3).astype(np.float64)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float64, y)\n+    print(\"SUCCESS: Works with float64 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float64.dtype)  # Should remain float64\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/test_linear_regression.py b/test_linear_regression.py\nnew file mode 100644\nindex 000000000..ca3c0f581\n--- /dev/null\n+++ b/test_linear_regression.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import LinearRegression\n+\n+print(\"Testing LinearRegression with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+\n+print(\"X_bool dtype:\", X_bool.dtype)\n+\n+# Test: LinearRegression with boolean X\n+print(\"\\nTest: Fitting LinearRegression with boolean X...\")\n+try:\n+    lr = LinearRegression().fit(X_bool, y)\n+    print(\"SUCCESS: LinearRegression works with boolean X\")\n+    print(\"Coefficients:\", lr.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "sklearn/linear_model/tests/test_huber.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py::test_huber_boolean_input -v",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py -v",
+          "step_index": 39
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom sklearn.linear_model import HuberRegressor, LinearRegression\nfrom sklearn.datasets import make_regression\n\n# Test that our fix doesn't affect normal usage\nX, y = make_regression(n_samples=100, n_features=5, random_state=42)\n\n# Test HuberRegressor with float data\nhuber = HuberRegressor()\nhuber.fit(X, y)\nprint('HuberRegressor with float data: SUCCESS')\n\n# Test HuberRegressor with boolean data\nX_bool = X > 0\nhuber_bool = HuberRegressor()\nhuber_bool.fit(X_bool, y)\nprint('HuberRegressor with boolean data: SUCCESS')\n\n# Test that LinearRegression still works\nlr = LinearRegression()\nlr.fit(X_bool, y)\nprint('LinearRegression with boolean data: SUCCESS')\n\nprint('All tests passed!')\n\"",
+          "step_index": 40
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom sklearn.linear_model import HuberRegressor\nfrom sklearn.datasets import make_regression\n\n# Test that float32 input is preserved as float32\nX, y = make_regression(n_samples=100, n_features=3, random_state=42)\nX_float32 = X.astype(np.float32)\n\nprint('Original X dtype:', X_float32.dtype)\n\nhuber = HuberRegressor()\nhuber.fit(X_float32, y)\n\nprint('X dtype after fit:', X_float32.dtype)\nprint('SUCCESS: float32 dtype preserved')\n\n# Test that float64 input is preserved as float64\nX_float64 = X.astype(np.float64)\nprint('Original X dtype:', X_float64.dtype)\n\nhuber = HuberRegressor()\nhuber.fit(X_float64, y)\n\nprint('X dtype after fit:', X_float64.dtype)\nprint('SUCCESS: float64 dtype preserved')\n\"",
+          "step_index": 41
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom scipy import sparse\nfrom sklearn.linear_model import HuberRegressor\nfrom sklearn.datasets import make_regression\n\n# Test with sparse matrices\nX, y = make_regression(n_samples=100, n_features=5, random_state=42)\nX_sparse = sparse.csr_matrix(X)\n\nprint('Testing HuberRegressor with sparse matrix...')\nhuber = HuberRegressor()\nhuber.fit(X_sparse, y)\nprint('SUCCESS: HuberRegressor works with sparse matrices')\n\n# Test prediction\ny_pred = huber.predict(X_sparse)\nprint('SUCCESS: Prediction works with sparse matrices')\nprint('Prediction shape:', y_pred.shape)\n\"",
+          "step_index": 42
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 37
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\"\"\"\nTest script that reproduces the exact example from the PR description\nto verify that the fix works correctly.\n\"\"\"\n\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\nprint(\"Testing the exact example from the PR description...\")\n\n# Random data (exact same as in PR description)\nX, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\nX_bool = X > 0\nX_bool_as_float = np.asarray(X_bool, dtype=float)\n\nprint(\"Data shapes and types:\")\nprint(f\"X shape: {X.shape}, dtype: {X.dtype}\")\nprint(f\"X_bool shape: {X_bool.shape}, dtype: {X_bool.dtype}\")\nprint(f\"X_bool_as_float shape: {X_bool_as_float.shape}, dtype: {X_bool_as_float.dtype}\")\nprint(f\"y shape: {y.shape}, dtype: {y.dtype}\")\n\n# Test 1: Works (should continue to work)\nprint(\"\\nTest 1: HuberRegressor with float X\")\ntry:\n    huber = HuberRegressor().fit(X, y)\n    print(\"✓ SUCCESS: Works with float X\")\n    print(f\"  Coefficients: {huber.coef_}\")\n    print(f\"  Intercept: {huber.intercept_}\")\n    print(f\"  Scale: {huber.scale_}\")\nexcept Exception as e:\n    print(f\"✗ FAILED: {e}\")\n\n# Test 2: Previously failed, should now work\nprint(\"\\nTest 2: HuberRegressor with boolean X (this was the bug)\")\ntry:\n    huber = HuberRegressor().fit(X_bool, y)\n    print(\"✓ SUCCESS: Now works with boolean X!\")\n    print(f\"  Coefficients: {huber.coef_}\")\n    print(f\"  Intercept: {huber.intercept_}\")\n    print(f\"  Scale: {huber.scale_}\")\nexcept Exception as e:\n    print(f\"✗ FAILED: {e}\")\n\n# Test 3: Also works (should continue to work)\nprint(\"\\nTest 3: HuberRegressor with manually converted boolean X\")\ntry:\n    huber = HuberRegressor().fit(X_bool_as_float, y)\n    print(\"✓ SUCCESS: Works with manually converted boolean X\")\n    print(f\"  Coefficients: {huber.coef_}\")\n    print(f\"  Intercept: {huber.intercept_}\")\n    print(f\"  Scale: {huber.scale_}\")\nexcept Exception as e:\n    print(f\"✗ FAILED: {e}\")\n\n# Test 4: Verify that results are consistent\nprint(\"\\nTest 4: Verify consistency between boolean and manually converted inputs\")\ntry:\n    huber_bool = HuberRegressor().fit(X_bool, y)\n    huber_manual = HuberRegressor().fit(X_bool_as_float, y)\n    \n    coef_diff = np.abs(huber_bool.coef_ - huber_manual.coef_).max()\n    intercept_diff = abs(huber_bool.intercept_ - huber_manual.intercept_)\n    scale_diff = abs(huber_bool.scale_ - huber_manual.scale_)\n    \n    print(f\"  Max coefficient difference: {coef_diff}\")\n    print(f\"  Intercept difference: {intercept_diff}\")\n    print(f\"  Scale difference: {scale_diff}\")\n    \n    if coef_diff < 1e-10 and intercept_diff < 1e-10 and scale_diff < 1e-10:\n        print(\"✓ SUCCESS: Results are consistent!\")\n    else:\n        print(\"⚠ WARNING: Results differ more than expected\")\n        \nexcept Exception as e:\n    print(f\"✗ FAILED: {e}\")\n\nprint(\"\\n\" + \"=\"*60)\nprint(\"SUMMARY: The TypeError when supplying boolean X to HuberRegressor has been fixed!\")\nprint(\"Boolean arrays are now automatically converted to float arrays during input validation.\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_error.py b/reproduce_error.py\nnew file mode 100644\nindex 000000000..ac9b4cffb\n--- /dev/null\n+++ b/reproduce_error.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"X shape:\", X.shape)\n+print(\"X_bool shape:\", X_bool.shape)\n+print(\"X_bool dtype:\", X_bool.dtype)\n+print(\"X_bool_as_float dtype:\", X_bool_as_float.dtype)\n+\n+# Test 1: Works with float X\n+print(\"\\nTest 1: Fitting with float X...\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"SUCCESS: HuberRegressor works with float X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Fails with boolean X\n+print(\"\\nTest 2: Fitting with boolean X...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Works with boolean X converted to float\n+print(\"\\nTest 3: Fitting with boolean X converted to float...\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"SUCCESS: HuberRegressor works with boolean X converted to float\")\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/sklearn/linear_model/huber.py b/sklearn/linear_model/huber.py\nindex 65c686400..892b57eef 100644\n--- a/sklearn/linear_model/huber.py\n+++ b/sklearn/linear_model/huber.py\n@@ -251,7 +251,8 @@ class HuberRegressor(LinearModel, RegressorMixin, BaseEstimator):\n         self : object\n         \"\"\"\n         X, y = check_X_y(\n-            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)\n+            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n+            dtype=[np.float64, np.float32])\n         if sample_weight is not None:\n             sample_weight = np.array(sample_weight)\n             check_consistent_length(y, sample_weight)\ndiff --git a/sklearn/linear_model/tests/test_huber.py b/sklearn/linear_model/tests/test_huber.py\nindex 6a8b26133..2530d01e6 100644\n--- a/sklearn/linear_model/tests/test_huber.py\n+++ b/sklearn/linear_model/tests/test_huber.py\n@@ -199,3 +199,36 @@ def test_huber_better_r2_score():\n \n     # The huber model should also fit poorly on the outliers.\n     assert_greater(ridge_outlier_score, huber_outlier_score)\n+\n+\n+def test_huber_boolean_input():\n+    \"\"\"Test that HuberRegressor works with boolean input arrays.\"\"\"\n+    # Generate some data\n+    X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, \n+                                coef=True, random_state=0)\n+    \n+    # Convert X to boolean\n+    X_bool = X > 0\n+    \n+    # Test that HuberRegressor can fit boolean data without error\n+    huber = HuberRegressor()\n+    huber.fit(X_bool, y)\n+    \n+    # Test that it produces reasonable results\n+    assert hasattr(huber, 'coef_')\n+    assert hasattr(huber, 'intercept_')\n+    assert hasattr(huber, 'scale_')\n+    assert len(huber.coef_) == X_bool.shape[1]\n+    \n+    # Test that predictions work\n+    y_pred = huber.predict(X_bool)\n+    assert len(y_pred) == len(y)\n+    \n+    # Test that it gives the same results as manually converted data\n+    X_bool_as_float = X_bool.astype(np.float64)\n+    huber_manual = HuberRegressor()\n+    huber_manual.fit(X_bool_as_float, y)\n+    \n+    # Results should be very close (allowing for small numerical differences)\n+    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n+    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 000000000..64dc9d7e0\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,75 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing HuberRegressor edge cases...\")\n+\n+# Test 1: Boolean array with all True\n+print(\"\\nTest 1: Boolean array with all True\")\n+X_all_true = np.ones((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_true, y)\n+    print(\"SUCCESS: Works with all True boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 2: Boolean array with all False\n+print(\"\\nTest 2: Boolean array with all False\")\n+X_all_false = np.zeros((100, 3), dtype=bool)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_all_false, y)\n+    print(\"SUCCESS: Works with all False boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 3: Mixed boolean array\n+print(\"\\nTest 3: Mixed boolean array\")\n+X_mixed = np.random.rand(100, 3) > 0.5\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_mixed, y)\n+    print(\"SUCCESS: Works with mixed boolean array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 4: Integer array (should still work)\n+print(\"\\nTest 4: Integer array\")\n+X_int = np.random.randint(0, 10, (100, 3))\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_int, y)\n+    print(\"SUCCESS: Works with integer array\")\n+    print(\"Coefficients:\", huber.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 5: Float32 array (should still work)\n+print(\"\\nTest 5: Float32 array\")\n+X_float32 = np.random.randn(100, 3).astype(np.float32)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float32, y)\n+    print(\"SUCCESS: Works with float32 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float32.dtype)  # Should remain float32\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n+\n+# Test 6: Float64 array (should still work)\n+print(\"\\nTest 6: Float64 array\")\n+X_float64 = np.random.randn(100, 3).astype(np.float64)\n+y = np.random.randn(100)\n+try:\n+    huber = HuberRegressor().fit(X_float64, y)\n+    print(\"SUCCESS: Works with float64 array\")\n+    print(\"Coefficients:\", huber.coef_)\n+    print(\"X dtype after fit:\", X_float64.dtype)  # Should remain float64\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/test_linear_regression.py b/test_linear_regression.py\nnew file mode 100644\nindex 000000000..ca3c0f581\n--- /dev/null\n+++ b/test_linear_regression.py\n@@ -0,0 +1,22 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import LinearRegression\n+\n+print(\"Testing LinearRegression with boolean X...\")\n+\n+# Random data\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+\n+print(\"X_bool dtype:\", X_bool.dtype)\n+\n+# Test: LinearRegression with boolean X\n+print(\"\\nTest: Fitting LinearRegression with boolean X...\")\n+try:\n+    lr = LinearRegression().fit(X_bool, y)\n+    print(\"SUCCESS: LinearRegression works with boolean X\")\n+    print(\"Coefficients:\", lr.coef_)\n+except Exception as e:\n+    print(f\"FAILED: {e}\")\n\\ No newline at end of file\ndiff --git a/test_pr_description.py b/test_pr_description.py\nnew file mode 100644\nindex 000000000..2121cb867\n--- /dev/null\n+++ b/test_pr_description.py\n@@ -0,0 +1,81 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Test script that reproduces the exact example from the PR description\n+to verify that the fix works correctly.\n+\"\"\"\n+\n+import numpy as np\n+from sklearn.datasets import make_regression\n+from sklearn.linear_model import HuberRegressor\n+\n+print(\"Testing the exact example from the PR description...\")\n+\n+# Random data (exact same as in PR description)\n+X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\n+X_bool = X > 0\n+X_bool_as_float = np.asarray(X_bool, dtype=float)\n+\n+print(\"Data shapes and types:\")\n+print(f\"X shape: {X.shape}, dtype: {X.dtype}\")\n+print(f\"X_bool shape: {X_bool.shape}, dtype: {X_bool.dtype}\")\n+print(f\"X_bool_as_float shape: {X_bool_as_float.shape}, dtype: {X_bool_as_float.dtype}\")\n+print(f\"y shape: {y.shape}, dtype: {y.dtype}\")\n+\n+# Test 1: Works (should continue to work)\n+print(\"\\nTest 1: HuberRegressor with float X\")\n+try:\n+    huber = HuberRegressor().fit(X, y)\n+    print(\"✓ SUCCESS: Works with float X\")\n+    print(f\"  Coefficients: {huber.coef_}\")\n+    print(f\"  Intercept: {huber.intercept_}\")\n+    print(f\"  Scale: {huber.scale_}\")\n+except Exception as e:\n+    print(f\"✗ FAILED: {e}\")\n+\n+# Test 2: Previously failed, should now work\n+print(\"\\nTest 2: HuberRegressor with boolean X (this was the bug)\")\n+try:\n+    huber = HuberRegressor().fit(X_bool, y)\n+    print(\"✓ SUCCESS: Now works with boolean X!\")\n+    print(f\"  Coefficients: {huber.coef_}\")\n+    print(f\"  Intercept: {huber.intercept_}\")\n+    print(f\"  Scale: {huber.scale_}\")\n+except Exception as e:\n+    print(f\"✗ FAILED: {e}\")\n+\n+# Test 3: Also works (should continue to work)\n+print(\"\\nTest 3: HuberRegressor with manually converted boolean X\")\n+try:\n+    huber = HuberRegressor().fit(X_bool_as_float, y)\n+    print(\"✓ SUCCESS: Works with manually converted boolean X\")\n+    print(f\"  Coefficients: {huber.coef_}\")\n+    print(f\"  Intercept: {huber.intercept_}\")\n+    print(f\"  Scale: {huber.scale_}\")\n+except Exception as e:\n+    print(f\"✗ FAILED: {e}\")\n+\n+# Test 4: Verify that results are consistent\n+print(\"\\nTest 4: Verify consistency between boolean and manually converted inputs\")\n+try:\n+    huber_bool = HuberRegressor().fit(X_bool, y)\n+    huber_manual = HuberRegressor().fit(X_bool_as_float, y)\n+    \n+    coef_diff = np.abs(huber_bool.coef_ - huber_manual.coef_).max()\n+    intercept_diff = abs(huber_bool.intercept_ - huber_manual.intercept_)\n+    scale_diff = abs(huber_bool.scale_ - huber_manual.scale_)\n+    \n+    print(f\"  Max coefficient difference: {coef_diff}\")\n+    print(f\"  Intercept difference: {intercept_diff}\")\n+    print(f\"  Scale difference: {scale_diff}\")\n+    \n+    if coef_diff < 1e-10 and intercept_diff < 1e-10 and scale_diff < 1e-10:\n+        print(\"✓ SUCCESS: Results are consistent!\")\n+    else:\n+        print(\"⚠ WARNING: Results differ more than expected\")\n+        \n+except Exception as e:\n+    print(f\"✗ FAILED: {e}\")\n+\n+print(\"\\n\" + \"=\"*60)\n+print(\"SUMMARY: The TypeError when supplying boolean X to HuberRegressor has been fixed!\")\n+print(\"Boolean arrays are now automatically converted to float arrays during input validation.\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 43 create #1",
+          "filename": "test_pr_description.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        }
+      ],
+      "end_step": 43,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pr_description.py",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport time\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\n# Test with larger dataset\nprint('Testing performance with larger dataset...')\nX, y = make_regression(n_samples=5000, n_features=20, random_state=42)\n\n# Test with float data\nstart_time = time.time()\nhuber_float = HuberRegressor().fit(X, y)\nfloat_time = time.time() - start_time\n\n# Test with boolean data (converted internally)\nX_bool = X > 0\nstart_time = time.time()\nhuber_bool = HuberRegressor().fit(X_bool, y)\nbool_time = time.time() - start_time\n\nprint(f'Float data fit time: {float_time:.3f} seconds')\nprint(f'Boolean data fit time: {bool_time:.3f} seconds')\nprint(f'Ratio: {bool_time/float_time:.2f}x')\n\nif bool_time/float_time < 2.0:  # Allow up to 2x slower\n    print('✓ Performance is acceptable')\nelse:\n    print('⚠ Performance may be degraded')\n\"",
+          "step_index": 45
+        },
+        {
+          "command": "cd /testbed && python reproduce_error.py",
+          "step_index": 47
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 43
+    },
+    {
+      "edits": [
+        {
+          "after": "    # The huber model should also fit poorly on the outliers.\n    assert_greater(ridge_outlier_score, huber_outlier_score)",
+          "before": "    # The huber model should also fit poorly on the outliers.\n    assert_greater(ridge_outlier_score, huber_outlier_score)\n\n\ndef test_huber_boolean_input():\n    \"\"\"Test that HuberRegressor works with boolean input arrays.\"\"\"\n    # Generate some data\n    X, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, \n                                coef=True, random_state=0)\n    \n    # Convert X to boolean\n    X_bool = X > 0\n    \n    # Test that HuberRegressor can fit boolean data without error\n    huber = HuberRegressor()\n    huber.fit(X_bool, y)\n    \n    # Test that it produces reasonable results\n    assert hasattr(huber, 'coef_')\n    assert hasattr(huber, 'intercept_')\n    assert hasattr(huber, 'scale_')\n    assert len(huber.coef_) == X_bool.shape[1]\n    \n    # Test that predictions work\n    y_pred = huber.predict(X_bool)\n    assert len(y_pred) == len(y)\n    \n    # Test that it gives the same results as manually converted data\n    X_bool_as_float = X_bool.astype(np.float64)\n    huber_manual = HuberRegressor()\n    huber_manual.fit(X_bool_as_float, y)\n    \n    # Results should be very close (allowing for small numerical differences)\n    assert_array_almost_equal(huber.coef_, huber_manual.coef_, decimal=10)\n    assert_almost_equal(huber.intercept_, huber_manual.intercept_, decimal=10)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sklearn/linear_model/huber.py b/sklearn/linear_model/huber.py\nindex 65c686400..892b57eef 100644\n--- a/sklearn/linear_model/huber.py\n+++ b/sklearn/linear_model/huber.py\n@@ -251,7 +251,8 @@ class HuberRegressor(LinearModel, RegressorMixin, BaseEstimator):\n         self : object\n         \"\"\"\n         X, y = check_X_y(\n-            X, y, copy=False, accept_sparse=['csr'], y_numeric=True)\n+            X, y, copy=False, accept_sparse=['csr'], y_numeric=True, \n+            dtype=[np.float64, np.float32])\n         if sample_weight is not None:\n             sample_weight = np.array(sample_weight)\n             check_consistent_length(y, sample_weight)",
+          "explanation": "classic_swe step 55 #1",
+          "filename": "sklearn/linear_model/tests/test_huber.py",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 55
+        }
+      ],
+      "end_step": 55,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python -m pytest sklearn/linear_model/tests/test_huber.py -v",
+          "step_index": 58
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport numpy as np\nfrom sklearn.datasets import make_regression\nfrom sklearn.linear_model import HuberRegressor\n\n# Test the exact case from the PR description\nX, y, coef = make_regression(n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)\nX_bool = X > 0\n\nprint('Testing HuberRegressor with boolean X...')\ntry:\n    huber = HuberRegressor().fit(X_bool, y)\n    print('SUCCESS: HuberRegressor now works with boolean X!')\n    print('Coefficients:', huber.coef_)\nexcept Exception as e:\n    print(f'FAILED: {e}')\n\"",
+          "step_index": 59
+        }
+      ],
+      "revision_index": 7,
+      "start_step": 55
+    }
+  ],
+  "sub_paths": [
+    "sklearn/linear_model/huber.py"
+  ],
+  "success_step": 55,
+  "test_files": [
+    "reproduce_error.py",
+    "sklearn/linear_model/tests/test_huber.py",
+    "test_edge_cases.py",
+    "test_linear_regression.py",
+    "test_pr_description.py"
+  ]
+}

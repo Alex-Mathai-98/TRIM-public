@@ -1,0 +1,483 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 7
+    },
+    {
+      "command": "cd /testbed && python -c \"from sympy import symbols, Min, Max; from sympy.printing.pycode import PythonCodePrinter; a, b = symbols('a b'); printer = PythonCodePrinter(); print('Min methods:', [m for m in dir(printer) if 'min' in m.lower()]); print('Max methods:', [m for m in dir(printer) if 'max' in m.lower()])\"",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python -c \"from sympy import symbols, Min, Max; from sympy.printing.pycode import PythonCodePrinter; a, b = symbols('a b'); printer = PythonCodePrinter(); print('Min class name:', Min(a, b).__class__.__name__); print('Max class name:', Max(a, b).__class__.__name__)\"",
+      "step_index": 18
+    },
+    {
+      "command": "cd /testbed && python -c \"from sympy import symbols, Min, Max; from sympy.printing.pycode import PythonCodePrinter; a, b = symbols('a b'); printer = PythonCodePrinter(); print('Has _print_Min:', hasattr(printer, '_print_Min')); print('Has _print_Max:', hasattr(printer, '_print_Max'))\"",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import PythonCodePrinter\na, b = symbols('a b')\nprinter = PythonCodePrinter()\nmin_expr = Min(a, b)\nprint('Min expression type:', type(min_expr))\nprint('Min expression args:', min_expr.args)\nprint('Min expression func:', min_expr.func)\n\"",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max, Piecewise\na, b = symbols('a b')\nmin_expr = Min(a, b)\nprint('Min as Piecewise:', min_expr.rewrite(Piecewise))\nmax_expr = Max(a, b)\nprint('Max as Piecewise:', max_expr.rewrite(Piecewise))\n\"",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python test_pr_example.py",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 33
+    },
+    {
+      "command": "cd /testbed && python test_generated_code.py",
+      "step_index": 38
+    },
+    {
+      "command": "cd /testbed && python -m sympy.testing.runtests sympy/printing/tests/test_pycode.py",
+      "step_index": 40
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport sympy.printing.tests.test_pycode as test_module\nimport inspect\n\n# Get all test functions\ntest_functions = [getattr(test_module, name) for name in dir(test_module) if name.startswith('test_')]\n\nprint(f'Found {len(test_functions)} test functions')\n\n# Run a few key tests\nfor test_func in test_functions[:5]:\n    try:\n        print(f'Running {test_func.__name__}...')\n        test_func()\n        print(f'  ✓ {test_func.__name__} passed')\n    except Exception as e:\n        print(f'  ✗ {test_func.__name__} failed: {e}')\n\"",
+      "step_index": 41
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import test_issue_18770\ntry:\n    test_issue_18770()\n    print('✓ test_issue_18770 passed')\nexcept Exception as e:\n    print(f'✗ test_issue_18770 failed: {e}')\n\"",
+      "step_index": 44
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import pycode\n\n# Test that our implementation matches the expected behavior from the PR\na, b = symbols('a b')\n\n# Test basic functionality\nmin_result = pycode(Min(a, b))\nmax_result = pycode(Max(a, b))\n\nprint('Min result:', min_result)\nprint('Max result:', max_result)\n\n# Verify it's what we expect\nassert min_result == 'min(a, b)', f'Expected min(a, b), got {min_result}'\nassert max_result == 'max(a, b)', f'Expected max(a, b), got {max_result}'\n\nprint('✓ All assertions passed')\n\"",
+      "step_index": 46
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import pycode\n\na, b = symbols('a b')\n\n# Test that we're NOT getting Piecewise expressions anymore\nmin_result = pycode(Min(a, b))\nmax_result = pycode(Max(a, b))\n\nprint('Min result:', min_result)\nprint('Max result:', max_result)\n\n# Make sure we're not getting the old conditional expressions\nassert 'if' not in min_result, f'Min should not contain if statements: {min_result}'\nassert 'if' not in max_result, f'Max should not contain if statements: {max_result}'\nassert 'else' not in min_result, f'Min should not contain else statements: {min_result}'\nassert 'else' not in max_result, f'Max should not contain else statements: {max_result}'\n\nprint('✓ No conditional expressions found - using built-in functions as expected')\n\"",
+      "step_index": 47
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, pycode\na, b = symbols('a b')\nc = Min(a,b)\nresult = pycode(c)\nprint(result)\n\n# Make sure we're not getting the 'Not supported' message\nassert 'Not supported' not in result, f'Should not show Not supported message: {result}'\nassert result == 'min(a, b)', f'Expected min(a, b), got {result}'\n\nprint('✓ PR issue resolved - no more \\\"Not supported\\\" message')\n\"",
+      "step_index": 48
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import *\nimport sys\n\n# Run all test functions\ntest_functions = [globals()[name] for name in globals() if name.startswith('test_') and callable(globals()[name])]\n\npassed = 0\nfailed = 0\n\nfor test_func in test_functions:\n    try:\n        test_func()\n        passed += 1\n        print(f'✓ {test_func.__name__}')\n    except Exception as e:\n        failed += 1\n        print(f'✗ {test_func.__name__}: {e}')\n\nprint(f'\\\\nResults: {passed} passed, {failed} failed')\n\"",
+      "step_index": 49
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 51
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import NumPyPrinter, SciPyPrinter\n\na, b = symbols('a b')\n\n# Test NumPy printer\nnumpy_printer = NumPyPrinter()\nprint('NumPy Min:', numpy_printer.doprint(Min(a, b)))\nprint('NumPy Max:', numpy_printer.doprint(Max(a, b)))\n\n# Test SciPy printer  \nscipy_printer = SciPyPrinter()\nprint('SciPy Min:', scipy_printer.doprint(Min(a, b)))\nprint('SciPy Max:', scipy_printer.doprint(Max(a, b)))\n\"",
+      "step_index": 53
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport sympy.printing.pycode as pycode_module\nprint('Available classes:', [name for name in dir(pycode_module) if name.endswith('Printer')])\n\"",
+      "step_index": 54
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import MpmathPrinter, SymPyPrinter\n\na, b = symbols('a b')\n\n# Test MpmathPrinter\nmpmath_printer = MpmathPrinter()\nprint('Mpmath Min:', mpmath_printer.doprint(Min(a, b)))\nprint('Mpmath Max:', mpmath_printer.doprint(Max(a, b)))\n\n# Test SymPyPrinter  \nsympy_printer = SymPyPrinter()\nprint('SymPy Min:', sympy_printer.doprint(Min(a, b)))\nprint('SymPy Max:', sympy_printer.doprint(Max(a, b)))\n\"",
+      "step_index": 56
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.numpy import NumPyPrinter\n\na, b = symbols('a b')\n\n# Test NumPyPrinter\nnumpy_printer = NumPyPrinter()\nprint('NumPy Min:', numpy_printer.doprint(Min(a, b)))\nprint('NumPy Max:', numpy_printer.doprint(Max(a, b)))\n\"",
+      "step_index": 58
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.numpy import SciPyPrinter\n\na, b = symbols('a b')\n\n# Test SciPyPrinter\nscipy_printer = SciPyPrinter()\nprint('SciPy Min:', scipy_printer.doprint(Min(a, b)))\nprint('SciPy Max:', scipy_printer.doprint(Max(a, b)))\n\"",
+      "step_index": 66
+    },
+    {
+      "command": "cd /testbed && python test_final.py",
+      "step_index": 68
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import test_PythonCodePrinter\ntry:\n    test_PythonCodePrinter()\n    print('✓ test_PythonCodePrinter passed')\nexcept Exception as e:\n    print(f'✗ test_PythonCodePrinter failed: {e}')\n\"",
+      "step_index": 69
+    },
+    {
+      "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import test_pycode_reserved_words, test_sqrt, test_printmethod\ntests = [test_pycode_reserved_words, test_sqrt, test_printmethod]\n\nfor test in tests:\n    try:\n        test()\n        print(f'✓ {test.__name__} passed')\n    except Exception as e:\n        print(f'✗ {test.__name__} failed: {e}')\n\"",
+      "step_index": 70
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import symbols, Min, Max, pycode\n\n# Test the issue described in the PR\na, b = symbols(\"a b\")\nc = Min(a, b)\nd = Max(a, b)\n\nprint(\"Testing Min function:\")\nprint(\"Expression:\", c)\nprint(\"Python code:\", pycode(c))\nprint()\n\nprint(\"Testing Max function:\")\nprint(\"Expression:\", d)\nprint(\"Python code:\", pycode(d))\nprint()\n\n# Test with more arguments\ne = Min(a, b, 5)\nf = Max(a, b, 5)\n\nprint(\"Testing Min with multiple arguments:\")\nprint(\"Expression:\", e)\nprint(\"Python code:\", pycode(e))\nprint()\n\nprint(\"Testing Max with multiple arguments:\")\nprint(\"Expression:\", f)\nprint(\"Python code:\", pycode(f))",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 6 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 6
+        }
+      ],
+      "end_step": 6,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 7
+        },
+        {
+          "command": "cd /testbed && python -c \"from sympy import symbols, Min, Max; from sympy.printing.pycode import PythonCodePrinter; a, b = symbols('a b'); printer = PythonCodePrinter(); print('Min methods:', [m for m in dir(printer) if 'min' in m.lower()]); print('Max methods:', [m for m in dir(printer) if 'max' in m.lower()])\"",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python -c \"from sympy import symbols, Min, Max; from sympy.printing.pycode import PythonCodePrinter; a, b = symbols('a b'); printer = PythonCodePrinter(); print('Min class name:', Min(a, b).__class__.__name__); print('Max class name:', Max(a, b).__class__.__name__)\"",
+          "step_index": 18
+        },
+        {
+          "command": "cd /testbed && python -c \"from sympy import symbols, Min, Max; from sympy.printing.pycode import PythonCodePrinter; a, b = symbols('a b'); printer = PythonCodePrinter(); print('Has _print_Min:', hasattr(printer, '_print_Min')); print('Has _print_Max:', hasattr(printer, '_print_Max'))\"",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import PythonCodePrinter\na, b = symbols('a b')\nprinter = PythonCodePrinter()\nmin_expr = Min(a, b)\nprint('Min expression type:', type(min_expr))\nprint('Min expression args:', min_expr.args)\nprint('Min expression func:', min_expr.func)\n\"",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max, Piecewise\na, b = symbols('a b')\nmin_expr = Min(a, b)\nprint('Min as Piecewise:', min_expr.rewrite(Piecewise))\nmax_expr = Max(a, b)\nprint('Max as Piecewise:', max_expr.rewrite(Piecewise))\n\"",
+          "step_index": 21
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 6
+    },
+    {
+      "edits": [
+        {
+          "after": "    def _print_Min(self, expr):\n        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n\n    def _print_Max(self, expr):\n        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n\n    _print_lowergamma = CodePrinter._print_not_supported\n    _print_uppergamma = CodePrinter._print_not_supported\n    _print_fresnelc = CodePrinter._print_not_supported\n    _print_fresnels = CodePrinter._print_not_supported",
+          "before": "    _print_lowergamma = CodePrinter._print_not_supported\n    _print_uppergamma = CodePrinter._print_not_supported\n    _print_fresnelc = CodePrinter._print_not_supported\n    _print_fresnels = CodePrinter._print_not_supported",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "sympy/printing/pycode.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 29
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import symbols, Min, pycode\n\na, b = symbols(\"a b\")\nc = Min(a, b)\nprint(pycode(c))",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..6cbc397ff7\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,7 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, pycode\n+\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+print(pycode(c))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 30 create #1",
+          "filename": "test_pr_example.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pr_example.py",
+          "step_index": 31
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import symbols, Min, Max, pycode, sin, cos, pi, oo, -oo\n\n# Test various edge cases\na, b, c, x = symbols(\"a b c x\")\n\nprint(\"=== Basic cases ===\")\nprint(\"Min(a, b):\", pycode(Min(a, b)))\nprint(\"Max(a, b):\", pycode(Max(a, b)))\n\nprint(\"\\n=== Multiple arguments ===\")\nprint(\"Min(a, b, c):\", pycode(Min(a, b, c)))\nprint(\"Max(a, b, c):\", pycode(Max(a, b, c)))\n\nprint(\"\\n=== With numbers ===\")\nprint(\"Min(1, 2, 3):\", pycode(Min(1, 2, 3)))\nprint(\"Max(1, 2, 3):\", pycode(Max(1, 2, 3)))\n\nprint(\"\\n=== Mixed numbers and symbols ===\")\nprint(\"Min(a, 5, b):\", pycode(Min(a, 5, b)))\nprint(\"Max(a, 5, b):\", pycode(Max(a, 5, b)))\n\nprint(\"\\n=== With expressions ===\")\nprint(\"Min(sin(x), cos(x)):\", pycode(Min(sin(x), cos(x))))\nprint(\"Max(sin(x), cos(x)):\", pycode(Max(sin(x), cos(x))))\n\nprint(\"\\n=== With constants ===\")\nprint(\"Min(pi, a):\", pycode(Min(pi, a)))\nprint(\"Max(pi, a):\", pycode(Max(pi, a)))\n\nprint(\"\\n=== With infinities ===\")\nprint(\"Min(oo, a):\", pycode(Min(oo, a)))\nprint(\"Max(-oo, a):\", pycode(Max(-oo, a)))\n\nprint(\"\\n=== Single argument (should simplify) ===\")\nprint(\"Min(a):\", pycode(Min(a)))\nprint(\"Max(a):\", pycode(Max(a)))\n\nprint(\"\\n=== Nested Min/Max ===\")\nprint(\"Min(Max(a, b), c):\", pycode(Min(Max(a, b), c)))\nprint(\"Max(Min(a, b), c):\", pycode(Max(Min(a, b), c)))",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..1843412e7f\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,42 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo, -oo\n+\n+# Test various edge cases\n+a, b, c, x = symbols(\"a b c x\")\n+\n+print(\"=== Basic cases ===\")\n+print(\"Min(a, b):\", pycode(Min(a, b)))\n+print(\"Max(a, b):\", pycode(Max(a, b)))\n+\n+print(\"\\n=== Multiple arguments ===\")\n+print(\"Min(a, b, c):\", pycode(Min(a, b, c)))\n+print(\"Max(a, b, c):\", pycode(Max(a, b, c)))\n+\n+print(\"\\n=== With numbers ===\")\n+print(\"Min(1, 2, 3):\", pycode(Min(1, 2, 3)))\n+print(\"Max(1, 2, 3):\", pycode(Max(1, 2, 3)))\n+\n+print(\"\\n=== Mixed numbers and symbols ===\")\n+print(\"Min(a, 5, b):\", pycode(Min(a, 5, b)))\n+print(\"Max(a, 5, b):\", pycode(Max(a, 5, b)))\n+\n+print(\"\\n=== With expressions ===\")\n+print(\"Min(sin(x), cos(x)):\", pycode(Min(sin(x), cos(x))))\n+print(\"Max(sin(x), cos(x)):\", pycode(Max(sin(x), cos(x))))\n+\n+print(\"\\n=== With constants ===\")\n+print(\"Min(pi, a):\", pycode(Min(pi, a)))\n+print(\"Max(pi, a):\", pycode(Max(pi, a)))\n+\n+print(\"\\n=== With infinities ===\")\n+print(\"Min(oo, a):\", pycode(Min(oo, a)))\n+print(\"Max(-oo, a):\", pycode(Max(-oo, a)))\n+\n+print(\"\\n=== Single argument (should simplify) ===\")\n+print(\"Min(a):\", pycode(Min(a)))\n+print(\"Max(a):\", pycode(Max(a)))\n+\n+print(\"\\n=== Nested Min/Max ===\")\n+print(\"Min(Max(a, b), c):\", pycode(Min(Max(a, b), c)))\n+print(\"Max(Min(a, b), c):\", pycode(Max(Min(a, b), c)))\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..6cbc397ff7\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,7 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, pycode\n+\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+print(pycode(c))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 32 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 33
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo",
+          "before": "from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo, -oo",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..a82bebbc1d\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,42 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo\n+\n+# Test various edge cases\n+a, b, c, x = symbols(\"a b c x\")\n+\n+print(\"=== Basic cases ===\")\n+print(\"Min(a, b):\", pycode(Min(a, b)))\n+print(\"Max(a, b):\", pycode(Max(a, b)))\n+\n+print(\"\\n=== Multiple arguments ===\")\n+print(\"Min(a, b, c):\", pycode(Min(a, b, c)))\n+print(\"Max(a, b, c):\", pycode(Max(a, b, c)))\n+\n+print(\"\\n=== With numbers ===\")\n+print(\"Min(1, 2, 3):\", pycode(Min(1, 2, 3)))\n+print(\"Max(1, 2, 3):\", pycode(Max(1, 2, 3)))\n+\n+print(\"\\n=== Mixed numbers and symbols ===\")\n+print(\"Min(a, 5, b):\", pycode(Min(a, 5, b)))\n+print(\"Max(a, 5, b):\", pycode(Max(a, 5, b)))\n+\n+print(\"\\n=== With expressions ===\")\n+print(\"Min(sin(x), cos(x)):\", pycode(Min(sin(x), cos(x))))\n+print(\"Max(sin(x), cos(x)):\", pycode(Max(sin(x), cos(x))))\n+\n+print(\"\\n=== With constants ===\")\n+print(\"Min(pi, a):\", pycode(Min(pi, a)))\n+print(\"Max(pi, a):\", pycode(Max(pi, a)))\n+\n+print(\"\\n=== With infinities ===\")\n+print(\"Min(oo, a):\", pycode(Min(oo, a)))\n+print(\"Max(-oo, a):\", pycode(Max(-oo, a)))\n+\n+print(\"\\n=== Single argument (should simplify) ===\")\n+print(\"Min(a):\", pycode(Min(a)))\n+print(\"Max(a):\", pycode(Max(a)))\n+\n+print(\"\\n=== Nested Min/Max ===\")\n+print(\"Min(Max(a, b), c):\", pycode(Min(Max(a, b), c)))\n+print(\"Max(Min(a, b), c):\", pycode(Max(Min(a, b), c)))\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..6cbc397ff7\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,7 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, pycode\n+\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+print(pycode(c))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 36
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 34
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import symbols, Min, Max, pycode\nimport math\n\n# Test that the generated code actually works\na, b = symbols(\"a b\")\n\n# Generate code for Min and Max\nmin_code = pycode(Min(a, b))\nmax_code = pycode(Max(a, b))\n\nprint(\"Generated Min code:\", min_code)\nprint(\"Generated Max code:\", max_code)\n\n# Test the generated code by executing it\na_val = 3\nb_val = 7\n\nmin_result = eval(min_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\nmax_result = eval(max_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n\nprint(f\"min({a_val}, {b_val}) = {min_result}\")\nprint(f\"max({a_val}, {b_val}) = {max_result}\")\n\n# Test with more complex expressions\nfrom sympy import sin, cos\nx = symbols(\"x\")\ncomplex_min_code = pycode(Min(sin(x), cos(x)))\ncomplex_max_code = pycode(Max(sin(x), cos(x)))\n\nprint(\"Complex Min code:\", complex_min_code)\nprint(\"Complex Max code:\", complex_max_code)\n\nx_val = 0.5\ncomplex_min_result = eval(complex_min_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\ncomplex_max_result = eval(complex_max_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n\nprint(f\"min(sin({x_val}), cos({x_val})) = {complex_min_result}\")\nprint(f\"max(sin({x_val}), cos({x_val})) = {complex_max_result}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..a82bebbc1d\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,42 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo\n+\n+# Test various edge cases\n+a, b, c, x = symbols(\"a b c x\")\n+\n+print(\"=== Basic cases ===\")\n+print(\"Min(a, b):\", pycode(Min(a, b)))\n+print(\"Max(a, b):\", pycode(Max(a, b)))\n+\n+print(\"\\n=== Multiple arguments ===\")\n+print(\"Min(a, b, c):\", pycode(Min(a, b, c)))\n+print(\"Max(a, b, c):\", pycode(Max(a, b, c)))\n+\n+print(\"\\n=== With numbers ===\")\n+print(\"Min(1, 2, 3):\", pycode(Min(1, 2, 3)))\n+print(\"Max(1, 2, 3):\", pycode(Max(1, 2, 3)))\n+\n+print(\"\\n=== Mixed numbers and symbols ===\")\n+print(\"Min(a, 5, b):\", pycode(Min(a, 5, b)))\n+print(\"Max(a, 5, b):\", pycode(Max(a, 5, b)))\n+\n+print(\"\\n=== With expressions ===\")\n+print(\"Min(sin(x), cos(x)):\", pycode(Min(sin(x), cos(x))))\n+print(\"Max(sin(x), cos(x)):\", pycode(Max(sin(x), cos(x))))\n+\n+print(\"\\n=== With constants ===\")\n+print(\"Min(pi, a):\", pycode(Min(pi, a)))\n+print(\"Max(pi, a):\", pycode(Max(pi, a)))\n+\n+print(\"\\n=== With infinities ===\")\n+print(\"Min(oo, a):\", pycode(Min(oo, a)))\n+print(\"Max(-oo, a):\", pycode(Max(-oo, a)))\n+\n+print(\"\\n=== Single argument (should simplify) ===\")\n+print(\"Min(a):\", pycode(Min(a)))\n+print(\"Max(a):\", pycode(Max(a)))\n+\n+print(\"\\n=== Nested Min/Max ===\")\n+print(\"Min(Max(a, b), c):\", pycode(Min(Max(a, b), c)))\n+print(\"Max(Min(a, b), c):\", pycode(Max(Min(a, b), c)))\n\\ No newline at end of file\ndiff --git a/test_generated_code.py b/test_generated_code.py\nnew file mode 100644\nindex 0000000000..c3959aa3b5\n--- /dev/null\n+++ b/test_generated_code.py\n@@ -0,0 +1,40 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+import math\n+\n+# Test that the generated code actually works\n+a, b = symbols(\"a b\")\n+\n+# Generate code for Min and Max\n+min_code = pycode(Min(a, b))\n+max_code = pycode(Max(a, b))\n+\n+print(\"Generated Min code:\", min_code)\n+print(\"Generated Max code:\", max_code)\n+\n+# Test the generated code by executing it\n+a_val = 3\n+b_val = 7\n+\n+min_result = eval(min_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n+max_result = eval(max_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n+\n+print(f\"min({a_val}, {b_val}) = {min_result}\")\n+print(f\"max({a_val}, {b_val}) = {max_result}\")\n+\n+# Test with more complex expressions\n+from sympy import sin, cos\n+x = symbols(\"x\")\n+complex_min_code = pycode(Min(sin(x), cos(x)))\n+complex_max_code = pycode(Max(sin(x), cos(x)))\n+\n+print(\"Complex Min code:\", complex_min_code)\n+print(\"Complex Max code:\", complex_max_code)\n+\n+x_val = 0.5\n+complex_min_result = eval(complex_min_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n+complex_max_result = eval(complex_max_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n+\n+print(f\"min(sin({x_val}), cos({x_val})) = {complex_min_result}\")\n+print(f\"max(sin({x_val}), cos({x_val})) = {complex_max_result}\")\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..6cbc397ff7\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,7 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, pycode\n+\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+print(pycode(c))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 37 create #1",
+          "filename": "test_generated_code.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_generated_code.py",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python -m sympy.testing.runtests sympy/printing/tests/test_pycode.py",
+          "step_index": 40
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport sympy.printing.tests.test_pycode as test_module\nimport inspect\n\n# Get all test functions\ntest_functions = [getattr(test_module, name) for name in dir(test_module) if name.startswith('test_')]\n\nprint(f'Found {len(test_functions)} test functions')\n\n# Run a few key tests\nfor test_func in test_functions[:5]:\n    try:\n        print(f'Running {test_func.__name__}...')\n        test_func()\n        print(f'  ✓ {test_func.__name__} passed')\n    except Exception as e:\n        print(f'  ✗ {test_func.__name__} failed: {e}')\n\"",
+          "step_index": 41
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import test_issue_18770\ntry:\n    test_issue_18770()\n    print('✓ test_issue_18770 passed')\nexcept Exception as e:\n    print(f'✗ test_issue_18770 failed: {e}')\n\"",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import pycode\n\n# Test that our implementation matches the expected behavior from the PR\na, b = symbols('a b')\n\n# Test basic functionality\nmin_result = pycode(Min(a, b))\nmax_result = pycode(Max(a, b))\n\nprint('Min result:', min_result)\nprint('Max result:', max_result)\n\n# Verify it's what we expect\nassert min_result == 'min(a, b)', f'Expected min(a, b), got {min_result}'\nassert max_result == 'max(a, b)', f'Expected max(a, b), got {max_result}'\n\nprint('✓ All assertions passed')\n\"",
+          "step_index": 46
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import pycode\n\na, b = symbols('a b')\n\n# Test that we're NOT getting Piecewise expressions anymore\nmin_result = pycode(Min(a, b))\nmax_result = pycode(Max(a, b))\n\nprint('Min result:', min_result)\nprint('Max result:', max_result)\n\n# Make sure we're not getting the old conditional expressions\nassert 'if' not in min_result, f'Min should not contain if statements: {min_result}'\nassert 'if' not in max_result, f'Max should not contain if statements: {max_result}'\nassert 'else' not in min_result, f'Min should not contain else statements: {min_result}'\nassert 'else' not in max_result, f'Max should not contain else statements: {max_result}'\n\nprint('✓ No conditional expressions found - using built-in functions as expected')\n\"",
+          "step_index": 47
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, pycode\na, b = symbols('a b')\nc = Min(a,b)\nresult = pycode(c)\nprint(result)\n\n# Make sure we're not getting the 'Not supported' message\nassert 'Not supported' not in result, f'Should not show Not supported message: {result}'\nassert result == 'min(a, b)', f'Expected min(a, b), got {result}'\n\nprint('✓ PR issue resolved - no more \\\"Not supported\\\" message')\n\"",
+          "step_index": 48
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import *\nimport sys\n\n# Run all test functions\ntest_functions = [globals()[name] for name in globals() if name.startswith('test_') and callable(globals()[name])]\n\npassed = 0\nfailed = 0\n\nfor test_func in test_functions:\n    try:\n        test_func()\n        passed += 1\n        print(f'✓ {test_func.__name__}')\n    except Exception as e:\n        failed += 1\n        print(f'✗ {test_func.__name__}: {e}')\n\nprint(f'\\\\nResults: {passed} passed, {failed} failed')\n\"",
+          "step_index": 49
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 37
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\n\"\"\"\nComprehensive test for Min and Max support in PythonCodePrinter\nThis test verifies that the PR requirements are met.\n\"\"\"\n\nfrom sympy import symbols, Min, Max, pycode\n\ndef test_pr_requirements():\n    \"\"\"Test the exact requirements from the PR description\"\"\"\n    \n    # Test the exact example from the PR\n    a, b = symbols(\"a b\")\n    c = Min(a, b)\n    result = pycode(c)\n    \n    print(\"PR Example Test:\")\n    print(f\"Expression: {c}\")\n    print(f\"Python code: {result}\")\n    \n    # Verify it's not the old \"Not supported\" message\n    assert \"Not supported\" not in result, f\"Should not show 'Not supported': {result}\"\n    \n    # Verify it uses the expected format\n    assert result == \"min(a, b)\", f\"Expected 'min(a, b)', got '{result}'\"\n    \n    print(\"✓ PR example test passed\\n\")\n\ndef test_max_functionality():\n    \"\"\"Test Max functionality\"\"\"\n    \n    a, b = symbols(\"a b\")\n    d = Max(a, b)\n    result = pycode(d)\n    \n    print(\"Max Test:\")\n    print(f\"Expression: {d}\")\n    print(f\"Python code: {result}\")\n    \n    assert result == \"max(a, b)\", f\"Expected 'max(a, b)', got '{result}'\"\n    \n    print(\"✓ Max test passed\\n\")\n\ndef test_multiple_arguments():\n    \"\"\"Test with multiple arguments\"\"\"\n    \n    a, b, c = symbols(\"a b c\")\n    \n    min_expr = Min(a, b, c)\n    max_expr = Max(a, b, c)\n    \n    min_result = pycode(min_expr)\n    max_result = pycode(max_expr)\n    \n    print(\"Multiple Arguments Test:\")\n    print(f\"Min expression: {min_expr}\")\n    print(f\"Min Python code: {min_result}\")\n    print(f\"Max expression: {max_expr}\")\n    print(f\"Max Python code: {max_result}\")\n    \n    # The order might vary due to sympy's internal ordering\n    assert min_result.startswith(\"min(\") and min_result.endswith(\")\"), f\"Min result should be min(...): {min_result}\"\n    assert max_result.startswith(\"max(\") and max_result.endswith(\")\"), f\"Max result should be max(...): {max_result}\"\n    \n    # Check that all variables are present\n    for var in ['a', 'b', 'c']:\n        assert var in min_result, f\"Variable {var} should be in min result: {min_result}\"\n        assert var in max_result, f\"Variable {var} should be in max result: {max_result}\"\n    \n    print(\"✓ Multiple arguments test passed\\n\")\n\ndef test_mixed_types():\n    \"\"\"Test with mixed numbers and symbols\"\"\"\n    \n    a, b = symbols(\"a b\")\n    \n    min_expr = Min(a, 5, b)\n    max_expr = Max(a, 5, b)\n    \n    min_result = pycode(min_expr)\n    max_result = pycode(max_expr)\n    \n    print(\"Mixed Types Test:\")\n    print(f\"Min expression: {min_expr}\")\n    print(f\"Min Python code: {min_result}\")\n    print(f\"Max expression: {max_expr}\")\n    print(f\"Max Python code: {max_result}\")\n    \n    assert min_result.startswith(\"min(\") and min_result.endswith(\")\"), f\"Min result should be min(...): {min_result}\"\n    assert max_result.startswith(\"max(\") and max_result.endswith(\")\"), f\"Max result should be max(...): {max_result}\"\n    assert \"5\" in min_result and \"a\" in min_result and \"b\" in min_result\n    assert \"5\" in max_result and \"a\" in max_result and \"b\" in max_result\n    \n    print(\"✓ Mixed types test passed\\n\")\n\ndef test_no_piecewise_conversion():\n    \"\"\"Test that Min/Max are not converted to Piecewise expressions\"\"\"\n    \n    a, b = symbols(\"a b\")\n    \n    min_result = pycode(Min(a, b))\n    max_result = pycode(Max(a, b))\n    \n    print(\"No Piecewise Conversion Test:\")\n    print(f\"Min result: {min_result}\")\n    print(f\"Max result: {max_result}\")\n    \n    # Make sure we don't get conditional expressions\n    for result in [min_result, max_result]:\n        assert \"if\" not in result, f\"Should not contain 'if': {result}\"\n        assert \"else\" not in result, f\"Should not contain 'else': {result}\"\n        assert \"<=\" not in result, f\"Should not contain '<=': {result}\"\n        assert \">=\" not in result, f\"Should not contain '>=': {result}\"\n    \n    print(\"✓ No Piecewise conversion test passed\\n\")\n\nif __name__ == \"__main__\":\n    print(\"Running comprehensive tests for Min/Max support in PythonCodePrinter\\n\")\n    \n    test_pr_requirements()\n    test_max_functionality()\n    test_multiple_arguments()\n    test_mixed_types()\n    test_no_piecewise_conversion()\n    \n    print(\"🎉 All tests passed! The PR requirements have been successfully implemented.\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..8401bb62d1\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,127 @@\n+#!/usr/bin/env python3\n+\n+\"\"\"\n+Comprehensive test for Min and Max support in PythonCodePrinter\n+This test verifies that the PR requirements are met.\n+\"\"\"\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+def test_pr_requirements():\n+    \"\"\"Test the exact requirements from the PR description\"\"\"\n+    \n+    # Test the exact example from the PR\n+    a, b = symbols(\"a b\")\n+    c = Min(a, b)\n+    result = pycode(c)\n+    \n+    print(\"PR Example Test:\")\n+    print(f\"Expression: {c}\")\n+    print(f\"Python code: {result}\")\n+    \n+    # Verify it's not the old \"Not supported\" message\n+    assert \"Not supported\" not in result, f\"Should not show 'Not supported': {result}\"\n+    \n+    # Verify it uses the expected format\n+    assert result == \"min(a, b)\", f\"Expected 'min(a, b)', got '{result}'\"\n+    \n+    print(\"✓ PR example test passed\\n\")\n+\n+def test_max_functionality():\n+    \"\"\"Test Max functionality\"\"\"\n+    \n+    a, b = symbols(\"a b\")\n+    d = Max(a, b)\n+    result = pycode(d)\n+    \n+    print(\"Max Test:\")\n+    print(f\"Expression: {d}\")\n+    print(f\"Python code: {result}\")\n+    \n+    assert result == \"max(a, b)\", f\"Expected 'max(a, b)', got '{result}'\"\n+    \n+    print(\"✓ Max test passed\\n\")\n+\n+def test_multiple_arguments():\n+    \"\"\"Test with multiple arguments\"\"\"\n+    \n+    a, b, c = symbols(\"a b c\")\n+    \n+    min_expr = Min(a, b, c)\n+    max_expr = Max(a, b, c)\n+    \n+    min_result = pycode(min_expr)\n+    max_result = pycode(max_expr)\n+    \n+    print(\"Multiple Arguments Test:\")\n+    print(f\"Min expression: {min_expr}\")\n+    print(f\"Min Python code: {min_result}\")\n+    print(f\"Max expression: {max_expr}\")\n+    print(f\"Max Python code: {max_result}\")\n+    \n+    # The order might vary due to sympy's internal ordering\n+    assert min_result.startswith(\"min(\") and min_result.endswith(\")\"), f\"Min result should be min(...): {min_result}\"\n+    assert max_result.startswith(\"max(\") and max_result.endswith(\")\"), f\"Max result should be max(...): {max_result}\"\n+    \n+    # Check that all variables are present\n+    for var in ['a', 'b', 'c']:\n+        assert var in min_result, f\"Variable {var} should be in min result: {min_result}\"\n+        assert var in max_result, f\"Variable {var} should be in max result: {max_result}\"\n+    \n+    print(\"✓ Multiple arguments test passed\\n\")\n+\n+def test_mixed_types():\n+    \"\"\"Test with mixed numbers and symbols\"\"\"\n+    \n+    a, b = symbols(\"a b\")\n+    \n+    min_expr = Min(a, 5, b)\n+    max_expr = Max(a, 5, b)\n+    \n+    min_result = pycode(min_expr)\n+    max_result = pycode(max_expr)\n+    \n+    print(\"Mixed Types Test:\")\n+    print(f\"Min expression: {min_expr}\")\n+    print(f\"Min Python code: {min_result}\")\n+    print(f\"Max expression: {max_expr}\")\n+    print(f\"Max Python code: {max_result}\")\n+    \n+    assert min_result.startswith(\"min(\") and min_result.endswith(\")\"), f\"Min result should be min(...): {min_result}\"\n+    assert max_result.startswith(\"max(\") and max_result.endswith(\")\"), f\"Max result should be max(...): {max_result}\"\n+    assert \"5\" in min_result and \"a\" in min_result and \"b\" in min_result\n+    assert \"5\" in max_result and \"a\" in max_result and \"b\" in max_result\n+    \n+    print(\"✓ Mixed types test passed\\n\")\n+\n+def test_no_piecewise_conversion():\n+    \"\"\"Test that Min/Max are not converted to Piecewise expressions\"\"\"\n+    \n+    a, b = symbols(\"a b\")\n+    \n+    min_result = pycode(Min(a, b))\n+    max_result = pycode(Max(a, b))\n+    \n+    print(\"No Piecewise Conversion Test:\")\n+    print(f\"Min result: {min_result}\")\n+    print(f\"Max result: {max_result}\")\n+    \n+    # Make sure we don't get conditional expressions\n+    for result in [min_result, max_result]:\n+        assert \"if\" not in result, f\"Should not contain 'if': {result}\"\n+        assert \"else\" not in result, f\"Should not contain 'else': {result}\"\n+        assert \"<=\" not in result, f\"Should not contain '<=': {result}\"\n+        assert \">=\" not in result, f\"Should not contain '>=': {result}\"\n+    \n+    print(\"✓ No Piecewise conversion test passed\\n\")\n+\n+if __name__ == \"__main__\":\n+    print(\"Running comprehensive tests for Min/Max support in PythonCodePrinter\\n\")\n+    \n+    test_pr_requirements()\n+    test_max_functionality()\n+    test_multiple_arguments()\n+    test_mixed_types()\n+    test_no_piecewise_conversion()\n+    \n+    print(\"🎉 All tests passed! The PR requirements have been successfully implemented.\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..a82bebbc1d\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,42 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo\n+\n+# Test various edge cases\n+a, b, c, x = symbols(\"a b c x\")\n+\n+print(\"=== Basic cases ===\")\n+print(\"Min(a, b):\", pycode(Min(a, b)))\n+print(\"Max(a, b):\", pycode(Max(a, b)))\n+\n+print(\"\\n=== Multiple arguments ===\")\n+print(\"Min(a, b, c):\", pycode(Min(a, b, c)))\n+print(\"Max(a, b, c):\", pycode(Max(a, b, c)))\n+\n+print(\"\\n=== With numbers ===\")\n+print(\"Min(1, 2, 3):\", pycode(Min(1, 2, 3)))\n+print(\"Max(1, 2, 3):\", pycode(Max(1, 2, 3)))\n+\n+print(\"\\n=== Mixed numbers and symbols ===\")\n+print(\"Min(a, 5, b):\", pycode(Min(a, 5, b)))\n+print(\"Max(a, 5, b):\", pycode(Max(a, 5, b)))\n+\n+print(\"\\n=== With expressions ===\")\n+print(\"Min(sin(x), cos(x)):\", pycode(Min(sin(x), cos(x))))\n+print(\"Max(sin(x), cos(x)):\", pycode(Max(sin(x), cos(x))))\n+\n+print(\"\\n=== With constants ===\")\n+print(\"Min(pi, a):\", pycode(Min(pi, a)))\n+print(\"Max(pi, a):\", pycode(Max(pi, a)))\n+\n+print(\"\\n=== With infinities ===\")\n+print(\"Min(oo, a):\", pycode(Min(oo, a)))\n+print(\"Max(-oo, a):\", pycode(Max(-oo, a)))\n+\n+print(\"\\n=== Single argument (should simplify) ===\")\n+print(\"Min(a):\", pycode(Min(a)))\n+print(\"Max(a):\", pycode(Max(a)))\n+\n+print(\"\\n=== Nested Min/Max ===\")\n+print(\"Min(Max(a, b), c):\", pycode(Min(Max(a, b), c)))\n+print(\"Max(Min(a, b), c):\", pycode(Max(Min(a, b), c)))\n\\ No newline at end of file\ndiff --git a/test_generated_code.py b/test_generated_code.py\nnew file mode 100644\nindex 0000000000..c3959aa3b5\n--- /dev/null\n+++ b/test_generated_code.py\n@@ -0,0 +1,40 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+import math\n+\n+# Test that the generated code actually works\n+a, b = symbols(\"a b\")\n+\n+# Generate code for Min and Max\n+min_code = pycode(Min(a, b))\n+max_code = pycode(Max(a, b))\n+\n+print(\"Generated Min code:\", min_code)\n+print(\"Generated Max code:\", max_code)\n+\n+# Test the generated code by executing it\n+a_val = 3\n+b_val = 7\n+\n+min_result = eval(min_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n+max_result = eval(max_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n+\n+print(f\"min({a_val}, {b_val}) = {min_result}\")\n+print(f\"max({a_val}, {b_val}) = {max_result}\")\n+\n+# Test with more complex expressions\n+from sympy import sin, cos\n+x = symbols(\"x\")\n+complex_min_code = pycode(Min(sin(x), cos(x)))\n+complex_max_code = pycode(Max(sin(x), cos(x)))\n+\n+print(\"Complex Min code:\", complex_min_code)\n+print(\"Complex Max code:\", complex_max_code)\n+\n+x_val = 0.5\n+complex_min_result = eval(complex_min_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n+complex_max_result = eval(complex_max_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n+\n+print(f\"min(sin({x_val}), cos({x_val})) = {complex_min_result}\")\n+print(f\"max(sin({x_val}), cos({x_val})) = {complex_max_result}\")\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..6cbc397ff7\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,7 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, pycode\n+\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+print(pycode(c))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 50 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 51
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import NumPyPrinter, SciPyPrinter\n\na, b = symbols('a b')\n\n# Test NumPy printer\nnumpy_printer = NumPyPrinter()\nprint('NumPy Min:', numpy_printer.doprint(Min(a, b)))\nprint('NumPy Max:', numpy_printer.doprint(Max(a, b)))\n\n# Test SciPy printer  \nscipy_printer = SciPyPrinter()\nprint('SciPy Min:', scipy_printer.doprint(Min(a, b)))\nprint('SciPy Max:', scipy_printer.doprint(Max(a, b)))\n\"",
+          "step_index": 53
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport sympy.printing.pycode as pycode_module\nprint('Available classes:', [name for name in dir(pycode_module) if name.endswith('Printer')])\n\"",
+          "step_index": 54
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import MpmathPrinter, SymPyPrinter\n\na, b = symbols('a b')\n\n# Test MpmathPrinter\nmpmath_printer = MpmathPrinter()\nprint('Mpmath Min:', mpmath_printer.doprint(Min(a, b)))\nprint('Mpmath Max:', mpmath_printer.doprint(Max(a, b)))\n\n# Test SymPyPrinter  \nsympy_printer = SymPyPrinter()\nprint('SymPy Min:', sympy_printer.doprint(Min(a, b)))\nprint('SymPy Max:', sympy_printer.doprint(Max(a, b)))\n\"",
+          "step_index": 56
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.numpy import NumPyPrinter\n\na, b = symbols('a b')\n\n# Test NumPyPrinter\nnumpy_printer = NumPyPrinter()\nprint('NumPy Min:', numpy_printer.doprint(Min(a, b)))\nprint('NumPy Max:', numpy_printer.doprint(Max(a, b)))\n\"",
+          "step_index": 58
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.numpy import SciPyPrinter\n\na, b = symbols('a b')\n\n# Test SciPyPrinter\nscipy_printer = SciPyPrinter()\nprint('SciPy Min:', scipy_printer.doprint(Min(a, b)))\nprint('SciPy Max:', scipy_printer.doprint(Max(a, b)))\n\"",
+          "step_index": 66
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 50
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\n\"\"\"\nFinal comprehensive test to verify that our Min/Max implementation works correctly\nacross all printer types and doesn't break existing functionality.\n\"\"\"\n\nfrom sympy import symbols, Min, Max\nfrom sympy.printing.pycode import pycode, PythonCodePrinter, MpmathPrinter, SymPyPrinter\nfrom sympy.printing.numpy import NumPyPrinter, SciPyPrinter\n\ndef test_all_printers():\n    \"\"\"Test Min/Max across all printer types\"\"\"\n    \n    a, b = symbols('a b')\n    min_expr = Min(a, b)\n    max_expr = Max(a, b)\n    \n    print(\"=== Testing all printer types ===\\n\")\n    \n    # Test PythonCodePrinter (our implementation)\n    python_printer = PythonCodePrinter()\n    print(\"PythonCodePrinter:\")\n    print(f\"  Min: {python_printer.doprint(min_expr)}\")\n    print(f\"  Max: {python_printer.doprint(max_expr)}\")\n    \n    # Test pycode function (uses PythonCodePrinter)\n    print(\"pycode function:\")\n    print(f\"  Min: {pycode(min_expr)}\")\n    print(f\"  Max: {pycode(max_expr)}\")\n    \n    # Test MpmathPrinter (inherits from PythonCodePrinter)\n    mpmath_printer = MpmathPrinter()\n    print(\"MpmathPrinter:\")\n    print(f\"  Min: {mpmath_printer.doprint(min_expr)}\")\n    print(f\"  Max: {mpmath_printer.doprint(max_expr)}\")\n    \n    # Test SymPyPrinter (inherits from AbstractPythonCodePrinter)\n    sympy_printer = SymPyPrinter()\n    print(\"SymPyPrinter:\")\n    print(f\"  Min: {sympy_printer.doprint(min_expr)}\")\n    print(f\"  Max: {sympy_printer.doprint(max_expr)}\")\n    \n    # Test NumPyPrinter (has its own Min/Max implementation)\n    numpy_printer = NumPyPrinter()\n    print(\"NumPyPrinter:\")\n    print(f\"  Min: {numpy_printer.doprint(min_expr)}\")\n    print(f\"  Max: {numpy_printer.doprint(max_expr)}\")\n    \n    # Test SciPyPrinter (inherits from NumPyPrinter)\n    scipy_printer = SciPyPrinter()\n    print(\"SciPyPrinter:\")\n    print(f\"  Min: {scipy_printer.doprint(min_expr)}\")\n    print(f\"  Max: {scipy_printer.doprint(max_expr)}\")\n    \n    print(\"\\n=== Verification ===\")\n    \n    # Verify our main target (PythonCodePrinter and pycode) works correctly\n    assert pycode(min_expr) == \"min(a, b)\", f\"Expected 'min(a, b)', got '{pycode(min_expr)}'\"\n    assert pycode(max_expr) == \"max(a, b)\", f\"Expected 'max(a, b)', got '{pycode(max_expr)}'\"\n    print(\"✓ PythonCodePrinter and pycode function work correctly\")\n    \n    # Verify MpmathPrinter inherits our implementation\n    assert mpmath_printer.doprint(min_expr) == \"min(a, b)\"\n    assert mpmath_printer.doprint(max_expr) == \"max(a, b)\"\n    print(\"✓ MpmathPrinter inherits our implementation correctly\")\n    \n    # Verify SymPyPrinter still uses Piecewise (as expected)\n    sympy_min = sympy_printer.doprint(min_expr)\n    sympy_max = sympy_printer.doprint(max_expr)\n    assert \"if\" in sympy_min and \"else\" in sympy_min\n    assert \"if\" in sympy_max and \"else\" in sympy_max\n    print(\"✓ SymPyPrinter still uses Piecewise expressions (correct behavior)\")\n    \n    # Verify NumPy and SciPy printers use their own implementations\n    numpy_min = numpy_printer.doprint(min_expr)\n    numpy_max = numpy_printer.doprint(max_expr)\n    assert \"numpy.amin\" in numpy_min\n    assert \"numpy.amax\" in numpy_max\n    print(\"✓ NumPy and SciPy printers use numpy.amin/amax (correct behavior)\")\n    \n    print(\"\\n🎉 All tests passed! Implementation is working correctly across all printer types.\")\n\ndef test_pr_requirements():\n    \"\"\"Test the specific requirements from the PR\"\"\"\n    \n    print(\"=== Testing PR requirements ===\\n\")\n    \n    # Test the exact example from the PR\n    a, b = symbols(\"a b\")\n    c = Min(a, b)\n    result = pycode(c)\n    \n    print(f\"PR example: pycode(Min(a, b)) = '{result}'\")\n    \n    # Verify it's not the old \"Not supported\" message\n    assert \"Not supported\" not in result, f\"Should not show 'Not supported': {result}\"\n    assert result == \"min(a, b)\", f\"Expected 'min(a, b)', got '{result}'\"\n    \n    # Test Max as well\n    d = Max(a, b)\n    max_result = pycode(d)\n    print(f\"Max example: pycode(Max(a, b)) = '{max_result}'\")\n    assert max_result == \"max(a, b)\", f\"Expected 'max(a, b)', got '{max_result}'\"\n    \n    print(\"✓ PR requirements satisfied\")\n\nif __name__ == \"__main__\":\n    test_pr_requirements()\n    print()\n    test_all_printers()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..0f404d8df5\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,31 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+# Test the issue described in the PR\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+d = Max(a, b)\n+\n+print(\"Testing Min function:\")\n+print(\"Expression:\", c)\n+print(\"Python code:\", pycode(c))\n+print()\n+\n+print(\"Testing Max function:\")\n+print(\"Expression:\", d)\n+print(\"Python code:\", pycode(d))\n+print()\n+\n+# Test with more arguments\n+e = Min(a, b, 5)\n+f = Max(a, b, 5)\n+\n+print(\"Testing Min with multiple arguments:\")\n+print(\"Expression:\", e)\n+print(\"Python code:\", pycode(e))\n+print()\n+\n+print(\"Testing Max with multiple arguments:\")\n+print(\"Expression:\", f)\n+print(\"Python code:\", pycode(f))\n\\ No newline at end of file\ndiff --git a/sympy/printing/pycode.py b/sympy/printing/pycode.py\nindex 3a72ab606c..b4364113c6 100644\n--- a/sympy/printing/pycode.py\n+++ b/sympy/printing/pycode.py\n@@ -465,6 +465,12 @@ def _print_Symbol(self, expr):\n         else:\n             return name\n \n+    def _print_Min(self, expr):\n+        return \"min({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n+    def _print_Max(self, expr):\n+        return \"max({})\".format(\", \".join(self._print(arg) for arg in expr.args))\n+\n     _print_lowergamma = CodePrinter._print_not_supported\n     _print_uppergamma = CodePrinter._print_not_supported\n     _print_fresnelc = CodePrinter._print_not_supported\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..8401bb62d1\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,127 @@\n+#!/usr/bin/env python3\n+\n+\"\"\"\n+Comprehensive test for Min and Max support in PythonCodePrinter\n+This test verifies that the PR requirements are met.\n+\"\"\"\n+\n+from sympy import symbols, Min, Max, pycode\n+\n+def test_pr_requirements():\n+    \"\"\"Test the exact requirements from the PR description\"\"\"\n+    \n+    # Test the exact example from the PR\n+    a, b = symbols(\"a b\")\n+    c = Min(a, b)\n+    result = pycode(c)\n+    \n+    print(\"PR Example Test:\")\n+    print(f\"Expression: {c}\")\n+    print(f\"Python code: {result}\")\n+    \n+    # Verify it's not the old \"Not supported\" message\n+    assert \"Not supported\" not in result, f\"Should not show 'Not supported': {result}\"\n+    \n+    # Verify it uses the expected format\n+    assert result == \"min(a, b)\", f\"Expected 'min(a, b)', got '{result}'\"\n+    \n+    print(\"✓ PR example test passed\\n\")\n+\n+def test_max_functionality():\n+    \"\"\"Test Max functionality\"\"\"\n+    \n+    a, b = symbols(\"a b\")\n+    d = Max(a, b)\n+    result = pycode(d)\n+    \n+    print(\"Max Test:\")\n+    print(f\"Expression: {d}\")\n+    print(f\"Python code: {result}\")\n+    \n+    assert result == \"max(a, b)\", f\"Expected 'max(a, b)', got '{result}'\"\n+    \n+    print(\"✓ Max test passed\\n\")\n+\n+def test_multiple_arguments():\n+    \"\"\"Test with multiple arguments\"\"\"\n+    \n+    a, b, c = symbols(\"a b c\")\n+    \n+    min_expr = Min(a, b, c)\n+    max_expr = Max(a, b, c)\n+    \n+    min_result = pycode(min_expr)\n+    max_result = pycode(max_expr)\n+    \n+    print(\"Multiple Arguments Test:\")\n+    print(f\"Min expression: {min_expr}\")\n+    print(f\"Min Python code: {min_result}\")\n+    print(f\"Max expression: {max_expr}\")\n+    print(f\"Max Python code: {max_result}\")\n+    \n+    # The order might vary due to sympy's internal ordering\n+    assert min_result.startswith(\"min(\") and min_result.endswith(\")\"), f\"Min result should be min(...): {min_result}\"\n+    assert max_result.startswith(\"max(\") and max_result.endswith(\")\"), f\"Max result should be max(...): {max_result}\"\n+    \n+    # Check that all variables are present\n+    for var in ['a', 'b', 'c']:\n+        assert var in min_result, f\"Variable {var} should be in min result: {min_result}\"\n+        assert var in max_result, f\"Variable {var} should be in max result: {max_result}\"\n+    \n+    print(\"✓ Multiple arguments test passed\\n\")\n+\n+def test_mixed_types():\n+    \"\"\"Test with mixed numbers and symbols\"\"\"\n+    \n+    a, b = symbols(\"a b\")\n+    \n+    min_expr = Min(a, 5, b)\n+    max_expr = Max(a, 5, b)\n+    \n+    min_result = pycode(min_expr)\n+    max_result = pycode(max_expr)\n+    \n+    print(\"Mixed Types Test:\")\n+    print(f\"Min expression: {min_expr}\")\n+    print(f\"Min Python code: {min_result}\")\n+    print(f\"Max expression: {max_expr}\")\n+    print(f\"Max Python code: {max_result}\")\n+    \n+    assert min_result.startswith(\"min(\") and min_result.endswith(\")\"), f\"Min result should be min(...): {min_result}\"\n+    assert max_result.startswith(\"max(\") and max_result.endswith(\")\"), f\"Max result should be max(...): {max_result}\"\n+    assert \"5\" in min_result and \"a\" in min_result and \"b\" in min_result\n+    assert \"5\" in max_result and \"a\" in max_result and \"b\" in max_result\n+    \n+    print(\"✓ Mixed types test passed\\n\")\n+\n+def test_no_piecewise_conversion():\n+    \"\"\"Test that Min/Max are not converted to Piecewise expressions\"\"\"\n+    \n+    a, b = symbols(\"a b\")\n+    \n+    min_result = pycode(Min(a, b))\n+    max_result = pycode(Max(a, b))\n+    \n+    print(\"No Piecewise Conversion Test:\")\n+    print(f\"Min result: {min_result}\")\n+    print(f\"Max result: {max_result}\")\n+    \n+    # Make sure we don't get conditional expressions\n+    for result in [min_result, max_result]:\n+        assert \"if\" not in result, f\"Should not contain 'if': {result}\"\n+        assert \"else\" not in result, f\"Should not contain 'else': {result}\"\n+        assert \"<=\" not in result, f\"Should not contain '<=': {result}\"\n+        assert \">=\" not in result, f\"Should not contain '>=': {result}\"\n+    \n+    print(\"✓ No Piecewise conversion test passed\\n\")\n+\n+if __name__ == \"__main__\":\n+    print(\"Running comprehensive tests for Min/Max support in PythonCodePrinter\\n\")\n+    \n+    test_pr_requirements()\n+    test_max_functionality()\n+    test_multiple_arguments()\n+    test_mixed_types()\n+    test_no_piecewise_conversion()\n+    \n+    print(\"🎉 All tests passed! The PR requirements have been successfully implemented.\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..a82bebbc1d\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,42 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode, sin, cos, pi, oo\n+\n+# Test various edge cases\n+a, b, c, x = symbols(\"a b c x\")\n+\n+print(\"=== Basic cases ===\")\n+print(\"Min(a, b):\", pycode(Min(a, b)))\n+print(\"Max(a, b):\", pycode(Max(a, b)))\n+\n+print(\"\\n=== Multiple arguments ===\")\n+print(\"Min(a, b, c):\", pycode(Min(a, b, c)))\n+print(\"Max(a, b, c):\", pycode(Max(a, b, c)))\n+\n+print(\"\\n=== With numbers ===\")\n+print(\"Min(1, 2, 3):\", pycode(Min(1, 2, 3)))\n+print(\"Max(1, 2, 3):\", pycode(Max(1, 2, 3)))\n+\n+print(\"\\n=== Mixed numbers and symbols ===\")\n+print(\"Min(a, 5, b):\", pycode(Min(a, 5, b)))\n+print(\"Max(a, 5, b):\", pycode(Max(a, 5, b)))\n+\n+print(\"\\n=== With expressions ===\")\n+print(\"Min(sin(x), cos(x)):\", pycode(Min(sin(x), cos(x))))\n+print(\"Max(sin(x), cos(x)):\", pycode(Max(sin(x), cos(x))))\n+\n+print(\"\\n=== With constants ===\")\n+print(\"Min(pi, a):\", pycode(Min(pi, a)))\n+print(\"Max(pi, a):\", pycode(Max(pi, a)))\n+\n+print(\"\\n=== With infinities ===\")\n+print(\"Min(oo, a):\", pycode(Min(oo, a)))\n+print(\"Max(-oo, a):\", pycode(Max(-oo, a)))\n+\n+print(\"\\n=== Single argument (should simplify) ===\")\n+print(\"Min(a):\", pycode(Min(a)))\n+print(\"Max(a):\", pycode(Max(a)))\n+\n+print(\"\\n=== Nested Min/Max ===\")\n+print(\"Min(Max(a, b), c):\", pycode(Min(Max(a, b), c)))\n+print(\"Max(Min(a, b), c):\", pycode(Max(Min(a, b), c)))\n\\ No newline at end of file\ndiff --git a/test_final.py b/test_final.py\nnew file mode 100644\nindex 0000000000..d93301f860\n--- /dev/null\n+++ b/test_final.py\n@@ -0,0 +1,111 @@\n+#!/usr/bin/env python3\n+\n+\"\"\"\n+Final comprehensive test to verify that our Min/Max implementation works correctly\n+across all printer types and doesn't break existing functionality.\n+\"\"\"\n+\n+from sympy import symbols, Min, Max\n+from sympy.printing.pycode import pycode, PythonCodePrinter, MpmathPrinter, SymPyPrinter\n+from sympy.printing.numpy import NumPyPrinter, SciPyPrinter\n+\n+def test_all_printers():\n+    \"\"\"Test Min/Max across all printer types\"\"\"\n+    \n+    a, b = symbols('a b')\n+    min_expr = Min(a, b)\n+    max_expr = Max(a, b)\n+    \n+    print(\"=== Testing all printer types ===\\n\")\n+    \n+    # Test PythonCodePrinter (our implementation)\n+    python_printer = PythonCodePrinter()\n+    print(\"PythonCodePrinter:\")\n+    print(f\"  Min: {python_printer.doprint(min_expr)}\")\n+    print(f\"  Max: {python_printer.doprint(max_expr)}\")\n+    \n+    # Test pycode function (uses PythonCodePrinter)\n+    print(\"pycode function:\")\n+    print(f\"  Min: {pycode(min_expr)}\")\n+    print(f\"  Max: {pycode(max_expr)}\")\n+    \n+    # Test MpmathPrinter (inherits from PythonCodePrinter)\n+    mpmath_printer = MpmathPrinter()\n+    print(\"MpmathPrinter:\")\n+    print(f\"  Min: {mpmath_printer.doprint(min_expr)}\")\n+    print(f\"  Max: {mpmath_printer.doprint(max_expr)}\")\n+    \n+    # Test SymPyPrinter (inherits from AbstractPythonCodePrinter)\n+    sympy_printer = SymPyPrinter()\n+    print(\"SymPyPrinter:\")\n+    print(f\"  Min: {sympy_printer.doprint(min_expr)}\")\n+    print(f\"  Max: {sympy_printer.doprint(max_expr)}\")\n+    \n+    # Test NumPyPrinter (has its own Min/Max implementation)\n+    numpy_printer = NumPyPrinter()\n+    print(\"NumPyPrinter:\")\n+    print(f\"  Min: {numpy_printer.doprint(min_expr)}\")\n+    print(f\"  Max: {numpy_printer.doprint(max_expr)}\")\n+    \n+    # Test SciPyPrinter (inherits from NumPyPrinter)\n+    scipy_printer = SciPyPrinter()\n+    print(\"SciPyPrinter:\")\n+    print(f\"  Min: {scipy_printer.doprint(min_expr)}\")\n+    print(f\"  Max: {scipy_printer.doprint(max_expr)}\")\n+    \n+    print(\"\\n=== Verification ===\")\n+    \n+    # Verify our main target (PythonCodePrinter and pycode) works correctly\n+    assert pycode(min_expr) == \"min(a, b)\", f\"Expected 'min(a, b)', got '{pycode(min_expr)}'\"\n+    assert pycode(max_expr) == \"max(a, b)\", f\"Expected 'max(a, b)', got '{pycode(max_expr)}'\"\n+    print(\"✓ PythonCodePrinter and pycode function work correctly\")\n+    \n+    # Verify MpmathPrinter inherits our implementation\n+    assert mpmath_printer.doprint(min_expr) == \"min(a, b)\"\n+    assert mpmath_printer.doprint(max_expr) == \"max(a, b)\"\n+    print(\"✓ MpmathPrinter inherits our implementation correctly\")\n+    \n+    # Verify SymPyPrinter still uses Piecewise (as expected)\n+    sympy_min = sympy_printer.doprint(min_expr)\n+    sympy_max = sympy_printer.doprint(max_expr)\n+    assert \"if\" in sympy_min and \"else\" in sympy_min\n+    assert \"if\" in sympy_max and \"else\" in sympy_max\n+    print(\"✓ SymPyPrinter still uses Piecewise expressions (correct behavior)\")\n+    \n+    # Verify NumPy and SciPy printers use their own implementations\n+    numpy_min = numpy_printer.doprint(min_expr)\n+    numpy_max = numpy_printer.doprint(max_expr)\n+    assert \"numpy.amin\" in numpy_min\n+    assert \"numpy.amax\" in numpy_max\n+    print(\"✓ NumPy and SciPy printers use numpy.amin/amax (correct behavior)\")\n+    \n+    print(\"\\n🎉 All tests passed! Implementation is working correctly across all printer types.\")\n+\n+def test_pr_requirements():\n+    \"\"\"Test the specific requirements from the PR\"\"\"\n+    \n+    print(\"=== Testing PR requirements ===\\n\")\n+    \n+    # Test the exact example from the PR\n+    a, b = symbols(\"a b\")\n+    c = Min(a, b)\n+    result = pycode(c)\n+    \n+    print(f\"PR example: pycode(Min(a, b)) = '{result}'\")\n+    \n+    # Verify it's not the old \"Not supported\" message\n+    assert \"Not supported\" not in result, f\"Should not show 'Not supported': {result}\"\n+    assert result == \"min(a, b)\", f\"Expected 'min(a, b)', got '{result}'\"\n+    \n+    # Test Max as well\n+    d = Max(a, b)\n+    max_result = pycode(d)\n+    print(f\"Max example: pycode(Max(a, b)) = '{max_result}'\")\n+    assert max_result == \"max(a, b)\", f\"Expected 'max(a, b)', got '{max_result}'\"\n+    \n+    print(\"✓ PR requirements satisfied\")\n+\n+if __name__ == \"__main__\":\n+    test_pr_requirements()\n+    print()\n+    test_all_printers()\n\\ No newline at end of file\ndiff --git a/test_generated_code.py b/test_generated_code.py\nnew file mode 100644\nindex 0000000000..c3959aa3b5\n--- /dev/null\n+++ b/test_generated_code.py\n@@ -0,0 +1,40 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, Max, pycode\n+import math\n+\n+# Test that the generated code actually works\n+a, b = symbols(\"a b\")\n+\n+# Generate code for Min and Max\n+min_code = pycode(Min(a, b))\n+max_code = pycode(Max(a, b))\n+\n+print(\"Generated Min code:\", min_code)\n+print(\"Generated Max code:\", max_code)\n+\n+# Test the generated code by executing it\n+a_val = 3\n+b_val = 7\n+\n+min_result = eval(min_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n+max_result = eval(max_code, {\"a\": a_val, \"b\": b_val, \"min\": min, \"max\": max, \"math\": math})\n+\n+print(f\"min({a_val}, {b_val}) = {min_result}\")\n+print(f\"max({a_val}, {b_val}) = {max_result}\")\n+\n+# Test with more complex expressions\n+from sympy import sin, cos\n+x = symbols(\"x\")\n+complex_min_code = pycode(Min(sin(x), cos(x)))\n+complex_max_code = pycode(Max(sin(x), cos(x)))\n+\n+print(\"Complex Min code:\", complex_min_code)\n+print(\"Complex Max code:\", complex_max_code)\n+\n+x_val = 0.5\n+complex_min_result = eval(complex_min_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n+complex_max_result = eval(complex_max_code, {\"x\": x_val, \"min\": min, \"max\": max, \"math\": math})\n+\n+print(f\"min(sin({x_val}), cos({x_val})) = {complex_min_result}\")\n+print(f\"max(sin({x_val}), cos({x_val})) = {complex_max_result}\")\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..6cbc397ff7\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,7 @@\n+#!/usr/bin/env python3\n+\n+from sympy import symbols, Min, pycode\n+\n+a, b = symbols(\"a b\")\n+c = Min(a, b)\n+print(pycode(c))\n\\ No newline at end of file",
+          "explanation": "classic_swe step 67 create #1",
+          "filename": "test_final.py",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        }
+      ],
+      "end_step": 67,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_final.py",
+          "step_index": 68
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import test_PythonCodePrinter\ntry:\n    test_PythonCodePrinter()\n    print('✓ test_PythonCodePrinter passed')\nexcept Exception as e:\n    print(f'✗ test_PythonCodePrinter failed: {e}')\n\"",
+          "step_index": 69
+        },
+        {
+          "command": "cd /testbed && python -c \"\nfrom sympy.printing.tests.test_pycode import test_pycode_reserved_words, test_sqrt, test_printmethod\ntests = [test_pycode_reserved_words, test_sqrt, test_printmethod]\n\nfor test in tests:\n    try:\n        test()\n        print(f'✓ {test.__name__} passed')\n    except Exception as e:\n        print(f'✗ {test.__name__} failed: {e}')\n\"",
+          "step_index": 70
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 73
+        }
+      ],
+      "revision_index": 7,
+      "start_step": 67
+    }
+  ],
+  "sub_paths": [
+    "sympy/printing/pycode.py"
+  ],
+  "success_step": 67,
+  "test_files": [
+    "reproduce_issue.py",
+    "test_comprehensive.py",
+    "test_edge_cases.py",
+    "test_final.py",
+    "test_generated_code.py",
+    "test_pr_example.py"
+  ]
+}

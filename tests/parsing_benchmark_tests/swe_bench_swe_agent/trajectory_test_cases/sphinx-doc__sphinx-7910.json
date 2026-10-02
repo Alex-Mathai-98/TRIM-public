@@ -1,0 +1,191 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 68
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py -q",
+      "step_index": 70
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 11
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue2.py",
+      "step_index": 13
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue3.py",
+      "step_index": 15
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue4.py",
+      "step_index": 17
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py -xvs",
+      "step_index": 23
+    },
+    {
+      "command": "cd /testbed && python test_decorated_init.py",
+      "step_index": 25
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 27
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -xvs -k \"test_\" | head -50",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport sys\nsys.path.insert(0, '/testbed')\nfrom sphinx.ext.napoleon import _skip_member\nfrom unittest.mock import Mock\n\n# Test basic functionality\napp = Mock()\napp.config = Mock()\napp.config.napoleon_include_init_with_doc = True\n\nclass TestClass:\n    def __init__(self):\n        '''Test init'''\n        pass\n\nobj = TestClass.__init__\nresult = _skip_member(app, 'class', '__init__', obj, True, Mock())\nprint('Basic test result:', result)\nprint('Test passed!' if result is False else 'Test failed!')\n\"",
+      "step_index": 29
+    },
+    {
+      "command": "cd /testbed && python test_sphinx_integration.py",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py::SkipMemberTest -xvs",
+      "step_index": 32
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py::SkipMemberTest::test_decorated_init -xvs",
+      "step_index": 43
+    },
+    {
+      "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -k \"test_\" --maxfail=5 -q",
+      "step_index": 48
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "                    else:\n                        # Try to get the class from __globals__ first\n                        try:\n                            cls = obj.__globals__[cls_path]\n                        except KeyError:\n                            # If not found in __globals__ (e.g., for decorated functions),\n                            # fall back to importlib approach\n                            import importlib\n                            mod = importlib.import_module(obj.__module__)\n                            cls = getattr(mod, cls_path)",
+          "before": "                    else:\n                        cls = obj.__globals__[cls_path]",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/sphinx/ext/napoleon/__init__.py b/sphinx/ext/napoleon/__init__.py\nindex 10b1ff3a3..c3ceb075c 100644\n--- a/sphinx/ext/napoleon/__init__.py\n+++ b/sphinx/ext/napoleon/__init__.py\n@@ -438,7 +438,15 @@ def _skip_member(app: Sphinx, what: str, name: str, obj: Any,\n                         mod_path = cls_path.split('.')\n                         cls = functools.reduce(getattr, mod_path, mod)\n                     else:\n-                        cls = obj.__globals__[cls_path]\n+                        # Try to get the class from __globals__ first\n+                        try:\n+                            cls = obj.__globals__[cls_path]\n+                        except KeyError:\n+                            # If not found in __globals__ (e.g., for decorated functions),\n+                            # fall back to importlib approach\n+                            import importlib\n+                            mod = importlib.import_module(obj.__module__)\n+                            cls = getattr(mod, cls_path)\n                 except Exception:\n                     cls_is_owner = False\n                 else:",
+          "explanation": "classic_swe step 64 #1",
+          "filename": "sphinx/ext/napoleon/__init__.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 64
+        },
+        {
+          "after": "#!/usr/bin/env python3\n\"\"\"\nFinal test to verify the fix works.\n\"\"\"\n\nimport functools\nimport tempfile\nimport os\nimport sys\nimport shutil\n\n# Create a decorator module\ndecorator_module_content = '''\nimport functools\n\ndef my_decorator(func):\n    \"\"\"A decorator that uses functools.wraps\"\"\"\n    @functools.wraps(func)\n    def wrapper(*args, **kwargs):\n        return func(*args, **kwargs)\n    return wrapper\n'''\n\n# Create a test module with a decorated __init__ method\ntest_module_content = '''\nfrom decorator_module import my_decorator\n\nclass TestClass:\n    \"\"\"A test class with a decorated __init__ method.\"\"\"\n    \n    @my_decorator\n    def __init__(self, value):\n        \"\"\"\n        Initialize the test class.\n        \n        Args:\n            value: The value to store.\n        \"\"\"\n        self.value = value\n'''\n\n# Create a temporary directory and modules\ntemp_dir = tempfile.mkdtemp()\ndecorator_path = os.path.join(temp_dir, 'decorator_module.py')\nmodule_path = os.path.join(temp_dir, 'test_module.py')\n\ntry:\n    with open(decorator_path, 'w') as f:\n        f.write(decorator_module_content)\n\n    with open(module_path, 'w') as f:\n        f.write(test_module_content)\n\n    # Add the temp directory to sys.path so we can import the module\n    sys.path.insert(0, temp_dir)\n    \n    import test_module\n    \n    # Test the current behavior\n    from sphinx.ext.napoleon import _skip_member\n    from unittest.mock import Mock\n    \n    # Create a mock app with napoleon config\n    app = Mock()\n    app.config = Mock()\n    app.config.napoleon_include_init_with_doc = True\n    \n    # Test the decorated __init__ method\n    obj = test_module.TestClass.__init__\n    result = _skip_member(app, 'class', '__init__', obj, True, Mock())\n    \n    print(\"Testing decorated __init__ method:\")\n    print(f\"  _skip_member result: {result}\")\n    print(f\"  Should be included (result should be False): {result is False}\")\n    \n    if result is False:\n        print(\"✓ SUCCESS: Decorated __init__ method will be included in documentation!\")\n    else:\n        print(\"✗ FAILURE: Decorated __init__ method will not be included in documentation!\")\n        sys.exit(1)\n\nfinally:\n    # Clean up\n    if temp_dir in sys.path:\n        sys.path.remove(temp_dir)\n    shutil.rmtree(temp_dir)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 000000000..df12e97f3\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,86 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Final test to verify the fix works.\n+\"\"\"\n+\n+import functools\n+import tempfile\n+import os\n+import sys\n+import shutil\n+\n+# Create a decorator module\n+decorator_module_content = '''\n+import functools\n+\n+def my_decorator(func):\n+    \"\"\"A decorator that uses functools.wraps\"\"\"\n+    @functools.wraps(func)\n+    def wrapper(*args, **kwargs):\n+        return func(*args, **kwargs)\n+    return wrapper\n+'''\n+\n+# Create a test module with a decorated __init__ method\n+test_module_content = '''\n+from decorator_module import my_decorator\n+\n+class TestClass:\n+    \"\"\"A test class with a decorated __init__ method.\"\"\"\n+    \n+    @my_decorator\n+    def __init__(self, value):\n+        \"\"\"\n+        Initialize the test class.\n+        \n+        Args:\n+            value: The value to store.\n+        \"\"\"\n+        self.value = value\n+'''\n+\n+# Create a temporary directory and modules\n+temp_dir = tempfile.mkdtemp()\n+decorator_path = os.path.join(temp_dir, 'decorator_module.py')\n+module_path = os.path.join(temp_dir, 'test_module.py')\n+\n+try:\n+    with open(decorator_path, 'w') as f:\n+        f.write(decorator_module_content)\n+\n+    with open(module_path, 'w') as f:\n+        f.write(test_module_content)\n+\n+    # Add the temp directory to sys.path so we can import the module\n+    sys.path.insert(0, temp_dir)\n+    \n+    import test_module\n+    \n+    # Test the current behavior\n+    from sphinx.ext.napoleon import _skip_member\n+    from unittest.mock import Mock\n+    \n+    # Create a mock app with napoleon config\n+    app = Mock()\n+    app.config = Mock()\n+    app.config.napoleon_include_init_with_doc = True\n+    \n+    # Test the decorated __init__ method\n+    obj = test_module.TestClass.__init__\n+    result = _skip_member(app, 'class', '__init__', obj, True, Mock())\n+    \n+    print(\"Testing decorated __init__ method:\")\n+    print(f\"  _skip_member result: {result}\")\n+    print(f\"  Should be included (result should be False): {result is False}\")\n+    \n+    if result is False:\n+        print(\"✓ SUCCESS: Decorated __init__ method will be included in documentation!\")\n+    else:\n+        print(\"✗ FAILURE: Decorated __init__ method will not be included in documentation!\")\n+        sys.exit(1)\n+\n+finally:\n+    # Clean up\n+    if temp_dir in sys.path:\n+        sys.path.remove(temp_dir)\n+    shutil.rmtree(temp_dir)\n\\ No newline at end of file\ndiff --git a/sphinx/ext/napoleon/__init__.py b/sphinx/ext/napoleon/__init__.py\nindex 10b1ff3a3..c3ceb075c 100644\n--- a/sphinx/ext/napoleon/__init__.py\n+++ b/sphinx/ext/napoleon/__init__.py\n@@ -438,7 +438,15 @@ def _skip_member(app: Sphinx, what: str, name: str, obj: Any,\n                         mod_path = cls_path.split('.')\n                         cls = functools.reduce(getattr, mod_path, mod)\n                     else:\n-                        cls = obj.__globals__[cls_path]\n+                        # Try to get the class from __globals__ first\n+                        try:\n+                            cls = obj.__globals__[cls_path]\n+                        except KeyError:\n+                            # If not found in __globals__ (e.g., for decorated functions),\n+                            # fall back to importlib approach\n+                            import importlib\n+                            mod = importlib.import_module(obj.__module__)\n+                            cls = getattr(mod, cls_path)\n                 except Exception:\n                     cls_is_owner = False\n                 else:",
+          "explanation": "classic_swe step 67 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        }
+      ],
+      "end_step": 67,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 68
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py -q",
+          "step_index": 70
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 11
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue2.py",
+          "step_index": 13
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue3.py",
+          "step_index": 15
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue4.py",
+          "step_index": 17
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py -xvs",
+          "step_index": 23
+        },
+        {
+          "command": "cd /testbed && python test_decorated_init.py",
+          "step_index": 25
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 27
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -xvs -k \"test_\" | head -50",
+          "step_index": 28
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport sys\nsys.path.insert(0, '/testbed')\nfrom sphinx.ext.napoleon import _skip_member\nfrom unittest.mock import Mock\n\n# Test basic functionality\napp = Mock()\napp.config = Mock()\napp.config.napoleon_include_init_with_doc = True\n\nclass TestClass:\n    def __init__(self):\n        '''Test init'''\n        pass\n\nobj = TestClass.__init__\nresult = _skip_member(app, 'class', '__init__', obj, True, Mock())\nprint('Basic test result:', result)\nprint('Test passed!' if result is False else 'Test failed!')\n\"",
+          "step_index": 29
+        },
+        {
+          "command": "cd /testbed && python test_sphinx_integration.py",
+          "step_index": 31
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py::SkipMemberTest -xvs",
+          "step_index": 32
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_napoleon.py::SkipMemberTest::test_decorated_init -xvs",
+          "step_index": 43
+        },
+        {
+          "command": "cd /testbed && python -m pytest tests/test_ext_autodoc.py -k \"test_\" --maxfail=5 -q",
+          "step_index": 48
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 64
+    }
+  ],
+  "sub_paths": [
+    "sphinx/ext/napoleon/__init__.py"
+  ],
+  "success_step": 67,
+  "test_files": [
+    "final_test.py"
+  ]
+}

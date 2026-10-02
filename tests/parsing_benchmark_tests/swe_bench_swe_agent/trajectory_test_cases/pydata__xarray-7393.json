@@ -1,0 +1,584 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 2
+    },
+    {
+      "command": "cd /testbed && python test_pandas_index.py",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python debug_stack.py",
+      "step_index": 36
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 54
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_indexes.py -xvs",
+      "step_index": 55
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::test_stack -xvs",
+      "step_index": 56
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::TestDataset::test_stack -xvs",
+      "step_index": 58
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py -k \"stack\" -xvs",
+      "step_index": 59
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_dataarray.py -k \"stack\" -xvs",
+      "step_index": 60
+    },
+    {
+      "command": "cd /testbed && python test_stack_dtype_preservation.py",
+      "step_index": 62
+    },
+    {
+      "command": "cd /testbed && python -m pytest test_stack_dtype_preservation.py -xvs",
+      "step_index": 63
+    },
+    {
+      "command": "cd /testbed && python test_dataarray_stack.py",
+      "step_index": 65
+    },
+    {
+      "command": "cd /testbed && python test_stack_unstack_roundtrip.py",
+      "step_index": 67
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_indexing.py -xvs",
+      "step_index": 68
+    },
+    {
+      "command": "cd /testbed && python -m pytest xarray/tests/test_variable.py -k \"values\" -x --tb=short",
+      "step_index": 69
+    },
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 72
+    }
+  ],
+  "patch_list_shape": [
+    [
+      7
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport xarray as xr\nimport numpy as np\n\nprint(\"Testing the stack dtype issue...\")\n\n# Create a dataset with int32 coordinate\nds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n\nprint(f\"Original dtype: {ds['a'].values.dtype}\")\nprint(f\"Original values: {ds['a'].values}\")\n\n# Stack the coordinate\nstacked_ds = ds.stack(b=('a',))\n\nprint(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\nprint(f\"Stacked values: {stacked_ds['a'].values}\")\n\n# Check if dtypes are equal\ndtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\nprint(f\"Dtypes equal: {dtypes_equal}\")\n\n# Expected: True, Actual: False (this is the bug)\nprint(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 1 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 1
+        }
+      ],
+      "end_step": 1,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 2
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 1
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pandas as pd\nimport numpy as np\n\n# Test what happens when we create a pandas Index from int32 array\narr = np.array([0], dtype='i4')\nprint(f\"Original array dtype: {arr.dtype}\")\n\n# Without specifying dtype\nindex1 = pd.Index(arr)\nprint(f\"Index without dtype: {index1.dtype}\")\n\n# With specifying dtype\nindex2 = pd.Index(arr, dtype=arr.dtype)\nprint(f\"Index with dtype: {index2.dtype}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..1ce5f9ea\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,16 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 18 create #1",
+          "filename": "test_pandas_index.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pandas_index.py",
+          "step_index": 19
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 18
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pandas as pd\nimport numpy as np\n\n# Test what happens when we create a pandas Index from int32 array\narr = np.array([0], dtype='i4')\nprint(f\"Original array dtype: {arr.dtype}\")\n\n# Without specifying dtype\nindex1 = pd.Index(arr)\nprint(f\"Index without dtype: {index1.dtype}\")\n\n# With specifying dtype\nindex2 = pd.Index(arr, dtype=arr.dtype)\nprint(f\"Index with dtype: {index2.dtype}\")\n\n# Try with np.asarray\narr_asarray = np.asarray(arr)\nprint(f\"np.asarray dtype: {arr_asarray.dtype}\")\nindex3 = pd.Index(arr_asarray, dtype=arr.dtype)\nprint(f\"Index from np.asarray with dtype: {index3.dtype}\")\n\n# Try with explicit dtype string\nindex4 = pd.Index(arr, dtype='int32')\nprint(f\"Index with explicit int32: {index4.dtype}\")\n\n# Check pandas version\nprint(f\"Pandas version: {pd.__version__}\")",
+          "before": "#!/usr/bin/env python3\n\nimport pandas as pd\nimport numpy as np\n\n# Test what happens when we create a pandas Index from int32 array\narr = np.array([0], dtype='i4')\nprint(f\"Original array dtype: {arr.dtype}\")\n\n# Without specifying dtype\nindex1 = pd.Index(arr)\nprint(f\"Index without dtype: {index1.dtype}\")\n\n# With specifying dtype\nindex2 = pd.Index(arr, dtype=arr.dtype)\nprint(f\"Index with dtype: {index2.dtype}\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..10606a2c\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,29 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "test_pandas_index.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pandas_index.py",
+          "step_index": 21
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pandas as pd\nimport numpy as np\n\n# Test what happens when we create a pandas Index from int32 array\narr = np.array([0], dtype='i4')\nprint(f\"Original array dtype: {arr.dtype}\")\n\n# Without specifying dtype\nindex1 = pd.Index(arr)\nprint(f\"Index without dtype: {index1.dtype}\")\n\n# With specifying dtype\nindex2 = pd.Index(arr, dtype=arr.dtype)\nprint(f\"Index with dtype: {index2.dtype}\")\n\n# Try with np.asarray\narr_asarray = np.asarray(arr)\nprint(f\"np.asarray dtype: {arr_asarray.dtype}\")\nindex3 = pd.Index(arr_asarray, dtype=arr.dtype)\nprint(f\"Index from np.asarray with dtype: {index3.dtype}\")\n\n# Try with explicit dtype string\nindex4 = pd.Index(arr, dtype='int32')\nprint(f\"Index with explicit int32: {index4.dtype}\")\n\n# Try with copy=False\nindex5 = pd.Index(arr, dtype=arr.dtype, copy=False)\nprint(f\"Index with copy=False: {index5.dtype}\")\n\n# Try with different dtypes\nfor dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n    test_arr = np.array([0], dtype=dtype)\n    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n    print(f\"{dtype} -> {test_index.dtype}\")\n\n# Check pandas version\nprint(f\"Pandas version: {pd.__version__}\")",
+          "before": "#!/usr/bin/env python3\n\nimport pandas as pd\nimport numpy as np\n\n# Test what happens when we create a pandas Index from int32 array\narr = np.array([0], dtype='i4')\nprint(f\"Original array dtype: {arr.dtype}\")\n\n# Without specifying dtype\nindex1 = pd.Index(arr)\nprint(f\"Index without dtype: {index1.dtype}\")\n\n# With specifying dtype\nindex2 = pd.Index(arr, dtype=arr.dtype)\nprint(f\"Index with dtype: {index2.dtype}\")\n\n# Try with np.asarray\narr_asarray = np.asarray(arr)\nprint(f\"np.asarray dtype: {arr_asarray.dtype}\")\nindex3 = pd.Index(arr_asarray, dtype=arr.dtype)\nprint(f\"Index from np.asarray with dtype: {index3.dtype}\")\n\n# Try with explicit dtype string\nindex4 = pd.Index(arr, dtype='int32')\nprint(f\"Index with explicit int32: {index4.dtype}\")\n\n# Check pandas version\nprint(f\"Pandas version: {pd.__version__}\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "test_pandas_index.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pandas_index.py",
+          "step_index": 23
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 22
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport xarray as xr\nimport numpy as np\nfrom xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n\nprint(\"=== Debugging stack operation ===\")\n\n# Create a dataset with int32 coordinate\nds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\nprint(f\"Original variable dtype: {ds._variables['a'].dtype}\")\nprint(f\"Original variable values: {ds._variables['a'].values}\")\n\n# Test safe_cast_to_index\nvar = ds._variables['a']\nprint(f\"\\nTesting safe_cast_to_index:\")\nprint(f\"Variable dtype: {var.dtype}\")\nindex = safe_cast_to_index(var)\nprint(f\"Index dtype: {index.dtype}\")\n\n# Test PandasMultiIndex.stack\nprint(f\"\\nTesting PandasMultiIndex.stack:\")\nvariables = {'a': var}\nmulti_index = PandasMultiIndex.stack(variables, 'b')\nprint(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n\n# Test create_variables\nprint(f\"\\nTesting create_variables:\")\nidx_vars = multi_index.create_variables()\nprint(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\nprint(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n\n# Test the full stack operation\nprint(f\"\\nFull stack operation:\")\nstacked_ds = ds.stack(b=('a',))\nprint(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\nprint(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..d0aadebf\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,37 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 35 create #1",
+          "filename": "debug_stack.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python debug_stack.py",
+          "step_index": 36
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 37
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "# Test the full stack operation\nprint(f\"\\nFull stack operation:\")\nstacked_ds = ds.stack(b=('a',))\nprint(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\nprint(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n\n# Test accessing via ds['a'] (like in the reproduction script)\nprint(f\"\\nAccessing via ds['a']:\")\nprint(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\nprint(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n\n# Check what ds['a'] returns\nprint(f\"\\nType of ds['a']: {type(ds['a'])}\")\nprint(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")",
+          "before": "# Test the full stack operation\nprint(f\"\\nFull stack operation:\")\nstacked_ds = ds.stack(b=('a',))\nprint(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\nprint(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..39bd26a9\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,46 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "debug_stack.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python debug_stack.py",
+          "step_index": 39
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 38
+    },
+    {
+      "edits": [
+        {
+          "after": "# Check what ds['a'] returns\nprint(f\"\\nType of ds['a']: {type(ds['a'])}\")\nprint(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n\n# Check the underlying data\nprint(f\"\\nUnderlying data:\")\nprint(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\nprint(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n\n# Check the data dtype\nprint(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\nprint(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n\n# Check np.asarray behavior\nimport numpy as np\nprint(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\nprint(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")",
+          "before": "# Check what ds['a'] returns\nprint(f\"\\nType of ds['a']: {type(ds['a'])}\")\nprint(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..83055128\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n+\n+# Check the underlying data\n+print(f\"\\nUnderlying data:\")\n+print(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\n+print(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n+\n+# Check the data dtype\n+print(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\n+print(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n+\n+# Check np.asarray behavior\n+import numpy as np\n+print(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\n+print(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 46 #1",
+          "filename": "debug_stack.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        }
+      ],
+      "end_step": 46,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python debug_stack.py",
+          "step_index": 47
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 46
+    },
+    {
+      "edits": [
+        {
+          "after": "    def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n        if self.level is not None:\n            if dtype is None:\n                dtype = self.dtype\n            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n        else:\n            return super().__array__(dtype)",
+          "before": "    def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n        if self.level is not None:\n            return self.array.get_level_values(self.level).values\n        else:\n            return super().__array__(dtype)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..83055128\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n+\n+# Check the underlying data\n+print(f\"\\nUnderlying data:\")\n+print(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\n+print(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n+\n+# Check the data dtype\n+print(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\n+print(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n+\n+# Check np.asarray behavior\n+import numpy as np\n+print(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\n+print(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file\ndiff --git a/xarray/core/indexing.py b/xarray/core/indexing.py\nindex ba937183..50bedf7b 100644\n--- a/xarray/core/indexing.py\n+++ b/xarray/core/indexing.py\n@@ -1532,7 +1532,9 @@ class PandasMultiIndexingAdapter(PandasIndexingAdapter):\n \n     def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n         if self.level is not None:\n-            return self.array.get_level_values(self.level).values\n+            if dtype is None:\n+                dtype = self.dtype\n+            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n         else:\n             return super().__array__(dtype)",
+          "explanation": "classic_swe step 50 #1",
+          "filename": "xarray/core/indexing.py",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 51
+        },
+        {
+          "command": "cd /testbed && python debug_stack.py",
+          "step_index": 52
+        }
+      ],
+      "revision_index": 7,
+      "start_step": 50
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport xarray as xr\nimport numpy as np\n\nprint(\"Testing edge cases for stack dtype preservation...\")\n\n# Test different integer dtypes\nfor dtype in ['int8', 'int16', 'int32', 'int64']:\n    ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n    stacked_ds = ds.stack(b=('a',))\n    original_dtype = ds['a'].values.dtype\n    stacked_dtype = stacked_ds['a'].values.dtype\n    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n\n# Test different float dtypes\nfor dtype in ['float32', 'float64']:\n    ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n    stacked_ds = ds.stack(b=('a',))\n    original_dtype = ds['a'].values.dtype\n    stacked_dtype = stacked_ds['a'].values.dtype\n    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n\n# Test with multiple coordinates\nds = xr.Dataset(coords={\n    'a': np.array([0, 1], dtype='int32'),\n    'b': np.array([2, 3], dtype='int16')\n})\nstacked_ds = ds.stack(c=('a', 'b'))\na_pass = ds['a'].values.dtype == stacked_ds['a'].values.dtype\nb_pass = ds['b'].values.dtype == stacked_ds['b'].values.dtype\nprint(f\"Multiple coords: a={a_pass}, b={b_pass} ({'PASS' if a_pass and b_pass else 'FAIL'})\")\n\n# Test with object dtype\nds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\nstacked_ds = ds.stack(b=('a',))\noriginal_dtype = ds['a'].values.dtype\nstacked_dtype = stacked_ds['a'].values.dtype\nprint(f\"object: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n\nprint(\"All edge case tests completed!\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..83055128\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n+\n+# Check the underlying data\n+print(f\"\\nUnderlying data:\")\n+print(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\n+print(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n+\n+# Check the data dtype\n+print(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\n+print(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n+\n+# Check np.asarray behavior\n+import numpy as np\n+print(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\n+print(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..ff7513bc\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing edge cases for stack dtype preservation...\")\n+\n+# Test different integer dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64']:\n+    ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test different float dtypes\n+for dtype in ['float32', 'float64']:\n+    ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test with multiple coordinates\n+ds = xr.Dataset(coords={\n+    'a': np.array([0, 1], dtype='int32'),\n+    'b': np.array([2, 3], dtype='int16')\n+})\n+stacked_ds = ds.stack(c=('a', 'b'))\n+a_pass = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+b_pass = ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+print(f\"Multiple coords: a={a_pass}, b={b_pass} ({'PASS' if a_pass and b_pass else 'FAIL'})\")\n+\n+# Test with object dtype\n+ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+stacked_ds = ds.stack(b=('a',))\n+original_dtype = ds['a'].values.dtype\n+stacked_dtype = stacked_ds['a'].values.dtype\n+print(f\"object: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+print(\"All edge case tests completed!\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file\ndiff --git a/xarray/core/indexing.py b/xarray/core/indexing.py\nindex ba937183..50bedf7b 100644\n--- a/xarray/core/indexing.py\n+++ b/xarray/core/indexing.py\n@@ -1532,7 +1532,9 @@ class PandasMultiIndexingAdapter(PandasIndexingAdapter):\n \n     def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n         if self.level is not None:\n-            return self.array.get_level_values(self.level).values\n+            if dtype is None:\n+                dtype = self.dtype\n+            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n         else:\n             return super().__array__(dtype)",
+          "explanation": "classic_swe step 53 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        }
+      ],
+      "end_step": 53,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 54
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_indexes.py -xvs",
+          "step_index": 55
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::test_stack -xvs",
+          "step_index": 56
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py::TestDataset::test_stack -xvs",
+          "step_index": 58
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataset.py -k \"stack\" -xvs",
+          "step_index": 59
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_dataarray.py -k \"stack\" -xvs",
+          "step_index": 60
+        }
+      ],
+      "revision_index": 8,
+      "start_step": 53
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport pytest\nimport numpy as np\nimport xarray as xr\n\n\ndef test_stack_preserves_dtype():\n    \"\"\"Test that stack operation preserves coordinate dtypes.\"\"\"\n    # Test int32 (the original issue)\n    ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n    stacked_ds = ds.stack(b=('a',))\n    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n    \n    # Test various integer dtypes\n    for dtype in ['int8', 'int16', 'int32', 'int64']:\n        ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n        stacked_ds = ds.stack(b=('a',))\n        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n    \n    # Test various float dtypes\n    for dtype in ['float32', 'float64']:\n        ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n        stacked_ds = ds.stack(b=('a',))\n        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n    \n    # Test with multiple coordinates\n    ds = xr.Dataset(coords={\n        'a': np.array([0, 1], dtype='int32'),\n        'b': np.array([2, 3], dtype='int16')\n    })\n    stacked_ds = ds.stack(c=('a', 'b'))\n    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n    assert ds['b'].values.dtype == stacked_ds['b'].values.dtype\n    \n    # Test with object dtype\n    ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n    stacked_ds = ds.stack(b=('a',))\n    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n\n\nif __name__ == \"__main__\":\n    test_stack_preserves_dtype()\n    print(\"All tests passed!\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..83055128\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n+\n+# Check the underlying data\n+print(f\"\\nUnderlying data:\")\n+print(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\n+print(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n+\n+# Check the data dtype\n+print(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\n+print(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n+\n+# Check np.asarray behavior\n+import numpy as np\n+print(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\n+print(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..ff7513bc\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing edge cases for stack dtype preservation...\")\n+\n+# Test different integer dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64']:\n+    ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test different float dtypes\n+for dtype in ['float32', 'float64']:\n+    ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test with multiple coordinates\n+ds = xr.Dataset(coords={\n+    'a': np.array([0, 1], dtype='int32'),\n+    'b': np.array([2, 3], dtype='int16')\n+})\n+stacked_ds = ds.stack(c=('a', 'b'))\n+a_pass = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+b_pass = ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+print(f\"Multiple coords: a={a_pass}, b={b_pass} ({'PASS' if a_pass and b_pass else 'FAIL'})\")\n+\n+# Test with object dtype\n+ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+stacked_ds = ds.stack(b=('a',))\n+original_dtype = ds['a'].values.dtype\n+stacked_dtype = stacked_ds['a'].values.dtype\n+print(f\"object: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+print(\"All edge case tests completed!\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file\ndiff --git a/test_stack_dtype_preservation.py b/test_stack_dtype_preservation.py\nnew file mode 100644\nindex 00000000..70a061f2\n--- /dev/null\n+++ b/test_stack_dtype_preservation.py\n@@ -0,0 +1,44 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import numpy as np\n+import xarray as xr\n+\n+\n+def test_stack_preserves_dtype():\n+    \"\"\"Test that stack operation preserves coordinate dtypes.\"\"\"\n+    # Test int32 (the original issue)\n+    ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+    stacked_ds = ds.stack(b=('a',))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    \n+    # Test various integer dtypes\n+    for dtype in ['int8', 'int16', 'int32', 'int64']:\n+        ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+        stacked_ds = ds.stack(b=('a',))\n+        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n+    \n+    # Test various float dtypes\n+    for dtype in ['float32', 'float64']:\n+        ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+        stacked_ds = ds.stack(b=('a',))\n+        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n+    \n+    # Test with multiple coordinates\n+    ds = xr.Dataset(coords={\n+        'a': np.array([0, 1], dtype='int32'),\n+        'b': np.array([2, 3], dtype='int16')\n+    })\n+    stacked_ds = ds.stack(c=('a', 'b'))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    assert ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+    \n+    # Test with object dtype\n+    ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+    stacked_ds = ds.stack(b=('a',))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+\n+\n+if __name__ == \"__main__\":\n+    test_stack_preserves_dtype()\n+    print(\"All tests passed!\")\n\\ No newline at end of file\ndiff --git a/xarray/core/indexing.py b/xarray/core/indexing.py\nindex ba937183..50bedf7b 100644\n--- a/xarray/core/indexing.py\n+++ b/xarray/core/indexing.py\n@@ -1532,7 +1532,9 @@ class PandasMultiIndexingAdapter(PandasIndexingAdapter):\n \n     def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n         if self.level is not None:\n-            return self.array.get_level_values(self.level).values\n+            if dtype is None:\n+                dtype = self.dtype\n+            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n         else:\n             return super().__array__(dtype)",
+          "explanation": "classic_swe step 61 create #1",
+          "filename": "test_stack_dtype_preservation.py",
+          "global_edit_idx": 9,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        }
+      ],
+      "end_step": 61,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_stack_dtype_preservation.py",
+          "step_index": 62
+        },
+        {
+          "command": "cd /testbed && python -m pytest test_stack_dtype_preservation.py -xvs",
+          "step_index": 63
+        }
+      ],
+      "revision_index": 9,
+      "start_step": 61
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport numpy as np\nimport xarray as xr\n\nprint(\"Testing DataArray stack dtype preservation...\")\n\n# Test with DataArray\nda = xr.DataArray(\n    np.random.rand(2, 3),\n    coords={'x': np.array([0, 1], dtype='int32'), 'y': np.array([0, 1, 2], dtype='int16')},\n    dims=['x', 'y']\n)\n\nprint(f\"Original x dtype: {da.coords['x'].values.dtype}\")\nprint(f\"Original y dtype: {da.coords['y'].values.dtype}\")\n\nstacked_da = da.stack(z=('x', 'y'))\n\nprint(f\"Stacked x dtype: {stacked_da.coords['x'].values.dtype}\")\nprint(f\"Stacked y dtype: {stacked_da.coords['y'].values.dtype}\")\n\nx_pass = da.coords['x'].values.dtype == stacked_da.coords['x'].values.dtype\ny_pass = da.coords['y'].values.dtype == stacked_da.coords['y'].values.dtype\n\nprint(f\"x dtype preserved: {x_pass}\")\nprint(f\"y dtype preserved: {y_pass}\")\nprint(f\"Test result: {'PASS' if x_pass and y_pass else 'FAIL'}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..83055128\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n+\n+# Check the underlying data\n+print(f\"\\nUnderlying data:\")\n+print(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\n+print(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n+\n+# Check the data dtype\n+print(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\n+print(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n+\n+# Check np.asarray behavior\n+import numpy as np\n+print(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\n+print(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_dataarray_stack.py b/test_dataarray_stack.py\nnew file mode 100644\nindex 00000000..68a9f308\n--- /dev/null\n+++ b/test_dataarray_stack.py\n@@ -0,0 +1,28 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+import xarray as xr\n+\n+print(\"Testing DataArray stack dtype preservation...\")\n+\n+# Test with DataArray\n+da = xr.DataArray(\n+    np.random.rand(2, 3),\n+    coords={'x': np.array([0, 1], dtype='int32'), 'y': np.array([0, 1, 2], dtype='int16')},\n+    dims=['x', 'y']\n+)\n+\n+print(f\"Original x dtype: {da.coords['x'].values.dtype}\")\n+print(f\"Original y dtype: {da.coords['y'].values.dtype}\")\n+\n+stacked_da = da.stack(z=('x', 'y'))\n+\n+print(f\"Stacked x dtype: {stacked_da.coords['x'].values.dtype}\")\n+print(f\"Stacked y dtype: {stacked_da.coords['y'].values.dtype}\")\n+\n+x_pass = da.coords['x'].values.dtype == stacked_da.coords['x'].values.dtype\n+y_pass = da.coords['y'].values.dtype == stacked_da.coords['y'].values.dtype\n+\n+print(f\"x dtype preserved: {x_pass}\")\n+print(f\"y dtype preserved: {y_pass}\")\n+print(f\"Test result: {'PASS' if x_pass and y_pass else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..ff7513bc\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing edge cases for stack dtype preservation...\")\n+\n+# Test different integer dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64']:\n+    ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test different float dtypes\n+for dtype in ['float32', 'float64']:\n+    ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test with multiple coordinates\n+ds = xr.Dataset(coords={\n+    'a': np.array([0, 1], dtype='int32'),\n+    'b': np.array([2, 3], dtype='int16')\n+})\n+stacked_ds = ds.stack(c=('a', 'b'))\n+a_pass = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+b_pass = ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+print(f\"Multiple coords: a={a_pass}, b={b_pass} ({'PASS' if a_pass and b_pass else 'FAIL'})\")\n+\n+# Test with object dtype\n+ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+stacked_ds = ds.stack(b=('a',))\n+original_dtype = ds['a'].values.dtype\n+stacked_dtype = stacked_ds['a'].values.dtype\n+print(f\"object: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+print(\"All edge case tests completed!\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file\ndiff --git a/test_stack_dtype_preservation.py b/test_stack_dtype_preservation.py\nnew file mode 100644\nindex 00000000..70a061f2\n--- /dev/null\n+++ b/test_stack_dtype_preservation.py\n@@ -0,0 +1,44 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import numpy as np\n+import xarray as xr\n+\n+\n+def test_stack_preserves_dtype():\n+    \"\"\"Test that stack operation preserves coordinate dtypes.\"\"\"\n+    # Test int32 (the original issue)\n+    ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+    stacked_ds = ds.stack(b=('a',))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    \n+    # Test various integer dtypes\n+    for dtype in ['int8', 'int16', 'int32', 'int64']:\n+        ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+        stacked_ds = ds.stack(b=('a',))\n+        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n+    \n+    # Test various float dtypes\n+    for dtype in ['float32', 'float64']:\n+        ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+        stacked_ds = ds.stack(b=('a',))\n+        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n+    \n+    # Test with multiple coordinates\n+    ds = xr.Dataset(coords={\n+        'a': np.array([0, 1], dtype='int32'),\n+        'b': np.array([2, 3], dtype='int16')\n+    })\n+    stacked_ds = ds.stack(c=('a', 'b'))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    assert ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+    \n+    # Test with object dtype\n+    ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+    stacked_ds = ds.stack(b=('a',))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+\n+\n+if __name__ == \"__main__\":\n+    test_stack_preserves_dtype()\n+    print(\"All tests passed!\")\n\\ No newline at end of file\ndiff --git a/xarray/core/indexing.py b/xarray/core/indexing.py\nindex ba937183..50bedf7b 100644\n--- a/xarray/core/indexing.py\n+++ b/xarray/core/indexing.py\n@@ -1532,7 +1532,9 @@ class PandasMultiIndexingAdapter(PandasIndexingAdapter):\n \n     def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n         if self.level is not None:\n-            return self.array.get_level_values(self.level).values\n+            if dtype is None:\n+                dtype = self.dtype\n+            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n         else:\n             return super().__array__(dtype)",
+          "explanation": "classic_swe step 64 create #1",
+          "filename": "test_dataarray_stack.py",
+          "global_edit_idx": 10,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 64
+        }
+      ],
+      "end_step": 64,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_dataarray_stack.py",
+          "step_index": 65
+        }
+      ],
+      "revision_index": 10,
+      "start_step": 64
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport numpy as np\nimport xarray as xr\n\nprint(\"Testing stack/unstack roundtrip dtype preservation...\")\n\n# Create a dataset with int32 coordinate\nds = xr.Dataset(coords={'a': np.array([0, 1], dtype='int32')})\nprint(f\"Original dtype: {ds['a'].values.dtype}\")\n\n# Stack\nstacked_ds = ds.stack(b=('a',))\nprint(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n\n# Unstack\nunstacked_ds = stacked_ds.unstack('b')\nprint(f\"Unstacked dtype: {unstacked_ds['a'].values.dtype}\")\n\n# Check roundtrip\noriginal_dtype = ds['a'].values.dtype\nfinal_dtype = unstacked_ds['a'].values.dtype\nroundtrip_pass = original_dtype == final_dtype\n\nprint(f\"Roundtrip dtype preservation: {roundtrip_pass}\")\nprint(f\"Test result: {'PASS' if roundtrip_pass else 'FAIL'}\")\n\n# Also check values are the same\nvalues_equal = np.array_equal(ds['a'].values, unstacked_ds['a'].values)\nprint(f\"Values preserved: {values_equal}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/debug_stack.py b/debug_stack.py\nnew file mode 100644\nindex 00000000..83055128\n--- /dev/null\n+++ b/debug_stack.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+from xarray.core.indexes import safe_cast_to_index, PandasMultiIndex\n+\n+print(\"=== Debugging stack operation ===\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+print(f\"Original variable dtype: {ds._variables['a'].dtype}\")\n+print(f\"Original variable values: {ds._variables['a'].values}\")\n+\n+# Test safe_cast_to_index\n+var = ds._variables['a']\n+print(f\"\\nTesting safe_cast_to_index:\")\n+print(f\"Variable dtype: {var.dtype}\")\n+index = safe_cast_to_index(var)\n+print(f\"Index dtype: {index.dtype}\")\n+\n+# Test PandasMultiIndex.stack\n+print(f\"\\nTesting PandasMultiIndex.stack:\")\n+variables = {'a': var}\n+multi_index = PandasMultiIndex.stack(variables, 'b')\n+print(f\"MultiIndex level_coords_dtype: {multi_index.level_coords_dtype}\")\n+\n+# Test create_variables\n+print(f\"\\nTesting create_variables:\")\n+idx_vars = multi_index.create_variables()\n+print(f\"Created variable 'a' dtype: {idx_vars['a'].dtype}\")\n+print(f\"Created variable 'a' values: {idx_vars['a'].values}\")\n+\n+# Test the full stack operation\n+print(f\"\\nFull stack operation:\")\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked variable 'a' dtype: {stacked_ds._variables['a'].dtype}\")\n+print(f\"Stacked variable 'a' values: {stacked_ds._variables['a'].values}\")\n+\n+# Test accessing via ds['a'] (like in the reproduction script)\n+print(f\"\\nAccessing via ds['a']:\")\n+print(f\"Original ds['a'].values.dtype: {ds['a'].values.dtype}\")\n+print(f\"Stacked ds['a'].values.dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Check what ds['a'] returns\n+print(f\"\\nType of ds['a']: {type(ds['a'])}\")\n+print(f\"Type of stacked_ds['a']: {type(stacked_ds['a'])}\")\n+\n+# Check the underlying data\n+print(f\"\\nUnderlying data:\")\n+print(f\"Original ds._variables['a']._data: {type(ds._variables['a']._data)}\")\n+print(f\"Stacked ds._variables['a']._data: {type(stacked_ds._variables['a']._data)}\")\n+\n+# Check the data dtype\n+print(f\"Original ds._variables['a']._data.dtype: {ds._variables['a']._data.dtype}\")\n+print(f\"Stacked ds._variables['a']._data.dtype: {stacked_ds._variables['a']._data.dtype}\")\n+\n+# Check np.asarray behavior\n+import numpy as np\n+print(f\"\\nnp.asarray on original data: {np.asarray(ds._variables['a']._data).dtype}\")\n+print(f\"np.asarray on stacked data: {np.asarray(stacked_ds._variables['a']._data).dtype}\")\n\\ No newline at end of file\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 00000000..8cf3a917\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,25 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing the stack dtype issue...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+print(f\"Original values: {ds['a'].values}\")\n+\n+# Stack the coordinate\n+stacked_ds = ds.stack(b=('a',))\n+\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+print(f\"Stacked values: {stacked_ds['a'].values}\")\n+\n+# Check if dtypes are equal\n+dtypes_equal = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+print(f\"Dtypes equal: {dtypes_equal}\")\n+\n+# Expected: True, Actual: False (this is the bug)\n+print(f\"Test result: {'PASS' if dtypes_equal else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_dataarray_stack.py b/test_dataarray_stack.py\nnew file mode 100644\nindex 00000000..68a9f308\n--- /dev/null\n+++ b/test_dataarray_stack.py\n@@ -0,0 +1,28 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+import xarray as xr\n+\n+print(\"Testing DataArray stack dtype preservation...\")\n+\n+# Test with DataArray\n+da = xr.DataArray(\n+    np.random.rand(2, 3),\n+    coords={'x': np.array([0, 1], dtype='int32'), 'y': np.array([0, 1, 2], dtype='int16')},\n+    dims=['x', 'y']\n+)\n+\n+print(f\"Original x dtype: {da.coords['x'].values.dtype}\")\n+print(f\"Original y dtype: {da.coords['y'].values.dtype}\")\n+\n+stacked_da = da.stack(z=('x', 'y'))\n+\n+print(f\"Stacked x dtype: {stacked_da.coords['x'].values.dtype}\")\n+print(f\"Stacked y dtype: {stacked_da.coords['y'].values.dtype}\")\n+\n+x_pass = da.coords['x'].values.dtype == stacked_da.coords['x'].values.dtype\n+y_pass = da.coords['y'].values.dtype == stacked_da.coords['y'].values.dtype\n+\n+print(f\"x dtype preserved: {x_pass}\")\n+print(f\"y dtype preserved: {y_pass}\")\n+print(f\"Test result: {'PASS' if x_pass and y_pass else 'FAIL'}\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 00000000..ff7513bc\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,41 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"Testing edge cases for stack dtype preservation...\")\n+\n+# Test different integer dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64']:\n+    ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test different float dtypes\n+for dtype in ['float32', 'float64']:\n+    ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+    stacked_ds = ds.stack(b=('a',))\n+    original_dtype = ds['a'].values.dtype\n+    stacked_dtype = stacked_ds['a'].values.dtype\n+    print(f\"{dtype}: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+# Test with multiple coordinates\n+ds = xr.Dataset(coords={\n+    'a': np.array([0, 1], dtype='int32'),\n+    'b': np.array([2, 3], dtype='int16')\n+})\n+stacked_ds = ds.stack(c=('a', 'b'))\n+a_pass = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+b_pass = ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+print(f\"Multiple coords: a={a_pass}, b={b_pass} ({'PASS' if a_pass and b_pass else 'FAIL'})\")\n+\n+# Test with object dtype\n+ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+stacked_ds = ds.stack(b=('a',))\n+original_dtype = ds['a'].values.dtype\n+stacked_dtype = stacked_ds['a'].values.dtype\n+print(f\"object: {original_dtype} -> {stacked_dtype} ({'PASS' if original_dtype == stacked_dtype else 'FAIL'})\")\n+\n+print(\"All edge case tests completed!\")\n\\ No newline at end of file\ndiff --git a/test_pandas_index.py b/test_pandas_index.py\nnew file mode 100644\nindex 00000000..91c0cdad\n--- /dev/null\n+++ b/test_pandas_index.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+import pandas as pd\n+import numpy as np\n+\n+# Test what happens when we create a pandas Index from int32 array\n+arr = np.array([0], dtype='i4')\n+print(f\"Original array dtype: {arr.dtype}\")\n+\n+# Without specifying dtype\n+index1 = pd.Index(arr)\n+print(f\"Index without dtype: {index1.dtype}\")\n+\n+# With specifying dtype\n+index2 = pd.Index(arr, dtype=arr.dtype)\n+print(f\"Index with dtype: {index2.dtype}\")\n+\n+# Try with np.asarray\n+arr_asarray = np.asarray(arr)\n+print(f\"np.asarray dtype: {arr_asarray.dtype}\")\n+index3 = pd.Index(arr_asarray, dtype=arr.dtype)\n+print(f\"Index from np.asarray with dtype: {index3.dtype}\")\n+\n+# Try with explicit dtype string\n+index4 = pd.Index(arr, dtype='int32')\n+print(f\"Index with explicit int32: {index4.dtype}\")\n+\n+# Try with copy=False\n+index5 = pd.Index(arr, dtype=arr.dtype, copy=False)\n+print(f\"Index with copy=False: {index5.dtype}\")\n+\n+# Try with different dtypes\n+for dtype in ['int8', 'int16', 'int32', 'int64', 'float32', 'float64']:\n+    test_arr = np.array([0], dtype=dtype)\n+    test_index = pd.Index(test_arr, dtype=test_arr.dtype)\n+    print(f\"{dtype} -> {test_index.dtype}\")\n+\n+# Check pandas version\n+print(f\"Pandas version: {pd.__version__}\")\n\\ No newline at end of file\ndiff --git a/test_stack_dtype_preservation.py b/test_stack_dtype_preservation.py\nnew file mode 100644\nindex 00000000..70a061f2\n--- /dev/null\n+++ b/test_stack_dtype_preservation.py\n@@ -0,0 +1,44 @@\n+#!/usr/bin/env python3\n+\n+import pytest\n+import numpy as np\n+import xarray as xr\n+\n+\n+def test_stack_preserves_dtype():\n+    \"\"\"Test that stack operation preserves coordinate dtypes.\"\"\"\n+    # Test int32 (the original issue)\n+    ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+    stacked_ds = ds.stack(b=('a',))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    \n+    # Test various integer dtypes\n+    for dtype in ['int8', 'int16', 'int32', 'int64']:\n+        ds = xr.Dataset(coords={'a': np.array([0, 1], dtype=dtype)})\n+        stacked_ds = ds.stack(b=('a',))\n+        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n+    \n+    # Test various float dtypes\n+    for dtype in ['float32', 'float64']:\n+        ds = xr.Dataset(coords={'a': np.array([0.0, 1.0], dtype=dtype)})\n+        stacked_ds = ds.stack(b=('a',))\n+        assert ds['a'].values.dtype == stacked_ds['a'].values.dtype, f\"Failed for {dtype}\"\n+    \n+    # Test with multiple coordinates\n+    ds = xr.Dataset(coords={\n+        'a': np.array([0, 1], dtype='int32'),\n+        'b': np.array([2, 3], dtype='int16')\n+    })\n+    stacked_ds = ds.stack(c=('a', 'b'))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    assert ds['b'].values.dtype == stacked_ds['b'].values.dtype\n+    \n+    # Test with object dtype\n+    ds = xr.Dataset(coords={'a': np.array(['x', 'y'], dtype='object')})\n+    stacked_ds = ds.stack(b=('a',))\n+    assert ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+\n+\n+if __name__ == \"__main__\":\n+    test_stack_preserves_dtype()\n+    print(\"All tests passed!\")\n\\ No newline at end of file\ndiff --git a/test_stack_unstack_roundtrip.py b/test_stack_unstack_roundtrip.py\nnew file mode 100644\nindex 00000000..d40dc0db\n--- /dev/null\n+++ b/test_stack_unstack_roundtrip.py\n@@ -0,0 +1,30 @@\n+#!/usr/bin/env python3\n+\n+import numpy as np\n+import xarray as xr\n+\n+print(\"Testing stack/unstack roundtrip dtype preservation...\")\n+\n+# Create a dataset with int32 coordinate\n+ds = xr.Dataset(coords={'a': np.array([0, 1], dtype='int32')})\n+print(f\"Original dtype: {ds['a'].values.dtype}\")\n+\n+# Stack\n+stacked_ds = ds.stack(b=('a',))\n+print(f\"Stacked dtype: {stacked_ds['a'].values.dtype}\")\n+\n+# Unstack\n+unstacked_ds = stacked_ds.unstack('b')\n+print(f\"Unstacked dtype: {unstacked_ds['a'].values.dtype}\")\n+\n+# Check roundtrip\n+original_dtype = ds['a'].values.dtype\n+final_dtype = unstacked_ds['a'].values.dtype\n+roundtrip_pass = original_dtype == final_dtype\n+\n+print(f\"Roundtrip dtype preservation: {roundtrip_pass}\")\n+print(f\"Test result: {'PASS' if roundtrip_pass else 'FAIL'}\")\n+\n+# Also check values are the same\n+values_equal = np.array_equal(ds['a'].values, unstacked_ds['a'].values)\n+print(f\"Values preserved: {values_equal}\")\n\\ No newline at end of file\ndiff --git a/xarray/core/indexing.py b/xarray/core/indexing.py\nindex ba937183..50bedf7b 100644\n--- a/xarray/core/indexing.py\n+++ b/xarray/core/indexing.py\n@@ -1532,7 +1532,9 @@ class PandasMultiIndexingAdapter(PandasIndexingAdapter):\n \n     def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n         if self.level is not None:\n-            return self.array.get_level_values(self.level).values\n+            if dtype is None:\n+                dtype = self.dtype\n+            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n         else:\n             return super().__array__(dtype)",
+          "explanation": "classic_swe step 66 create #1",
+          "filename": "test_stack_unstack_roundtrip.py",
+          "global_edit_idx": 11,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        }
+      ],
+      "end_step": 66,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_stack_unstack_roundtrip.py",
+          "step_index": 67
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_indexing.py -xvs",
+          "step_index": 68
+        },
+        {
+          "command": "cd /testbed && python -m pytest xarray/tests/test_variable.py -k \"values\" -x --tb=short",
+          "step_index": 69
+        }
+      ],
+      "revision_index": 11,
+      "start_step": 66
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport xarray as xr\nimport numpy as np\n\nprint(\"=== Final comprehensive test for stack dtype preservation ===\")\n\n# Test the original issue from the PR description\nprint(\"\\n1. Testing original issue (int32 coordinate):\")\nds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\nresult = ds['a'].values.dtype == ds.stack(b=('a',))['a'].values.dtype\nprint(f\"   Result: {result} (Expected: True)\")\n\n# Test various dtypes\nprint(\"\\n2. Testing various dtypes:\")\ndtypes_to_test = ['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'object']\nfor dtype in dtypes_to_test:\n    if dtype == 'object':\n        values = np.array(['x', 'y'], dtype=dtype)\n    else:\n        values = np.array([0, 1], dtype=dtype)\n    \n    ds = xr.Dataset(coords={'a': values})\n    stacked_ds = ds.stack(b=('a',))\n    preserved = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n    print(f\"   {dtype}: {'PASS' if preserved else 'FAIL'}\")\n\n# Test with DataArray\nprint(\"\\n3. Testing with DataArray:\")\nda = xr.DataArray(\n    np.random.rand(2, 3),\n    coords={'x': np.array([0, 1], dtype='int32'), 'y': np.array([0, 1, 2], dtype='int16')},\n    dims=['x', 'y']\n)\nstacked_da = da.stack(z=('x', 'y'))\nx_preserved = da.coords['x'].values.dtype == stacked_da.coords['x'].values.dtype\ny_preserved = da.coords['y'].values.dtype == stacked_da.coords['y'].values.dtype\nprint(f\"   x coordinate: {'PASS' if x_preserved else 'FAIL'}\")\nprint(f\"   y coordinate: {'PASS' if y_preserved else 'FAIL'}\")\n\n# Test stack/unstack roundtrip\nprint(\"\\n4. Testing stack/unstack roundtrip:\")\nds = xr.Dataset(coords={'a': np.array([0, 1], dtype='int32')})\nroundtrip_ds = ds.stack(b=('a',)).unstack('b')\nroundtrip_preserved = ds['a'].values.dtype == roundtrip_ds['a'].values.dtype\nvalues_equal = np.array_equal(ds['a'].values, roundtrip_ds['a'].values)\nprint(f\"   Dtype preserved: {'PASS' if roundtrip_preserved else 'FAIL'}\")\nprint(f\"   Values preserved: {'PASS' if values_equal else 'FAIL'}\")\n\nprint(\"\\n=== All tests completed ===\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 00000000..6449cb24\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,50 @@\n+#!/usr/bin/env python3\n+\n+import xarray as xr\n+import numpy as np\n+\n+print(\"=== Final comprehensive test for stack dtype preservation ===\")\n+\n+# Test the original issue from the PR description\n+print(\"\\n1. Testing original issue (int32 coordinate):\")\n+ds = xr.Dataset(coords={'a': np.array([0], dtype='i4')})\n+result = ds['a'].values.dtype == ds.stack(b=('a',))['a'].values.dtype\n+print(f\"   Result: {result} (Expected: True)\")\n+\n+# Test various dtypes\n+print(\"\\n2. Testing various dtypes:\")\n+dtypes_to_test = ['int8', 'int16', 'int32', 'int64', 'float32', 'float64', 'object']\n+for dtype in dtypes_to_test:\n+    if dtype == 'object':\n+        values = np.array(['x', 'y'], dtype=dtype)\n+    else:\n+        values = np.array([0, 1], dtype=dtype)\n+    \n+    ds = xr.Dataset(coords={'a': values})\n+    stacked_ds = ds.stack(b=('a',))\n+    preserved = ds['a'].values.dtype == stacked_ds['a'].values.dtype\n+    print(f\"   {dtype}: {'PASS' if preserved else 'FAIL'}\")\n+\n+# Test with DataArray\n+print(\"\\n3. Testing with DataArray:\")\n+da = xr.DataArray(\n+    np.random.rand(2, 3),\n+    coords={'x': np.array([0, 1], dtype='int32'), 'y': np.array([0, 1, 2], dtype='int16')},\n+    dims=['x', 'y']\n+)\n+stacked_da = da.stack(z=('x', 'y'))\n+x_preserved = da.coords['x'].values.dtype == stacked_da.coords['x'].values.dtype\n+y_preserved = da.coords['y'].values.dtype == stacked_da.coords['y'].values.dtype\n+print(f\"   x coordinate: {'PASS' if x_preserved else 'FAIL'}\")\n+print(f\"   y coordinate: {'PASS' if y_preserved else 'FAIL'}\")\n+\n+# Test stack/unstack roundtrip\n+print(\"\\n4. Testing stack/unstack roundtrip:\")\n+ds = xr.Dataset(coords={'a': np.array([0, 1], dtype='int32')})\n+roundtrip_ds = ds.stack(b=('a',)).unstack('b')\n+roundtrip_preserved = ds['a'].values.dtype == roundtrip_ds['a'].values.dtype\n+values_equal = np.array_equal(ds['a'].values, roundtrip_ds['a'].values)\n+print(f\"   Dtype preserved: {'PASS' if roundtrip_preserved else 'FAIL'}\")\n+print(f\"   Values preserved: {'PASS' if values_equal else 'FAIL'}\")\n+\n+print(\"\\n=== All tests completed ===\")\n\\ No newline at end of file\ndiff --git a/xarray/core/indexing.py b/xarray/core/indexing.py\nindex ba937183..50bedf7b 100644\n--- a/xarray/core/indexing.py\n+++ b/xarray/core/indexing.py\n@@ -1532,7 +1532,9 @@ class PandasMultiIndexingAdapter(PandasIndexingAdapter):\n \n     def __array__(self, dtype: DTypeLike = None) -> np.ndarray:\n         if self.level is not None:\n-            return self.array.get_level_values(self.level).values\n+            if dtype is None:\n+                dtype = self.dtype\n+            return np.asarray(self.array.get_level_values(self.level).values, dtype=dtype)\n         else:\n             return super().__array__(dtype)",
+          "explanation": "classic_swe step 71 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 12,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 71
+        }
+      ],
+      "end_step": 71,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 72
+        }
+      ],
+      "revision_index": 12,
+      "start_step": 71
+    }
+  ],
+  "sub_paths": [
+    "xarray/core/indexing.py"
+  ],
+  "success_step": 71,
+  "test_files": [
+    "debug_stack.py",
+    "final_test.py",
+    "reproduce_issue.py",
+    "test_dataarray_stack.py",
+    "test_edge_cases.py",
+    "test_pandas_index.py",
+    "test_stack_dtype_preservation.py",
+    "test_stack_unstack_roundtrip.py"
+  ]
+}

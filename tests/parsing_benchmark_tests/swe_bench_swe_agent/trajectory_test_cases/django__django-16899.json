@@ -1,0 +1,422 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 14
+    },
+    {
+      "command": "cd /testbed && python test_inline_fix.py",
+      "step_index": 18
+    },
+    {
+      "command": "cd /testbed && python -m django test admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline --settings=tests.test_sqlite",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field",
+      "step_index": 22
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks.tests -v",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks.tests --verbosity=2",
+      "step_index": 25
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks.tests",
+      "step_index": 29
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 31
+    },
+    {
+      "command": "cd /testbed && python test_modeladmin_method.py",
+      "step_index": 33
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks admin_inlines admin_views --verbosity=1",
+      "step_index": 34
+    },
+    {
+      "command": "cd /testbed && python test_pr_example.py",
+      "step_index": 36
+    },
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 42
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nsettings.configure(\n    DEBUG=True,\n    DATABASES={\n        'default': {\n            'ENGINE': 'django.db.backends.sqlite3',\n            'NAME': ':memory:',\n        }\n    },\n    INSTALLED_APPS=[\n        'django.contrib.admin',\n        'django.contrib.auth',\n        'django.contrib.contenttypes',\n        'django.contrib.messages',\n        'django.contrib.sessions',\n    ],\n    SECRET_KEY='test-secret-key',\n    USE_TZ=True,\n)\n\ndjango.setup()\n\nfrom django.contrib import admin\nfrom django.contrib.admin import AdminSite\nfrom django.db import models\nfrom django.core import checks\n\n# Create a test model\nclass TestModel(models.Model):\n    title = models.CharField(max_length=100)\n    \n    class Meta:\n        app_label = 'test'\n\n# Create a ModelAdmin with invalid readonly_fields\nclass TestModelAdmin(admin.ModelAdmin):\n    readonly_fields = ['nonexistent_field']\n\n# Test the error message\nadmin_instance = TestModelAdmin(TestModel, AdminSite())\nerrors = admin_instance.check()\n\nprint(\"Current error message:\")\nfor error in errors:\n    print(f\"  {error.msg}\")\n\nprint(\"\\nExpected error message should include the field name 'nonexistent_field'\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 13 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        }
+      ],
+      "end_step": 13,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 14
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "    def _check_readonly_fields_item(self, obj, field_name, label):\n        if callable(field_name):\n            return []\n        elif hasattr(obj, field_name):\n            return []\n        elif hasattr(obj.model, field_name):\n            return []\n        else:\n            try:\n                obj.model._meta.get_field(field_name)\n            except FieldDoesNotExist:\n                return [\n                    checks.Error(\n                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                        \"'%s', or an attribute of '%s'.\"\n                        % (\n                            label,\n                            field_name,\n                            obj.__class__.__name__,\n                            obj.model._meta.label,\n                        ),\n                        obj=obj.__class__,\n                        id=\"admin.E035\",\n                    )\n                ]\n            else:\n                return []",
+          "before": "    def _check_readonly_fields_item(self, obj, field_name, label):\n        if callable(field_name):\n            return []\n        elif hasattr(obj, field_name):\n            return []\n        elif hasattr(obj.model, field_name):\n            return []\n        else:\n            try:\n                obj.model._meta.get_field(field_name)\n            except FieldDoesNotExist:\n                return [\n                    checks.Error(\n                        \"The value of '%s' is not a callable, an attribute of \"\n                        \"'%s', or an attribute of '%s'.\"\n                        % (\n                            label,\n                            obj.__class__.__name__,\n                            obj.model._meta.label,\n                        ),\n                        obj=obj.__class__,\n                        id=\"admin.E035\",\n                    )\n                ]\n            else:\n                return []",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "django/contrib/admin/checks.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 16
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nsettings.configure(\n    DEBUG=True,\n    DATABASES={\n        'default': {\n            'ENGINE': 'django.db.backends.sqlite3',\n            'NAME': ':memory:',\n        }\n    },\n    INSTALLED_APPS=[\n        'django.contrib.admin',\n        'django.contrib.auth',\n        'django.contrib.contenttypes',\n        'django.contrib.messages',\n        'django.contrib.sessions',\n    ],\n    SECRET_KEY='test-secret-key',\n    USE_TZ=True,\n)\n\ndjango.setup()\n\nfrom django.contrib import admin\nfrom django.contrib.admin import AdminSite\nfrom django.db import models\nfrom django.core import checks\n\n# Create test models\nclass State(models.Model):\n    name = models.CharField(max_length=100)\n    \n    class Meta:\n        app_label = 'test'\n\nclass City(models.Model):\n    name = models.CharField(max_length=100)\n    state = models.ForeignKey(State, on_delete=models.CASCADE)\n    \n    class Meta:\n        app_label = 'test'\n\n# Create an InlineModelAdmin with invalid readonly_fields\nclass CityInline(admin.TabularInline):\n    model = City\n    readonly_fields = ['i_dont_exist']  # Missing attribute\n\n# Test the error message\nadmin_instance = CityInline(State, AdminSite())\nerrors = admin_instance.check()\n\nprint(\"Current error message for inline:\")\nfor error in errors:\n    print(f\"  {error.msg}\")\n\nprint(\"\\nExpected error message should include the field name 'i_dont_exist'\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file\ndiff --git a/test_inline_fix.py b/test_inline_fix.py\nnew file mode 100644\nindex 0000000000..fe4691e759\n--- /dev/null\n+++ b/test_inline_fix.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create an InlineModelAdmin with invalid readonly_fields\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['i_dont_exist']  # Missing attribute\n+\n+# Test the error message\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message for inline:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'i_dont_exist'\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 17 create #1",
+          "filename": "test_inline_fix.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_inline_fix.py",
+          "step_index": 18
+        },
+        {
+          "command": "cd /testbed && python -m django test admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline --settings=tests.test_sqlite",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline",
+          "step_index": 21
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field",
+          "step_index": 22
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests -v",
+          "step_index": 24
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests --verbosity=2",
+          "step_index": 25
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "        expected = [\n            checks.Error(\n                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                obj=SongAdmin,\n                id=\"admin.E035\",\n            )\n        ]",
+          "before": "        expected = [\n            checks.Error(\n                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n                \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                obj=SongAdmin,\n                id=\"admin.E035\",\n            )\n        ]",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file\ndiff --git a/test_inline_fix.py b/test_inline_fix.py\nnew file mode 100644\nindex 0000000000..fe4691e759\n--- /dev/null\n+++ b/test_inline_fix.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create an InlineModelAdmin with invalid readonly_fields\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['i_dont_exist']  # Missing attribute\n+\n+# Test the error message\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message for inline:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'i_dont_exist'\")\n\\ No newline at end of file\ndiff --git a/tests/admin_checks/tests.py b/tests/admin_checks/tests.py\nindex 4d171ed737..ea5602aea0 100644\n--- a/tests/admin_checks/tests.py\n+++ b/tests/admin_checks/tests.py\n@@ -798,7 +798,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = SongAdmin(Song, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                 \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                 obj=SongAdmin,\n                 id=\"admin.E035\",",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "tests/admin_checks/tests.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "        expected = [\n            checks.Error(\n                \"The value of 'readonly_fields[0]' refers to 'i_dont_exist', which is not a callable, an attribute \"\n                \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                obj=CityInline,\n                id=\"admin.E035\",\n            )\n        ]",
+          "before": "        expected = [\n            checks.Error(\n                \"The value of 'readonly_fields[0]' is not a callable, an attribute \"\n                \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                obj=CityInline,\n                id=\"admin.E035\",\n            )\n        ]",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file\ndiff --git a/test_inline_fix.py b/test_inline_fix.py\nnew file mode 100644\nindex 0000000000..fe4691e759\n--- /dev/null\n+++ b/test_inline_fix.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create an InlineModelAdmin with invalid readonly_fields\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['i_dont_exist']  # Missing attribute\n+\n+# Test the error message\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message for inline:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'i_dont_exist'\")\n\\ No newline at end of file\ndiff --git a/tests/admin_checks/tests.py b/tests/admin_checks/tests.py\nindex 4d171ed737..e26d0aedd0 100644\n--- a/tests/admin_checks/tests.py\n+++ b/tests/admin_checks/tests.py\n@@ -798,7 +798,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = SongAdmin(Song, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                 \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                 obj=SongAdmin,\n                 id=\"admin.E035\",\n@@ -814,7 +814,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = CityInline(State, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[0]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[0]' refers to 'i_dont_exist', which is not a callable, an attribute \"\n                 \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                 obj=CityInline,\n                 id=\"admin.E035\",",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "tests/admin_checks/tests.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline",
+          "step_index": 28
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests",
+          "step_index": 29
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nsettings.configure(\n    DEBUG=True,\n    DATABASES={\n        'default': {\n            'ENGINE': 'django.db.backends.sqlite3',\n            'NAME': ':memory:',\n        }\n    },\n    INSTALLED_APPS=[\n        'django.contrib.admin',\n        'django.contrib.auth',\n        'django.contrib.contenttypes',\n        'django.contrib.messages',\n        'django.contrib.sessions',\n    ],\n    SECRET_KEY='test-secret-key',\n    USE_TZ=True,\n)\n\ndjango.setup()\n\nfrom django.contrib import admin\nfrom django.contrib.admin import AdminSite\nfrom django.db import models\nfrom django.core import checks\n\n# Create test models\nclass TestModel(models.Model):\n    title = models.CharField(max_length=100)\n    \n    def valid_method(self):\n        return \"test\"\n    \n    class Meta:\n        app_label = 'test'\n\n# Test case 1: Valid callable (should not produce error)\nclass TestModelAdmin1(admin.ModelAdmin):\n    readonly_fields = [lambda obj: \"test\"]\n\n# Test case 2: Valid method on model (should not produce error)\nclass TestModelAdmin2(admin.ModelAdmin):\n    readonly_fields = ['valid_method']\n\n# Test case 3: Valid field name (should not produce error)\nclass TestModelAdmin3(admin.ModelAdmin):\n    readonly_fields = ['title']\n\n# Test case 4: Invalid field name (should produce error with field name)\nclass TestModelAdmin4(admin.ModelAdmin):\n    readonly_fields = ['invalid_field']\n\n# Test case 5: Multiple fields with one invalid (should produce error with field name)\nclass TestModelAdmin5(admin.ModelAdmin):\n    readonly_fields = ['title', 'another_invalid_field', 'valid_method']\n\n# Test case 6: Field name with special characters\nclass TestModelAdmin6(admin.ModelAdmin):\n    readonly_fields = ['field-with-dashes']\n\nprint(\"Testing edge cases...\")\n\n# Test valid cases (should not produce errors)\nfor i, admin_class in enumerate([TestModelAdmin1, TestModelAdmin2, TestModelAdmin3], 1):\n    admin_instance = admin_class(TestModel, AdminSite())\n    errors = admin_instance.check()\n    print(f\"Test case {i} (valid): {len(errors)} errors\")\n    for error in errors:\n        print(f\"  Unexpected error: {error.msg}\")\n\n# Test invalid cases (should produce errors with field names)\nfor i, admin_class in enumerate([TestModelAdmin4, TestModelAdmin5, TestModelAdmin6], 4):\n    admin_instance = admin_class(TestModel, AdminSite())\n    errors = admin_instance.check()\n    print(f\"Test case {i} (invalid): {len(errors)} errors\")\n    for error in errors:\n        print(f\"  Error: {error.msg}\")\n        # Check that the error message includes \"refers to\"\n        if \"refers to\" in error.msg:\n            print(f\"  ✓ Error message includes field name\")\n        else:\n            print(f\"  ✗ Error message missing field name\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..7897abd4d7\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,90 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    def valid_method(self):\n+        return \"test\"\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Test case 1: Valid callable (should not produce error)\n+class TestModelAdmin1(admin.ModelAdmin):\n+    readonly_fields = [lambda obj: \"test\"]\n+\n+# Test case 2: Valid method on model (should not produce error)\n+class TestModelAdmin2(admin.ModelAdmin):\n+    readonly_fields = ['valid_method']\n+\n+# Test case 3: Valid field name (should not produce error)\n+class TestModelAdmin3(admin.ModelAdmin):\n+    readonly_fields = ['title']\n+\n+# Test case 4: Invalid field name (should produce error with field name)\n+class TestModelAdmin4(admin.ModelAdmin):\n+    readonly_fields = ['invalid_field']\n+\n+# Test case 5: Multiple fields with one invalid (should produce error with field name)\n+class TestModelAdmin5(admin.ModelAdmin):\n+    readonly_fields = ['title', 'another_invalid_field', 'valid_method']\n+\n+# Test case 6: Field name with special characters\n+class TestModelAdmin6(admin.ModelAdmin):\n+    readonly_fields = ['field-with-dashes']\n+\n+print(\"Testing edge cases...\")\n+\n+# Test valid cases (should not produce errors)\n+for i, admin_class in enumerate([TestModelAdmin1, TestModelAdmin2, TestModelAdmin3], 1):\n+    admin_instance = admin_class(TestModel, AdminSite())\n+    errors = admin_instance.check()\n+    print(f\"Test case {i} (valid): {len(errors)} errors\")\n+    for error in errors:\n+        print(f\"  Unexpected error: {error.msg}\")\n+\n+# Test invalid cases (should produce errors with field names)\n+for i, admin_class in enumerate([TestModelAdmin4, TestModelAdmin5, TestModelAdmin6], 4):\n+    admin_instance = admin_class(TestModel, AdminSite())\n+    errors = admin_instance.check()\n+    print(f\"Test case {i} (invalid): {len(errors)} errors\")\n+    for error in errors:\n+        print(f\"  Error: {error.msg}\")\n+        # Check that the error message includes \"refers to\"\n+        if \"refers to\" in error.msg:\n+            print(f\"  ✓ Error message includes field name\")\n+        else:\n+            print(f\"  ✗ Error message missing field name\")\n\\ No newline at end of file\ndiff --git a/test_inline_fix.py b/test_inline_fix.py\nnew file mode 100644\nindex 0000000000..fe4691e759\n--- /dev/null\n+++ b/test_inline_fix.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create an InlineModelAdmin with invalid readonly_fields\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['i_dont_exist']  # Missing attribute\n+\n+# Test the error message\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message for inline:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'i_dont_exist'\")\n\\ No newline at end of file\ndiff --git a/tests/admin_checks/tests.py b/tests/admin_checks/tests.py\nindex 4d171ed737..e26d0aedd0 100644\n--- a/tests/admin_checks/tests.py\n+++ b/tests/admin_checks/tests.py\n@@ -798,7 +798,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = SongAdmin(Song, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                 \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                 obj=SongAdmin,\n                 id=\"admin.E035\",\n@@ -814,7 +814,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = CityInline(State, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[0]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[0]' refers to 'i_dont_exist', which is not a callable, an attribute \"\n                 \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                 obj=CityInline,\n                 id=\"admin.E035\",",
+          "explanation": "classic_swe step 30 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 31
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nsettings.configure(\n    DEBUG=True,\n    DATABASES={\n        'default': {\n            'ENGINE': 'django.db.backends.sqlite3',\n            'NAME': ':memory:',\n        }\n    },\n    INSTALLED_APPS=[\n        'django.contrib.admin',\n        'django.contrib.auth',\n        'django.contrib.contenttypes',\n        'django.contrib.messages',\n        'django.contrib.sessions',\n    ],\n    SECRET_KEY='test-secret-key',\n    USE_TZ=True,\n)\n\ndjango.setup()\n\nfrom django.contrib import admin\nfrom django.contrib.admin import AdminSite\nfrom django.db import models\nfrom django.core import checks\n\n# Create test model\nclass TestModel(models.Model):\n    title = models.CharField(max_length=100)\n    \n    class Meta:\n        app_label = 'test'\n\n# Test ModelAdmin with method\nclass TestModelAdmin(admin.ModelAdmin):\n    readonly_fields = ['admin_method']\n    \n    def admin_method(self, obj):\n        return \"test\"\n\nprint(\"Testing ModelAdmin method...\")\n\nadmin_instance = TestModelAdmin(TestModel, AdminSite())\nerrors = admin_instance.check()\nprint(f\"Errors: {len(errors)}\")\nfor error in errors:\n    print(f\"  Error: {error.msg}\")\n\nprint(\"✓ ModelAdmin method should be valid and produce no errors\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..7897abd4d7\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,90 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    def valid_method(self):\n+        return \"test\"\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Test case 1: Valid callable (should not produce error)\n+class TestModelAdmin1(admin.ModelAdmin):\n+    readonly_fields = [lambda obj: \"test\"]\n+\n+# Test case 2: Valid method on model (should not produce error)\n+class TestModelAdmin2(admin.ModelAdmin):\n+    readonly_fields = ['valid_method']\n+\n+# Test case 3: Valid field name (should not produce error)\n+class TestModelAdmin3(admin.ModelAdmin):\n+    readonly_fields = ['title']\n+\n+# Test case 4: Invalid field name (should produce error with field name)\n+class TestModelAdmin4(admin.ModelAdmin):\n+    readonly_fields = ['invalid_field']\n+\n+# Test case 5: Multiple fields with one invalid (should produce error with field name)\n+class TestModelAdmin5(admin.ModelAdmin):\n+    readonly_fields = ['title', 'another_invalid_field', 'valid_method']\n+\n+# Test case 6: Field name with special characters\n+class TestModelAdmin6(admin.ModelAdmin):\n+    readonly_fields = ['field-with-dashes']\n+\n+print(\"Testing edge cases...\")\n+\n+# Test valid cases (should not produce errors)\n+for i, admin_class in enumerate([TestModelAdmin1, TestModelAdmin2, TestModelAdmin3], 1):\n+    admin_instance = admin_class(TestModel, AdminSite())\n+    errors = admin_instance.check()\n+    print(f\"Test case {i} (valid): {len(errors)} errors\")\n+    for error in errors:\n+        print(f\"  Unexpected error: {error.msg}\")\n+\n+# Test invalid cases (should produce errors with field names)\n+for i, admin_class in enumerate([TestModelAdmin4, TestModelAdmin5, TestModelAdmin6], 4):\n+    admin_instance = admin_class(TestModel, AdminSite())\n+    errors = admin_instance.check()\n+    print(f\"Test case {i} (invalid): {len(errors)} errors\")\n+    for error in errors:\n+        print(f\"  Error: {error.msg}\")\n+        # Check that the error message includes \"refers to\"\n+        if \"refers to\" in error.msg:\n+            print(f\"  ✓ Error message includes field name\")\n+        else:\n+            print(f\"  ✗ Error message missing field name\")\n\\ No newline at end of file\ndiff --git a/test_inline_fix.py b/test_inline_fix.py\nnew file mode 100644\nindex 0000000000..fe4691e759\n--- /dev/null\n+++ b/test_inline_fix.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create an InlineModelAdmin with invalid readonly_fields\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['i_dont_exist']  # Missing attribute\n+\n+# Test the error message\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message for inline:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'i_dont_exist'\")\n\\ No newline at end of file\ndiff --git a/test_modeladmin_method.py b/test_modeladmin_method.py\nnew file mode 100644\nindex 0000000000..93a761b0fe\n--- /dev/null\n+++ b/test_modeladmin_method.py\n@@ -0,0 +1,57 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Test ModelAdmin with method\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['admin_method']\n+    \n+    def admin_method(self, obj):\n+        return \"test\"\n+\n+print(\"Testing ModelAdmin method...\")\n+\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+print(f\"Errors: {len(errors)}\")\n+for error in errors:\n+    print(f\"  Error: {error.msg}\")\n+\n+print(\"✓ ModelAdmin method should be valid and produce no errors\")\n\\ No newline at end of file\ndiff --git a/tests/admin_checks/tests.py b/tests/admin_checks/tests.py\nindex 4d171ed737..e26d0aedd0 100644\n--- a/tests/admin_checks/tests.py\n+++ b/tests/admin_checks/tests.py\n@@ -798,7 +798,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = SongAdmin(Song, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                 \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                 obj=SongAdmin,\n                 id=\"admin.E035\",\n@@ -814,7 +814,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = CityInline(State, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[0]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[0]' refers to 'i_dont_exist', which is not a callable, an attribute \"\n                 \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                 obj=CityInline,\n                 id=\"admin.E035\",",
+          "explanation": "classic_swe step 32 create #1",
+          "filename": "test_modeladmin_method.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_modeladmin_method.py",
+          "step_index": 33
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks admin_inlines admin_views --verbosity=1",
+          "step_index": 34
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nsettings.configure(\n    DEBUG=True,\n    DATABASES={\n        'default': {\n            'ENGINE': 'django.db.backends.sqlite3',\n            'NAME': ':memory:',\n        }\n    },\n    INSTALLED_APPS=[\n        'django.contrib.admin',\n        'django.contrib.auth',\n        'django.contrib.contenttypes',\n        'django.contrib.messages',\n        'django.contrib.sessions',\n    ],\n    SECRET_KEY='test-secret-key',\n    USE_TZ=True,\n)\n\ndjango.setup()\n\nfrom django.contrib import admin\nfrom django.contrib.admin import AdminSite\nfrom django.db import models\nfrom django.core import checks\n\n# Create test models similar to the PR description\nclass State(models.Model):\n    name = models.CharField(max_length=100)\n    \n    class Meta:\n        app_label = 'admin_checks'\n\nclass City(models.Model):\n    name = models.CharField(max_length=100)\n    state = models.ForeignKey(State, on_delete=models.CASCADE)\n    \n    class Meta:\n        app_label = 'admin_checks'\n\n# Create the exact example from the PR description\nclass CityInline(admin.TabularInline):\n    model = City\n    readonly_fields = ['nonexistent_field']\n\nprint(\"Testing PR example...\")\n\nadmin_instance = CityInline(State, AdminSite())\nerrors = admin_instance.check()\n\nprint(\"Current error message:\")\nfor error in errors:\n    print(f\"  {error.msg}\")\n\nprint(\"\\nExpected format (from PR description):\")\nprint(\"  The value of 'readonly_fields[0]' refers to 'nonexistent_field', which is not a callable, an attribute of 'CityInline', or an attribute of 'admin_checks.City'.\")\n\n# Check if the error message matches the expected format\nif errors:\n    error_msg = errors[0].msg\n    if \"refers to 'nonexistent_field'\" in error_msg:\n        print(\"\\n✓ SUCCESS: Error message now includes the field name as requested in the PR!\")\n    else:\n        print(\"\\n✗ FAILURE: Error message still doesn't include the field name\")\nelse:\n    print(\"\\n✗ FAILURE: No error was generated\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..1e8e066350\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,54 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..7897abd4d7\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,90 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    def valid_method(self):\n+        return \"test\"\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Test case 1: Valid callable (should not produce error)\n+class TestModelAdmin1(admin.ModelAdmin):\n+    readonly_fields = [lambda obj: \"test\"]\n+\n+# Test case 2: Valid method on model (should not produce error)\n+class TestModelAdmin2(admin.ModelAdmin):\n+    readonly_fields = ['valid_method']\n+\n+# Test case 3: Valid field name (should not produce error)\n+class TestModelAdmin3(admin.ModelAdmin):\n+    readonly_fields = ['title']\n+\n+# Test case 4: Invalid field name (should produce error with field name)\n+class TestModelAdmin4(admin.ModelAdmin):\n+    readonly_fields = ['invalid_field']\n+\n+# Test case 5: Multiple fields with one invalid (should produce error with field name)\n+class TestModelAdmin5(admin.ModelAdmin):\n+    readonly_fields = ['title', 'another_invalid_field', 'valid_method']\n+\n+# Test case 6: Field name with special characters\n+class TestModelAdmin6(admin.ModelAdmin):\n+    readonly_fields = ['field-with-dashes']\n+\n+print(\"Testing edge cases...\")\n+\n+# Test valid cases (should not produce errors)\n+for i, admin_class in enumerate([TestModelAdmin1, TestModelAdmin2, TestModelAdmin3], 1):\n+    admin_instance = admin_class(TestModel, AdminSite())\n+    errors = admin_instance.check()\n+    print(f\"Test case {i} (valid): {len(errors)} errors\")\n+    for error in errors:\n+        print(f\"  Unexpected error: {error.msg}\")\n+\n+# Test invalid cases (should produce errors with field names)\n+for i, admin_class in enumerate([TestModelAdmin4, TestModelAdmin5, TestModelAdmin6], 4):\n+    admin_instance = admin_class(TestModel, AdminSite())\n+    errors = admin_instance.check()\n+    print(f\"Test case {i} (invalid): {len(errors)} errors\")\n+    for error in errors:\n+        print(f\"  Error: {error.msg}\")\n+        # Check that the error message includes \"refers to\"\n+        if \"refers to\" in error.msg:\n+            print(f\"  ✓ Error message includes field name\")\n+        else:\n+            print(f\"  ✗ Error message missing field name\")\n\\ No newline at end of file\ndiff --git a/test_inline_fix.py b/test_inline_fix.py\nnew file mode 100644\nindex 0000000000..fe4691e759\n--- /dev/null\n+++ b/test_inline_fix.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create an InlineModelAdmin with invalid readonly_fields\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['i_dont_exist']  # Missing attribute\n+\n+# Test the error message\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message for inline:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'i_dont_exist'\")\n\\ No newline at end of file\ndiff --git a/test_modeladmin_method.py b/test_modeladmin_method.py\nnew file mode 100644\nindex 0000000000..93a761b0fe\n--- /dev/null\n+++ b/test_modeladmin_method.py\n@@ -0,0 +1,57 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Test ModelAdmin with method\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['admin_method']\n+    \n+    def admin_method(self, obj):\n+        return \"test\"\n+\n+print(\"Testing ModelAdmin method...\")\n+\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+print(f\"Errors: {len(errors)}\")\n+for error in errors:\n+    print(f\"  Error: {error.msg}\")\n+\n+print(\"✓ ModelAdmin method should be valid and produce no errors\")\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..4d86d93cb0\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create test models similar to the PR description\n+class State(models.Model):\n+    name = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'admin_checks'\n+\n+class City(models.Model):\n+    name = models.CharField(max_length=100)\n+    state = models.ForeignKey(State, on_delete=models.CASCADE)\n+    \n+    class Meta:\n+        app_label = 'admin_checks'\n+\n+# Create the exact example from the PR description\n+class CityInline(admin.TabularInline):\n+    model = City\n+    readonly_fields = ['nonexistent_field']\n+\n+print(\"Testing PR example...\")\n+\n+admin_instance = CityInline(State, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected format (from PR description):\")\n+print(\"  The value of 'readonly_fields[0]' refers to 'nonexistent_field', which is not a callable, an attribute of 'CityInline', or an attribute of 'admin_checks.City'.\")\n+\n+# Check if the error message matches the expected format\n+if errors:\n+    error_msg = errors[0].msg\n+    if \"refers to 'nonexistent_field'\" in error_msg:\n+        print(\"\\n✓ SUCCESS: Error message now includes the field name as requested in the PR!\")\n+    else:\n+        print(\"\\n✗ FAILURE: Error message still doesn't include the field name\")\n+else:\n+    print(\"\\n✗ FAILURE: No error was generated\")\n\\ No newline at end of file\ndiff --git a/tests/admin_checks/tests.py b/tests/admin_checks/tests.py\nindex 4d171ed737..e26d0aedd0 100644\n--- a/tests/admin_checks/tests.py\n+++ b/tests/admin_checks/tests.py\n@@ -798,7 +798,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = SongAdmin(Song, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                 \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                 obj=SongAdmin,\n                 id=\"admin.E035\",\n@@ -814,7 +814,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = CityInline(State, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[0]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[0]' refers to 'i_dont_exist', which is not a callable, an attribute \"\n                 \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                 obj=CityInline,\n                 id=\"admin.E035\",",
+          "explanation": "classic_swe step 35 create #1",
+          "filename": "test_pr_example.py",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pr_example.py",
+          "step_index": 36
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nsettings.configure(\n    DEBUG=True,\n    DATABASES={\n        'default': {\n            'ENGINE': 'django.db.backends.sqlite3',\n            'NAME': ':memory:',\n        }\n    },\n    INSTALLED_APPS=[\n        'django.contrib.admin',\n        'django.contrib.auth',\n        'django.contrib.contenttypes',\n        'django.contrib.messages',\n        'django.contrib.sessions',\n    ],\n    SECRET_KEY='test-secret-key',\n    USE_TZ=True,\n)\n\ndjango.setup()\n\nfrom django.contrib import admin\nfrom django.contrib.admin import AdminSite\nfrom django.db import models\nfrom django.core import checks\n\n# Create a test model\nclass TestModel(models.Model):\n    title = models.CharField(max_length=100)\n    \n    class Meta:\n        app_label = 'test'\n\n# Create a ModelAdmin with invalid readonly_fields\nclass TestModelAdmin(admin.ModelAdmin):\n    readonly_fields = ['nonexistent_field']\n\n# Test the error message\nadmin_instance = TestModelAdmin(TestModel, AdminSite())\nerrors = admin_instance.check()\n\nprint(\"Current error message:\")\nfor error in errors:\n    print(f\"  {error.msg}\")\n\nprint(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n\n# Check if the error message includes the field name\nif errors and \"refers to 'nonexistent_field'\" in errors[0].msg:\n    print(\"✓ SUCCESS: Error message now includes the field name!\")\nelse:\n    print(\"✗ FAILURE: Error message doesn't include the field name\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex c395b0bde2..bbd0f9d76f 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -771,10 +771,11 @@ class BaseModelAdminChecks:\n             except FieldDoesNotExist:\n                 return [\n                     checks.Error(\n-                        \"The value of '%s' is not a callable, an attribute of \"\n+                        \"The value of '%s' refers to '%s', which is not a callable, an attribute of \"\n                         \"'%s', or an attribute of '%s'.\"\n                         % (\n                             label,\n+                            field_name,\n                             obj.__class__.__name__,\n                             obj.model._meta.label,\n                         ),\ndiff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 0000000000..ed1dea738b\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,60 @@\n+#!/usr/bin/env python\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+settings.configure(\n+    DEBUG=True,\n+    DATABASES={\n+        'default': {\n+            'ENGINE': 'django.db.backends.sqlite3',\n+            'NAME': ':memory:',\n+        }\n+    },\n+    INSTALLED_APPS=[\n+        'django.contrib.admin',\n+        'django.contrib.auth',\n+        'django.contrib.contenttypes',\n+        'django.contrib.messages',\n+        'django.contrib.sessions',\n+    ],\n+    SECRET_KEY='test-secret-key',\n+    USE_TZ=True,\n+)\n+\n+django.setup()\n+\n+from django.contrib import admin\n+from django.contrib.admin import AdminSite\n+from django.db import models\n+from django.core import checks\n+\n+# Create a test model\n+class TestModel(models.Model):\n+    title = models.CharField(max_length=100)\n+    \n+    class Meta:\n+        app_label = 'test'\n+\n+# Create a ModelAdmin with invalid readonly_fields\n+class TestModelAdmin(admin.ModelAdmin):\n+    readonly_fields = ['nonexistent_field']\n+\n+# Test the error message\n+admin_instance = TestModelAdmin(TestModel, AdminSite())\n+errors = admin_instance.check()\n+\n+print(\"Current error message:\")\n+for error in errors:\n+    print(f\"  {error.msg}\")\n+\n+print(\"\\nExpected error message should include the field name 'nonexistent_field'\")\n+\n+# Check if the error message includes the field name\n+if errors and \"refers to 'nonexistent_field'\" in errors[0].msg:\n+    print(\"✓ SUCCESS: Error message now includes the field name!\")\n+else:\n+    print(\"✗ FAILURE: Error message doesn't include the field name\")\n\\ No newline at end of file\ndiff --git a/tests/admin_checks/tests.py b/tests/admin_checks/tests.py\nindex 4d171ed737..e26d0aedd0 100644\n--- a/tests/admin_checks/tests.py\n+++ b/tests/admin_checks/tests.py\n@@ -798,7 +798,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = SongAdmin(Song, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[1]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[1]' refers to 'nonexistent', which is not a callable, an attribute \"\n                 \"of 'SongAdmin', or an attribute of 'admin_checks.Song'.\",\n                 obj=SongAdmin,\n                 id=\"admin.E035\",\n@@ -814,7 +814,7 @@ class SystemChecksTestCase(SimpleTestCase):\n         errors = CityInline(State, AdminSite()).check()\n         expected = [\n             checks.Error(\n-                \"The value of 'readonly_fields[0]' is not a callable, an attribute \"\n+                \"The value of 'readonly_fields[0]' refers to 'i_dont_exist', which is not a callable, an attribute \"\n                 \"of 'CityInline', or an attribute of 'admin_checks.City'.\",\n                 obj=CityInline,\n                 id=\"admin.E035\",",
+          "explanation": "classic_swe step 41 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 42
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests.SystemChecksTestCase.test_nonexistent_field admin_checks.tests.SystemChecksTestCase.test_nonexistent_field_on_inline",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks.tests",
+          "step_index": 46
+        }
+      ],
+      "revision_index": 7,
+      "start_step": 41
+    }
+  ],
+  "sub_paths": [
+    "django/contrib/admin/checks.py",
+    "tests/admin_checks/tests.py"
+  ],
+  "success_step": 41,
+  "test_files": [
+    "final_test.py",
+    "reproduce_issue.py",
+    "test_edge_cases.py",
+    "test_inline_fix.py",
+    "test_modeladmin_method.py",
+    "test_pr_example.py"
+  ]
+}

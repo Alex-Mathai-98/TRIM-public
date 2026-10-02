@@ -1,0 +1,248 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks.ListDisplayTests -v 1",
+      "step_index": 70
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks -v 1",
+      "step_index": 71
+    },
+    {
+      "command": "cd /testbed && python final_test.py",
+      "step_index": 73
+    },
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 6
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 13
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks -v 2",
+      "step_index": 15
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_views.test_admin_checks -v 2",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_views.tests -v 1 --parallel 1 | head -20",
+      "step_index": 18
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py modeladmin -v 1",
+      "step_index": 19
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks.ListDisplayTests.test_field_accessible_via_instance_only -v 2",
+      "step_index": 33
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks.ListDisplayTests -v 2",
+      "step_index": 34
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 38
+    },
+    {
+      "command": "cd /testbed && python test_bug_28490.py",
+      "step_index": 40
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks -v 1",
+      "step_index": 41
+    },
+    {
+      "command": "cd /testbed && python test_getattr_fallback.py",
+      "step_index": 44
+    },
+    {
+      "command": "cd /testbed && python test_both_fail.py",
+      "step_index": 46
+    },
+    {
+      "command": "cd /testbed && python test_m2m_getattr.py",
+      "step_index": 48
+    },
+    {
+      "command": "cd /testbed && python test_pr_table.py",
+      "step_index": 50
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_checks modeladmin.test_checks.ListDisplayTests -v 1",
+      "step_index": 51
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_views.tests.test_adminsite -v 1",
+      "step_index": 52
+    },
+    {
+      "command": "cd /testbed && python tests/runtests.py admin_changelist -v 1",
+      "step_index": 53
+    }
+  ],
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "    def _check_list_display_item(self, obj, item, label):\n        if callable(item):\n            return []\n        elif hasattr(obj, item):\n            return []\n        else:\n            try:\n                field = obj.model._meta.get_field(item)\n            except FieldDoesNotExist:\n                try:\n                    field = getattr(obj.model, item)\n                except AttributeError:\n                    return [\n                        checks.Error(\n                            \"The value of '%s' refers to '%s', which is not a callable, \"\n                            \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n                                label, item, obj.__class__.__name__,\n                                obj.model._meta.app_label, obj.model._meta.object_name,\n                            ),\n                            obj=obj.__class__,\n                            id='admin.E108',\n                        )\n                    ]\n            if isinstance(field, models.ManyToManyField):\n                return [\n                    checks.Error(\n                        \"The value of '%s' must not be a ManyToManyField.\" % label,\n                        obj=obj.__class__,\n                        id='admin.E109',\n                    )\n                ]\n            return []",
+          "before": "    def _check_list_display_item(self, obj, item, label):\n        if callable(item):\n            return []\n        elif hasattr(obj, item):\n            return []\n        elif hasattr(obj.model, item):\n            try:\n                field = obj.model._meta.get_field(item)\n            except FieldDoesNotExist:\n                return []\n            else:\n                if isinstance(field, models.ManyToManyField):\n                    return [\n                        checks.Error(\n                            \"The value of '%s' must not be a ManyToManyField.\" % label,\n                            obj=obj.__class__,\n                            id='admin.E109',\n                        )\n                    ]\n                return []\n        else:\n            return [\n                checks.Error(\n                    \"The value of '%s' refers to '%s', which is not a callable, \"\n                    \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n                        label, item, obj.__class__.__name__,\n                        obj.model._meta.app_label, obj.model._meta.object_name,\n                    ),\n                    obj=obj.__class__,\n                    id='admin.E108',\n                )\n            ]",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex f82c20c2f1..9fd77b5d41 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -720,33 +720,33 @@ class ModelAdminChecks(BaseModelAdminChecks):\n             return []\n         elif hasattr(obj, item):\n             return []\n-        elif hasattr(obj.model, item):\n+        else:\n             try:\n                 field = obj.model._meta.get_field(item)\n             except FieldDoesNotExist:\n-                return []\n-            else:\n-                if isinstance(field, models.ManyToManyField):\n+                try:\n+                    field = getattr(obj.model, item)\n+                except AttributeError:\n                     return [\n                         checks.Error(\n-                            \"The value of '%s' must not be a ManyToManyField.\" % label,\n+                            \"The value of '%s' refers to '%s', which is not a callable, \"\n+                            \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n+                                label, item, obj.__class__.__name__,\n+                                obj.model._meta.app_label, obj.model._meta.object_name,\n+                            ),\n                             obj=obj.__class__,\n-                            id='admin.E109',\n+                            id='admin.E108',\n                         )\n                     ]\n-                return []\n-        else:\n-            return [\n-                checks.Error(\n-                    \"The value of '%s' refers to '%s', which is not a callable, \"\n-                    \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n-                        label, item, obj.__class__.__name__,\n-                        obj.model._meta.app_label, obj.model._meta.object_name,\n-                    ),\n-                    obj=obj.__class__,\n-                    id='admin.E108',\n-                )\n-            ]\n+            if isinstance(field, models.ManyToManyField):\n+                return [\n+                    checks.Error(\n+                        \"The value of '%s' must not be a ManyToManyField.\" % label,\n+                        obj=obj.__class__,\n+                        id='admin.E109',\n+                    )\n+                ]\n+            return []\n \n     def _check_list_display_links(self, obj):\n         \"\"\" Check that list_display_links is a unique subset of list_display.",
+          "explanation": "classic_swe step 69 #1",
+          "filename": "django/contrib/admin/checks.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks.ListDisplayTests -v 1",
+          "step_index": 70
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks -v 1",
+          "step_index": 71
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 69
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python\n\"\"\"\nFinal test to verify the fix works.\n\"\"\"\n\nimport os\nimport sys\nimport django\nfrom django.conf import settings\n\n# Configure Django settings\nif not settings.configured:\n    settings.configure(\n        DEBUG=True,\n        DATABASES={\n            'default': {\n                'ENGINE': 'django.db.backends.sqlite3',\n                'NAME': ':memory:',\n            }\n        },\n        INSTALLED_APPS=[\n            'django.contrib.admin',\n            'django.contrib.auth',\n            'django.contrib.contenttypes',\n            'django.contrib.sessions',\n            'django.contrib.messages',\n            '__main__',  # This module\n        ],\n        SECRET_KEY='test-secret-key',\n        USE_TZ=True,\n    )\n\ndjango.setup()\n\nfrom django.db import models\nfrom django.contrib import admin\nfrom django.core import checks\n\n# Create a mock PositionField that exhibits the same behavior as the django-positions library\nclass PositionFieldDescriptor:\n    def __init__(self, field):\n        self.field = field\n    \n    def __get__(self, instance, owner):\n        if instance is None:\n            raise AttributeError(\"PositionField can only be accessed on instances\")\n        return getattr(instance, self.field.attname)\n    \n    def __set__(self, instance, value):\n        setattr(instance, self.field.attname, value)\n\nclass PositionField(models.IntegerField):\n    def contribute_to_class(self, cls, name, **kwargs):\n        super().contribute_to_class(cls, name, **kwargs)\n        setattr(cls, name, PositionFieldDescriptor(self))\n\n# Define test model\nclass Thing(models.Model):\n    number = models.IntegerField(default=0)\n    order = PositionField()\n    \n    class Meta:\n        app_label = '__main__'\n\n# Define admin\n@admin.register(Thing)\nclass ThingAdmin(admin.ModelAdmin):\n    list_display = ['number', 'order']\n\ndef test_fix():\n    \"\"\"Test that the fix works\"\"\"\n    print(\"Testing the fix...\")\n    \n    # Test hasattr behavior\n    print(f\"hasattr(Thing, 'number'): {hasattr(Thing, 'number')}\")\n    print(f\"hasattr(Thing, 'order'): {hasattr(Thing, 'order')}\")\n    \n    # Test get_field behavior\n    try:\n        field = Thing._meta.get_field('order')\n        print(f\"Thing._meta.get_field('order'): {field}\")\n    except Exception as e:\n        print(f\"Thing._meta.get_field('order') failed: {e}\")\n    \n    # Run admin checks\n    admin_obj = ThingAdmin(Thing, admin.site)\n    errors = admin_obj.check()\n    \n    print(f\"\\nAdmin check errors: {len(errors)}\")\n    for error in errors:\n        print(f\"  {error.id}: {error.msg}\")\n    \n    if len(errors) == 0:\n        print(\"\\n✅ Fix works! No admin.E108 error found\")\n        return True\n    else:\n        print(\"\\n❌ Fix failed! admin.E108 error still present\")\n        return False\n\nif __name__ == '__main__':\n    success = test_fix()\n    sys.exit(0 if success else 1)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex f82c20c2f1..9fd77b5d41 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -720,33 +720,33 @@ class ModelAdminChecks(BaseModelAdminChecks):\n             return []\n         elif hasattr(obj, item):\n             return []\n-        elif hasattr(obj.model, item):\n+        else:\n             try:\n                 field = obj.model._meta.get_field(item)\n             except FieldDoesNotExist:\n-                return []\n-            else:\n-                if isinstance(field, models.ManyToManyField):\n+                try:\n+                    field = getattr(obj.model, item)\n+                except AttributeError:\n                     return [\n                         checks.Error(\n-                            \"The value of '%s' must not be a ManyToManyField.\" % label,\n+                            \"The value of '%s' refers to '%s', which is not a callable, \"\n+                            \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n+                                label, item, obj.__class__.__name__,\n+                                obj.model._meta.app_label, obj.model._meta.object_name,\n+                            ),\n                             obj=obj.__class__,\n-                            id='admin.E109',\n+                            id='admin.E108',\n                         )\n                     ]\n-                return []\n-        else:\n-            return [\n-                checks.Error(\n-                    \"The value of '%s' refers to '%s', which is not a callable, \"\n-                    \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n-                        label, item, obj.__class__.__name__,\n-                        obj.model._meta.app_label, obj.model._meta.object_name,\n-                    ),\n-                    obj=obj.__class__,\n-                    id='admin.E108',\n-                )\n-            ]\n+            if isinstance(field, models.ManyToManyField):\n+                return [\n+                    checks.Error(\n+                        \"The value of '%s' must not be a ManyToManyField.\" % label,\n+                        obj=obj.__class__,\n+                        id='admin.E109',\n+                    )\n+                ]\n+            return []\n \n     def _check_list_display_links(self, obj):\n         \"\"\" Check that list_display_links is a unique subset of list_display.\ndiff --git a/final_test.py b/final_test.py\nnew file mode 100644\nindex 0000000000..56dfcbfc7d\n--- /dev/null\n+++ b/final_test.py\n@@ -0,0 +1,102 @@\n+#!/usr/bin/env python\n+\"\"\"\n+Final test to verify the fix works.\n+\"\"\"\n+\n+import os\n+import sys\n+import django\n+from django.conf import settings\n+\n+# Configure Django settings\n+if not settings.configured:\n+    settings.configure(\n+        DEBUG=True,\n+        DATABASES={\n+            'default': {\n+                'ENGINE': 'django.db.backends.sqlite3',\n+                'NAME': ':memory:',\n+            }\n+        },\n+        INSTALLED_APPS=[\n+            'django.contrib.admin',\n+            'django.contrib.auth',\n+            'django.contrib.contenttypes',\n+            'django.contrib.sessions',\n+            'django.contrib.messages',\n+            '__main__',  # This module\n+        ],\n+        SECRET_KEY='test-secret-key',\n+        USE_TZ=True,\n+    )\n+\n+django.setup()\n+\n+from django.db import models\n+from django.contrib import admin\n+from django.core import checks\n+\n+# Create a mock PositionField that exhibits the same behavior as the django-positions library\n+class PositionFieldDescriptor:\n+    def __init__(self, field):\n+        self.field = field\n+    \n+    def __get__(self, instance, owner):\n+        if instance is None:\n+            raise AttributeError(\"PositionField can only be accessed on instances\")\n+        return getattr(instance, self.field.attname)\n+    \n+    def __set__(self, instance, value):\n+        setattr(instance, self.field.attname, value)\n+\n+class PositionField(models.IntegerField):\n+    def contribute_to_class(self, cls, name, **kwargs):\n+        super().contribute_to_class(cls, name, **kwargs)\n+        setattr(cls, name, PositionFieldDescriptor(self))\n+\n+# Define test model\n+class Thing(models.Model):\n+    number = models.IntegerField(default=0)\n+    order = PositionField()\n+    \n+    class Meta:\n+        app_label = '__main__'\n+\n+# Define admin\n+@admin.register(Thing)\n+class ThingAdmin(admin.ModelAdmin):\n+    list_display = ['number', 'order']\n+\n+def test_fix():\n+    \"\"\"Test that the fix works\"\"\"\n+    print(\"Testing the fix...\")\n+    \n+    # Test hasattr behavior\n+    print(f\"hasattr(Thing, 'number'): {hasattr(Thing, 'number')}\")\n+    print(f\"hasattr(Thing, 'order'): {hasattr(Thing, 'order')}\")\n+    \n+    # Test get_field behavior\n+    try:\n+        field = Thing._meta.get_field('order')\n+        print(f\"Thing._meta.get_field('order'): {field}\")\n+    except Exception as e:\n+        print(f\"Thing._meta.get_field('order') failed: {e}\")\n+    \n+    # Run admin checks\n+    admin_obj = ThingAdmin(Thing, admin.site)\n+    errors = admin_obj.check()\n+    \n+    print(f\"\\nAdmin check errors: {len(errors)}\")\n+    for error in errors:\n+        print(f\"  {error.id}: {error.msg}\")\n+    \n+    if len(errors) == 0:\n+        print(\"\\n✅ Fix works! No admin.E108 error found\")\n+        return True\n+    else:\n+        print(\"\\n❌ Fix failed! admin.E108 error still present\")\n+        return False\n+\n+if __name__ == '__main__':\n+    success = test_fix()\n+    sys.exit(0 if success else 1)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 72 create #1",
+          "filename": "final_test.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 72
+        }
+      ],
+      "end_step": 72,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python final_test.py",
+          "step_index": 73
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 6
+        },
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 13
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks -v 2",
+          "step_index": 15
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_views.test_admin_checks -v 2",
+          "step_index": 16
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_views.tests -v 1 --parallel 1 | head -20",
+          "step_index": 18
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py modeladmin -v 1",
+          "step_index": 19
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks.ListDisplayTests.test_field_accessible_via_instance_only -v 2",
+          "step_index": 33
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks.ListDisplayTests -v 2",
+          "step_index": 34
+        },
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 38
+        },
+        {
+          "command": "cd /testbed && python test_bug_28490.py",
+          "step_index": 40
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py modeladmin.test_checks -v 1",
+          "step_index": 41
+        },
+        {
+          "command": "cd /testbed && python test_getattr_fallback.py",
+          "step_index": 44
+        },
+        {
+          "command": "cd /testbed && python test_both_fail.py",
+          "step_index": 46
+        },
+        {
+          "command": "cd /testbed && python test_m2m_getattr.py",
+          "step_index": 48
+        },
+        {
+          "command": "cd /testbed && python test_pr_table.py",
+          "step_index": 50
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_checks modeladmin.test_checks.ListDisplayTests -v 1",
+          "step_index": 51
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_views.tests.test_adminsite -v 1",
+          "step_index": 52
+        },
+        {
+          "command": "cd /testbed && python tests/runtests.py admin_changelist -v 1",
+          "step_index": 53
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 72
+    }
+  ],
+  "sub_paths": [
+    "django/contrib/admin/checks.py"
+  ],
+  "success_step": 72,
+  "test_files": [
+    "final_test.py"
+  ]
+}

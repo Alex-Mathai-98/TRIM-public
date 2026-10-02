@@ -1,0 +1,271 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_bug.py",
+      "step_index": 11
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 20
+    },
+    {
+      "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_legend.py -v",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_figure.py::test_subfigure* -v",
+      "step_index": 22
+    },
+    {
+      "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_figure.py::test_subfigure -v",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_figure.py::test_subfigure_double -v",
+      "step_index": 25
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 27
+    },
+    {
+      "command": "cd /testbed && python test_pr_example.py",
+      "step_index": 29
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport matplotlib.pyplot as plt\n\nprint(\"Testing SubFigure legend bug...\")\n\ntry:\n    subfig = plt.figure().subfigures()\n    ax = subfig.subplots()\n    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n    subfig.legend()\n    print(\"SUCCESS: SubFigure legend worked!\")\nexcept Exception as e:\n    print(f\"ERROR: {type(e).__name__}: {e}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_bug.py b/reproduce_bug.py\nnew file mode 100644\nindex 0000000000..bc0995179c\n--- /dev/null\n+++ b/reproduce_bug.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing SubFigure legend bug...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: SubFigure legend worked!\")\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 10 create #1",
+          "filename": "reproduce_bug.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        }
+      ],
+      "end_step": 10,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_bug.py",
+          "step_index": 11
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 10
+    },
+    {
+      "edits": [
+        {
+          "after": "        # local import only to avoid circularity\n        from matplotlib.axes import Axes\n        from matplotlib.figure import Figure, FigureBase",
+          "before": "        # local import only to avoid circularity\n        from matplotlib.axes import Axes\n        from matplotlib.figure import Figure",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py\nindex 44ab024698..de633c63b2 100644\n--- a/lib/matplotlib/legend.py\n+++ b/lib/matplotlib/legend.py\n@@ -360,7 +360,7 @@ class Legend(Artist):\n         \"\"\"\n         # local import only to avoid circularity\n         from matplotlib.axes import Axes\n-        from matplotlib.figure import Figure\n+        from matplotlib.figure import Figure, FigureBase\n \n         super().__init__()\n \ndiff --git a/reproduce_bug.py b/reproduce_bug.py\nnew file mode 100644\nindex 0000000000..bc0995179c\n--- /dev/null\n+++ b/reproduce_bug.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing SubFigure legend bug...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: SubFigure legend worked!\")\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "lib/matplotlib/legend.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "        elif isinstance(parent, FigureBase):\n            self.isaxes = False\n            self.set_figure(parent)\n        else:\n            raise TypeError(\"Legend needs either Axes or Figure as parent\")",
+          "before": "        elif isinstance(parent, Figure):\n            self.isaxes = False\n            self.set_figure(parent)\n        else:\n            raise TypeError(\"Legend needs either Axes or Figure as parent\")",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py\nindex 44ab024698..b2e8d9b914 100644\n--- a/lib/matplotlib/legend.py\n+++ b/lib/matplotlib/legend.py\n@@ -360,7 +360,7 @@ class Legend(Artist):\n         \"\"\"\n         # local import only to avoid circularity\n         from matplotlib.axes import Axes\n-        from matplotlib.figure import Figure\n+        from matplotlib.figure import Figure, FigureBase\n \n         super().__init__()\n \n@@ -434,7 +434,7 @@ class Legend(Artist):\n             self.isaxes = True\n             self.axes = parent\n             self.set_figure(parent.figure)\n-        elif isinstance(parent, Figure):\n+        elif isinstance(parent, FigureBase):\n             self.isaxes = False\n             self.set_figure(parent)\n         else:\ndiff --git a/reproduce_bug.py b/reproduce_bug.py\nnew file mode 100644\nindex 0000000000..bc0995179c\n--- /dev/null\n+++ b/reproduce_bug.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing SubFigure legend bug...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: SubFigure legend worked!\")\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "lib/matplotlib/legend.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_bug.py",
+          "step_index": 18
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport matplotlib.pyplot as plt\nimport numpy as np\n\ndef test_figure_legend():\n    \"\"\"Test that regular Figure legend still works\"\"\"\n    print(\"Testing Figure legend...\")\n    try:\n        fig = plt.figure()\n        ax = fig.add_subplot(111)\n        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        fig.legend()\n        print(\"SUCCESS: Figure legend worked!\")\n        plt.close(fig)\n        return True\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_axes_legend():\n    \"\"\"Test that Axes legend still works\"\"\"\n    print(\"Testing Axes legend...\")\n    try:\n        fig, ax = plt.subplots()\n        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        ax.legend()\n        print(\"SUCCESS: Axes legend worked!\")\n        plt.close(fig)\n        return True\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_subfigure_legend():\n    \"\"\"Test that SubFigure legend works\"\"\"\n    print(\"Testing SubFigure legend...\")\n    try:\n        fig = plt.figure()\n        subfig = fig.subfigures()\n        ax = subfig.subplots()\n        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        subfig.legend()\n        print(\"SUCCESS: SubFigure legend worked!\")\n        plt.close(fig)\n        return True\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_nested_subfigure_legend():\n    \"\"\"Test that nested SubFigure legend works\"\"\"\n    print(\"Testing nested SubFigure legend...\")\n    try:\n        fig = plt.figure()\n        subfigs = fig.subfigures(1, 2)\n        nested_subfigs = subfigs[0].subfigures(2, 1)\n        ax = nested_subfigs[0].subplots()\n        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        nested_subfigs[0].legend()\n        print(\"SUCCESS: Nested SubFigure legend worked!\")\n        plt.close(fig)\n        return True\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_multiple_subfigures():\n    \"\"\"Test multiple subfigures with legends\"\"\"\n    print(\"Testing multiple SubFigures with legends...\")\n    try:\n        fig = plt.figure()\n        subfigs = fig.subfigures(1, 2)\n        \n        # First subfigure\n        ax1 = subfigs[0].subplots()\n        ax1.plot([0, 1, 2], [0, 1, 2], label=\"line1\")\n        subfigs[0].legend()\n        \n        # Second subfigure\n        ax2 = subfigs[1].subplots()\n        ax2.plot([0, 1, 2], [2, 1, 0], label=\"line2\")\n        subfigs[1].legend()\n        \n        print(\"SUCCESS: Multiple SubFigure legends worked!\")\n        plt.close(fig)\n        return True\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_invalid_parent():\n    \"\"\"Test that invalid parent still raises appropriate error\"\"\"\n    print(\"Testing invalid parent...\")\n    try:\n        from matplotlib.legend import Legend\n        Legend(\"invalid_parent\", [], [])\n        print(\"ERROR: Should have raised TypeError!\")\n        return False\n    except TypeError as e:\n        if \"Legend needs either Axes or Figure as parent\" in str(e):\n            print(\"SUCCESS: Invalid parent correctly rejected!\")\n            return True\n        else:\n            print(f\"ERROR: Wrong error message: {e}\")\n            return False\n    except Exception as e:\n        print(f\"ERROR: Unexpected exception: {type(e).__name__}: {e}\")\n        return False\n\nif __name__ == \"__main__\":\n    tests = [\n        test_figure_legend,\n        test_axes_legend,\n        test_subfigure_legend,\n        test_nested_subfigure_legend,\n        test_multiple_subfigures,\n        test_invalid_parent\n    ]\n    \n    results = []\n    for test in tests:\n        results.append(test())\n        print()\n    \n    passed = sum(results)\n    total = len(results)\n    print(f\"Results: {passed}/{total} tests passed\")\n    \n    if passed == total:\n        print(\"All tests passed! ✅\")\n    else:\n        print(\"Some tests failed! ❌\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py\nindex 44ab024698..b2e8d9b914 100644\n--- a/lib/matplotlib/legend.py\n+++ b/lib/matplotlib/legend.py\n@@ -360,7 +360,7 @@ class Legend(Artist):\n         \"\"\"\n         # local import only to avoid circularity\n         from matplotlib.axes import Axes\n-        from matplotlib.figure import Figure\n+        from matplotlib.figure import Figure, FigureBase\n \n         super().__init__()\n \n@@ -434,7 +434,7 @@ class Legend(Artist):\n             self.isaxes = True\n             self.axes = parent\n             self.set_figure(parent.figure)\n-        elif isinstance(parent, Figure):\n+        elif isinstance(parent, FigureBase):\n             self.isaxes = False\n             self.set_figure(parent)\n         else:\ndiff --git a/reproduce_bug.py b/reproduce_bug.py\nnew file mode 100644\nindex 0000000000..bc0995179c\n--- /dev/null\n+++ b/reproduce_bug.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing SubFigure legend bug...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: SubFigure legend worked!\")\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ae99bb03d8\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,133 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+import numpy as np\n+\n+def test_figure_legend():\n+    \"\"\"Test that regular Figure legend still works\"\"\"\n+    print(\"Testing Figure legend...\")\n+    try:\n+        fig = plt.figure()\n+        ax = fig.add_subplot(111)\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        fig.legend()\n+        print(\"SUCCESS: Figure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_axes_legend():\n+    \"\"\"Test that Axes legend still works\"\"\"\n+    print(\"Testing Axes legend...\")\n+    try:\n+        fig, ax = plt.subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        ax.legend()\n+        print(\"SUCCESS: Axes legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_legend():\n+    \"\"\"Test that SubFigure legend works\"\"\"\n+    print(\"Testing SubFigure legend...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        subfig.legend()\n+        print(\"SUCCESS: SubFigure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_nested_subfigure_legend():\n+    \"\"\"Test that nested SubFigure legend works\"\"\"\n+    print(\"Testing nested SubFigure legend...\")\n+    try:\n+        fig = plt.figure()\n+        subfigs = fig.subfigures(1, 2)\n+        nested_subfigs = subfigs[0].subfigures(2, 1)\n+        ax = nested_subfigs[0].subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        nested_subfigs[0].legend()\n+        print(\"SUCCESS: Nested SubFigure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_multiple_subfigures():\n+    \"\"\"Test multiple subfigures with legends\"\"\"\n+    print(\"Testing multiple SubFigures with legends...\")\n+    try:\n+        fig = plt.figure()\n+        subfigs = fig.subfigures(1, 2)\n+        \n+        # First subfigure\n+        ax1 = subfigs[0].subplots()\n+        ax1.plot([0, 1, 2], [0, 1, 2], label=\"line1\")\n+        subfigs[0].legend()\n+        \n+        # Second subfigure\n+        ax2 = subfigs[1].subplots()\n+        ax2.plot([0, 1, 2], [2, 1, 0], label=\"line2\")\n+        subfigs[1].legend()\n+        \n+        print(\"SUCCESS: Multiple SubFigure legends worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_invalid_parent():\n+    \"\"\"Test that invalid parent still raises appropriate error\"\"\"\n+    print(\"Testing invalid parent...\")\n+    try:\n+        from matplotlib.legend import Legend\n+        Legend(\"invalid_parent\", [], [])\n+        print(\"ERROR: Should have raised TypeError!\")\n+        return False\n+    except TypeError as e:\n+        if \"Legend needs either Axes or Figure as parent\" in str(e):\n+            print(\"SUCCESS: Invalid parent correctly rejected!\")\n+            return True\n+        else:\n+            print(f\"ERROR: Wrong error message: {e}\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: Unexpected exception: {type(e).__name__}: {e}\")\n+        return False\n+\n+if __name__ == \"__main__\":\n+    tests = [\n+        test_figure_legend,\n+        test_axes_legend,\n+        test_subfigure_legend,\n+        test_nested_subfigure_legend,\n+        test_multiple_subfigures,\n+        test_invalid_parent\n+    ]\n+    \n+    results = []\n+    for test in tests:\n+        results.append(test())\n+        print()\n+    \n+    passed = sum(results)\n+    total = len(results)\n+    print(f\"Results: {passed}/{total} tests passed\")\n+    \n+    if passed == total:\n+        print(\"All tests passed! ✅\")\n+    else:\n+        print(\"Some tests failed! ❌\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 19 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 20
+        },
+        {
+          "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_legend.py -v",
+          "step_index": 21
+        },
+        {
+          "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_figure.py::test_subfigure* -v",
+          "step_index": 22
+        },
+        {
+          "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_figure.py::test_subfigure -v",
+          "step_index": 24
+        },
+        {
+          "command": "cd /testbed && python -m pytest lib/matplotlib/tests/test_figure.py::test_subfigure_double -v",
+          "step_index": 25
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport matplotlib.pyplot as plt\nimport matplotlib.legend as mlegend\n\ndef test_subfigure_set_figure():\n    \"\"\"Test that set_figure works correctly for SubFigure legends\"\"\"\n    print(\"Testing SubFigure set_figure method...\")\n    try:\n        fig = plt.figure()\n        subfig = fig.subfigures()\n        ax = subfig.subplots()\n        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        \n        # Create legend manually to test set_figure\n        legend = mlegend.Legend(subfig, [line], [\"test\"])\n        \n        # Check that the legend's figure is set correctly\n        if hasattr(legend, 'figure') and legend.figure is not None:\n            print(\"SUCCESS: Legend figure is set correctly!\")\n            plt.close(fig)\n            return True\n        else:\n            print(\"ERROR: Legend figure is not set correctly!\")\n            return False\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_subfigure_parent_attribute():\n    \"\"\"Test that parent attribute is set correctly for SubFigure legends\"\"\"\n    print(\"Testing SubFigure parent attribute...\")\n    try:\n        fig = plt.figure()\n        subfig = fig.subfigures()\n        ax = subfig.subplots()\n        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        \n        legend = subfig.legend()\n        \n        if legend.parent is subfig:\n            print(\"SUCCESS: Legend parent is set correctly!\")\n            plt.close(fig)\n            return True\n        else:\n            print(\"ERROR: Legend parent is not set correctly!\")\n            return False\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_subfigure_isaxes_attribute():\n    \"\"\"Test that isaxes attribute is False for SubFigure legends\"\"\"\n    print(\"Testing SubFigure isaxes attribute...\")\n    try:\n        fig = plt.figure()\n        subfig = fig.subfigures()\n        ax = subfig.subplots()\n        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        \n        legend = subfig.legend()\n        \n        if legend.isaxes is False:\n            print(\"SUCCESS: Legend isaxes is False for SubFigure!\")\n            plt.close(fig)\n            return True\n        else:\n            print(\"ERROR: Legend isaxes should be False for SubFigure!\")\n            return False\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\ndef test_figure_vs_subfigure_behavior():\n    \"\"\"Test that Figure and SubFigure legends behave similarly\"\"\"\n    print(\"Testing Figure vs SubFigure legend behavior...\")\n    try:\n        # Test Figure legend\n        fig1 = plt.figure()\n        ax1 = fig1.add_subplot(111)\n        ax1.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        legend1 = fig1.legend()\n        \n        # Test SubFigure legend\n        fig2 = plt.figure()\n        subfig = fig2.subfigures()\n        ax2 = subfig.subplots()\n        ax2.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n        legend2 = subfig.legend()\n        \n        # Both should have isaxes=False\n        if legend1.isaxes == legend2.isaxes == False:\n            print(\"SUCCESS: Figure and SubFigure legends have same isaxes behavior!\")\n            plt.close(fig1)\n            plt.close(fig2)\n            return True\n        else:\n            print(\"ERROR: Figure and SubFigure legends have different isaxes behavior!\")\n            return False\n    except Exception as e:\n        print(f\"ERROR: {type(e).__name__}: {e}\")\n        return False\n\nif __name__ == \"__main__\":\n    tests = [\n        test_subfigure_set_figure,\n        test_subfigure_parent_attribute,\n        test_subfigure_isaxes_attribute,\n        test_figure_vs_subfigure_behavior\n    ]\n    \n    results = []\n    for test in tests:\n        results.append(test())\n        print()\n    \n    passed = sum(results)\n    total = len(results)\n    print(f\"Results: {passed}/{total} edge case tests passed\")\n    \n    if passed == total:\n        print(\"All edge case tests passed! ✅\")\n    else:\n        print(\"Some edge case tests failed! ❌\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py\nindex 44ab024698..b2e8d9b914 100644\n--- a/lib/matplotlib/legend.py\n+++ b/lib/matplotlib/legend.py\n@@ -360,7 +360,7 @@ class Legend(Artist):\n         \"\"\"\n         # local import only to avoid circularity\n         from matplotlib.axes import Axes\n-        from matplotlib.figure import Figure\n+        from matplotlib.figure import Figure, FigureBase\n \n         super().__init__()\n \n@@ -434,7 +434,7 @@ class Legend(Artist):\n             self.isaxes = True\n             self.axes = parent\n             self.set_figure(parent.figure)\n-        elif isinstance(parent, Figure):\n+        elif isinstance(parent, FigureBase):\n             self.isaxes = False\n             self.set_figure(parent)\n         else:\ndiff --git a/reproduce_bug.py b/reproduce_bug.py\nnew file mode 100644\nindex 0000000000..bc0995179c\n--- /dev/null\n+++ b/reproduce_bug.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing SubFigure legend bug...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: SubFigure legend worked!\")\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ae99bb03d8\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,133 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+import numpy as np\n+\n+def test_figure_legend():\n+    \"\"\"Test that regular Figure legend still works\"\"\"\n+    print(\"Testing Figure legend...\")\n+    try:\n+        fig = plt.figure()\n+        ax = fig.add_subplot(111)\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        fig.legend()\n+        print(\"SUCCESS: Figure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_axes_legend():\n+    \"\"\"Test that Axes legend still works\"\"\"\n+    print(\"Testing Axes legend...\")\n+    try:\n+        fig, ax = plt.subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        ax.legend()\n+        print(\"SUCCESS: Axes legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_legend():\n+    \"\"\"Test that SubFigure legend works\"\"\"\n+    print(\"Testing SubFigure legend...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        subfig.legend()\n+        print(\"SUCCESS: SubFigure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_nested_subfigure_legend():\n+    \"\"\"Test that nested SubFigure legend works\"\"\"\n+    print(\"Testing nested SubFigure legend...\")\n+    try:\n+        fig = plt.figure()\n+        subfigs = fig.subfigures(1, 2)\n+        nested_subfigs = subfigs[0].subfigures(2, 1)\n+        ax = nested_subfigs[0].subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        nested_subfigs[0].legend()\n+        print(\"SUCCESS: Nested SubFigure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_multiple_subfigures():\n+    \"\"\"Test multiple subfigures with legends\"\"\"\n+    print(\"Testing multiple SubFigures with legends...\")\n+    try:\n+        fig = plt.figure()\n+        subfigs = fig.subfigures(1, 2)\n+        \n+        # First subfigure\n+        ax1 = subfigs[0].subplots()\n+        ax1.plot([0, 1, 2], [0, 1, 2], label=\"line1\")\n+        subfigs[0].legend()\n+        \n+        # Second subfigure\n+        ax2 = subfigs[1].subplots()\n+        ax2.plot([0, 1, 2], [2, 1, 0], label=\"line2\")\n+        subfigs[1].legend()\n+        \n+        print(\"SUCCESS: Multiple SubFigure legends worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_invalid_parent():\n+    \"\"\"Test that invalid parent still raises appropriate error\"\"\"\n+    print(\"Testing invalid parent...\")\n+    try:\n+        from matplotlib.legend import Legend\n+        Legend(\"invalid_parent\", [], [])\n+        print(\"ERROR: Should have raised TypeError!\")\n+        return False\n+    except TypeError as e:\n+        if \"Legend needs either Axes or Figure as parent\" in str(e):\n+            print(\"SUCCESS: Invalid parent correctly rejected!\")\n+            return True\n+        else:\n+            print(f\"ERROR: Wrong error message: {e}\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: Unexpected exception: {type(e).__name__}: {e}\")\n+        return False\n+\n+if __name__ == \"__main__\":\n+    tests = [\n+        test_figure_legend,\n+        test_axes_legend,\n+        test_subfigure_legend,\n+        test_nested_subfigure_legend,\n+        test_multiple_subfigures,\n+        test_invalid_parent\n+    ]\n+    \n+    results = []\n+    for test in tests:\n+        results.append(test())\n+        print()\n+    \n+    passed = sum(results)\n+    total = len(results)\n+    print(f\"Results: {passed}/{total} tests passed\")\n+    \n+    if passed == total:\n+        print(\"All tests passed! ✅\")\n+    else:\n+        print(\"Some tests failed! ❌\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..96d0a73304\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,124 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+import matplotlib.legend as mlegend\n+\n+def test_subfigure_set_figure():\n+    \"\"\"Test that set_figure works correctly for SubFigure legends\"\"\"\n+    print(\"Testing SubFigure set_figure method...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        \n+        # Create legend manually to test set_figure\n+        legend = mlegend.Legend(subfig, [line], [\"test\"])\n+        \n+        # Check that the legend's figure is set correctly\n+        if hasattr(legend, 'figure') and legend.figure is not None:\n+            print(\"SUCCESS: Legend figure is set correctly!\")\n+            plt.close(fig)\n+            return True\n+        else:\n+            print(\"ERROR: Legend figure is not set correctly!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_parent_attribute():\n+    \"\"\"Test that parent attribute is set correctly for SubFigure legends\"\"\"\n+    print(\"Testing SubFigure parent attribute...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        \n+        legend = subfig.legend()\n+        \n+        if legend.parent is subfig:\n+            print(\"SUCCESS: Legend parent is set correctly!\")\n+            plt.close(fig)\n+            return True\n+        else:\n+            print(\"ERROR: Legend parent is not set correctly!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_isaxes_attribute():\n+    \"\"\"Test that isaxes attribute is False for SubFigure legends\"\"\"\n+    print(\"Testing SubFigure isaxes attribute...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        \n+        legend = subfig.legend()\n+        \n+        if legend.isaxes is False:\n+            print(\"SUCCESS: Legend isaxes is False for SubFigure!\")\n+            plt.close(fig)\n+            return True\n+        else:\n+            print(\"ERROR: Legend isaxes should be False for SubFigure!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_figure_vs_subfigure_behavior():\n+    \"\"\"Test that Figure and SubFigure legends behave similarly\"\"\"\n+    print(\"Testing Figure vs SubFigure legend behavior...\")\n+    try:\n+        # Test Figure legend\n+        fig1 = plt.figure()\n+        ax1 = fig1.add_subplot(111)\n+        ax1.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        legend1 = fig1.legend()\n+        \n+        # Test SubFigure legend\n+        fig2 = plt.figure()\n+        subfig = fig2.subfigures()\n+        ax2 = subfig.subplots()\n+        ax2.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        legend2 = subfig.legend()\n+        \n+        # Both should have isaxes=False\n+        if legend1.isaxes == legend2.isaxes == False:\n+            print(\"SUCCESS: Figure and SubFigure legends have same isaxes behavior!\")\n+            plt.close(fig1)\n+            plt.close(fig2)\n+            return True\n+        else:\n+            print(\"ERROR: Figure and SubFigure legends have different isaxes behavior!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+if __name__ == \"__main__\":\n+    tests = [\n+        test_subfigure_set_figure,\n+        test_subfigure_parent_attribute,\n+        test_subfigure_isaxes_attribute,\n+        test_figure_vs_subfigure_behavior\n+    ]\n+    \n+    results = []\n+    for test in tests:\n+        results.append(test())\n+        print()\n+    \n+    passed = sum(results)\n+    total = len(results)\n+    print(f\"Results: {passed}/{total} edge case tests passed\")\n+    \n+    if passed == total:\n+        print(\"All edge case tests passed! ✅\")\n+    else:\n+        print(\"Some edge case tests failed! ❌\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 26 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 27
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nimport matplotlib.pyplot as plt\n\nprint(\"Testing exact example from PR description...\")\n\ntry:\n    subfig = plt.figure().subfigures()\n    ax = subfig.subplots()\n    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n    subfig.legend()\n    print(\"SUCCESS: PR example works perfectly!\")\n    plt.close('all')\nexcept Exception as e:\n    print(f\"ERROR: {type(e).__name__}: {e}\")",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/lib/matplotlib/legend.py b/lib/matplotlib/legend.py\nindex 44ab024698..b2e8d9b914 100644\n--- a/lib/matplotlib/legend.py\n+++ b/lib/matplotlib/legend.py\n@@ -360,7 +360,7 @@ class Legend(Artist):\n         \"\"\"\n         # local import only to avoid circularity\n         from matplotlib.axes import Axes\n-        from matplotlib.figure import Figure\n+        from matplotlib.figure import Figure, FigureBase\n \n         super().__init__()\n \n@@ -434,7 +434,7 @@ class Legend(Artist):\n             self.isaxes = True\n             self.axes = parent\n             self.set_figure(parent.figure)\n-        elif isinstance(parent, Figure):\n+        elif isinstance(parent, FigureBase):\n             self.isaxes = False\n             self.set_figure(parent)\n         else:\ndiff --git a/reproduce_bug.py b/reproduce_bug.py\nnew file mode 100644\nindex 0000000000..bc0995179c\n--- /dev/null\n+++ b/reproduce_bug.py\n@@ -0,0 +1,14 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing SubFigure legend bug...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: SubFigure legend worked!\")\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ae99bb03d8\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,133 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+import numpy as np\n+\n+def test_figure_legend():\n+    \"\"\"Test that regular Figure legend still works\"\"\"\n+    print(\"Testing Figure legend...\")\n+    try:\n+        fig = plt.figure()\n+        ax = fig.add_subplot(111)\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        fig.legend()\n+        print(\"SUCCESS: Figure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_axes_legend():\n+    \"\"\"Test that Axes legend still works\"\"\"\n+    print(\"Testing Axes legend...\")\n+    try:\n+        fig, ax = plt.subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        ax.legend()\n+        print(\"SUCCESS: Axes legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_legend():\n+    \"\"\"Test that SubFigure legend works\"\"\"\n+    print(\"Testing SubFigure legend...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        subfig.legend()\n+        print(\"SUCCESS: SubFigure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_nested_subfigure_legend():\n+    \"\"\"Test that nested SubFigure legend works\"\"\"\n+    print(\"Testing nested SubFigure legend...\")\n+    try:\n+        fig = plt.figure()\n+        subfigs = fig.subfigures(1, 2)\n+        nested_subfigs = subfigs[0].subfigures(2, 1)\n+        ax = nested_subfigs[0].subplots()\n+        ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        nested_subfigs[0].legend()\n+        print(\"SUCCESS: Nested SubFigure legend worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_multiple_subfigures():\n+    \"\"\"Test multiple subfigures with legends\"\"\"\n+    print(\"Testing multiple SubFigures with legends...\")\n+    try:\n+        fig = plt.figure()\n+        subfigs = fig.subfigures(1, 2)\n+        \n+        # First subfigure\n+        ax1 = subfigs[0].subplots()\n+        ax1.plot([0, 1, 2], [0, 1, 2], label=\"line1\")\n+        subfigs[0].legend()\n+        \n+        # Second subfigure\n+        ax2 = subfigs[1].subplots()\n+        ax2.plot([0, 1, 2], [2, 1, 0], label=\"line2\")\n+        subfigs[1].legend()\n+        \n+        print(\"SUCCESS: Multiple SubFigure legends worked!\")\n+        plt.close(fig)\n+        return True\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_invalid_parent():\n+    \"\"\"Test that invalid parent still raises appropriate error\"\"\"\n+    print(\"Testing invalid parent...\")\n+    try:\n+        from matplotlib.legend import Legend\n+        Legend(\"invalid_parent\", [], [])\n+        print(\"ERROR: Should have raised TypeError!\")\n+        return False\n+    except TypeError as e:\n+        if \"Legend needs either Axes or Figure as parent\" in str(e):\n+            print(\"SUCCESS: Invalid parent correctly rejected!\")\n+            return True\n+        else:\n+            print(f\"ERROR: Wrong error message: {e}\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: Unexpected exception: {type(e).__name__}: {e}\")\n+        return False\n+\n+if __name__ == \"__main__\":\n+    tests = [\n+        test_figure_legend,\n+        test_axes_legend,\n+        test_subfigure_legend,\n+        test_nested_subfigure_legend,\n+        test_multiple_subfigures,\n+        test_invalid_parent\n+    ]\n+    \n+    results = []\n+    for test in tests:\n+        results.append(test())\n+        print()\n+    \n+    passed = sum(results)\n+    total = len(results)\n+    print(f\"Results: {passed}/{total} tests passed\")\n+    \n+    if passed == total:\n+        print(\"All tests passed! ✅\")\n+    else:\n+        print(\"Some tests failed! ❌\")\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..96d0a73304\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,124 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+import matplotlib.legend as mlegend\n+\n+def test_subfigure_set_figure():\n+    \"\"\"Test that set_figure works correctly for SubFigure legends\"\"\"\n+    print(\"Testing SubFigure set_figure method...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        \n+        # Create legend manually to test set_figure\n+        legend = mlegend.Legend(subfig, [line], [\"test\"])\n+        \n+        # Check that the legend's figure is set correctly\n+        if hasattr(legend, 'figure') and legend.figure is not None:\n+            print(\"SUCCESS: Legend figure is set correctly!\")\n+            plt.close(fig)\n+            return True\n+        else:\n+            print(\"ERROR: Legend figure is not set correctly!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_parent_attribute():\n+    \"\"\"Test that parent attribute is set correctly for SubFigure legends\"\"\"\n+    print(\"Testing SubFigure parent attribute...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        \n+        legend = subfig.legend()\n+        \n+        if legend.parent is subfig:\n+            print(\"SUCCESS: Legend parent is set correctly!\")\n+            plt.close(fig)\n+            return True\n+        else:\n+            print(\"ERROR: Legend parent is not set correctly!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_subfigure_isaxes_attribute():\n+    \"\"\"Test that isaxes attribute is False for SubFigure legends\"\"\"\n+    print(\"Testing SubFigure isaxes attribute...\")\n+    try:\n+        fig = plt.figure()\n+        subfig = fig.subfigures()\n+        ax = subfig.subplots()\n+        line, = ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        \n+        legend = subfig.legend()\n+        \n+        if legend.isaxes is False:\n+            print(\"SUCCESS: Legend isaxes is False for SubFigure!\")\n+            plt.close(fig)\n+            return True\n+        else:\n+            print(\"ERROR: Legend isaxes should be False for SubFigure!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+def test_figure_vs_subfigure_behavior():\n+    \"\"\"Test that Figure and SubFigure legends behave similarly\"\"\"\n+    print(\"Testing Figure vs SubFigure legend behavior...\")\n+    try:\n+        # Test Figure legend\n+        fig1 = plt.figure()\n+        ax1 = fig1.add_subplot(111)\n+        ax1.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        legend1 = fig1.legend()\n+        \n+        # Test SubFigure legend\n+        fig2 = plt.figure()\n+        subfig = fig2.subfigures()\n+        ax2 = subfig.subplots()\n+        ax2.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+        legend2 = subfig.legend()\n+        \n+        # Both should have isaxes=False\n+        if legend1.isaxes == legend2.isaxes == False:\n+            print(\"SUCCESS: Figure and SubFigure legends have same isaxes behavior!\")\n+            plt.close(fig1)\n+            plt.close(fig2)\n+            return True\n+        else:\n+            print(\"ERROR: Figure and SubFigure legends have different isaxes behavior!\")\n+            return False\n+    except Exception as e:\n+        print(f\"ERROR: {type(e).__name__}: {e}\")\n+        return False\n+\n+if __name__ == \"__main__\":\n+    tests = [\n+        test_subfigure_set_figure,\n+        test_subfigure_parent_attribute,\n+        test_subfigure_isaxes_attribute,\n+        test_figure_vs_subfigure_behavior\n+    ]\n+    \n+    results = []\n+    for test in tests:\n+        results.append(test())\n+        print()\n+    \n+    passed = sum(results)\n+    total = len(results)\n+    print(f\"Results: {passed}/{total} edge case tests passed\")\n+    \n+    if passed == total:\n+        print(\"All edge case tests passed! ✅\")\n+    else:\n+        print(\"Some edge case tests failed! ❌\")\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..e1d7ad4665\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,15 @@\n+#!/usr/bin/env python3\n+\n+import matplotlib.pyplot as plt\n+\n+print(\"Testing exact example from PR description...\")\n+\n+try:\n+    subfig = plt.figure().subfigures()\n+    ax = subfig.subplots()\n+    ax.plot([0, 1, 2], [0, 1, 2], label=\"test\")\n+    subfig.legend()\n+    print(\"SUCCESS: PR example works perfectly!\")\n+    plt.close('all')\n+except Exception as e:\n+    print(f\"ERROR: {type(e).__name__}: {e}\")\n\\ No newline at end of file",
+          "explanation": "classic_swe step 28 create #1",
+          "filename": "test_pr_example.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pr_example.py",
+          "step_index": 29
+        },
+        {
+          "command": "cd /testbed && python reproduce_bug.py",
+          "step_index": 33
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 28
+    }
+  ],
+  "sub_paths": [
+    "lib/matplotlib/legend.py"
+  ],
+  "success_step": 28,
+  "test_files": [
+    "reproduce_bug.py",
+    "test_comprehensive.py",
+    "test_edge_cases.py",
+    "test_pr_example.py"
+  ]
+}

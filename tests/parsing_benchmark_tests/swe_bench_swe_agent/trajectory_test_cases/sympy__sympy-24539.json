@@ -1,0 +1,328 @@
+{
+  "feedback_commands": [
+    {
+      "command": "cd /testbed && python reproduce_issue.py",
+      "step_index": 3
+    },
+    {
+      "command": "cd /testbed && python test_comprehensive.py",
+      "step_index": 14
+    },
+    {
+      "command": "cd /testbed && python -m sympy.testing.runtests sympy/polys/tests/test_rings.py",
+      "step_index": 16
+    },
+    {
+      "command": "cd /testbed && python test_existing.py",
+      "step_index": 21
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport sys\nsys.path.insert(0, '.')\nfrom sympy.polys.tests.test_rings import test_PolyElement_as_expr\ntest_PolyElement_as_expr()\nprint('test_PolyElement_as_expr passed!')\n\"",
+      "step_index": 22
+    },
+    {
+      "command": "cd /testbed && python test_edge_cases.py",
+      "step_index": 24
+    },
+    {
+      "command": "cd /testbed && python test_pr_example.py",
+      "step_index": 26
+    },
+    {
+      "command": "cd /testbed && python -c \"\nimport sys\nsys.path.insert(0, '.')\n\n# Test some basic ring operations to make sure we didn't break anything\nfrom sympy import ring, ZZ, symbols\n\n# Basic ring creation and operations\nR, x, y = ring('x,y', ZZ)\nf = x**2 + 2*x*y + y**2\nprint('Basic polynomial:', f)\n\n# Test as_expr without symbols (should still work)\nexpr1 = f.as_expr()\nprint('as_expr() without symbols:', expr1)\n\n# Test as_expr with symbols (our fix)\na, b = symbols('a,b')\nexpr2 = f.as_expr(a, b)\nprint('as_expr(a, b) with symbols:', expr2)\n\n# Test other methods still work\nprint('as_expr_dict():', f.as_expr_dict())\nprint('Basic operations still work!')\n\"",
+      "step_index": 27
+    },
+    {
+      "command": "cd /testbed && python -c \"\n# Test that imports still work correctly\nfrom sympy.polys.rings import PolyElement\nfrom sympy import ring, ZZ, symbols\n\n# Test that the class and method exist\nR, x = ring('x', ZZ)\npoly = x**2 + 1\nprint('PolyElement class works:', type(poly))\nprint('as_expr method exists:', hasattr(poly, 'as_expr'))\n\n# Test method signature\nimport inspect\nsig = inspect.signature(poly.as_expr)\nprint('Method signature:', sig)\n\"",
+      "step_index": 28
+    },
+    {
+      "command": "cd /testbed && python test_empty_symbols.py",
+      "step_index": 30
+    }
+  ],
+  "patch_list_shape": [
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import ring, ZZ, symbols\n\n# Create a polynomial ring\nR, x, y, z = ring(\"x,y,z\", ZZ)\n\n# Create a polynomial\nf = 3*x**2*y - x*y*z + 7*z**3 + 1\n\n# Create new symbols\nU, V, W = symbols(\"u,v,w\")\n\nprint(\"Original polynomial:\")\nprint(f)\n\nprint(\"\\nUsing as_expr() with new symbols U, V, W:\")\nresult = f.as_expr(U, V, W)\nprint(result)\n\nprint(\"\\nExpected result should use u, v, w instead of x, y, z\")\nprint(\"But we see that it still uses x, y, z\")\n\n# Let's also test the error case\nprint(\"\\nTesting with wrong number of symbols:\")\ntry:\n    A, B = symbols(\"a,b\")\n    f.as_expr(A, B)\nexcept ValueError as e:\n    print(f\"Error (as expected): {e}\")\n\nprint(\"\\nTesting with no symbols (should work):\")\nresult_no_symbols = f.as_expr()\nprint(result_no_symbols)",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file",
+          "explanation": "classic_swe step 2 create #1",
+          "filename": "reproduce_issue.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 2
+        }
+      ],
+      "end_step": 2,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 3
+        }
+      ],
+      "revision_index": 0,
+      "start_step": 2
+    },
+    {
+      "edits": [
+        {
+          "after": "    def as_expr(self, *symbols):\n        if symbols and len(symbols) != self.ring.ngens:\n            raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n        elif not symbols:\n            symbols = self.ring.symbols\n\n        return expr_from_dict(self.as_expr_dict(), *symbols)",
+          "before": "    def as_expr(self, *symbols):\n        if symbols and len(symbols) != self.ring.ngens:\n            raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n        else:\n            symbols = self.ring.symbols\n\n        return expr_from_dict(self.as_expr_dict(), *symbols)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file\ndiff --git a/sympy/polys/rings.py b/sympy/polys/rings.py\nindex 12bd2fc920..be6e35d06d 100644\n--- a/sympy/polys/rings.py\n+++ b/sympy/polys/rings.py\n@@ -618,7 +618,7 @@ def set_ring(self, new_ring):\n     def as_expr(self, *symbols):\n         if symbols and len(symbols) != self.ring.ngens:\n             raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n-        else:\n+        elif not symbols:\n             symbols = self.ring.symbols\n \n         return expr_from_dict(self.as_expr_dict(), *symbols)",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "sympy/polys/rings.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 12
+        }
+      ],
+      "revision_index": 1,
+      "start_step": 11
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import ring, ZZ, symbols\n\ndef test_as_expr_with_symbols():\n    \"\"\"Test the as_expr method with various symbol configurations\"\"\"\n    \n    # Test case 1: 3-variable polynomial\n    print(\"=== Test Case 1: 3-variable polynomial ===\")\n    R, x, y, z = ring(\"x,y,z\", ZZ)\n    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n    \n    # Test with new symbols\n    U, V, W = symbols(\"u,v,w\")\n    result = f.as_expr(U, V, W)\n    print(f\"Original: {f}\")\n    print(f\"With U,V,W: {result}\")\n    assert str(result) == \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n    \n    # Test with no symbols (should use original)\n    result_no_symbols = f.as_expr()\n    print(f\"No symbols: {result_no_symbols}\")\n    assert str(result_no_symbols) == \"3*x**2*y - x*y*z + 7*z**3 + 1\"\n    \n    # Test case 2: Single variable polynomial\n    print(\"\\n=== Test Case 2: Single variable polynomial ===\")\n    R2, a = ring(\"a\", ZZ)\n    g = 5*a**3 + 2*a - 1\n    \n    b = symbols(\"b\")\n    result2 = g.as_expr(b)\n    print(f\"Original: {g}\")\n    print(f\"With b: {result2}\")\n    assert str(result2) == \"5*b**3 + 2*b - 1\"\n    \n    # Test case 3: Two variable polynomial\n    print(\"\\n=== Test Case 3: Two variable polynomial ===\")\n    R3, p, q = ring(\"p,q\", ZZ)\n    h = p**2 + 2*p*q + q**2\n    \n    s, t = symbols(\"s,t\")\n    result3 = h.as_expr(s, t)\n    print(f\"Original: {h}\")\n    print(f\"With s,t: {result3}\")\n    assert str(result3) == \"s**2 + 2*s*t + t**2\"\n    \n    # Test case 4: Error cases\n    print(\"\\n=== Test Case 4: Error cases ===\")\n    try:\n        # Too few symbols\n        f.as_expr(U, V)  # Should raise ValueError\n        assert False, \"Should have raised ValueError\"\n    except ValueError as e:\n        print(f\"Correctly caught error for too few symbols: {e}\")\n    \n    try:\n        # Too many symbols\n        A, B, C, D = symbols(\"a,b,c,d\")\n        f.as_expr(A, B, C, D)  # Should raise ValueError\n        assert False, \"Should have raised ValueError\"\n    except ValueError as e:\n        print(f\"Correctly caught error for too many symbols: {e}\")\n    \n    # Test case 5: Constant polynomial\n    print(\"\\n=== Test Case 5: Constant polynomial ===\")\n    const = R.from_dict({(0, 0, 0): 42})\n    result_const = const.as_expr(U, V, W)\n    print(f\"Constant with new symbols: {result_const}\")\n    assert str(result_const) == \"42\"\n    \n    print(\"\\n=== All tests passed! ===\")\n\nif __name__ == \"__main__\":\n    test_as_expr_with_symbols()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file\ndiff --git a/sympy/polys/rings.py b/sympy/polys/rings.py\nindex 12bd2fc920..be6e35d06d 100644\n--- a/sympy/polys/rings.py\n+++ b/sympy/polys/rings.py\n@@ -618,7 +618,7 @@ def set_ring(self, new_ring):\n     def as_expr(self, *symbols):\n         if symbols and len(symbols) != self.ring.ngens:\n             raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n-        else:\n+        elif not symbols:\n             symbols = self.ring.symbols\n \n         return expr_from_dict(self.as_expr_dict(), *symbols)\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ca620e6c07\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_as_expr_with_symbols():\n+    \"\"\"Test the as_expr method with various symbol configurations\"\"\"\n+    \n+    # Test case 1: 3-variable polynomial\n+    print(\"=== Test Case 1: 3-variable polynomial ===\")\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    \n+    # Test with new symbols\n+    U, V, W = symbols(\"u,v,w\")\n+    result = f.as_expr(U, V, W)\n+    print(f\"Original: {f}\")\n+    print(f\"With U,V,W: {result}\")\n+    assert str(result) == \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    \n+    # Test with no symbols (should use original)\n+    result_no_symbols = f.as_expr()\n+    print(f\"No symbols: {result_no_symbols}\")\n+    assert str(result_no_symbols) == \"3*x**2*y - x*y*z + 7*z**3 + 1\"\n+    \n+    # Test case 2: Single variable polynomial\n+    print(\"\\n=== Test Case 2: Single variable polynomial ===\")\n+    R2, a = ring(\"a\", ZZ)\n+    g = 5*a**3 + 2*a - 1\n+    \n+    b = symbols(\"b\")\n+    result2 = g.as_expr(b)\n+    print(f\"Original: {g}\")\n+    print(f\"With b: {result2}\")\n+    assert str(result2) == \"5*b**3 + 2*b - 1\"\n+    \n+    # Test case 3: Two variable polynomial\n+    print(\"\\n=== Test Case 3: Two variable polynomial ===\")\n+    R3, p, q = ring(\"p,q\", ZZ)\n+    h = p**2 + 2*p*q + q**2\n+    \n+    s, t = symbols(\"s,t\")\n+    result3 = h.as_expr(s, t)\n+    print(f\"Original: {h}\")\n+    print(f\"With s,t: {result3}\")\n+    assert str(result3) == \"s**2 + 2*s*t + t**2\"\n+    \n+    # Test case 4: Error cases\n+    print(\"\\n=== Test Case 4: Error cases ===\")\n+    try:\n+        # Too few symbols\n+        f.as_expr(U, V)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too few symbols: {e}\")\n+    \n+    try:\n+        # Too many symbols\n+        A, B, C, D = symbols(\"a,b,c,d\")\n+        f.as_expr(A, B, C, D)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too many symbols: {e}\")\n+    \n+    # Test case 5: Constant polynomial\n+    print(\"\\n=== Test Case 5: Constant polynomial ===\")\n+    const = R.from_dict({(0, 0, 0): 42})\n+    result_const = const.as_expr(U, V, W)\n+    print(f\"Constant with new symbols: {result_const}\")\n+    assert str(result_const) == \"42\"\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_as_expr_with_symbols()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 13 create #1",
+          "filename": "test_comprehensive.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        }
+      ],
+      "end_step": 13,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_comprehensive.py",
+          "step_index": 14
+        },
+        {
+          "command": "cd /testbed && python -m sympy.testing.runtests sympy/polys/tests/test_rings.py",
+          "step_index": 16
+        }
+      ],
+      "revision_index": 2,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import ring, ZZ, symbols\n\ndef test_PolyElement_as_expr():\n    \"\"\"Test the existing test case from the test suite\"\"\"\n    R, x, y, z = ring(\"x,y,z\", ZZ)\n    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n\n    X, Y, Z = R.symbols\n    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n\n    assert f != g\n    assert f.as_expr() == g\n\n    X, Y, Z = symbols(\"x,y,z\")\n    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n\n    assert f != g\n    result = f.as_expr(X, Y, Z)\n    print(f\"f.as_expr(X, Y, Z) = {result}\")\n    print(f\"Expected g = {g}\")\n    print(f\"Are they equal? {result == g}\")\n    assert result == g\n\n    # Test error case\n    try:\n        f.as_expr(X)\n        assert False, \"Should have raised ValueError\"\n    except ValueError:\n        print(\"Correctly raised ValueError for wrong number of symbols\")\n\n    R, = ring(\"\", ZZ)\n    assert R(3).as_expr() == 3\n    \n    print(\"All existing tests pass!\")\n\nif __name__ == \"__main__\":\n    test_PolyElement_as_expr()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file\ndiff --git a/sympy/polys/rings.py b/sympy/polys/rings.py\nindex 12bd2fc920..be6e35d06d 100644\n--- a/sympy/polys/rings.py\n+++ b/sympy/polys/rings.py\n@@ -618,7 +618,7 @@ def set_ring(self, new_ring):\n     def as_expr(self, *symbols):\n         if symbols and len(symbols) != self.ring.ngens:\n             raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n-        else:\n+        elif not symbols:\n             symbols = self.ring.symbols\n \n         return expr_from_dict(self.as_expr_dict(), *symbols)\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ca620e6c07\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_as_expr_with_symbols():\n+    \"\"\"Test the as_expr method with various symbol configurations\"\"\"\n+    \n+    # Test case 1: 3-variable polynomial\n+    print(\"=== Test Case 1: 3-variable polynomial ===\")\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    \n+    # Test with new symbols\n+    U, V, W = symbols(\"u,v,w\")\n+    result = f.as_expr(U, V, W)\n+    print(f\"Original: {f}\")\n+    print(f\"With U,V,W: {result}\")\n+    assert str(result) == \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    \n+    # Test with no symbols (should use original)\n+    result_no_symbols = f.as_expr()\n+    print(f\"No symbols: {result_no_symbols}\")\n+    assert str(result_no_symbols) == \"3*x**2*y - x*y*z + 7*z**3 + 1\"\n+    \n+    # Test case 2: Single variable polynomial\n+    print(\"\\n=== Test Case 2: Single variable polynomial ===\")\n+    R2, a = ring(\"a\", ZZ)\n+    g = 5*a**3 + 2*a - 1\n+    \n+    b = symbols(\"b\")\n+    result2 = g.as_expr(b)\n+    print(f\"Original: {g}\")\n+    print(f\"With b: {result2}\")\n+    assert str(result2) == \"5*b**3 + 2*b - 1\"\n+    \n+    # Test case 3: Two variable polynomial\n+    print(\"\\n=== Test Case 3: Two variable polynomial ===\")\n+    R3, p, q = ring(\"p,q\", ZZ)\n+    h = p**2 + 2*p*q + q**2\n+    \n+    s, t = symbols(\"s,t\")\n+    result3 = h.as_expr(s, t)\n+    print(f\"Original: {h}\")\n+    print(f\"With s,t: {result3}\")\n+    assert str(result3) == \"s**2 + 2*s*t + t**2\"\n+    \n+    # Test case 4: Error cases\n+    print(\"\\n=== Test Case 4: Error cases ===\")\n+    try:\n+        # Too few symbols\n+        f.as_expr(U, V)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too few symbols: {e}\")\n+    \n+    try:\n+        # Too many symbols\n+        A, B, C, D = symbols(\"a,b,c,d\")\n+        f.as_expr(A, B, C, D)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too many symbols: {e}\")\n+    \n+    # Test case 5: Constant polynomial\n+    print(\"\\n=== Test Case 5: Constant polynomial ===\")\n+    const = R.from_dict({(0, 0, 0): 42})\n+    result_const = const.as_expr(U, V, W)\n+    print(f\"Constant with new symbols: {result_const}\")\n+    assert str(result_const) == \"42\"\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_as_expr_with_symbols()\n\\ No newline at end of file\ndiff --git a/test_existing.py b/test_existing.py\nnew file mode 100644\nindex 0000000000..5dc2e8a57e\n--- /dev/null\n+++ b/test_existing.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_PolyElement_as_expr():\n+    \"\"\"Test the existing test case from the test suite\"\"\"\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+    X, Y, Z = R.symbols\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    assert f.as_expr() == g\n+\n+    X, Y, Z = symbols(\"x,y,z\")\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    result = f.as_expr(X, Y, Z)\n+    print(f\"f.as_expr(X, Y, Z) = {result}\")\n+    print(f\"Expected g = {g}\")\n+    print(f\"Are they equal? {result == g}\")\n+    assert result == g\n+\n+    # Test error case\n+    try:\n+        f.as_expr(X)\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError:\n+        print(\"Correctly raised ValueError for wrong number of symbols\")\n+\n+    R, = ring(\"\", ZZ)\n+    assert R(3).as_expr() == 3\n+    \n+    print(\"All existing tests pass!\")\n+\n+if __name__ == \"__main__\":\n+    test_PolyElement_as_expr()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 20 create #1",
+          "filename": "test_existing.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_existing.py",
+          "step_index": 21
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport sys\nsys.path.insert(0, '.')\nfrom sympy.polys.tests.test_rings import test_PolyElement_as_expr\ntest_PolyElement_as_expr()\nprint('test_PolyElement_as_expr passed!')\n\"",
+          "step_index": 22
+        }
+      ],
+      "revision_index": 3,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import ring, ZZ, symbols, Symbol\n\ndef test_edge_cases():\n    \"\"\"Test edge cases for the as_expr method\"\"\"\n    \n    print(\"=== Testing edge cases ===\")\n    \n    # Test case 1: Empty polynomial (zero)\n    print(\"\\n1. Testing zero polynomial:\")\n    R, x, y = ring(\"x,y\", ZZ)\n    zero_poly = R.zero\n    a, b = symbols(\"a,b\")\n    result = zero_poly.as_expr(a, b)\n    print(f\"Zero polynomial with new symbols: {result}\")\n    assert result == 0\n    \n    # Test case 2: Single term polynomial\n    print(\"\\n2. Testing single term polynomial:\")\n    single_term = 5*x**3\n    result = single_term.as_expr(a, b)\n    print(f\"Single term 5*x**3 with symbols a,b: {result}\")\n    assert str(result) == \"5*a**3\"\n    \n    # Test case 3: Polynomial with only constant term\n    print(\"\\n3. Testing constant polynomial:\")\n    const_poly = R.from_dict({(0, 0): 42})\n    result = const_poly.as_expr(a, b)\n    print(f\"Constant 42 with symbols a,b: {result}\")\n    assert result == 42\n    \n    # Test case 4: Using Symbol objects vs symbols function\n    print(\"\\n4. Testing with Symbol objects:\")\n    s1 = Symbol('s1')\n    s2 = Symbol('s2')\n    poly = x + y\n    result = poly.as_expr(s1, s2)\n    print(f\"x + y with Symbol objects s1, s2: {result}\")\n    assert str(result) == \"s1 + s2\"\n    \n    # Test case 5: Complex polynomial\n    print(\"\\n5. Testing complex polynomial:\")\n    complex_poly = x**5*y**3 - 2*x**3*y**2 + x*y - 7\n    result = complex_poly.as_expr(a, b)\n    print(f\"Complex polynomial with a,b: {result}\")\n    expected = \"a**5*b**3 - 2*a**3*b**2 + a*b - 7\"\n    assert str(result) == expected\n    \n    # Test case 6: Single variable ring\n    print(\"\\n6. Testing single variable ring:\")\n    R1, t = ring(\"t\", ZZ)\n    poly1 = t**3 + 2*t - 1\n    u = symbols(\"u\")\n    result = poly1.as_expr(u)\n    print(f\"t**3 + 2*t - 1 with symbol u: {result}\")\n    assert str(result) == \"u**3 + 2*u - 1\"\n    \n    print(\"\\n=== All edge cases passed! ===\")\n\nif __name__ == \"__main__\":\n    test_edge_cases()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file\ndiff --git a/sympy/polys/rings.py b/sympy/polys/rings.py\nindex 12bd2fc920..be6e35d06d 100644\n--- a/sympy/polys/rings.py\n+++ b/sympy/polys/rings.py\n@@ -618,7 +618,7 @@ def set_ring(self, new_ring):\n     def as_expr(self, *symbols):\n         if symbols and len(symbols) != self.ring.ngens:\n             raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n-        else:\n+        elif not symbols:\n             symbols = self.ring.symbols\n \n         return expr_from_dict(self.as_expr_dict(), *symbols)\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ca620e6c07\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_as_expr_with_symbols():\n+    \"\"\"Test the as_expr method with various symbol configurations\"\"\"\n+    \n+    # Test case 1: 3-variable polynomial\n+    print(\"=== Test Case 1: 3-variable polynomial ===\")\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    \n+    # Test with new symbols\n+    U, V, W = symbols(\"u,v,w\")\n+    result = f.as_expr(U, V, W)\n+    print(f\"Original: {f}\")\n+    print(f\"With U,V,W: {result}\")\n+    assert str(result) == \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    \n+    # Test with no symbols (should use original)\n+    result_no_symbols = f.as_expr()\n+    print(f\"No symbols: {result_no_symbols}\")\n+    assert str(result_no_symbols) == \"3*x**2*y - x*y*z + 7*z**3 + 1\"\n+    \n+    # Test case 2: Single variable polynomial\n+    print(\"\\n=== Test Case 2: Single variable polynomial ===\")\n+    R2, a = ring(\"a\", ZZ)\n+    g = 5*a**3 + 2*a - 1\n+    \n+    b = symbols(\"b\")\n+    result2 = g.as_expr(b)\n+    print(f\"Original: {g}\")\n+    print(f\"With b: {result2}\")\n+    assert str(result2) == \"5*b**3 + 2*b - 1\"\n+    \n+    # Test case 3: Two variable polynomial\n+    print(\"\\n=== Test Case 3: Two variable polynomial ===\")\n+    R3, p, q = ring(\"p,q\", ZZ)\n+    h = p**2 + 2*p*q + q**2\n+    \n+    s, t = symbols(\"s,t\")\n+    result3 = h.as_expr(s, t)\n+    print(f\"Original: {h}\")\n+    print(f\"With s,t: {result3}\")\n+    assert str(result3) == \"s**2 + 2*s*t + t**2\"\n+    \n+    # Test case 4: Error cases\n+    print(\"\\n=== Test Case 4: Error cases ===\")\n+    try:\n+        # Too few symbols\n+        f.as_expr(U, V)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too few symbols: {e}\")\n+    \n+    try:\n+        # Too many symbols\n+        A, B, C, D = symbols(\"a,b,c,d\")\n+        f.as_expr(A, B, C, D)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too many symbols: {e}\")\n+    \n+    # Test case 5: Constant polynomial\n+    print(\"\\n=== Test Case 5: Constant polynomial ===\")\n+    const = R.from_dict({(0, 0, 0): 42})\n+    result_const = const.as_expr(U, V, W)\n+    print(f\"Constant with new symbols: {result_const}\")\n+    assert str(result_const) == \"42\"\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_as_expr_with_symbols()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..62bbc7ec18\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols, Symbol\n+\n+def test_edge_cases():\n+    \"\"\"Test edge cases for the as_expr method\"\"\"\n+    \n+    print(\"=== Testing edge cases ===\")\n+    \n+    # Test case 1: Empty polynomial (zero)\n+    print(\"\\n1. Testing zero polynomial:\")\n+    R, x, y = ring(\"x,y\", ZZ)\n+    zero_poly = R.zero\n+    a, b = symbols(\"a,b\")\n+    result = zero_poly.as_expr(a, b)\n+    print(f\"Zero polynomial with new symbols: {result}\")\n+    assert result == 0\n+    \n+    # Test case 2: Single term polynomial\n+    print(\"\\n2. Testing single term polynomial:\")\n+    single_term = 5*x**3\n+    result = single_term.as_expr(a, b)\n+    print(f\"Single term 5*x**3 with symbols a,b: {result}\")\n+    assert str(result) == \"5*a**3\"\n+    \n+    # Test case 3: Polynomial with only constant term\n+    print(\"\\n3. Testing constant polynomial:\")\n+    const_poly = R.from_dict({(0, 0): 42})\n+    result = const_poly.as_expr(a, b)\n+    print(f\"Constant 42 with symbols a,b: {result}\")\n+    assert result == 42\n+    \n+    # Test case 4: Using Symbol objects vs symbols function\n+    print(\"\\n4. Testing with Symbol objects:\")\n+    s1 = Symbol('s1')\n+    s2 = Symbol('s2')\n+    poly = x + y\n+    result = poly.as_expr(s1, s2)\n+    print(f\"x + y with Symbol objects s1, s2: {result}\")\n+    assert str(result) == \"s1 + s2\"\n+    \n+    # Test case 5: Complex polynomial\n+    print(\"\\n5. Testing complex polynomial:\")\n+    complex_poly = x**5*y**3 - 2*x**3*y**2 + x*y - 7\n+    result = complex_poly.as_expr(a, b)\n+    print(f\"Complex polynomial with a,b: {result}\")\n+    expected = \"a**5*b**3 - 2*a**3*b**2 + a*b - 7\"\n+    assert str(result) == expected\n+    \n+    # Test case 6: Single variable ring\n+    print(\"\\n6. Testing single variable ring:\")\n+    R1, t = ring(\"t\", ZZ)\n+    poly1 = t**3 + 2*t - 1\n+    u = symbols(\"u\")\n+    result = poly1.as_expr(u)\n+    print(f\"t**3 + 2*t - 1 with symbol u: {result}\")\n+    assert str(result) == \"u**3 + 2*u - 1\"\n+    \n+    print(\"\\n=== All edge cases passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_edge_cases()\n\\ No newline at end of file\ndiff --git a/test_existing.py b/test_existing.py\nnew file mode 100644\nindex 0000000000..5dc2e8a57e\n--- /dev/null\n+++ b/test_existing.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_PolyElement_as_expr():\n+    \"\"\"Test the existing test case from the test suite\"\"\"\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+    X, Y, Z = R.symbols\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    assert f.as_expr() == g\n+\n+    X, Y, Z = symbols(\"x,y,z\")\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    result = f.as_expr(X, Y, Z)\n+    print(f\"f.as_expr(X, Y, Z) = {result}\")\n+    print(f\"Expected g = {g}\")\n+    print(f\"Are they equal? {result == g}\")\n+    assert result == g\n+\n+    # Test error case\n+    try:\n+        f.as_expr(X)\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError:\n+        print(\"Correctly raised ValueError for wrong number of symbols\")\n+\n+    R, = ring(\"\", ZZ)\n+    assert R(3).as_expr() == 3\n+    \n+    print(\"All existing tests pass!\")\n+\n+if __name__ == \"__main__\":\n+    test_PolyElement_as_expr()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 23 create #1",
+          "filename": "test_edge_cases.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_edge_cases.py",
+          "step_index": 24
+        }
+      ],
+      "revision_index": 4,
+      "start_step": 23
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import ring, ZZ, symbols\n\ndef test_pr_example():\n    \"\"\"Test the exact example from the PR description\"\"\"\n    \n    print(\"=== Testing PR example ===\")\n    \n    R, x, y, z = ring(\"x,y,z\", ZZ)\n    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n    U, V, W = symbols(\"u,v,w\")\n    \n    print(f\"Original polynomial: {f}\")\n    \n    result = f.as_expr(U, V, W)\n    print(f\"f.as_expr(U, V, W): {result}\")\n    \n    # The result should use u, v, w instead of x, y, z\n    expected_str = \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n    actual_str = str(result)\n    \n    print(f\"Expected: {expected_str}\")\n    print(f\"Actual:   {actual_str}\")\n    print(f\"Match: {actual_str == expected_str}\")\n    \n    assert actual_str == expected_str, f\"Expected {expected_str}, got {actual_str}\"\n    \n    print(\"\\n=== PR example test passed! ===\")\n\nif __name__ == \"__main__\":\n    test_pr_example()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file\ndiff --git a/sympy/polys/rings.py b/sympy/polys/rings.py\nindex 12bd2fc920..be6e35d06d 100644\n--- a/sympy/polys/rings.py\n+++ b/sympy/polys/rings.py\n@@ -618,7 +618,7 @@ def set_ring(self, new_ring):\n     def as_expr(self, *symbols):\n         if symbols and len(symbols) != self.ring.ngens:\n             raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n-        else:\n+        elif not symbols:\n             symbols = self.ring.symbols\n \n         return expr_from_dict(self.as_expr_dict(), *symbols)\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ca620e6c07\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_as_expr_with_symbols():\n+    \"\"\"Test the as_expr method with various symbol configurations\"\"\"\n+    \n+    # Test case 1: 3-variable polynomial\n+    print(\"=== Test Case 1: 3-variable polynomial ===\")\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    \n+    # Test with new symbols\n+    U, V, W = symbols(\"u,v,w\")\n+    result = f.as_expr(U, V, W)\n+    print(f\"Original: {f}\")\n+    print(f\"With U,V,W: {result}\")\n+    assert str(result) == \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    \n+    # Test with no symbols (should use original)\n+    result_no_symbols = f.as_expr()\n+    print(f\"No symbols: {result_no_symbols}\")\n+    assert str(result_no_symbols) == \"3*x**2*y - x*y*z + 7*z**3 + 1\"\n+    \n+    # Test case 2: Single variable polynomial\n+    print(\"\\n=== Test Case 2: Single variable polynomial ===\")\n+    R2, a = ring(\"a\", ZZ)\n+    g = 5*a**3 + 2*a - 1\n+    \n+    b = symbols(\"b\")\n+    result2 = g.as_expr(b)\n+    print(f\"Original: {g}\")\n+    print(f\"With b: {result2}\")\n+    assert str(result2) == \"5*b**3 + 2*b - 1\"\n+    \n+    # Test case 3: Two variable polynomial\n+    print(\"\\n=== Test Case 3: Two variable polynomial ===\")\n+    R3, p, q = ring(\"p,q\", ZZ)\n+    h = p**2 + 2*p*q + q**2\n+    \n+    s, t = symbols(\"s,t\")\n+    result3 = h.as_expr(s, t)\n+    print(f\"Original: {h}\")\n+    print(f\"With s,t: {result3}\")\n+    assert str(result3) == \"s**2 + 2*s*t + t**2\"\n+    \n+    # Test case 4: Error cases\n+    print(\"\\n=== Test Case 4: Error cases ===\")\n+    try:\n+        # Too few symbols\n+        f.as_expr(U, V)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too few symbols: {e}\")\n+    \n+    try:\n+        # Too many symbols\n+        A, B, C, D = symbols(\"a,b,c,d\")\n+        f.as_expr(A, B, C, D)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too many symbols: {e}\")\n+    \n+    # Test case 5: Constant polynomial\n+    print(\"\\n=== Test Case 5: Constant polynomial ===\")\n+    const = R.from_dict({(0, 0, 0): 42})\n+    result_const = const.as_expr(U, V, W)\n+    print(f\"Constant with new symbols: {result_const}\")\n+    assert str(result_const) == \"42\"\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_as_expr_with_symbols()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..62bbc7ec18\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols, Symbol\n+\n+def test_edge_cases():\n+    \"\"\"Test edge cases for the as_expr method\"\"\"\n+    \n+    print(\"=== Testing edge cases ===\")\n+    \n+    # Test case 1: Empty polynomial (zero)\n+    print(\"\\n1. Testing zero polynomial:\")\n+    R, x, y = ring(\"x,y\", ZZ)\n+    zero_poly = R.zero\n+    a, b = symbols(\"a,b\")\n+    result = zero_poly.as_expr(a, b)\n+    print(f\"Zero polynomial with new symbols: {result}\")\n+    assert result == 0\n+    \n+    # Test case 2: Single term polynomial\n+    print(\"\\n2. Testing single term polynomial:\")\n+    single_term = 5*x**3\n+    result = single_term.as_expr(a, b)\n+    print(f\"Single term 5*x**3 with symbols a,b: {result}\")\n+    assert str(result) == \"5*a**3\"\n+    \n+    # Test case 3: Polynomial with only constant term\n+    print(\"\\n3. Testing constant polynomial:\")\n+    const_poly = R.from_dict({(0, 0): 42})\n+    result = const_poly.as_expr(a, b)\n+    print(f\"Constant 42 with symbols a,b: {result}\")\n+    assert result == 42\n+    \n+    # Test case 4: Using Symbol objects vs symbols function\n+    print(\"\\n4. Testing with Symbol objects:\")\n+    s1 = Symbol('s1')\n+    s2 = Symbol('s2')\n+    poly = x + y\n+    result = poly.as_expr(s1, s2)\n+    print(f\"x + y with Symbol objects s1, s2: {result}\")\n+    assert str(result) == \"s1 + s2\"\n+    \n+    # Test case 5: Complex polynomial\n+    print(\"\\n5. Testing complex polynomial:\")\n+    complex_poly = x**5*y**3 - 2*x**3*y**2 + x*y - 7\n+    result = complex_poly.as_expr(a, b)\n+    print(f\"Complex polynomial with a,b: {result}\")\n+    expected = \"a**5*b**3 - 2*a**3*b**2 + a*b - 7\"\n+    assert str(result) == expected\n+    \n+    # Test case 6: Single variable ring\n+    print(\"\\n6. Testing single variable ring:\")\n+    R1, t = ring(\"t\", ZZ)\n+    poly1 = t**3 + 2*t - 1\n+    u = symbols(\"u\")\n+    result = poly1.as_expr(u)\n+    print(f\"t**3 + 2*t - 1 with symbol u: {result}\")\n+    assert str(result) == \"u**3 + 2*u - 1\"\n+    \n+    print(\"\\n=== All edge cases passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_edge_cases()\n\\ No newline at end of file\ndiff --git a/test_existing.py b/test_existing.py\nnew file mode 100644\nindex 0000000000..5dc2e8a57e\n--- /dev/null\n+++ b/test_existing.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_PolyElement_as_expr():\n+    \"\"\"Test the existing test case from the test suite\"\"\"\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+    X, Y, Z = R.symbols\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    assert f.as_expr() == g\n+\n+    X, Y, Z = symbols(\"x,y,z\")\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    result = f.as_expr(X, Y, Z)\n+    print(f\"f.as_expr(X, Y, Z) = {result}\")\n+    print(f\"Expected g = {g}\")\n+    print(f\"Are they equal? {result == g}\")\n+    assert result == g\n+\n+    # Test error case\n+    try:\n+        f.as_expr(X)\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError:\n+        print(\"Correctly raised ValueError for wrong number of symbols\")\n+\n+    R, = ring(\"\", ZZ)\n+    assert R(3).as_expr() == 3\n+    \n+    print(\"All existing tests pass!\")\n+\n+if __name__ == \"__main__\":\n+    test_PolyElement_as_expr()\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..c95b8f1db3\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_pr_example():\n+    \"\"\"Test the exact example from the PR description\"\"\"\n+    \n+    print(\"=== Testing PR example ===\")\n+    \n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    U, V, W = symbols(\"u,v,w\")\n+    \n+    print(f\"Original polynomial: {f}\")\n+    \n+    result = f.as_expr(U, V, W)\n+    print(f\"f.as_expr(U, V, W): {result}\")\n+    \n+    # The result should use u, v, w instead of x, y, z\n+    expected_str = \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    actual_str = str(result)\n+    \n+    print(f\"Expected: {expected_str}\")\n+    print(f\"Actual:   {actual_str}\")\n+    print(f\"Match: {actual_str == expected_str}\")\n+    \n+    assert actual_str == expected_str, f\"Expected {expected_str}, got {actual_str}\"\n+    \n+    print(\"\\n=== PR example test passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_pr_example()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 25 create #1",
+          "filename": "test_pr_example.py",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_pr_example.py",
+          "step_index": 26
+        },
+        {
+          "command": "cd /testbed && python -c \"\nimport sys\nsys.path.insert(0, '.')\n\n# Test some basic ring operations to make sure we didn't break anything\nfrom sympy import ring, ZZ, symbols\n\n# Basic ring creation and operations\nR, x, y = ring('x,y', ZZ)\nf = x**2 + 2*x*y + y**2\nprint('Basic polynomial:', f)\n\n# Test as_expr without symbols (should still work)\nexpr1 = f.as_expr()\nprint('as_expr() without symbols:', expr1)\n\n# Test as_expr with symbols (our fix)\na, b = symbols('a,b')\nexpr2 = f.as_expr(a, b)\nprint('as_expr(a, b) with symbols:', expr2)\n\n# Test other methods still work\nprint('as_expr_dict():', f.as_expr_dict())\nprint('Basic operations still work!')\n\"",
+          "step_index": 27
+        },
+        {
+          "command": "cd /testbed && python -c \"\n# Test that imports still work correctly\nfrom sympy.polys.rings import PolyElement\nfrom sympy import ring, ZZ, symbols\n\n# Test that the class and method exist\nR, x = ring('x', ZZ)\npoly = x**2 + 1\nprint('PolyElement class works:', type(poly))\nprint('as_expr method exists:', hasattr(poly, 'as_expr'))\n\n# Test method signature\nimport inspect\nsig = inspect.signature(poly.as_expr)\nprint('Method signature:', sig)\n\"",
+          "step_index": 28
+        }
+      ],
+      "revision_index": 5,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "#!/usr/bin/env python3\n\nfrom sympy import ring, ZZ, symbols\n\ndef test_empty_symbols():\n    \"\"\"Test edge case with empty symbols\"\"\"\n    \n    print(\"=== Testing empty symbols ===\")\n    \n    R, x, y = ring(\"x,y\", ZZ)\n    f = x + y\n    \n    # Test with empty tuple (should use default symbols)\n    result1 = f.as_expr(*())\n    print(f\"f.as_expr(*()):  {result1}\")\n    assert str(result1) == \"x + y\"\n    \n    # Test with empty list (should use default symbols)\n    result2 = f.as_expr(*[])\n    print(f\"f.as_expr(*[]):  {result2}\")\n    assert str(result2) == \"x + y\"\n    \n    # Test normal case for comparison\n    a, b = symbols(\"a,b\")\n    result3 = f.as_expr(a, b)\n    print(f\"f.as_expr(a, b): {result3}\")\n    assert str(result3) == \"a + b\"\n    \n    print(\"\\n=== Empty symbols test passed! ===\")\n\nif __name__ == \"__main__\":\n    test_empty_symbols()",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/reproduce_issue.py b/reproduce_issue.py\nnew file mode 100644\nindex 0000000000..dd58141cd7\n--- /dev/null\n+++ b/reproduce_issue.py\n@@ -0,0 +1,34 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+# Create a polynomial ring\n+R, x, y, z = ring(\"x,y,z\", ZZ)\n+\n+# Create a polynomial\n+f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+# Create new symbols\n+U, V, W = symbols(\"u,v,w\")\n+\n+print(\"Original polynomial:\")\n+print(f)\n+\n+print(\"\\nUsing as_expr() with new symbols U, V, W:\")\n+result = f.as_expr(U, V, W)\n+print(result)\n+\n+print(\"\\nExpected result should use u, v, w instead of x, y, z\")\n+print(\"But we see that it still uses x, y, z\")\n+\n+# Let's also test the error case\n+print(\"\\nTesting with wrong number of symbols:\")\n+try:\n+    A, B = symbols(\"a,b\")\n+    f.as_expr(A, B)\n+except ValueError as e:\n+    print(f\"Error (as expected): {e}\")\n+\n+print(\"\\nTesting with no symbols (should work):\")\n+result_no_symbols = f.as_expr()\n+print(result_no_symbols)\n\\ No newline at end of file\ndiff --git a/sympy/polys/rings.py b/sympy/polys/rings.py\nindex 12bd2fc920..be6e35d06d 100644\n--- a/sympy/polys/rings.py\n+++ b/sympy/polys/rings.py\n@@ -618,7 +618,7 @@ def set_ring(self, new_ring):\n     def as_expr(self, *symbols):\n         if symbols and len(symbols) != self.ring.ngens:\n             raise ValueError(\"not enough symbols, expected %s got %s\" % (self.ring.ngens, len(symbols)))\n-        else:\n+        elif not symbols:\n             symbols = self.ring.symbols\n \n         return expr_from_dict(self.as_expr_dict(), *symbols)\ndiff --git a/test_comprehensive.py b/test_comprehensive.py\nnew file mode 100644\nindex 0000000000..ca620e6c07\n--- /dev/null\n+++ b/test_comprehensive.py\n@@ -0,0 +1,74 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_as_expr_with_symbols():\n+    \"\"\"Test the as_expr method with various symbol configurations\"\"\"\n+    \n+    # Test case 1: 3-variable polynomial\n+    print(\"=== Test Case 1: 3-variable polynomial ===\")\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    \n+    # Test with new symbols\n+    U, V, W = symbols(\"u,v,w\")\n+    result = f.as_expr(U, V, W)\n+    print(f\"Original: {f}\")\n+    print(f\"With U,V,W: {result}\")\n+    assert str(result) == \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    \n+    # Test with no symbols (should use original)\n+    result_no_symbols = f.as_expr()\n+    print(f\"No symbols: {result_no_symbols}\")\n+    assert str(result_no_symbols) == \"3*x**2*y - x*y*z + 7*z**3 + 1\"\n+    \n+    # Test case 2: Single variable polynomial\n+    print(\"\\n=== Test Case 2: Single variable polynomial ===\")\n+    R2, a = ring(\"a\", ZZ)\n+    g = 5*a**3 + 2*a - 1\n+    \n+    b = symbols(\"b\")\n+    result2 = g.as_expr(b)\n+    print(f\"Original: {g}\")\n+    print(f\"With b: {result2}\")\n+    assert str(result2) == \"5*b**3 + 2*b - 1\"\n+    \n+    # Test case 3: Two variable polynomial\n+    print(\"\\n=== Test Case 3: Two variable polynomial ===\")\n+    R3, p, q = ring(\"p,q\", ZZ)\n+    h = p**2 + 2*p*q + q**2\n+    \n+    s, t = symbols(\"s,t\")\n+    result3 = h.as_expr(s, t)\n+    print(f\"Original: {h}\")\n+    print(f\"With s,t: {result3}\")\n+    assert str(result3) == \"s**2 + 2*s*t + t**2\"\n+    \n+    # Test case 4: Error cases\n+    print(\"\\n=== Test Case 4: Error cases ===\")\n+    try:\n+        # Too few symbols\n+        f.as_expr(U, V)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too few symbols: {e}\")\n+    \n+    try:\n+        # Too many symbols\n+        A, B, C, D = symbols(\"a,b,c,d\")\n+        f.as_expr(A, B, C, D)  # Should raise ValueError\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError as e:\n+        print(f\"Correctly caught error for too many symbols: {e}\")\n+    \n+    # Test case 5: Constant polynomial\n+    print(\"\\n=== Test Case 5: Constant polynomial ===\")\n+    const = R.from_dict({(0, 0, 0): 42})\n+    result_const = const.as_expr(U, V, W)\n+    print(f\"Constant with new symbols: {result_const}\")\n+    assert str(result_const) == \"42\"\n+    \n+    print(\"\\n=== All tests passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_as_expr_with_symbols()\n\\ No newline at end of file\ndiff --git a/test_edge_cases.py b/test_edge_cases.py\nnew file mode 100644\nindex 0000000000..62bbc7ec18\n--- /dev/null\n+++ b/test_edge_cases.py\n@@ -0,0 +1,62 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols, Symbol\n+\n+def test_edge_cases():\n+    \"\"\"Test edge cases for the as_expr method\"\"\"\n+    \n+    print(\"=== Testing edge cases ===\")\n+    \n+    # Test case 1: Empty polynomial (zero)\n+    print(\"\\n1. Testing zero polynomial:\")\n+    R, x, y = ring(\"x,y\", ZZ)\n+    zero_poly = R.zero\n+    a, b = symbols(\"a,b\")\n+    result = zero_poly.as_expr(a, b)\n+    print(f\"Zero polynomial with new symbols: {result}\")\n+    assert result == 0\n+    \n+    # Test case 2: Single term polynomial\n+    print(\"\\n2. Testing single term polynomial:\")\n+    single_term = 5*x**3\n+    result = single_term.as_expr(a, b)\n+    print(f\"Single term 5*x**3 with symbols a,b: {result}\")\n+    assert str(result) == \"5*a**3\"\n+    \n+    # Test case 3: Polynomial with only constant term\n+    print(\"\\n3. Testing constant polynomial:\")\n+    const_poly = R.from_dict({(0, 0): 42})\n+    result = const_poly.as_expr(a, b)\n+    print(f\"Constant 42 with symbols a,b: {result}\")\n+    assert result == 42\n+    \n+    # Test case 4: Using Symbol objects vs symbols function\n+    print(\"\\n4. Testing with Symbol objects:\")\n+    s1 = Symbol('s1')\n+    s2 = Symbol('s2')\n+    poly = x + y\n+    result = poly.as_expr(s1, s2)\n+    print(f\"x + y with Symbol objects s1, s2: {result}\")\n+    assert str(result) == \"s1 + s2\"\n+    \n+    # Test case 5: Complex polynomial\n+    print(\"\\n5. Testing complex polynomial:\")\n+    complex_poly = x**5*y**3 - 2*x**3*y**2 + x*y - 7\n+    result = complex_poly.as_expr(a, b)\n+    print(f\"Complex polynomial with a,b: {result}\")\n+    expected = \"a**5*b**3 - 2*a**3*b**2 + a*b - 7\"\n+    assert str(result) == expected\n+    \n+    # Test case 6: Single variable ring\n+    print(\"\\n6. Testing single variable ring:\")\n+    R1, t = ring(\"t\", ZZ)\n+    poly1 = t**3 + 2*t - 1\n+    u = symbols(\"u\")\n+    result = poly1.as_expr(u)\n+    print(f\"t**3 + 2*t - 1 with symbol u: {result}\")\n+    assert str(result) == \"u**3 + 2*u - 1\"\n+    \n+    print(\"\\n=== All edge cases passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_edge_cases()\n\\ No newline at end of file\ndiff --git a/test_empty_symbols.py b/test_empty_symbols.py\nnew file mode 100644\nindex 0000000000..bac12a9b41\n--- /dev/null\n+++ b/test_empty_symbols.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_empty_symbols():\n+    \"\"\"Test edge case with empty symbols\"\"\"\n+    \n+    print(\"=== Testing empty symbols ===\")\n+    \n+    R, x, y = ring(\"x,y\", ZZ)\n+    f = x + y\n+    \n+    # Test with empty tuple (should use default symbols)\n+    result1 = f.as_expr(*())\n+    print(f\"f.as_expr(*()):  {result1}\")\n+    assert str(result1) == \"x + y\"\n+    \n+    # Test with empty list (should use default symbols)\n+    result2 = f.as_expr(*[])\n+    print(f\"f.as_expr(*[]):  {result2}\")\n+    assert str(result2) == \"x + y\"\n+    \n+    # Test normal case for comparison\n+    a, b = symbols(\"a,b\")\n+    result3 = f.as_expr(a, b)\n+    print(f\"f.as_expr(a, b): {result3}\")\n+    assert str(result3) == \"a + b\"\n+    \n+    print(\"\\n=== Empty symbols test passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_empty_symbols()\n\\ No newline at end of file\ndiff --git a/test_existing.py b/test_existing.py\nnew file mode 100644\nindex 0000000000..5dc2e8a57e\n--- /dev/null\n+++ b/test_existing.py\n@@ -0,0 +1,39 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_PolyElement_as_expr():\n+    \"\"\"Test the existing test case from the test suite\"\"\"\n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+\n+    X, Y, Z = R.symbols\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    assert f.as_expr() == g\n+\n+    X, Y, Z = symbols(\"x,y,z\")\n+    g = 3*X**2*Y - X*Y*Z + 7*Z**3 + 1\n+\n+    assert f != g\n+    result = f.as_expr(X, Y, Z)\n+    print(f\"f.as_expr(X, Y, Z) = {result}\")\n+    print(f\"Expected g = {g}\")\n+    print(f\"Are they equal? {result == g}\")\n+    assert result == g\n+\n+    # Test error case\n+    try:\n+        f.as_expr(X)\n+        assert False, \"Should have raised ValueError\"\n+    except ValueError:\n+        print(\"Correctly raised ValueError for wrong number of symbols\")\n+\n+    R, = ring(\"\", ZZ)\n+    assert R(3).as_expr() == 3\n+    \n+    print(\"All existing tests pass!\")\n+\n+if __name__ == \"__main__\":\n+    test_PolyElement_as_expr()\n\\ No newline at end of file\ndiff --git a/test_pr_example.py b/test_pr_example.py\nnew file mode 100644\nindex 0000000000..c95b8f1db3\n--- /dev/null\n+++ b/test_pr_example.py\n@@ -0,0 +1,32 @@\n+#!/usr/bin/env python3\n+\n+from sympy import ring, ZZ, symbols\n+\n+def test_pr_example():\n+    \"\"\"Test the exact example from the PR description\"\"\"\n+    \n+    print(\"=== Testing PR example ===\")\n+    \n+    R, x, y, z = ring(\"x,y,z\", ZZ)\n+    f = 3*x**2*y - x*y*z + 7*z**3 + 1\n+    U, V, W = symbols(\"u,v,w\")\n+    \n+    print(f\"Original polynomial: {f}\")\n+    \n+    result = f.as_expr(U, V, W)\n+    print(f\"f.as_expr(U, V, W): {result}\")\n+    \n+    # The result should use u, v, w instead of x, y, z\n+    expected_str = \"3*u**2*v - u*v*w + 7*w**3 + 1\"\n+    actual_str = str(result)\n+    \n+    print(f\"Expected: {expected_str}\")\n+    print(f\"Actual:   {actual_str}\")\n+    print(f\"Match: {actual_str == expected_str}\")\n+    \n+    assert actual_str == expected_str, f\"Expected {expected_str}, got {actual_str}\"\n+    \n+    print(\"\\n=== PR example test passed! ===\")\n+\n+if __name__ == \"__main__\":\n+    test_pr_example()\n\\ No newline at end of file",
+          "explanation": "classic_swe step 29 create #1",
+          "filename": "test_empty_symbols.py",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "feedback_commands": [
+        {
+          "command": "cd /testbed && python test_empty_symbols.py",
+          "step_index": 30
+        },
+        {
+          "command": "cd /testbed && python reproduce_issue.py",
+          "step_index": 32
+        }
+      ],
+      "revision_index": 6,
+      "start_step": 29
+    }
+  ],
+  "sub_paths": [
+    "sympy/polys/rings.py"
+  ],
+  "success_step": 29,
+  "test_files": [
+    "reproduce_issue.py",
+    "test_comprehensive.py",
+    "test_edge_cases.py",
+    "test_empty_symbols.py",
+    "test_existing.py",
+    "test_pr_example.py"
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <stdio.h>\n#include <stddef.h>\n#include <stdint.h>\n\ntypedef uint64_t u64;\ntypedef uint32_t u32;\ntypedef uint16_t u16;\ntypedef uint8_t u8;\ntypedef uint64_t __le64;\ntypedef uint32_t __le32;\ntypedef uint16_t __le16;\n\nstruct bkey_i {\n    u64 data[0];\n};\n\nstruct jset_entry {\n    u16     u64s;\n    u8      btree_id;\n    u8      level;\n    u8      type;\n    u8      pad[3];\n    struct bkey_i       start[0];\n    u64         _data[];\n};\n\nstruct jset_entry_dev_usage_type {\n    __le64          buckets;\n    __le64          sectors;\n    __le64          fragmented;\n} __attribute__((packed));\n\nstruct jset_entry_dev_usage {\n    struct jset_entry   entry;\n    __le32          dev;\n    __u32           pad;\n\n    __le64          _buckets_ec;        /* No longer used */\n    __le64          _buckets_unavailable;   /* No longer used */\n\n    struct jset_entry_dev_usage_type d[];\n};\n\n#define vstruct_bytes(_s)   (offsetof(struct jset_entry, _data) + (_s)->u64s * sizeof(u64))\n\nstatic inline unsigned jset_entry_dev_usage_nr_types(struct jset_entry_dev_usage *u)\n{\n    return (vstruct_bytes(&u->entry) - sizeof(struct jset_entry_dev_usage)) /\n        sizeof(struct jset_entry_dev_usage_type);\n}\n\nint main() {\n    struct jset_entry_dev_usage u;\n    u.entry.u64s = 0; // Smallest possible u64s\n    \n    printf(\"sizeof(struct jset_entry_dev_usage) = %zu\\n\", sizeof(struct jset_entry_dev_usage));\n    printf(\"sizeof(struct jset_entry_dev_usage_type) = %zu\\n\", sizeof(struct jset_entry_dev_usage_type));\n    printf(\"vstruct_bytes = %zu\\n\", vstruct_bytes(&u.entry));\n    \n    unsigned nr = jset_entry_dev_usage_nr_types(&u);\n    printf(\"nr_types = %u\\n\", nr);\n    \n    if (nr > 1000) {\n        printf(\"Huge nr_types detected!\\n\");\n    }\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 16 create #1",
+          "filename": "repro_test.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "static inline unsigned jset_entry_dev_usage_nr_types(struct jset_entry_dev_usage *u)\n{\n\tsize_t bytes = vstruct_bytes(&u->entry);\n\n\tif (bytes < sizeof(struct jset_entry_dev_usage))\n\t\treturn 0;\n\n\treturn (bytes - sizeof(struct jset_entry_dev_usage)) /\n\t\tsizeof(struct jset_entry_dev_usage_type);\n}\n",
+          "before": "static inline unsigned jset_entry_dev_usage_nr_types(struct jset_entry_dev_usage *u)\n{\n\treturn (vstruct_bytes(&u->entry) - sizeof(struct jset_entry_dev_usage)) /\n\t\tsizeof(struct jset_entry_dev_usage_type);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bcachefs_format.h b/fs/bcachefs/bcachefs_format.h\nindex 5004f6ba997c..dac48cb5b2ef 100644\n--- a/fs/bcachefs/bcachefs_format.h\n+++ b/fs/bcachefs/bcachefs_format.h\n@@ -1212,7 +1212,12 @@ struct jset_entry_dev_usage {\n \n static inline unsigned jset_entry_dev_usage_nr_types(struct jset_entry_dev_usage *u)\n {\n-\treturn (vstruct_bytes(&u->entry) - sizeof(struct jset_entry_dev_usage)) /\n+\tsize_t bytes = vstruct_bytes(&u->entry);\n+\n+\tif (bytes < sizeof(struct jset_entry_dev_usage))\n+\t\treturn 0;\n+\n+\treturn (bytes - sizeof(struct jset_entry_dev_usage)) /\n \t\tsizeof(struct jset_entry_dev_usage_type);\n }",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "fs/bcachefs/bcachefs_format.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 24 rm #1",
+          "filename": "repro_test.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bcachefs_format.h b/fs/bcachefs/bcachefs_format.h\nindex 5004f6ba997c..dac48cb5b2ef 100644\n--- a/fs/bcachefs/bcachefs_format.h\n+++ b/fs/bcachefs/bcachefs_format.h\n@@ -1212,7 +1212,12 @@ struct jset_entry_dev_usage {\n \n static inline unsigned jset_entry_dev_usage_nr_types(struct jset_entry_dev_usage *u)\n {\n-\treturn (vstruct_bytes(&u->entry) - sizeof(struct jset_entry_dev_usage)) /\n+\tsize_t bytes = vstruct_bytes(&u->entry);\n+\n+\tif (bytes < sizeof(struct jset_entry_dev_usage))\n+\t\treturn 0;\n+\n+\treturn (bytes - sizeof(struct jset_entry_dev_usage)) /\n \t\tsizeof(struct jset_entry_dev_usage_type);\n }",
+          "explanation": "classic_swe step 24 rm #2",
+          "filename": "repro_test",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 1,
+      "start_step": 24
+    }
+  ],
+  "success_step": 24
+}

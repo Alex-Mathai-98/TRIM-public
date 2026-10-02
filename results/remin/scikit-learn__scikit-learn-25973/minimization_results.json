@@ -1,0 +1,199 @@
+{
+  "bug_id": "scikit-learn__scikit-learn-25973",
+  "short_path": [
+    [
+      {
+        "filename": "sklearn/feature_selection/_sequential.py",
+        "before": "from ..model_selection import cross_val_score\nfrom ..metrics import get_scorer_names",
+        "after": "from ..model_selection import cross_val_score, check_cv\nfrom ..metrics import get_scorer_names\nfrom ..utils.multiclass import is_classifier",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sklearn/feature_selection/_sequential.py",
+        "before": "        if self.tol is not None and self.tol < 0 and self.direction == \"forward\":\n            raise ValueError(\"tol must be positive when doing forward selection\")\n\n        cloned_estimator = clone(self.estimator)",
+        "after": "        if self.tol is not None and self.tol < 0 and self.direction == \"forward\":\n            raise ValueError(\"tol must be positive when doing forward selection\")\n\n        # Convert cv to a proper cross-validator object to handle iterables\n        cv = check_cv(self.cv, y, classifier=is_classifier(self.estimator))\n        \n        cloned_estimator = clone(self.estimator)",
+        "explanation": "classic_swe step 22 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sklearn/feature_selection/_sequential.py",
+        "before": "        for _ in range(n_iterations):\n            new_feature_idx, new_score = self._get_best_new_feature_score(\n                cloned_estimator, X, y, current_mask\n            )",
+        "after": "        for _ in range(n_iterations):\n            new_feature_idx, new_score = self._get_best_new_feature_score(\n                cloned_estimator, X, y, current_mask, cv\n            )",
+        "explanation": "classic_swe step 23 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sklearn/feature_selection/_sequential.py",
+        "before": "    def _get_best_new_feature_score(self, estimator, X, y, current_mask):\n        # Return the best new feature and its score to add to the current_mask,\n        # i.e. return the best new feature and its score to add (resp. remove)\n        # when doing forward selection (resp. backward selection).\n        # Feature will be added if the current score and past score are greater\n        # than tol when n_feature is auto,\n        candidate_feature_indices = np.flatnonzero(~current_mask)\n        scores = {}\n        for feature_idx in candidate_feature_indices:\n            candidate_mask = current_mask.copy()\n            candidate_mask[feature_idx] = True\n            if self.direction == \"backward\":\n                candidate_mask = ~candidate_mask\n            X_new = X[:, candidate_mask]\n            scores[feature_idx] = cross_val_score(\n                estimator,\n                X_new,\n                y,\n                cv=self.cv,\n                scoring=self.scoring,\n                n_jobs=self.n_jobs,\n            ).mean()\n        new_feature_idx = max(scores, key=lambda feature_idx: scores[feature_idx])\n        return new_feature_idx, scores[new_feature_idx]",
+        "after": "    def _get_best_new_feature_score(self, estimator, X, y, current_mask, cv):\n        # Return the best new feature and its score to add to the current_mask,\n        # i.e. return the best new feature and its score to add (resp. remove)\n        # when doing forward selection (resp. backward selection).\n        # Feature will be added if the current score and past score are greater\n        # than tol when n_feature is auto,\n        candidate_feature_indices = np.flatnonzero(~current_mask)\n        scores = {}\n        for feature_idx in candidate_feature_indices:\n            candidate_mask = current_mask.copy()\n            candidate_mask[feature_idx] = True\n            if self.direction == \"backward\":\n                candidate_mask = ~candidate_mask\n            X_new = X[:, candidate_mask]\n            scores[feature_idx] = cross_val_score(\n                estimator,\n                X_new,\n                y,\n                cv=cv,\n                scoring=self.scoring,\n                n_jobs=self.n_jobs,\n            ).mean()\n        new_feature_idx = max(scores, key=lambda feature_idx: scores[feature_idx])\n        return new_feature_idx, scores[new_feature_idx]",
+        "explanation": "classic_swe step 24 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sklearn/feature_selection/_sequential.py",
+        "before": "from ..base import BaseEstimator, MetaEstimatorMixin, clone\nfrom ..utils._param_validation import HasMethods, Hidden, Interval, StrOptions\nfrom ..utils._param_validation import RealNotInt\nfrom ..utils._tags import _safe_tags\nfrom ..utils.validation import check_is_fitted\nfrom ..model_selection import cross_val_score, check_cv\nfrom ..metrics import get_scorer_names\nfrom ..utils.multiclass import is_classifier",
+        "after": "from ..base import BaseEstimator, MetaEstimatorMixin, clone, is_classifier\nfrom ..utils._param_validation import HasMethods, Hidden, Interval, StrOptions\nfrom ..utils._param_validation import RealNotInt\nfrom ..utils._tags import _safe_tags\nfrom ..utils.validation import check_is_fitted\nfrom ..model_selection import cross_val_score, check_cv\nfrom ..metrics import get_scorer_names",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sklearn/feature_selection/_sequential.py b/sklearn/feature_selection/_sequential.py\nindex e983c55de7..deac2d073f 100644\n--- a/sklearn/feature_selection/_sequential.py\n+++ b/sklearn/feature_selection/_sequential.py\n@@ -8,12 +8,12 @@ import numpy as np\n import warnings\n \n from ._base import SelectorMixin\n-from ..base import BaseEstimator, MetaEstimatorMixin, clone\n+from ..base import BaseEstimator, MetaEstimatorMixin, clone, is_classifier\n from ..utils._param_validation import HasMethods, Hidden, Interval, StrOptions\n from ..utils._param_validation import RealNotInt\n from ..utils._tags import _safe_tags\n from ..utils.validation import check_is_fitted\n-from ..model_selection import cross_val_score\n+from ..model_selection import cross_val_score, check_cv\n from ..metrics import get_scorer_names\n \n \n@@ -259,6 +259,9 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator\n         if self.tol is not None and self.tol < 0 and self.direction == \"forward\":\n             raise ValueError(\"tol must be positive when doing forward selection\")\n \n+        # Convert cv to a proper cross-validator object to handle iterables\n+        cv = check_cv(self.cv, y, classifier=is_classifier(self.estimator))\n+        \n         cloned_estimator = clone(self.estimator)\n \n         # the current mask corresponds to the set of features:\n@@ -275,7 +278,7 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator\n         is_auto_select = self.tol is not None and self.n_features_to_select == \"auto\"\n         for _ in range(n_iterations):\n             new_feature_idx, new_score = self._get_best_new_feature_score(\n-                cloned_estimator, X, y, current_mask\n+                cloned_estimator, X, y, current_mask, cv\n             )\n             if is_auto_select and ((new_score - old_score) < self.tol):\n                 break\n@@ -291,7 +294,7 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator\n \n         return self\n \n-    def _get_best_new_feature_score(self, estimator, X, y, current_mask):\n+    def _get_best_new_feature_score(self, estimator, X, y, current_mask, cv):\n         # Return the best new feature and its score to add to the current_mask,\n         # i.e. return the best new feature and its score to add (resp. remove)\n         # when doing forward selection (resp. backward selection).\n@@ -309,7 +312,7 @@ class SequentialFeatureSelector(SelectorMixin, MetaEstimatorMixin, BaseEstimator\n                 estimator,\n                 X_new,\n                 y,\n-                cv=self.cv,\n+                cv=cv,\n                 scoring=self.scoring,\n                 n_jobs=self.n_jobs,\n             ).mean()\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "edit_list_after_file_min": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 5,
+    "greedy_removal_edit_still_crashes": 3,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "edit_list_after_refinement": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "edits_after_node_min": 5,
+    "edits_after_file_min": 5,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 5,
+  "reduction": "5_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/feature_selection/_sequential.py",
+          "before": "from ..model_selection import cross_val_score\nfrom ..metrics import get_scorer_names",
+          "after": "from ..model_selection import cross_val_score, check_cv\nfrom ..metrics import get_scorer_names\nfrom ..utils.multiclass import is_classifier",
+          "explanation": "classic_swe step 21 #1"
+        },
+        {
+          "filename": "sklearn/feature_selection/_sequential.py",
+          "before": "        if self.tol is not None and self.tol < 0 and self.direction == \"forward\":\n            raise ValueError(\"tol must be positive when doing forward selection\")\n\n        cloned_estimator = clone(self.estimator)",
+          "after": "        if self.tol is not None and self.tol < 0 and self.direction == \"forward\":\n            raise ValueError(\"tol must be positive when doing forward selection\")\n\n        # Convert cv to a proper cross-validator object to handle iterables\n        cv = check_cv(self.cv, y, classifier=is_classifier(self.estimator))\n        \n        cloned_estimator = clone(self.estimator)",
+          "explanation": "classic_swe step 22 #1"
+        },
+        {
+          "filename": "sklearn/feature_selection/_sequential.py",
+          "before": "        for _ in range(n_iterations):\n            new_feature_idx, new_score = self._get_best_new_feature_score(\n                cloned_estimator, X, y, current_mask\n            )",
+          "after": "        for _ in range(n_iterations):\n            new_feature_idx, new_score = self._get_best_new_feature_score(\n                cloned_estimator, X, y, current_mask, cv\n            )",
+          "explanation": "classic_swe step 23 #1"
+        },
+        {
+          "filename": "sklearn/feature_selection/_sequential.py",
+          "before": "    def _get_best_new_feature_score(self, estimator, X, y, current_mask):\n        # Return the best new feature and its score to add to the current_mask,\n        # i.e. return the best new feature and its score to add (resp. remove)\n        # when doing forward selection (resp. backward selection).\n        # Feature will be added if the current score and past score are greater\n        # than tol when n_feature is auto,\n        candidate_feature_indices = np.flatnonzero(~current_mask)\n        scores = {}\n        for feature_idx in candidate_feature_indices:\n            candidate_mask = current_mask.copy()\n            candidate_mask[feature_idx] = True\n            if self.direction == \"backward\":\n                candidate_mask = ~candidate_mask\n            X_new = X[:, candidate_mask]\n            scores[feature_idx] = cross_val_score(\n                estimator,\n                X_new,\n                y,\n                cv=self.cv,\n                scoring=self.scoring,\n                n_jobs=self.n_jobs,\n            ).mean()\n        new_feature_idx = max(scores, key=lambda feature_idx: scores[feature_idx])\n        return new_feature_idx, scores[new_feature_idx]",
+          "after": "    def _get_best_new_feature_score(self, estimator, X, y, current_mask, cv):\n        # Return the best new feature and its score to add to the current_mask,\n        # i.e. return the best new feature and its score to add (resp. remove)\n        # when doing forward selection (resp. backward selection).\n        # Feature will be added if the current score and past score are greater\n        # than tol when n_feature is auto,\n        candidate_feature_indices = np.flatnonzero(~current_mask)\n        scores = {}\n        for feature_idx in candidate_feature_indices:\n            candidate_mask = current_mask.copy()\n            candidate_mask[feature_idx] = True\n            if self.direction == \"backward\":\n                candidate_mask = ~candidate_mask\n            X_new = X[:, candidate_mask]\n            scores[feature_idx] = cross_val_score(\n                estimator,\n                X_new,\n                y,\n                cv=cv,\n                scoring=self.scoring,\n                n_jobs=self.n_jobs,\n            ).mean()\n        new_feature_idx = max(scores, key=lambda feature_idx: scores[feature_idx])\n        return new_feature_idx, scores[new_feature_idx]",
+          "explanation": "classic_swe step 24 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/feature_selection/_sequential.py",
+          "before": "from ..base import BaseEstimator, MetaEstimatorMixin, clone\nfrom ..utils._param_validation import HasMethods, Hidden, Interval, StrOptions\nfrom ..utils._param_validation import RealNotInt\nfrom ..utils._tags import _safe_tags\nfrom ..utils.validation import check_is_fitted\nfrom ..model_selection import cross_val_score, check_cv\nfrom ..metrics import get_scorer_names\nfrom ..utils.multiclass import is_classifier",
+          "after": "from ..base import BaseEstimator, MetaEstimatorMixin, clone, is_classifier\nfrom ..utils._param_validation import HasMethods, Hidden, Interval, StrOptions\nfrom ..utils._param_validation import RealNotInt\nfrom ..utils._tags import _safe_tags\nfrom ..utils.validation import check_is_fitted\nfrom ..model_selection import cross_val_score, check_cv\nfrom ..metrics import get_scorer_names",
+          "explanation": "classic_swe step 27 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 72,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 72,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sklearn/feature_selection/_sequential.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sklearn/feature_selection/_sequential.py"
+    ],
+    "gold_files": [
+      "sklearn/feature_selection/_sequential.py"
+    ],
+    "minimized_hunks": 5,
+    "gold_hunks": 5,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 5,
+    "gold_added_lines": 7,
+    "gold_deleted_lines": 5
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

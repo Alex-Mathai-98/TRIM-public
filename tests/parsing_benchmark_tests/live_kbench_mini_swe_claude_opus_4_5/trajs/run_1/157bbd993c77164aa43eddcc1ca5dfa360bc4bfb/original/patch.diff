@@ -1,0 +1,36 @@
+diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c
+index 6d7a442ceb89..b5c63ade1a1d 100644
+--- a/net/bpf/test_run.c
++++ b/net/bpf/test_run.c
+@@ -24,6 +24,9 @@
+ #include <net/netdev_rx_queue.h>
+ #include <net/xdp.h>
+ #include <net/netfilter/nf_bpf_link.h>
++#if IS_ENABLED(CONFIG_IPV6_SEG6_BPF)
++#include <net/seg6_local.h>
++#endif
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/bpf_test_run.h>
+@@ -425,6 +428,10 @@ static int bpf_test_run(struct bpf_prog *prog, void *ctx, u32 repeat,
+ 	do {
+ 		run_ctx.prog_item = &item;
+ 		local_bh_disable();
++#if IS_ENABLED(CONFIG_IPV6_SEG6_BPF)
++		if (prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)
++			local_lock_nested_bh(&seg6_bpf_srh_states.bh_lock);
++#endif
+ 		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 
+ 		if (xdp)
+@@ -433,6 +440,10 @@ static int bpf_test_run(struct bpf_prog *prog, void *ctx, u32 repeat,
+ 			*retval = bpf_prog_run(prog, ctx);
+ 
+ 		bpf_net_ctx_clear(bpf_net_ctx);
++#if IS_ENABLED(CONFIG_IPV6_SEG6_BPF)
++		if (prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)
++			local_unlock_nested_bh(&seg6_bpf_srh_states.bh_lock);
++#endif
+ 		local_bh_enable();
+ 	} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));
+ 	bpf_reset_run_ctx(old_ctx);

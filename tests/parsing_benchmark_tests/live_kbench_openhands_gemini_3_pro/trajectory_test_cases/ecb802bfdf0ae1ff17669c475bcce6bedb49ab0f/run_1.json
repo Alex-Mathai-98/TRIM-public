@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#define _GNU_SOURCE\n#include <sys/mman.h>\n#include <sys/socket.h>\n#include <unistd.h>\n#include <stdlib.h>\n#include <stdio.h>\n#include <errno.h>\n#include <string.h>\n#include <fcntl.h>\n\nint main(void)\n{\n    int sv[2];\n    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {\n        perror(\"socketpair\");\n    }\n\n    // mlock(&(0x7f0000000000/0x800000)=nil, 0x800000)\n    // 0x7f0000000000 is usually in high address, might be mapped.\n    // Syzbot notation: pointer = nil means it passes NULL? No, it means the return value was nil?\n    // \"mlock(&(0x7f0000000000/0x800000)=nil, 0x800000)\"\n    // This probably addresses a mapping at 0x7f0000000000 size 0x800000.\n    // The \"=nil\" part implies the mapped address was not tracked or irrelevant?\n    // Or it means the mlock call implicitly maps? No, mlock doesn't map. \n    // It assumes something is mapped there. But if not mapped, mlock fails.\n\n    // Let's try to map something there first.\n    void *addr = mmap((void*)0x20000000, 0x800000, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);\n    // Syzkaller usually maps a region.\n    \n    // mlock\n    if (mlock(addr, 0x800000) != 0) {\n        perror(\"mlock\");\n    }\n\n    // munlockall() (fail_nth: 1)\n    // To simulate fail_nth, we use /proc/self/make-it-fail if available, but here we don't have it easily.\n    // However, the crash might be deterministic given the state.\n    // The \"fail_nth: 1\" suggests failure injection was active.\n    // Without failure injection framework active, we might not reproduce it if it depends on a specific allocation failure.\n    \n    // But let's try calling munlockall.\n    if (munlockall() != 0) {\n        perror(\"munlockall\");\n    }\n\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/repro.c\n+++ /linux/repro.c\n@@ -1,0 +2,49 @@\n+#define _GNU_SOURCE\n+#include <sys/mman.h>\n+#include <sys/socket.h>\n+#include <unistd.h>\n+#include <stdlib.h>\n+#include <stdio.h>\n+#include <errno.h>\n+#include <string.h>\n+#include <fcntl.h>\n+\n+int main(void)\n+{\n+    int sv[2];\n+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {\n+        perror(\"socketpair\");\n+    }\n+\n+    // mlock(&(0x7f0000000000/0x800000)=nil, 0x800000)\n+    // 0x7f0000000000 is usually in high address, might be mapped.\n+    // Syzbot notation: pointer = nil means it passes NULL? No, it means the return value was nil?\n+    // \"mlock(&(0x7f0000000000/0x800000)=nil, 0x800000)\"\n+    // This probably addresses a mapping at 0x7f0000000000 size 0x800000.\n+    // The \"=nil\" part implies the mapped address was not tracked or irrelevant?\n+    // Or it means the mlock call implicitly maps? No, mlock doesn't map.\n+    // It assumes something is mapped there. But if not mapped, mlock fails.\n+\n+    // Let's try to map something there first.\n+    void *addr = mmap((void*)0x20000000, 0x800000, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);\n+    // Syzkaller usually maps a region.\n+\n+    // mlock\n+    if (mlock(addr, 0x800000) != 0) {\n+        perror(\"mlock\");\n+    }\n+\n+    // munlockall() (fail_nth: 1)\n+    // To simulate fail_nth, we use /proc/self/make-it-fail if available, but here we don't have it easily.\n+    // However, the crash might be deterministic given the state.\n+    // The \"fail_nth: 1\" suggests failure injection was active.\n+    // Without failure injection framework active, we might not reproduce it if it depends on a specific allocation failure.\n+\n+    // But let's try calling munlockall.\n+    if (munlockall() != 0) {\n+        perror(\"munlockall\");\n+    }\n+\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 35",
+          "filename": "repro.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "\tif (prev && start <= prev->vm_start) {\n\t\tprintk(KERN_ERR \"vma_merge_existing_range: prev=%p start=%lx prev->vm_start=%lx prev->vm_end=%lx middle=%p middle->vm_start=%lx\\n\", prev, start, prev->vm_start, prev->vm_end, middle, middle ? middle->vm_start : 0);\n\t}\n\tVM_WARN_ON_VMG(prev && start <= prev->vm_start, vmg);",
+          "before": "\tVM_WARN_ON_VMG(prev && start <= prev->vm_start, vmg);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/vma.c\n+++ /linux/mm/vma.c\n@@ -820,0 +821,3 @@\n+\tif (prev && start <= prev->vm_start) {\n+\t\tprintk(KERN_ERR \"vma_merge_existing_range: prev=%p start=%lx prev->vm_start=%lx prev->vm_end=%lx middle=%p middle->vm_start=%lx\\n\", prev, start, prev->vm_start, prev->vm_end, middle, middle ? middle->vm_start : 0);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 40",
+          "filename": "mm/vma.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        },
+        {
+          "after": "\t\terror = mlock_fixup(&vmi, vma, &prev, vma->vm_start, vma->vm_end,\n\t\t\t\t    newflags);\n\t\t/* Ignore errors, but prev needs fixing up. */\n\t\tif (error) {\n\t\t\tprev = vma;\n            /* printk(KERN_INFO \"mlock_fixup failed for vma %p, prev reset to %p\\n\", vma, prev); */\n        }\n\t\tcond_resched();\n",
+          "before": "\t\terror = mlock_fixup(&vmi, vma, &prev, vma->vm_start, vma->vm_end,\n\t\t\t\t    newflags);\n\t\t/* Ignore errors, but prev needs fixing up. */\n\t\tif (error)\n\t\t\tprev = vma;\n\t\tcond_resched();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mlock.c\n+++ /linux/mm/mlock.c\n@@ -739 +739 @@\n-\t\tif (error)\n+\t\tif (error) {\n@@ -740,0 +741,2 @@\n+            /* printk(KERN_INFO \"mlock_fixup failed for vma %p, prev reset to %p\\n\", vma, prev); */\n+        }",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 42",
+          "filename": "mm/mlock.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 0,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t/* Ignore errors, but prev needs fixing up. */\n\t\tif (error) {\n\t\t\tprev = vma;\n\t\t\tvma_iter_set(&vmi, vma->vm_end);\n\t\t}",
+          "before": "\t\t/* Ignore errors, but prev needs fixing up. */\n\t\tif (error) {\n\t\t\tprev = vma;\n            /* printk(KERN_INFO \"mlock_fixup failed for vma %p, prev reset to %p\\n\", vma, prev); */\n        }",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mlock.c\n+++ /linux/mm/mlock.c\n@@ -741,2 +741,2 @@\n-            /* printk(KERN_INFO \"mlock_fixup failed for vma %p, prev reset to %p\\n\", vma, prev); */\n-        }\n+\t\t\tvma_iter_set(&vmi, vma->vm_end);\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 81",
+          "filename": "mm/mlock.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 81
+        }
+      ],
+      "end_step": 81,
+      "revision_index": 1,
+      "start_step": 81
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 85 rm #1",
+          "filename": "repro.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 85
+        }
+      ],
+      "end_step": 85,
+      "revision_index": 2,
+      "start_step": 85
+    }
+  ],
+  "success_step": 85
+}

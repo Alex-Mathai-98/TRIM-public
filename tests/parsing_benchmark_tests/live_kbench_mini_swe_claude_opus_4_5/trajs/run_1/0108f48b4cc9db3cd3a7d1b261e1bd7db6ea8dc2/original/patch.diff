@@ -1,0 +1,26 @@
+diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c
+index a8602729586a..aeccb6844f20 100644
+--- a/fs/nilfs2/dir.c
++++ b/fs/nilfs2/dir.c
+@@ -72,6 +72,8 @@ static unsigned int nilfs_last_byte(struct inode *inode, unsigned long page_nr)
+ {
+ 	unsigned int last_byte = inode->i_size;
+ 
++	if (page_nr << PAGE_SHIFT >= inode->i_size)
++		return 0;
+ 	last_byte -= page_nr << PAGE_SHIFT;
+ 	if (last_byte > PAGE_SIZE)
+ 		last_byte = PAGE_SIZE;
+@@ -485,6 +487,12 @@ int nilfs_add_link(struct dentry *dentry, struct inode *inode)
+ got_it:
+ 	from = offset_in_folio(folio, de);
+ 	to = from + rec_len;
++	if (to > folio_size(folio)) {
++		nilfs_error(dir->i_sb,
++			    "directory entry exceeds folio boundary");
++		err = -EIO;
++		goto out_unlock;
++	}
+ 	err = nilfs_prepare_chunk(folio, from, to);
+ 	if (err)
+ 		goto out_unlock;

@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tpercpu_down_write(&hu->proto_lock);\n\thu->proto = p;\n\n\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\n\terr = hci_uart_register_dev(hu);\n\tif (err) {\n\t\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\t\thu->proto = NULL;\n\t\tpercpu_up_write(&hu->proto_lock);\n\t\treturn err;\n\t}\n\n\tset_bit(HCI_UART_PROTO_READY, &hu->flags);\n\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\tpercpu_up_write(&hu->proto_lock);\n\n\treturn 0;",
+          "before": "\thu->proto = p;\n\n\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\n\terr = hci_uart_register_dev(hu);\n\tif (err) {\n\t\treturn err;\n\t}\n\n\tset_bit(HCI_UART_PROTO_READY, &hu->flags);\n\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c\nindex d0adae3267b4..12ef7b3e0d92 100644\n--- a/drivers/bluetooth/hci_ldisc.c\n+++ b/drivers/bluetooth/hci_ldisc.c\n@@ -710,17 +710,22 @@ static int hci_uart_set_proto(struct hci_uart *hu, int id)\n \tif (!p)\n \t\treturn -EPROTONOSUPPORT;\n \n+\tpercpu_down_write(&hu->proto_lock);\n \thu->proto = p;\n \n \tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n \n \terr = hci_uart_register_dev(hu);\n \tif (err) {\n+\t\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n+\t\thu->proto = NULL;\n+\t\tpercpu_up_write(&hu->proto_lock);\n \t\treturn err;\n \t}\n \n \tset_bit(HCI_UART_PROTO_READY, &hu->flags);\n \tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n+\tpercpu_up_write(&hu->proto_lock);\n \n \treturn 0;\n }",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "drivers/bluetooth/hci_ldisc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 0,
+      "start_step": 18
+    }
+  ],
+  "success_step": 18
+}

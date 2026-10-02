@@ -1,0 +1,24 @@
+diff --git a/drivers/net/team/team_core.c b/drivers/net/team/team_core.c
+index b75ceb90359f..d8fc0c79745d 100644
+--- a/drivers/net/team/team_core.c
++++ b/drivers/net/team/team_core.c
+@@ -1778,8 +1778,8 @@ static void team_change_rx_flags(struct net_device *dev, int change)
+ 	struct team_port *port;
+ 	int inc;
+ 
+-	mutex_lock(&team->lock);
+-	list_for_each_entry(port, &team->port_list, list) {
++	rcu_read_lock();
++	list_for_each_entry_rcu(port, &team->port_list, list) {
+ 		if (change & IFF_PROMISC) {
+ 			inc = dev->flags & IFF_PROMISC ? 1 : -1;
+ 			dev_set_promiscuity(port->dev, inc);
+@@ -1789,7 +1789,7 @@ static void team_change_rx_flags(struct net_device *dev, int change)
+ 			dev_set_allmulti(port->dev, inc);
+ 		}
+ 	}
+-	mutex_unlock(&team->lock);
++	rcu_read_unlock();
+ }
+ 
+ static void team_set_rx_mode(struct net_device *dev)

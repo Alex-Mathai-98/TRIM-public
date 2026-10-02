@@ -1,0 +1,218 @@
+{
+  "bug_id": "sphinx-doc__sphinx-8595",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if not self.__all__:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+        "after": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+        "explanation": "classic_swe step 10 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+        "after": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            print(f\"DEBUG: self.__all__ = {self.__all__}\")\n            print(f\"DEBUG: self.__all__ is None = {self.__all__ is None}\")\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                print(\"DEBUG: No __all__ defined, returning True\")\n                return True, list(members.values())\n            else:\n                print(f\"DEBUG: __all__ defined as {self.__all__}, marking non-members as skipped\")\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+        "explanation": "classic_swe step 68 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                self.__all__ = inspect.getall(self.object)\n        except AttributeError as exc:\n            # __all__ raises an error.\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+        "after": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                print(f\"DEBUG: Getting __all__ for {self.fullname}\")\n                print(f\"DEBUG: hasattr(self.object, '__all__') = {hasattr(self.object, '__all__')}\")\n                if hasattr(self.object, '__all__'):\n                    print(f\"DEBUG: self.object.__all__ = {self.object.__all__}\")\n                self.__all__ = inspect.getall(self.object)\n                print(f\"DEBUG: inspect.getall() returned: {self.__all__}\")\n        except AttributeError as exc:\n            # __all__ raises an error.\n            print(f\"DEBUG: AttributeError in getall: {exc}\")\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            print(f\"DEBUG: ValueError in getall: {exc}\")\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+        "explanation": "classic_swe step 71 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                print(f\"DEBUG: Getting __all__ for {self.fullname}\")\n                print(f\"DEBUG: hasattr(self.object, '__all__') = {hasattr(self.object, '__all__')}\")\n                if hasattr(self.object, '__all__'):\n                    print(f\"DEBUG: self.object.__all__ = {self.object.__all__}\")\n                self.__all__ = inspect.getall(self.object)\n                print(f\"DEBUG: inspect.getall() returned: {self.__all__}\")\n        except AttributeError as exc:\n            # __all__ raises an error.\n            print(f\"DEBUG: AttributeError in getall: {exc}\")\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            print(f\"DEBUG: ValueError in getall: {exc}\")\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+        "after": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                self.__all__ = inspect.getall(self.object)\n        except AttributeError as exc:\n            # __all__ raises an error.\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+        "explanation": "classic_swe step 77 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            print(f\"DEBUG: self.__all__ = {self.__all__}\")\n            print(f\"DEBUG: self.__all__ is None = {self.__all__ is None}\")\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                print(\"DEBUG: No __all__ defined, returning True\")\n                return True, list(members.values())\n            else:\n                print(f\"DEBUG: __all__ defined as {self.__all__}, marking non-members as skipped\")\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+        "after": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+        "explanation": "classic_swe step 78 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py\nindex d85d79617..c9f90acca 100644\n--- a/sphinx/ext/autodoc/__init__.py\n+++ b/sphinx/ext/autodoc/__init__.py\n@@ -1074,7 +1074,7 @@ class ModuleDocumenter(Documenter):\n     def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n         members = self.get_module_members()\n         if want_all:\n-            if not self.__all__:\n+            if self.__all__ is None:\n                 # for implicit module members, check __module__ to avoid\n                 # documenting imported objects\n                 return True, list(members.values())\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      16,
+      17,
+      20,
+      21
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 3,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 2,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_not_applicable": 3,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      1,
+      16,
+      17,
+      20,
+      21
+    ],
+    "edit_list_after_file_min": [
+      1,
+      16,
+      17,
+      20,
+      21
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 4,
+    "greedy_removal_edit_no_crash": 2,
+    "greedy_removal_edit_not_applicable": 6,
+    "edit_list_after_greedy": [
+      1,
+      16,
+      17,
+      20,
+      21
+    ],
+    "edit_list_after_refinement": [
+      1,
+      16,
+      17,
+      20,
+      21
+    ],
+    "edits_after_node_min": 5,
+    "edits_after_file_min": 5,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 5,
+  "reduction": "5_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if not self.__all__:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+          "after": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+          "explanation": "classic_swe step 10 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+          "after": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            print(f\"DEBUG: self.__all__ = {self.__all__}\")\n            print(f\"DEBUG: self.__all__ is None = {self.__all__ is None}\")\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                print(\"DEBUG: No __all__ defined, returning True\")\n                return True, list(members.values())\n            else:\n                print(f\"DEBUG: __all__ defined as {self.__all__}, marking non-members as skipped\")\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+          "explanation": "classic_swe step 68 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                self.__all__ = inspect.getall(self.object)\n        except AttributeError as exc:\n            # __all__ raises an error.\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+          "after": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                print(f\"DEBUG: Getting __all__ for {self.fullname}\")\n                print(f\"DEBUG: hasattr(self.object, '__all__') = {hasattr(self.object, '__all__')}\")\n                if hasattr(self.object, '__all__'):\n                    print(f\"DEBUG: self.object.__all__ = {self.object.__all__}\")\n                self.__all__ = inspect.getall(self.object)\n                print(f\"DEBUG: inspect.getall() returned: {self.__all__}\")\n        except AttributeError as exc:\n            # __all__ raises an error.\n            print(f\"DEBUG: AttributeError in getall: {exc}\")\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            print(f\"DEBUG: ValueError in getall: {exc}\")\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+          "explanation": "classic_swe step 71 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                print(f\"DEBUG: Getting __all__ for {self.fullname}\")\n                print(f\"DEBUG: hasattr(self.object, '__all__') = {hasattr(self.object, '__all__')}\")\n                if hasattr(self.object, '__all__'):\n                    print(f\"DEBUG: self.object.__all__ = {self.object.__all__}\")\n                self.__all__ = inspect.getall(self.object)\n                print(f\"DEBUG: inspect.getall() returned: {self.__all__}\")\n        except AttributeError as exc:\n            # __all__ raises an error.\n            print(f\"DEBUG: AttributeError in getall: {exc}\")\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            print(f\"DEBUG: ValueError in getall: {exc}\")\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+          "after": "    def import_object(self, raiseerror: bool = False) -> bool:\n        ret = super().import_object(raiseerror)\n\n        try:\n            if not self.options.ignore_module_all:\n                self.__all__ = inspect.getall(self.object)\n        except AttributeError as exc:\n            # __all__ raises an error.\n            logger.warning(__('%s.__all__ raises an error. Ignored: %r'),\n                           (self.fullname, exc), type='autodoc')\n        except ValueError as exc:\n            # invalid __all__ found.\n            logger.warning(__('__all__ should be a list of strings, not %r '\n                              '(in module %s) -- ignoring __all__') %\n                           (exc.args[0], self.fullname), type='autodoc')\n\n        return ret",
+          "explanation": "classic_swe step 77 #1"
+        },
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            print(f\"DEBUG: self.__all__ = {self.__all__}\")\n            print(f\"DEBUG: self.__all__ is None = {self.__all__ is None}\")\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                print(\"DEBUG: No __all__ defined, returning True\")\n                return True, list(members.values())\n            else:\n                print(f\"DEBUG: __all__ defined as {self.__all__}, marking non-members as skipped\")\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+          "after": "    def get_object_members(self, want_all: bool) -> Tuple[bool, ObjectMembers]:\n        members = self.get_module_members()\n        if want_all:\n            if self.__all__ is None:\n                # for implicit module members, check __module__ to avoid\n                # documenting imported objects\n                return True, list(members.values())\n            else:\n                for member in members.values():\n                    if member.__name__ not in self.__all__:\n                        member.skipped = True\n\n                return False, list(members.values())",
+          "explanation": "classic_swe step 78 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": false,
+    "f2p_pass": 0,
+    "f2p_fail": 1,
+    "p2p_pass": 0,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": false,
+    "f2p_pass": 0,
+    "f2p_fail": 1,
+    "p2p_pass": 0,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "gold_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 1,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

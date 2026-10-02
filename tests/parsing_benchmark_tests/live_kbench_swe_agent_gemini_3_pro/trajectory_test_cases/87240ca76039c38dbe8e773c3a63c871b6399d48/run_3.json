@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <stdio.h>\n#include <stdint.h>\n\ntypedef uint32_t ext4_lblk_t;\n\nint check_valid(ext4_lblk_t lblock, int len) {\n    if (len == 0) return 0;\n    if (lblock + len <= lblock) return 0;\n    return 1;\n}\n\nvoid check_bug(ext4_lblk_t lblk, int len) {\n    ext4_lblk_t end = lblk + len - 1;\n    if (end < lblk) {\n        printf(\"BUG triggered for lblk=%u len=%d\\n\", lblk, len);\n    } else {\n        printf(\"No BUG for lblk=%u len=%d\\n\", lblk, len);\n    }\n}\n\nint main() {\n    ext4_lblk_t lblks[] = {0xFFFFFFFF, 0xFFFFFFFE, 0x7FFFFFFF, 100};\n    int lengths[] = {0, 1, 2, 32768};\n\n    for (int i=0; i<4; i++) {\n        for (int j=0; j<4; j++) {\n            ext4_lblk_t l = lblks[i];\n            int len = lengths[j];\n            printf(\"Checking lblk=%u, len=%d: \", l, len);\n            int valid = check_valid(l, len);\n            if (valid) {\n                 printf(\"VALID. \");\n                 check_bug(l, len);\n            } else {\n                 printf(\"INVALID.\\n\");\n            }\n        }\n    }\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 19 create #1",
+          "filename": "check_math.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "\t\tint len = ext4_ext_get_actual_len(ex);\n\n\t\tif (lblk + len <= lblk)\n\t\t\tbreak;\n\n\t\tif (prev && (prev != lblk)) {\n\t\t\tif (prev > lblk)\n\t\t\t\tbreak;\n\t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n\t\t\t\t\t     EXTENT_STATUS_HOLE);\n\t\t}\n",
+          "before": "\t\tint len = ext4_ext_get_actual_len(ex);\n\n\t\tif (prev && (prev != lblk))\n\t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n\t\t\t\t\t     EXTENT_STATUS_HOLE);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c\nindex ca5499e9412b..c136f7d95a65 100644\n--- a/fs/ext4/extents.c\n+++ b/fs/ext4/extents.c\n@@ -535,9 +535,15 @@ static void ext4_cache_extents(struct inode *inode,\n \t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n \t\tint len = ext4_ext_get_actual_len(ex);\n \n-\t\tif (prev && (prev != lblk))\n+\t\tif (lblk + len <= lblk)\n+\t\t\tbreak;\n+\n+\t\tif (prev && (prev != lblk)) {\n+\t\t\tif (prev > lblk)\n+\t\t\t\tbreak;\n \t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n \t\t\t\t\t     EXTENT_STATUS_HOLE);\n+\t\t}\n \n \t\tif (ext4_ext_is_unwritten(ex))\n \t\t\tstatus = EXTENT_STATUS_UNWRITTEN;",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "fs/ext4/extents.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 19
+    }
+  ],
+  "success_step": 24
+}

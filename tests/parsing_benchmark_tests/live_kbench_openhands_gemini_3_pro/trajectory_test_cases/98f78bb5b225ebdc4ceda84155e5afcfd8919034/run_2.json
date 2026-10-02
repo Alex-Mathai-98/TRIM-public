@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&osb->system_file_mutex);\n\tif (arr && ((inode = *arr) != NULL)) {\n\t\t/* get a ref in addition to the array ref */\n\t\tinode = igrab(inode);\n\t\tmutex_unlock(&osb->system_file_mutex);\n\t\tBUG_ON(!inode);\n\n\t\treturn inode;\n\t}\n\tmutex_unlock(&osb->system_file_mutex);\n\n\t/* this gets one ref thru iget */\n\tinode = _ocfs2_get_system_file_inode(osb, type, slot);\n\n\t/* add one more if putting into array for first time */\n\tif (arr && inode) {\n\t\tmutex_lock(&osb->system_file_mutex);\n\t\tif (!*arr) {\n\t\t\t*arr = igrab(inode);\n\t\t\tBUG_ON(!*arr);\n\t\t} else {\n\t\t\t/*\n\t\t\t * Someone else must have raced us and\n\t\t\t * filled this in. discard our inode and\n\t\t\t * use theirs.\n\t\t\t */\n\t\t\tiput(inode);\n\t\t\tinode = igrab(*arr);\n\t\t\tBUG_ON(!inode);\n\t\t}\n\t\tmutex_unlock(&osb->system_file_mutex);\n\t}\n\treturn inode;",
+          "before": "\tmutex_lock(&osb->system_file_mutex);\n\tif (arr && ((inode = *arr) != NULL)) {\n\t\t/* get a ref in addition to the array ref */\n\t\tinode = igrab(inode);\n\t\tmutex_unlock(&osb->system_file_mutex);\n\t\tBUG_ON(!inode);\n\n\t\treturn inode;\n\t}\n\n\t/* this gets one ref thru iget */\n\tinode = _ocfs2_get_system_file_inode(osb, type, slot);\n\n\t/* add one more if putting into array for first time */\n\tif (arr && inode) {\n\t\t*arr = igrab(inode);\n\t\tBUG_ON(!*arr);\n\t}\n\tmutex_unlock(&osb->system_file_mutex);\n\treturn inode;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ocfs2/sysfile.c\n+++ /linux/fs/ocfs2/sysfile.c\n@@ -109,0 +110 @@\n+\tmutex_unlock(&osb->system_file_mutex);\n@@ -116,2 +117,15 @@\n-\t\t*arr = igrab(inode);\n-\t\tBUG_ON(!*arr);\n+\t\tmutex_lock(&osb->system_file_mutex);\n+\t\tif (!*arr) {\n+\t\t\t*arr = igrab(inode);\n+\t\t\tBUG_ON(!*arr);\n+\t\t} else {\n+\t\t\t/*\n+\t\t\t * Someone else must have raced us and\n+\t\t\t * filled this in. discard our inode and\n+\t\t\t * use theirs.\n+\t\t\t */\n+\t\t\tiput(inode);\n+\t\t\tinode = igrab(*arr);\n+\t\t\tBUG_ON(!inode);\n+\t\t}\n+\t\tmutex_unlock(&osb->system_file_mutex);\n@@ -119 +132,0 @@\n-\tmutex_unlock(&osb->system_file_mutex);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 28",
+          "filename": "fs/ocfs2/sysfile.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 28
+    }
+  ],
+  "success_step": 28
+}

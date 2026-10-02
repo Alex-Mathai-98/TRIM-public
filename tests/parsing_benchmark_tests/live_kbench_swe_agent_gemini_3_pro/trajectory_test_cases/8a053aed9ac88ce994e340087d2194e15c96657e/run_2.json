@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "u32 bch2_snapshot_tree_oldest_subvol(struct bch_fs *c, u32 snapshot_root)\n{\n\tu32 id = snapshot_root;\n\tu32 subvol = 0;\n\tconst struct snapshot_t *s;\n\n\trcu_read_lock();\n\twhile (id) {\n\t\ts = snapshot_t(c, id);\n\t\tif (!s)\n\t\t\tbreak;\n\n\t\tif (s->subvol && (!subvol || s->subvol < subvol))\n\t\t\tsubvol = s->subvol;\n\n\t\tid = bch2_snapshot_tree_next(c, id);\n\t}\n\trcu_read_unlock();\n\n\treturn subvol;\n}",
+          "before": "u32 bch2_snapshot_tree_oldest_subvol(struct bch_fs *c, u32 snapshot_root)\n{\n\tu32 id = snapshot_root;\n\tu32 subvol = 0, s;\n\n\trcu_read_lock();\n\twhile (id) {\n\t\ts = snapshot_t(c, id)->subvol;\n\n\t\tif (s && (!subvol || s < subvol))\n\t\t\tsubvol = s;\n\n\t\tid = bch2_snapshot_tree_next(c, id);\n\t}\n\trcu_read_unlock();\n\n\treturn subvol;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/snapshot.c b/fs/bcachefs/snapshot.c\nindex b7de29aed839..063b75a3dc1c 100644\n--- a/fs/bcachefs/snapshot.c\n+++ b/fs/bcachefs/snapshot.c\n@@ -393,14 +393,17 @@ static u32 bch2_snapshot_tree_next(struct bch_fs *c, u32 id)\n u32 bch2_snapshot_tree_oldest_subvol(struct bch_fs *c, u32 snapshot_root)\n {\n \tu32 id = snapshot_root;\n-\tu32 subvol = 0, s;\n+\tu32 subvol = 0;\n+\tconst struct snapshot_t *s;\n \n \trcu_read_lock();\n \twhile (id) {\n-\t\ts = snapshot_t(c, id)->subvol;\n+\t\ts = snapshot_t(c, id);\n+\t\tif (!s)\n+\t\t\tbreak;\n \n-\t\tif (s && (!subvol || s < subvol))\n-\t\t\tsubvol = s;\n+\t\tif (s->subvol && (!subvol || s->subvol < subvol))\n+\t\t\tsubvol = s->subvol;\n \n \t\tid = bch2_snapshot_tree_next(c, id);\n \t}",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "fs/bcachefs/snapshot.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 14
+    },
+    {
+      "edits": [
+        {
+          "after": "static u32 bch2_snapshot_tree_next(struct bch_fs *c, u32 id)\n{\n\tu32 n, parent;\n\n\tn = bch2_snapshot_left_child(c, id);\n\tif (n)\n\t\treturn n;\n\n\twhile ((parent = bch2_snapshot_parent(c, id))) {\n\t\tif (!snapshot_t(c, parent))\n\t\t\treturn 0;\n\n\t\tn = bch2_snapshot_right_child(c, parent);\n\t\tif (n && n != id)\n\t\t\treturn n;\n\t\tid = parent;\n\t}\n\n\treturn 0;\n}",
+          "before": "static u32 bch2_snapshot_tree_next(struct bch_fs *c, u32 id)\n{\n\tu32 n, parent;\n\n\tn = bch2_snapshot_left_child(c, id);\n\tif (n)\n\t\treturn n;\n\n\twhile ((parent = bch2_snapshot_parent(c, id))) {\n\t\tn = bch2_snapshot_right_child(c, parent);\n\t\tif (n && n != id)\n\t\t\treturn n;\n\t\tid = parent;\n\t}\n\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/snapshot.c b/fs/bcachefs/snapshot.c\nindex b7de29aed839..68e6bbdc95be 100644\n--- a/fs/bcachefs/snapshot.c\n+++ b/fs/bcachefs/snapshot.c\n@@ -381,6 +381,9 @@ static u32 bch2_snapshot_tree_next(struct bch_fs *c, u32 id)\n \t\treturn n;\n \n \twhile ((parent = bch2_snapshot_parent(c, id))) {\n+\t\tif (!snapshot_t(c, parent))\n+\t\t\treturn 0;\n+\n \t\tn = bch2_snapshot_right_child(c, parent);\n \t\tif (n && n != id)\n \t\t\treturn n;\n@@ -393,14 +396,17 @@ static u32 bch2_snapshot_tree_next(struct bch_fs *c, u32 id)\n u32 bch2_snapshot_tree_oldest_subvol(struct bch_fs *c, u32 snapshot_root)\n {\n \tu32 id = snapshot_root;\n-\tu32 subvol = 0, s;\n+\tu32 subvol = 0;\n+\tconst struct snapshot_t *s;\n \n \trcu_read_lock();\n \twhile (id) {\n-\t\ts = snapshot_t(c, id)->subvol;\n+\t\ts = snapshot_t(c, id);\n+\t\tif (!s)\n+\t\t\tbreak;\n \n-\t\tif (s && (!subvol || s < subvol))\n-\t\t\tsubvol = s;\n+\t\tif (s->subvol && (!subvol || s->subvol < subvol))\n+\t\t\tsubvol = s->subvol;\n \n \t\tid = bch2_snapshot_tree_next(c, id);\n \t}",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "fs/bcachefs/snapshot.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 1,
+      "start_step": 22
+    }
+  ],
+  "success_step": 22
+}

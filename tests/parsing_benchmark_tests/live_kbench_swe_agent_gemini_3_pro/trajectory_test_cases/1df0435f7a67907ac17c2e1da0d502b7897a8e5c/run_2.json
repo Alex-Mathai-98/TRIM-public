@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct inode;\nbool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx);\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..200d9285ecc7 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -716,6 +716,9 @@ struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tbool allow_alloc_fallback);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n+struct inode;\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx);\n+\n \n int hugetlb_add_to_page_cache(struct folio *folio, struct address_space *mapping,\n \t\t\tpgoff_t idx);",
+          "explanation": "classic_swe step 23 insert #1",
+          "filename": "include/linux/hugetlb.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 719,
+          "step_index": 23
+        },
+        {
+          "after": "bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx)\n{\n\tstruct resv_map *resv = inode_resv_map(inode);\n\tlong needed;\n\tlong chg;\n\n\tif (!resv)\n\t\treturn false;\n\n\tspin_lock(&resv->lock);\n\tchg = add_reservation_in_range(resv, idx, idx + 1, NULL, NULL, &needed);\n\tspin_unlock(&resv->lock);\n\n\treturn chg == 0;\n}\nEXPORT_SYMBOL_GPL(hugetlb_file_has_reservation);\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..200d9285ecc7 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -716,6 +716,9 @@ struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tbool allow_alloc_fallback);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n+struct inode;\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx);\n+\n \n int hugetlb_add_to_page_cache(struct folio *folio, struct address_space *mapping,\n \t\t\tpgoff_t idx);\ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..d463cd14849d 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,20 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx)\n+{\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong needed;\n+\tlong chg;\n+\n+\tif (!resv)\n+\t\treturn false;\n+\n+\tspin_lock(&resv->lock);\n+\tchg = add_reservation_in_range(resv, idx, idx + 1, NULL, NULL, &needed);\n+\tspin_unlock(&resv->lock);\n+\n+\treturn chg == 0;\n+}\n+EXPORT_SYMBOL_GPL(hugetlb_file_has_reservation);",
+          "explanation": "classic_swe step 30 insert #1",
+          "filename": "mm/hugetlb.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 7973,
+          "step_index": 30
+        },
+        {
+          "after": "\t\tif (hugetlb_file_has_reservation(file_inode(memfd), idx))\n\t\t\tfolio = alloc_hugetlb_folio_reserve(h,\n\t\t\t\t\t\t\t    numa_node_id(),\n\t\t\t\t\t\t\t    NULL,\n\t\t\t\t\t\t\t    gfp_mask);\n\t\telse\n\t\t\tfolio = alloc_hugetlb_folio_nodemask(h,\n\t\t\t\t\t\t\t     numa_node_id(),\n\t\t\t\t\t\t\t     NULL,\n\t\t\t\t\t\t\t     gfp_mask,\n\t\t\t\t\t\t\t     false);\n",
+          "before": "\t\tfolio = alloc_hugetlb_folio_reserve(h,\n\t\t\t\t\t\t    numa_node_id(),\n\t\t\t\t\t\t    NULL,\n\t\t\t\t\t\t    gfp_mask);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..200d9285ecc7 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -716,6 +716,9 @@ struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tbool allow_alloc_fallback);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n+struct inode;\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx);\n+\n \n int hugetlb_add_to_page_cache(struct folio *folio, struct address_space *mapping,\n \t\t\tpgoff_t idx);\ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..d463cd14849d 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,20 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx)\n+{\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong needed;\n+\tlong chg;\n+\n+\tif (!resv)\n+\t\treturn false;\n+\n+\tspin_lock(&resv->lock);\n+\tchg = add_reservation_in_range(resv, idx, idx + 1, NULL, NULL, &needed);\n+\tspin_unlock(&resv->lock);\n+\n+\treturn chg == 0;\n+}\n+EXPORT_SYMBOL_GPL(hugetlb_file_has_reservation);\ndiff --git a/mm/memfd.c b/mm/memfd.c\nindex ab367e61553d..72fdb0410db9 100644\n--- a/mm/memfd.c\n+++ b/mm/memfd.c\n@@ -86,10 +86,17 @@ struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)\n \t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n \t\tidx >>= huge_page_order(h);\n \n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n-\t\t\t\t\t\t    numa_node_id(),\n-\t\t\t\t\t\t    NULL,\n-\t\t\t\t\t\t    gfp_mask);\n+\t\tif (hugetlb_file_has_reservation(file_inode(memfd), idx))\n+\t\t\tfolio = alloc_hugetlb_folio_reserve(h,\n+\t\t\t\t\t\t\t    numa_node_id(),\n+\t\t\t\t\t\t\t    NULL,\n+\t\t\t\t\t\t\t    gfp_mask);\n+\t\telse\n+\t\t\tfolio = alloc_hugetlb_folio_nodemask(h,\n+\t\t\t\t\t\t\t     numa_node_id(),\n+\t\t\t\t\t\t\t     NULL,\n+\t\t\t\t\t\t\t     gfp_mask,\n+\t\t\t\t\t\t\t     false);\n \t\tif (folio) {\n \t\t\terr = hugetlb_add_to_page_cache(folio,\n \t\t\t\t\t\t\tmemfd->f_mapping,",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "mm/memfd.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 23
+    },
+    {
+      "edits": [
+        {
+          "after": "static inline bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx)\n{\n\treturn false;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..695c40d670b9 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -716,6 +716,9 @@ struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tbool allow_alloc_fallback);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n+struct inode;\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx);\n+\n \n int hugetlb_add_to_page_cache(struct folio *folio, struct address_space *mapping,\n \t\t\tpgoff_t idx);\n@@ -1123,6 +1126,11 @@ alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n {\n \treturn NULL;\n }\n+static inline bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx)\n+{\n+\treturn false;\n+}\n+\n \n static inline struct folio *\n alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..d463cd14849d 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,20 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+bool hugetlb_file_has_reservation(struct inode *inode, pgoff_t idx)\n+{\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong needed;\n+\tlong chg;\n+\n+\tif (!resv)\n+\t\treturn false;\n+\n+\tspin_lock(&resv->lock);\n+\tchg = add_reservation_in_range(resv, idx, idx + 1, NULL, NULL, &needed);\n+\tspin_unlock(&resv->lock);\n+\n+\treturn chg == 0;\n+}\n+EXPORT_SYMBOL_GPL(hugetlb_file_has_reservation);\ndiff --git a/mm/memfd.c b/mm/memfd.c\nindex ab367e61553d..72fdb0410db9 100644\n--- a/mm/memfd.c\n+++ b/mm/memfd.c\n@@ -86,10 +86,17 @@ struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)\n \t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n \t\tidx >>= huge_page_order(h);\n \n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n-\t\t\t\t\t\t    numa_node_id(),\n-\t\t\t\t\t\t    NULL,\n-\t\t\t\t\t\t    gfp_mask);\n+\t\tif (hugetlb_file_has_reservation(file_inode(memfd), idx))\n+\t\t\tfolio = alloc_hugetlb_folio_reserve(h,\n+\t\t\t\t\t\t\t    numa_node_id(),\n+\t\t\t\t\t\t\t    NULL,\n+\t\t\t\t\t\t\t    gfp_mask);\n+\t\telse\n+\t\t\tfolio = alloc_hugetlb_folio_nodemask(h,\n+\t\t\t\t\t\t\t     numa_node_id(),\n+\t\t\t\t\t\t\t     NULL,\n+\t\t\t\t\t\t\t     gfp_mask,\n+\t\t\t\t\t\t\t     false);\n \t\tif (folio) {\n \t\t\terr = hugetlb_add_to_page_cache(folio,\n \t\t\t\t\t\t\tmemfd->f_mapping,",
+          "explanation": "classic_swe step 42 insert #1",
+          "filename": "include/linux/hugetlb.h",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1129,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 1,
+      "start_step": 42
+    }
+  ],
+  "success_step": 42
+}

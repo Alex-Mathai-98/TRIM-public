@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tint status;\n\tstruct inode *inode = NULL;\n\tstruct buffer_head *bh = NULL;\n\tstruct ocfs2_dinode *di;\n\tstruct ocfs2_truncate_log *tl;\n\n\tinode = ocfs2_get_system_file_inode(osb,\n\t\t\t\t\t   TRUNCATE_LOG_SYSTEM_INODE,\n\t\t\t\t\t   slot_num);\n\tif (!inode) {\n\t\tstatus = -EINVAL;\n\t\tmlog(ML_ERROR, \"Could not get load truncate log inode!\\n\");\n\t\tgoto bail;\n\t}\n\n\tstatus = ocfs2_read_inode_block(inode, &bh);\n\tif (status < 0) {\n\t\tiput(inode);\n\t\tmlog_errno(status);\n\t\tgoto bail;\n\t}\n\n\tdi = (struct ocfs2_dinode *)bh->b_data;\n\ttl = &di->id2.i_dealloc;\n\tif (le16_to_cpu(tl->tl_count) > ocfs2_truncate_recs_per_inode(osb->sb) ||\n\t    le16_to_cpu(tl->tl_count) == 0) {\n\t\tstatus = -EINVAL;\n\t\tmlog(ML_ERROR, \"Truncate log has invalid count %u (wanted max %u)\\n\",\n\t\t     le16_to_cpu(tl->tl_count),\n\t\t     ocfs2_truncate_recs_per_inode(osb->sb));\n\t\tiput(inode);\n\t\tbrelse(bh);\n\t\tgoto bail;\n\t}\n\n\t*tl_inode = inode;",
+          "before": "\tint status;\n\tstruct inode *inode = NULL;\n\tstruct buffer_head *bh = NULL;\n\n\tinode = ocfs2_get_system_file_inode(osb,\n\t\t\t\t\t   TRUNCATE_LOG_SYSTEM_INODE,\n\t\t\t\t\t   slot_num);\n\tif (!inode) {\n\t\tstatus = -EINVAL;\n\t\tmlog(ML_ERROR, \"Could not get load truncate log inode!\\n\");\n\t\tgoto bail;\n\t}\n\n\tstatus = ocfs2_read_inode_block(inode, &bh);\n\tif (status < 0) {\n\t\tiput(inode);\n\t\tmlog_errno(status);\n\t\tgoto bail;\n\t}\n\n\t*tl_inode = inode;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c\nindex 5cf698785fae..65215b6f54ce 100644\n--- a/fs/ocfs2/alloc.c\n+++ b/fs/ocfs2/alloc.c\n@@ -6154,6 +6154,8 @@ static int ocfs2_get_truncate_log_info(struct ocfs2_super *osb,\n \tint status;\n \tstruct inode *inode = NULL;\n \tstruct buffer_head *bh = NULL;\n+\tstruct ocfs2_dinode *di;\n+\tstruct ocfs2_truncate_log *tl;\n \n \tinode = ocfs2_get_system_file_inode(osb,\n \t\t\t\t\t   TRUNCATE_LOG_SYSTEM_INODE,\n@@ -6171,6 +6173,19 @@ static int ocfs2_get_truncate_log_info(struct ocfs2_super *osb,\n \t\tgoto bail;\n \t}\n \n+\tdi = (struct ocfs2_dinode *)bh->b_data;\n+\ttl = &di->id2.i_dealloc;\n+\tif (le16_to_cpu(tl->tl_count) > ocfs2_truncate_recs_per_inode(osb->sb) ||\n+\t    le16_to_cpu(tl->tl_count) == 0) {\n+\t\tstatus = -EINVAL;\n+\t\tmlog(ML_ERROR, \"Truncate log has invalid count %u (wanted max %u)\\n\",\n+\t\t     le16_to_cpu(tl->tl_count),\n+\t\t     ocfs2_truncate_recs_per_inode(osb->sb));\n+\t\tiput(inode);\n+\t\tbrelse(bh);\n+\t\tgoto bail;\n+\t}\n+\n \t*tl_inode = inode;\n \t*tl_bh    = bh;\n bail:",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "fs/ocfs2/alloc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    }
+  ],
+  "success_step": 19
+}

@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n\t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n{\n\tstruct net_bridge_fdb_entry *fdb;\n\n\t/* some users want to always flood. */\n\tif (hold_time(br) == 0)\n\t\treturn 0;\n\n\tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n\tif (likely(fdb)) {\n\t\t/* attempt to update an entry for a local interface */\n\t\tif (unlikely(test_bit(BR_FDB_LOCAL, &fdb->flags))) {\n\t\t\tif (net_ratelimit())\n\t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n\t\t\t\t\tsource->dev->name, addr, vid);\n\t\t\treturn -1;\n\t\t} else {\n",
+          "before": "void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n\t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n{\n\tstruct net_bridge_fdb_entry *fdb;\n\n\t/* some users want to always flood. */\n\tif (hold_time(br) == 0)\n\t\treturn;\n\n\tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n\tif (likely(fdb)) {\n\t\t/* attempt to update an entry for a local interface */\n\t\tif (unlikely(test_bit(BR_FDB_LOCAL, &fdb->flags))) {\n\t\t\tif (net_ratelimit())\n\t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n\t\t\t\t\tsource->dev->name, addr, vid);\n\t\t} else {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bridge/br_fdb.c b/net/bridge/br_fdb.c\nindex 642b8ccaae8e..00634b0eef31 100644\n--- a/net/bridge/br_fdb.c\n+++ b/net/bridge/br_fdb.c\n@@ -887,14 +887,14 @@ static bool __fdb_mark_active(struct net_bridge_fdb_entry *fdb)\n \t\t  test_and_clear_bit(BR_FDB_NOTIFY_INACTIVE, &fdb->flags));\n }\n \n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n {\n \tstruct net_bridge_fdb_entry *fdb;\n \n \t/* some users want to always flood. */\n \tif (hold_time(br) == 0)\n-\t\treturn;\n+\t\treturn 0;\n \n \tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n \tif (likely(fdb)) {\n@@ -903,6 +903,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t\tif (net_ratelimit())\n \t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n \t\t\t\t\tsource->dev->name, addr, vid);\n+\t\t\treturn -1;\n \t\t} else {\n \t\t\tunsigned long now = jiffies;\n \t\t\tbool fdb_modified = false;",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "net/bridge/br_fdb.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        },
+        {
+          "after": "\t\tspin_unlock(&br->hash_lock);\n\t}\n\treturn 0;\n}\n",
+          "before": "\t\tspin_unlock(&br->hash_lock);\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bridge/br_fdb.c b/net/bridge/br_fdb.c\nindex 642b8ccaae8e..28611eaa64ac 100644\n--- a/net/bridge/br_fdb.c\n+++ b/net/bridge/br_fdb.c\n@@ -887,14 +887,14 @@ static bool __fdb_mark_active(struct net_bridge_fdb_entry *fdb)\n \t\t  test_and_clear_bit(BR_FDB_NOTIFY_INACTIVE, &fdb->flags));\n }\n \n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n {\n \tstruct net_bridge_fdb_entry *fdb;\n \n \t/* some users want to always flood. */\n \tif (hold_time(br) == 0)\n-\t\treturn;\n+\t\treturn 0;\n \n \tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n \tif (likely(fdb)) {\n@@ -903,6 +903,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t\tif (net_ratelimit())\n \t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n \t\t\t\t\tsource->dev->name, addr, vid);\n+\t\t\treturn -1;\n \t\t} else {\n \t\t\tunsigned long now = jiffies;\n \t\t\tbool fdb_modified = false;\n@@ -953,6 +954,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t */\n \t\tspin_unlock(&br->hash_lock);\n \t}\n+\treturn 0;\n }\n \n /* Dump information about entries, in response to GETNEIGH */",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "net/bridge/br_fdb.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n\t\t   const unsigned char *addr, u16 vid, unsigned long flags);\n",
+          "before": "void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n\t\t   const unsigned char *addr, u16 vid, unsigned long flags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bridge/br_fdb.c b/net/bridge/br_fdb.c\nindex 642b8ccaae8e..28611eaa64ac 100644\n--- a/net/bridge/br_fdb.c\n+++ b/net/bridge/br_fdb.c\n@@ -887,14 +887,14 @@ static bool __fdb_mark_active(struct net_bridge_fdb_entry *fdb)\n \t\t  test_and_clear_bit(BR_FDB_NOTIFY_INACTIVE, &fdb->flags));\n }\n \n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n {\n \tstruct net_bridge_fdb_entry *fdb;\n \n \t/* some users want to always flood. */\n \tif (hold_time(br) == 0)\n-\t\treturn;\n+\t\treturn 0;\n \n \tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n \tif (likely(fdb)) {\n@@ -903,6 +903,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t\tif (net_ratelimit())\n \t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n \t\t\t\t\tsource->dev->name, addr, vid);\n+\t\t\treturn -1;\n \t\t} else {\n \t\t\tunsigned long now = jiffies;\n \t\t\tbool fdb_modified = false;\n@@ -953,6 +954,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t */\n \t\tspin_unlock(&br->hash_lock);\n \t}\n+\treturn 0;\n }\n \n /* Dump information about entries, in response to GETNEIGH */\ndiff --git a/net/bridge/br_private.h b/net/bridge/br_private.h\nindex 041f6e571a20..2447d1d4a039 100644\n--- a/net/bridge/br_private.h\n+++ b/net/bridge/br_private.h\n@@ -848,7 +848,7 @@ int br_fdb_fillbuf(struct net_bridge *br, void *buf, unsigned long count,\n \t\t   unsigned long off);\n int br_fdb_add_local(struct net_bridge *br, struct net_bridge_port *source,\n \t\t     const unsigned char *addr, u16 vid);\n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags);\n \n int br_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "net/bridge/br_private.h",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        },
+        {
+          "after": "\t/* insert into forwarding database after filtering to avoid spoofing */\n\tif (p->flags & BR_LEARNING &&\n\t    br_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0))\n\t\tgoto drop;\n\n\tpromisc = !!(br->dev->flags & IFF_PROMISC);\n",
+          "before": "\t/* insert into forwarding database after filtering to avoid spoofing */\n\tif (p->flags & BR_LEARNING)\n\t\tbr_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0);\n\n\tpromisc = !!(br->dev->flags & IFF_PROMISC);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bridge/br_fdb.c b/net/bridge/br_fdb.c\nindex 642b8ccaae8e..28611eaa64ac 100644\n--- a/net/bridge/br_fdb.c\n+++ b/net/bridge/br_fdb.c\n@@ -887,14 +887,14 @@ static bool __fdb_mark_active(struct net_bridge_fdb_entry *fdb)\n \t\t  test_and_clear_bit(BR_FDB_NOTIFY_INACTIVE, &fdb->flags));\n }\n \n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n {\n \tstruct net_bridge_fdb_entry *fdb;\n \n \t/* some users want to always flood. */\n \tif (hold_time(br) == 0)\n-\t\treturn;\n+\t\treturn 0;\n \n \tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n \tif (likely(fdb)) {\n@@ -903,6 +903,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t\tif (net_ratelimit())\n \t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n \t\t\t\t\tsource->dev->name, addr, vid);\n+\t\t\treturn -1;\n \t\t} else {\n \t\t\tunsigned long now = jiffies;\n \t\t\tbool fdb_modified = false;\n@@ -953,6 +954,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t */\n \t\tspin_unlock(&br->hash_lock);\n \t}\n+\treturn 0;\n }\n \n /* Dump information about entries, in response to GETNEIGH */\ndiff --git a/net/bridge/br_input.c b/net/bridge/br_input.c\nindex ceaa5a89b947..f4923ecd4486 100644\n--- a/net/bridge/br_input.c\n+++ b/net/bridge/br_input.c\n@@ -137,8 +137,9 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb\n \tnbp_switchdev_frame_mark(p, skb);\n \n \t/* insert into forwarding database after filtering to avoid spoofing */\n-\tif (p->flags & BR_LEARNING)\n-\t\tbr_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0);\n+\tif (p->flags & BR_LEARNING &&\n+\t    br_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0))\n+\t\tgoto drop;\n \n \tpromisc = !!(br->dev->flags & IFF_PROMISC);\n \tlocal_rcv = promisc;\ndiff --git a/net/bridge/br_private.h b/net/bridge/br_private.h\nindex 041f6e571a20..2447d1d4a039 100644\n--- a/net/bridge/br_private.h\n+++ b/net/bridge/br_private.h\n@@ -848,7 +848,7 @@ int br_fdb_fillbuf(struct net_bridge *br, void *buf, unsigned long count,\n \t\t   unsigned long off);\n int br_fdb_add_local(struct net_bridge *br, struct net_bridge_port *source,\n \t\t     const unsigned char *addr, u16 vid);\n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags);\n \n int br_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "net/bridge/br_input.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        }
+      ],
+      "end_step": 39,
+      "revision_index": 0,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\t/* insert into forwarding database after filtering to avoid spoofing */\n\tif (p->flags & BR_LEARNING) {\n\t\tif (br_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0))\n\t\t\tgoto drop;\n\t} else {\n\t\tstruct net_bridge_fdb_entry *fdb_src =\n\t\t\tbr_fdb_find_rcu(br, eth_hdr(skb)->h_source, vid);\n\n\t\tif (fdb_src && unlikely(test_bit(BR_FDB_LOCAL, &fdb_src->flags))) {\n\t\t\tif (net_ratelimit())\n\t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n\t\t\t\t\tp->dev->name, eth_hdr(skb)->h_source, vid);\n\t\t\tgoto drop;\n\t\t}\n\t}\n\n\tpromisc = !!(br->dev->flags & IFF_PROMISC);\n",
+          "before": "\t/* insert into forwarding database after filtering to avoid spoofing */\n\tif (p->flags & BR_LEARNING &&\n\t    br_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0))\n\t\tgoto drop;\n\n\tpromisc = !!(br->dev->flags & IFF_PROMISC);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bridge/br_fdb.c b/net/bridge/br_fdb.c\nindex 642b8ccaae8e..28611eaa64ac 100644\n--- a/net/bridge/br_fdb.c\n+++ b/net/bridge/br_fdb.c\n@@ -887,14 +887,14 @@ static bool __fdb_mark_active(struct net_bridge_fdb_entry *fdb)\n \t\t  test_and_clear_bit(BR_FDB_NOTIFY_INACTIVE, &fdb->flags));\n }\n \n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags)\n {\n \tstruct net_bridge_fdb_entry *fdb;\n \n \t/* some users want to always flood. */\n \tif (hold_time(br) == 0)\n-\t\treturn;\n+\t\treturn 0;\n \n \tfdb = fdb_find_rcu(&br->fdb_hash_tbl, addr, vid);\n \tif (likely(fdb)) {\n@@ -903,6 +903,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t\tif (net_ratelimit())\n \t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n \t\t\t\t\tsource->dev->name, addr, vid);\n+\t\t\treturn -1;\n \t\t} else {\n \t\t\tunsigned long now = jiffies;\n \t\t\tbool fdb_modified = false;\n@@ -953,6 +954,7 @@ void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t */\n \t\tspin_unlock(&br->hash_lock);\n \t}\n+\treturn 0;\n }\n \n /* Dump information about entries, in response to GETNEIGH */\ndiff --git a/net/bridge/br_input.c b/net/bridge/br_input.c\nindex ceaa5a89b947..267cff603f54 100644\n--- a/net/bridge/br_input.c\n+++ b/net/bridge/br_input.c\n@@ -137,8 +137,20 @@ int br_handle_frame_finish(struct net *net, struct sock *sk, struct sk_buff *skb\n \tnbp_switchdev_frame_mark(p, skb);\n \n \t/* insert into forwarding database after filtering to avoid spoofing */\n-\tif (p->flags & BR_LEARNING)\n-\t\tbr_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0);\n+\tif (p->flags & BR_LEARNING) {\n+\t\tif (br_fdb_update(br, p, eth_hdr(skb)->h_source, vid, 0))\n+\t\t\tgoto drop;\n+\t} else {\n+\t\tstruct net_bridge_fdb_entry *fdb_src =\n+\t\t\tbr_fdb_find_rcu(br, eth_hdr(skb)->h_source, vid);\n+\n+\t\tif (fdb_src && unlikely(test_bit(BR_FDB_LOCAL, &fdb_src->flags))) {\n+\t\t\tif (net_ratelimit())\n+\t\t\t\tbr_warn(br, \"received packet on %s with own address as source address (addr:%pM, vlan:%u)\\n\",\n+\t\t\t\t\tp->dev->name, eth_hdr(skb)->h_source, vid);\n+\t\t\tgoto drop;\n+\t\t}\n+\t}\n \n \tpromisc = !!(br->dev->flags & IFF_PROMISC);\n \tlocal_rcv = promisc;\ndiff --git a/net/bridge/br_private.h b/net/bridge/br_private.h\nindex 041f6e571a20..2447d1d4a039 100644\n--- a/net/bridge/br_private.h\n+++ b/net/bridge/br_private.h\n@@ -848,7 +848,7 @@ int br_fdb_fillbuf(struct net_bridge *br, void *buf, unsigned long count,\n \t\t   unsigned long off);\n int br_fdb_add_local(struct net_bridge *br, struct net_bridge_port *source,\n \t\t     const unsigned char *addr, u16 vid);\n-void br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n+int br_fdb_update(struct net_bridge *br, struct net_bridge_port *source,\n \t\t   const unsigned char *addr, u16 vid, unsigned long flags);\n \n int br_fdb_delete(struct ndmsg *ndm, struct nlattr *tb[],",
+          "explanation": "classic_swe step 50 #1",
+          "filename": "net/bridge/br_input.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "revision_index": 1,
+      "start_step": 50
+    }
+  ],
+  "success_step": 50
+}

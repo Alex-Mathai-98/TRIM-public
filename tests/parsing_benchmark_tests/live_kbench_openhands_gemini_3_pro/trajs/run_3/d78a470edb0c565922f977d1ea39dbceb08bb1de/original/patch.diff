@@ -1,0 +1,22 @@
+diff --git a/net/tls/tls.h b/net/tls/tls.h
+index 774859b63f0d..47f0a285f4c6 100644
+--- a/net/tls/tls.h
++++ b/net/tls/tls.h
+@@ -40,6 +40,7 @@
+ #include <linux/skmsg.h>
+ #include <net/tls.h>
+ #include <net/tls_prot.h>
++#include <net/tcp.h>
+ 
+ #define TLS_PAGE_ORDER	(min_t(unsigned int, PAGE_ALLOC_COSTLY_ORDER,	\
+ 			       TLS_MAX_PAYLOAD_SIZE >> PAGE_SHIFT))
+@@ -216,7 +217,8 @@ static inline struct sk_buff *tls_strp_msg(struct tls_sw_context_rx *ctx)
+ 
+ static inline bool tls_strp_msg_ready(struct tls_sw_context_rx *ctx)
+ {
+-	return READ_ONCE(ctx->strp.msg_ready);
++	return READ_ONCE(ctx->strp.msg_ready) &&
++		(tcp_inq(ctx->strp.sk) >= ctx->strp.stm.full_len);
+ }
+ 
+ static inline bool tls_strp_msg_mixed_decrypted(struct tls_sw_context_rx *ctx)

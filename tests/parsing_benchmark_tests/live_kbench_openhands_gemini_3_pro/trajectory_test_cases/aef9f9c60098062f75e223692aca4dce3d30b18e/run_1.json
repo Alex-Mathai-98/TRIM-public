@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "/*\n * Hairy code ahead: the control VCC may be closed while we're still\n * waiting for an answer, so we need to re-validate out_vcc every once\n * in a while.\n */\n\n\nstatic struct atm_vcc *find_vcc(struct atm_dev *dev, short vpi, int vci)\n{\n\tstruct hlist_head *head;\n\tstruct atm_vcc *vcc;\n\tstruct sock *s;\n\n\thead = &vcc_hash[vci & (VCC_HTABLE_SIZE -1)];\n\n\tsk_for_each(s, head) {\n\t\tvcc = atm_sk(s);\n\t\tif (vcc->dev == dev &&\n\t\t    vcc->vci == vci && vcc->vpi == vpi &&\n\t\t    vcc->qos.rxtp.traffic_class != ATM_NONE) {\n\t\t\t\treturn vcc;\n\t\t}\n\t}\n\treturn NULL;\n}\n\n\nstatic int atmtcp_send_control(struct atm_vcc *vcc,int type,",
+          "before": "/*\n * Hairy code ahead: the control VCC may be closed while we're still\n * waiting for an answer, so we need to re-validate out_vcc every once\n * in a while.\n */\n\n\nstatic int atmtcp_send_control(struct atm_vcc *vcc,int type,",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -40,0 +41,20 @@\n+\n+\n+static struct atm_vcc *find_vcc(struct atm_dev *dev, short vpi, int vci)\n+{\n+\tstruct hlist_head *head;\n+\tstruct atm_vcc *vcc;\n+\tstruct sock *s;\n+\n+\thead = &vcc_hash[vci & (VCC_HTABLE_SIZE -1)];\n+\n+\tsk_for_each(s, head) {\n+\t\tvcc = atm_sk(s);\n+\t\tif (vcc->dev == dev &&\n+\t\t    vcc->vci == vci && vcc->vpi == vpi &&\n+\t\t    vcc->qos.rxtp.traffic_class != ATM_NONE) {\n+\t\t\t\treturn vcc;\n+\t\t}\n+\t}\n+\treturn NULL;\n+}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 54",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        },
+        {
+          "after": "",
+          "before": "\nstatic struct atm_vcc *find_vcc(struct atm_dev *dev, short vpi, int vci)\n{\n        struct hlist_head *head;\n        struct atm_vcc *vcc;\n        struct sock *s;\n\n        head = &vcc_hash[vci & (VCC_HTABLE_SIZE -1)];\n\n\tsk_for_each(s, head) {\n                vcc = atm_sk(s);\n                if (vcc->dev == dev &&\n                    vcc->vci == vci && vcc->vpi == vpi &&\n                    vcc->qos.rxtp.traffic_class != ATM_NONE) {\n                                return vcc;\n                }\n        }\n        return NULL;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -283,19 +282,0 @@\n-static struct atm_vcc *find_vcc(struct atm_dev *dev, short vpi, int vci)\n-{\n-        struct hlist_head *head;\n-        struct atm_vcc *vcc;\n-        struct sock *s;\n-\n-        head = &vcc_hash[vci & (VCC_HTABLE_SIZE -1)];\n-\n-\tsk_for_each(s, head) {\n-                vcc = atm_sk(s);\n-                if (vcc->dev == dev &&\n-                    vcc->vci == vci && vcc->vpi == vpi &&\n-                    vcc->qos.rxtp.traffic_class != ATM_NONE) {\n-                                return vcc;\n-                }\n-        }\n-        return NULL;\n-}\n-",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        },
+        {
+          "after": "\nstatic int atmtcp_recv_control(struct atm_dev *dev, const struct atmtcp_control *msg)\n{\n\tstruct atm_vcc *vcc;\n\n\tread_lock(&vcc_sklist_lock);\n\tvcc = find_vcc(dev, msg->addr.sap_addr.vpi, msg->addr.sap_addr.vci);\n\tif (!vcc) {\n\t\tread_unlock(&vcc_sklist_lock);\n\t\treturn -EUNATCH;\n\t}\n\tvcc->qos = msg->qos;\n\tsk_atm(vcc)->sk_err = -msg->result;\n\tswitch (msg->type) {\n\t    case ATMTCP_CTRL_OPEN:\n\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n\t\tbreak;\n\t    case ATMTCP_CTRL_CLOSE:\n\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n\t\tbreak;\n\t    default:\n\t\tread_unlock(&vcc_sklist_lock);\n\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n\t\t    msg->type);\n\t\treturn -EINVAL;\n\t}\n\twake_up(sk_sleep(sk_atm(vcc)));\n\tread_unlock(&vcc_sklist_lock);\n\treturn 0;\n}\n",
+          "before": "\nstatic int atmtcp_recv_control(const struct atmtcp_control *msg)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\n\tvcc->vpi = msg->addr.sap_addr.vpi;\n\tvcc->vci = msg->addr.sap_addr.vci;\n\tvcc->qos = msg->qos;\n\tsk_atm(vcc)->sk_err = -msg->result;\n\tswitch (msg->type) {\n\t    case ATMTCP_CTRL_OPEN:\n\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n\t\tbreak;\n\t    case ATMTCP_CTRL_CLOSE:\n\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n\t\tbreak;\n\t    default:\n\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n\t\t    msg->type);\n\t\treturn -EINVAL;\n\t}\n\twake_up(sk_sleep(sk_atm(vcc)));\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -109,6 +109,10 @@\n-static int atmtcp_recv_control(const struct atmtcp_control *msg)\n-{\n-\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n-\n-\tvcc->vpi = msg->addr.sap_addr.vpi;\n-\tvcc->vci = msg->addr.sap_addr.vci;\n+static int atmtcp_recv_control(struct atm_dev *dev, const struct atmtcp_control *msg)\n+{\n+\tstruct atm_vcc *vcc;\n+\n+\tread_lock(&vcc_sklist_lock);\n+\tvcc = find_vcc(dev, msg->addr.sap_addr.vpi, msg->addr.sap_addr.vci);\n+\tif (!vcc) {\n+\t\tread_unlock(&vcc_sklist_lock);\n+\t\treturn -EUNATCH;\n+\t}\n@@ -124,0 +129 @@\n+\t\tread_unlock(&vcc_sklist_lock);\n@@ -129,0 +135 @@\n+\tread_unlock(&vcc_sklist_lock);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 63",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 63
+        },
+        {
+          "after": "\n\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n\t\t\tresult = -EINVAL;\n\t\t\tgoto done;\n\t\t}\n\t\tresult = atmtcp_recv_control(dev,\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}\n",
+          "before": "\n\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -304 +304,5 @@\n-\t\tresult = atmtcp_recv_control(\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n+\t\tresult = atmtcp_recv_control(dev,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 67",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        }
+      ],
+      "end_step": 67,
+      "revision_index": 0,
+      "start_step": 54
+    }
+  ],
+  "success_step": 67
+}

@@ -1,0 +1,43 @@
+diff --git a/fs/fat/misc.c b/fs/fat/misc.c
+index c7a2d27120ba..52050d0b01ef 100644
+--- a/fs/fat/misc.c
++++ b/fs/fat/misc.c
+@@ -125,6 +125,15 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
+ 		last = dclus;
+ 	}
+ 
++
++	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
++		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
++			     new_fclus,
++			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
++		fat_cache_inval_inode(inode);
++		return -EIO;
++	}
++
+ 	/* add new one to the last of the cluster chain */
+ 	if (last) {
+ 		struct fat_entry fatent;
+@@ -157,12 +166,6 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
+ 		} else
+ 			mark_inode_dirty(inode);
+ 	}
+-	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
+-		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
+-			     new_fclus,
+-			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
+-		fat_cache_inval_inode(inode);
+-	}
+ 	inode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);
+ 
+ 	return 0;
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..b12b22ae7a00
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "d7fef7b625e2a14f5c896f951a548d62ce976696": 90684
++}
+\ No newline at end of file

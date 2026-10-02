@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\t/* Send a copy to monitor as a diagnostic packet */\n\tskb = bt_skb_alloc(size, GFP_ATOMIC);\n\tif (skb) {\n\t\tskb_put_data(skb, hdev->dump.head, size);\n\t\thci_recv_diag(hdev, skb);\n\t}\n\n\t/* Emit a devcoredump with the available data */\n\tdev_coredumpv(&hdev->dev, hdev->dump.head, size, GFP_KERNEL);\n",
+          "before": "\n\t/* Emit a devcoredump with the available data */\n\tdev_coredumpv(&hdev->dev, hdev->dump.head, size, GFP_KERNEL);\n\n\t/* Send a copy to monitor as a diagnostic packet */\n\tskb = bt_skb_alloc(size, GFP_ATOMIC);\n\tif (skb) {\n\t\tskb_put_data(skb, hdev->dump.head, size);\n\t\thci_recv_diag(hdev, skb);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/bluetooth/coredump.c\n+++ /linux/net/bluetooth/coredump.c\n@@ -252,3 +251,0 @@\n-\t/* Emit a devcoredump with the available data */\n-\tdev_coredumpv(&hdev->dev, hdev->dump.head, size, GFP_KERNEL);\n-\n@@ -260,0 +258,3 @@\n+\n+\t/* Emit a devcoredump with the available data */\n+\tdev_coredumpv(&hdev->dev, hdev->dump.head, size, GFP_KERNEL);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 20",
+          "filename": "net/bluetooth/coredump.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "static int force_devcoredump_open(struct inode *inode, struct file *file)\n{\n\tstruct hci_dev *hdev = inode->i_private;\n\n\tfile->private_data = hdev;\n\thci_dev_hold(hdev);\n\treturn 0;\n}\n\nstatic int force_devcoredump_release(struct inode *inode, struct file *file)\n{\n\tstruct hci_dev *hdev = file->private_data;\n\n\thci_dev_put(hdev);\n\treturn 0;\n}\n\nstatic ssize_t force_devcd_write(struct file *file, const char __user *user_buf,\n\t\t\t\t size_t count, loff_t *ppos)\n{\n\tstruct hci_dev *hdev = file->private_data;\n\tstruct sk_buff *skb = NULL;\n\tstruct devcoredump_test_data dump_data;\n\tsize_t data_size;\n\tint ret;\n\n\tif (count < offsetof(struct devcoredump_test_data, data) ||\n\t    count > sizeof(dump_data))\n\t\treturn -EINVAL;\n\n\tif (copy_from_user(&dump_data, user_buf, count))\n\t\treturn -EFAULT;\n\n\tdata_size = count - offsetof(struct devcoredump_test_data, data);\n\tskb = alloc_skb(data_size, GFP_ATOMIC);\n\tif (!skb)\n\t\treturn -ENOMEM;\n\tskb_put_data(skb, &dump_data.data, data_size);\n\n\thci_devcd_register(hdev, vhci_coredump, vhci_coredump_hdr, NULL);\n\n\t/* Force the devcoredump timeout */\n\tif (dump_data.timeout)\n\t\tforce_devcd_timeout(hdev, dump_data.timeout);\n\n\tret = hci_devcd_init(hdev, skb->len);\n\tif (ret) {\n\t\tBT_ERR(\"Failed to generate devcoredump\");\n\t\tkfree_skb(skb);\n\t\treturn ret;\n\t}\n\n\thci_devcd_append(hdev, skb);\n\n\tswitch (dump_data.state) {\n\tcase HCI_DEVCOREDUMP_DONE:\n\t\thci_devcd_complete(hdev);\n\t\tbreak;\n\tcase HCI_DEVCOREDUMP_ABORT:\n\t\thci_devcd_abort(hdev);\n\t\tbreak;\n\tcase HCI_DEVCOREDUMP_TIMEOUT:\n\t\t/* Do nothing */\n\t\tbreak;\n\tdefault:\n\t\treturn -EINVAL;\n\t}\n\n\treturn count;\n}\n\nstatic const struct file_operations force_devcoredump_fops = {\n\t.open\t\t= force_devcoredump_open,\n\t.release\t= force_devcoredump_release,\n\t.write\t\t= force_devcd_write,\n};",
+          "before": "static ssize_t force_devcd_write(struct file *file, const char __user *user_buf,\n\t\t\t\t size_t count, loff_t *ppos)\n{\n\tstruct vhci_data *data = file->private_data;\n\tstruct hci_dev *hdev = data->hdev;\n\tstruct sk_buff *skb = NULL;\n\tstruct devcoredump_test_data dump_data;\n\tsize_t data_size;\n\tint ret;\n\n\tif (count < offsetof(struct devcoredump_test_data, data) ||\n\t    count > sizeof(dump_data))\n\t\treturn -EINVAL;\n\n\tif (copy_from_user(&dump_data, user_buf, count))\n\t\treturn -EFAULT;\n\n\tdata_size = count - offsetof(struct devcoredump_test_data, data);\n\tskb = alloc_skb(data_size, GFP_ATOMIC);\n\tif (!skb)\n\t\treturn -ENOMEM;\n\tskb_put_data(skb, &dump_data.data, data_size);\n\n\thci_devcd_register(hdev, vhci_coredump, vhci_coredump_hdr, NULL);\n\n\t/* Force the devcoredump timeout */\n\tif (dump_data.timeout)\n\t\tforce_devcd_timeout(hdev, dump_data.timeout);\n\n\tret = hci_devcd_init(hdev, skb->len);\n\tif (ret) {\n\t\tBT_ERR(\"Failed to generate devcoredump\");\n\t\tkfree_skb(skb);\n\t\treturn ret;\n\t}\n\n\thci_devcd_append(hdev, skb);\n\n\tswitch (dump_data.state) {\n\tcase HCI_DEVCOREDUMP_DONE:\n\t\thci_devcd_complete(hdev);\n\t\tbreak;\n\tcase HCI_DEVCOREDUMP_ABORT:\n\t\thci_devcd_abort(hdev);\n\t\tbreak;\n\tcase HCI_DEVCOREDUMP_TIMEOUT:\n\t\t/* Do nothing */\n\t\tbreak;\n\tdefault:\n\t\treturn -EINVAL;\n\t}\n\n\treturn count;\n}\n\nstatic const struct file_operations force_devcoredump_fops = {\n\t.open\t\t= simple_open,\n\t.write\t\t= force_devcd_write,\n};",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/bluetooth/hci_vhci.c\n+++ /linux/drivers/bluetooth/hci_vhci.c\n@@ -322,0 +323,17 @@\n+static int force_devcoredump_open(struct inode *inode, struct file *file)\n+{\n+\tstruct hci_dev *hdev = inode->i_private;\n+\n+\tfile->private_data = hdev;\n+\thci_dev_hold(hdev);\n+\treturn 0;\n+}\n+\n+static int force_devcoredump_release(struct inode *inode, struct file *file)\n+{\n+\tstruct hci_dev *hdev = file->private_data;\n+\n+\thci_dev_put(hdev);\n+\treturn 0;\n+}\n+\n@@ -326,2 +343 @@\n-\tstruct vhci_data *data = file->private_data;\n-\tstruct hci_dev *hdev = data->hdev;\n+\tstruct hci_dev *hdev = file->private_data;\n@@ -379 +395,2 @@\n-\t.open\t\t= simple_open,\n+\t.open\t\t= force_devcoredump_open,\n+\t.release\t= force_devcoredump_release,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "drivers/bluetooth/hci_vhci.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        },
+        {
+          "after": "\n\tif (IS_ENABLED(CONFIG_BT_AOSPEXT))\n\t\tdebugfs_create_file(\"aosp_capable\", 0644, hdev->debugfs, data,\n\t\t\t\t    &aosp_capable_fops);\n\n\tdebugfs_create_file(\"force_devcoredump\", 0644, hdev->debugfs, hdev,\n\t\t\t    &force_devcoredump_fops);\n",
+          "before": "\n\tif (IS_ENABLED(CONFIG_BT_AOSPEXT))\n\t\tdebugfs_create_file(\"aosp_capable\", 0644, hdev->debugfs, data,\n\t\t\t\t    &aosp_capable_fops);\n\n\tdebugfs_create_file(\"force_devcoredump\", 0644, hdev->debugfs, data,\n\t\t\t    &force_devcoredump_fops);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/bluetooth/hci_vhci.c\n+++ /linux/drivers/bluetooth/hci_vhci.c\n@@ -468 +468 @@\n-\tdebugfs_create_file(\"force_devcoredump\", 0644, hdev->debugfs, data,\n+\tdebugfs_create_file(\"force_devcoredump\", 0644, hdev->debugfs, hdev,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 61",
+          "filename": "drivers/bluetooth/hci_vhci.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        }
+      ],
+      "end_step": 61,
+      "revision_index": 1,
+      "start_step": 59
+    }
+  ],
+  "success_step": 61
+}

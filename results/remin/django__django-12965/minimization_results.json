@@ -1,0 +1,140 @@
+{
+  "bug_id": "django__django-12965",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/compiler.py",
+        "before": "    @cached_property\n    def single_alias(self):\n        return sum(self.query.alias_refcount[t] > 0 for t in self.query.alias_map) == 1",
+        "after": "    @cached_property\n    def single_alias(self):\n        # Count aliases with refcount > 0\n        alias_count = sum(self.query.alias_refcount[t] > 0 for t in self.query.alias_map)\n        # Simple case: no aliases (base table only) or exactly one alias\n        return alias_count <= 1",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/compiler.py",
+        "before": "    def as_sql(self):\n        \"\"\"\n        Create the SQL for this query. Return the SQL string and list of\n        parameters.\n        \"\"\"\n        if self.single_alias:\n            return self._as_sql(self.query)\n        innerq = self.query.clone()\n        innerq.__class__ = Query\n        innerq.clear_select_clause()\n        pk = self.query.model._meta.pk\n        innerq.select = [\n            pk.get_col(self.query.get_initial_alias())\n        ]\n        outerq = Query(self.query.model)\n        outerq.where = self.query.where_class()\n        outerq.add_q(Q(pk__in=innerq))\n        return self._as_sql(outerq)",
+        "after": "    def as_sql(self):\n        \"\"\"\n        Create the SQL for this query. Return the SQL string and list of\n        parameters.\n        \"\"\"\n        if self.single_alias:\n            # Ensure we have at least one alias for simple queries\n            if not self.query.alias_map:\n                self.query.get_initial_alias()\n            return self._as_sql(self.query)\n        innerq = self.query.clone()\n        innerq.__class__ = Query\n        innerq.clear_select_clause()\n        pk = self.query.model._meta.pk\n        innerq.select = [\n            pk.get_col(self.query.get_initial_alias())\n        ]\n        outerq = Query(self.query.model)\n        outerq.where = self.query.where_class()\n        outerq.add_q(Q(pk__in=innerq))\n        return self._as_sql(outerq)",
+        "explanation": "classic_swe step 52 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/compiler.py b/django/db/models/sql/compiler.py\nindex 29e33c075f..ec581869d1 100644\n--- a/django/db/models/sql/compiler.py\n+++ b/django/db/models/sql/compiler.py\n@@ -1407,7 +1407,10 @@ class SQLInsertCompiler(SQLCompiler):\n class SQLDeleteCompiler(SQLCompiler):\n     @cached_property\n     def single_alias(self):\n-        return sum(self.query.alias_refcount[t] > 0 for t in self.query.alias_map) == 1\n+        # Count aliases with refcount > 0\n+        alias_count = sum(self.query.alias_refcount[t] > 0 for t in self.query.alias_map)\n+        # Simple case: no aliases (base table only) or exactly one alias\n+        return alias_count <= 1\n \n     def _as_sql(self, query):\n         result = [\n@@ -1424,6 +1427,9 @@ class SQLDeleteCompiler(SQLCompiler):\n         parameters.\n         \"\"\"\n         if self.single_alias:\n+            # Ensure we have at least one alias for simple queries\n+            if not self.query.alias_map:\n+                self.query.get_initial_alias()\n             return self._as_sql(self.query)\n         innerq = self.query.clone()\n         innerq.__class__ = Query\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      7
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      5,
+      7
+    ],
+    "edit_list_after_file_min": [
+      5,
+      7
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      5,
+      7
+    ],
+    "edit_list_after_refinement": [
+      5,
+      7
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/compiler.py",
+          "before": "    @cached_property\n    def single_alias(self):\n        return sum(self.query.alias_refcount[t] > 0 for t in self.query.alias_map) == 1",
+          "after": "    @cached_property\n    def single_alias(self):\n        # Count aliases with refcount > 0\n        alias_count = sum(self.query.alias_refcount[t] > 0 for t in self.query.alias_map)\n        # Simple case: no aliases (base table only) or exactly one alias\n        return alias_count <= 1",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/compiler.py",
+          "before": "    def as_sql(self):\n        \"\"\"\n        Create the SQL for this query. Return the SQL string and list of\n        parameters.\n        \"\"\"\n        if self.single_alias:\n            return self._as_sql(self.query)\n        innerq = self.query.clone()\n        innerq.__class__ = Query\n        innerq.clear_select_clause()\n        pk = self.query.model._meta.pk\n        innerq.select = [\n            pk.get_col(self.query.get_initial_alias())\n        ]\n        outerq = Query(self.query.model)\n        outerq.where = self.query.where_class()\n        outerq.add_q(Q(pk__in=innerq))\n        return self._as_sql(outerq)",
+          "after": "    def as_sql(self):\n        \"\"\"\n        Create the SQL for this query. Return the SQL string and list of\n        parameters.\n        \"\"\"\n        if self.single_alias:\n            # Ensure we have at least one alias for simple queries\n            if not self.query.alias_map:\n                self.query.get_initial_alias()\n            return self._as_sql(self.query)\n        innerq = self.query.clone()\n        innerq.__class__ = Query\n        innerq.clear_select_clause()\n        pk = self.query.model._meta.pk\n        innerq.select = [\n            pk.get_col(self.query.get_initial_alias())\n        ]\n        outerq = Query(self.query.model)\n        outerq.where = self.query.where_class()\n        outerq.add_q(Q(pk__in=innerq))\n        return self._as_sql(outerq)",
+          "explanation": "classic_swe step 52 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 52,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 52,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 7,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

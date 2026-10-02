@@ -1,0 +1,44 @@
+diff --git a/security/landlock/fs.c b/security/landlock/fs.c
+index 0bade2c5aa1d..73d0c0ad2509 100644
+--- a/security/landlock/fs.c
++++ b/security/landlock/fs.c
+@@ -1279,6 +1279,7 @@ static void hook_sb_delete(struct super_block *const sb)
+ 	spin_lock(&sb->s_inode_list_lock);
+ 	list_for_each_entry(inode, &sb->s_inodes, i_sb_list) {
+ 		struct landlock_object *object;
++		bool iput_inode = false;
+ 
+ 		/* Only handles referenced inodes. */
+ 		if (!icount_read(inode))
+@@ -1336,16 +1337,16 @@ static void hook_sb_delete(struct super_block *const sb)
+ 			 * originally set up by get_inode_object() and the
+ 			 * __iget() reference that we just set in this loop
+ 			 * walk.  Therefore the following call to iput() will
+-			 * not sleep nor drop the inode because there is now at
++			 * not drop the inode because there is now at
+ 			 * least two references to it.
+ 			 */
+-			iput(inode);
++			iput_inode = true;
+ 		} else {
+ 			spin_unlock(&object->lock);
+ 			rcu_read_unlock();
+ 		}
+ 
+-		if (prev_inode) {
++		if (prev_inode || iput_inode) {
+ 			/*
+ 			 * At this point, we still own the __iget() reference
+ 			 * that we just set in this loop walk.  Therefore we
+@@ -1357,7 +1358,10 @@ static void hook_sb_delete(struct super_block *const sb)
+ 			 * We can now actually put the inode reference from the
+ 			 * previous loop walk, which is not needed anymore.
+ 			 */
+-			iput(prev_inode);
++			if (iput_inode)
++				iput(inode);
++			if (prev_inode)
++				iput(prev_inode);
+ 			cond_resched();
+ 			spin_lock(&sb->s_inode_list_lock);
+ 		}

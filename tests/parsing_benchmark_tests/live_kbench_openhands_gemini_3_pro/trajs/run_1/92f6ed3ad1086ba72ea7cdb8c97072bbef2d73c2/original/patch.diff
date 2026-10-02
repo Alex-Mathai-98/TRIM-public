@@ -1,0 +1,25 @@
+diff --git a/fs/udf/inode.c b/fs/udf/inode.c
+index 30f925f891b6..4b227e4440cf 100644
+--- a/fs/udf/inode.c
++++ b/fs/udf/inode.c
+@@ -676,6 +676,20 @@ static int udf_extend_file(struct inode *inode, loff_t newsize)
+ 		extent.extLocation.partitionReferenceNum = 0;
+ 		extent.extLength = EXT_NOT_RECORDED_NOT_ALLOCATED;
+ 	} else {
++		if (epos.bh) {
++			if (epos.offset <
++			    sizeof(struct allocExtDesc) + adsize) {
++				err = -EIO;
++				goto out;
++			}
++		} else {
++			if (epos.offset <
++			    udf_file_entry_alloc_offset(inode) + adsize) {
++				err = -EIO;
++				goto out;
++			}
++		}
++
+ 		epos.offset -= adsize;
+ 		err = udf_next_aext(inode, &epos, &extent.extLocation,
+ 				    &extent.extLength, &etype, 0);

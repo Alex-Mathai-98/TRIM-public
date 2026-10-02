@@ -1,0 +1,191 @@
+{
+  "bug_id": "django__django-15037",
+  "short_path": [
+    [
+      {
+        "filename": "django/core/management/commands/inspectdb.py",
+        "before": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        rel_to = (\n                            \"self\" if relations[column_name][1] == table_name\n                            else table2model(relations[column_name][1])\n                        )\n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+        "after": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        rel_to = (\n                            \"self\" if relations[column_name][1] == table_name\n                            else table2model(relations[column_name][1])\n                        )\n                        \n                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        if ref_db_table != table_name:  # Don't check self-references\n                            try:\n                                ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                                if ref_pk_column and ref_db_column != ref_pk_column:\n                                    # The foreign key references a non-primary key field\n                                    extra_params['to_field'] = ref_db_column\n                            except Exception:\n                                # If we can't determine the primary key, skip adding to_field\n                                pass\n                        \n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/management/commands/inspectdb.py",
+        "before": "                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        if ref_db_table != table_name:  # Don't check self-references\n                            try:\n                                ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                                if ref_pk_column and ref_db_column != ref_pk_column:\n                                    # The foreign key references a non-primary key field\n                                    extra_params['to_field'] = ref_db_column\n                            except Exception:\n                                # If we can't determine the primary key, skip adding to_field\n                                pass",
+        "after": "                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        try:\n                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                            if ref_pk_column and ref_db_column != ref_pk_column:\n                                # The foreign key references a non-primary key field\n                                extra_params['to_field'] = ref_db_column\n                        except Exception:\n                            # If we can't determine the primary key, skip adding to_field\n                            pass",
+        "explanation": "classic_swe step 36 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/management/commands/inspectdb.py",
+        "before": "                    column_name = row.name\n                    is_relation = column_name in relations",
+        "after": "                    column_name = row.name\n                    is_relation = column_name in relations\n                    \n                    # Also check if this column is a foreign key in constraints\n                    constraint_fk_info = None\n                    for constraint in constraints.values():\n                        if (constraint.get('foreign_key') and \n                            constraint.get('columns') and \n                            len(constraint['columns']) == 1 and \n                            constraint['columns'][0] == column_name):\n                            constraint_fk_info = constraint['foreign_key']\n                            is_relation = True\n                            break",
+        "explanation": "classic_swe step 52 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/management/commands/inspectdb.py",
+        "before": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        rel_to = (\n                            \"self\" if relations[column_name][1] == table_name\n                            else table2model(relations[column_name][1])\n                        )\n                        \n                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        try:\n                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                            if ref_pk_column and ref_db_column != ref_pk_column:\n                                # The foreign key references a non-primary key field\n                                extra_params['to_field'] = ref_db_column\n                        except Exception:\n                            # If we can't determine the primary key, skip adding to_field\n                            pass\n                        \n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+        "after": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        \n                        # Use constraint info if available, otherwise fall back to relations\n                        if constraint_fk_info:\n                            ref_db_table, ref_db_column = constraint_fk_info\n                        else:\n                            ref_db_column = relations[column_name][0]\n                            ref_db_table = relations[column_name][1]\n                        \n                        rel_to = (\n                            \"self\" if ref_db_table == table_name\n                            else table2model(ref_db_table)\n                        )\n                        \n                        # Check if the foreign key references a non-primary key field\n                        try:\n                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                            if ref_pk_column and ref_db_column != ref_pk_column:\n                                # The foreign key references a non-primary key field\n                                extra_params['to_field'] = ref_db_column\n                        except Exception:\n                            # If we can't determine the primary key, skip adding to_field\n                            pass\n                        \n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+        "explanation": "classic_swe step 53 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/core/management/commands/inspectdb.py b/django/core/management/commands/inspectdb.py\nindex f9b4bfb477..65dfb2cd33 100644\n--- a/django/core/management/commands/inspectdb.py\n+++ b/django/core/management/commands/inspectdb.py\n@@ -100,6 +100,17 @@ class Command(BaseCommand):\n                     extra_params = {}  # Holds Field parameters such as 'db_column'.\n                     column_name = row.name\n                     is_relation = column_name in relations\n+                    \n+                    # Also check if this column is a foreign key in constraints\n+                    constraint_fk_info = None\n+                    for constraint in constraints.values():\n+                        if (constraint.get('foreign_key') and \n+                            constraint.get('columns') and \n+                            len(constraint['columns']) == 1 and \n+                            constraint['columns'][0] == column_name):\n+                            constraint_fk_info = constraint['foreign_key']\n+                            is_relation = True\n+                            break\n \n                     att_name, params, notes = self.normalize_col_name(\n                         column_name, used_column_names, is_relation)\n@@ -120,10 +131,29 @@ class Command(BaseCommand):\n                             rel_type = 'OneToOneField'\n                         else:\n                             rel_type = 'ForeignKey'\n+                        \n+                        # Use constraint info if available, otherwise fall back to relations\n+                        if constraint_fk_info:\n+                            ref_db_table, ref_db_column = constraint_fk_info\n+                        else:\n+                            ref_db_column = relations[column_name][0]\n+                            ref_db_table = relations[column_name][1]\n+                        \n                         rel_to = (\n-                            \"self\" if relations[column_name][1] == table_name\n-                            else table2model(relations[column_name][1])\n+                            \"self\" if ref_db_table == table_name\n+                            else table2model(ref_db_table)\n                         )\n+                        \n+                        # Check if the foreign key references a non-primary key field\n+                        try:\n+                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n+                            if ref_pk_column and ref_db_column != ref_pk_column:\n+                                # The foreign key references a non-primary key field\n+                                extra_params['to_field'] = ref_db_column\n+                        except Exception:\n+                            # If we can't determine the primary key, skip adding to_field\n+                            pass\n+                        \n                         if rel_to in known_models:\n                             field_type = '%s(%s' % (rel_type, rel_to)\n                         else:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      6,
+      10,
+      11
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      1,
+      6,
+      10,
+      11
+    ],
+    "edit_list_after_file_min": [
+      1,
+      6,
+      10,
+      11
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 2,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      1,
+      6,
+      10,
+      11
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      1,
+      6,
+      10,
+      11
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/core/management/commands/inspectdb.py",
+          "before": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        rel_to = (\n                            \"self\" if relations[column_name][1] == table_name\n                            else table2model(relations[column_name][1])\n                        )\n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+          "after": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        rel_to = (\n                            \"self\" if relations[column_name][1] == table_name\n                            else table2model(relations[column_name][1])\n                        )\n                        \n                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        if ref_db_table != table_name:  # Don't check self-references\n                            try:\n                                ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                                if ref_pk_column and ref_db_column != ref_pk_column:\n                                    # The foreign key references a non-primary key field\n                                    extra_params['to_field'] = ref_db_column\n                            except Exception:\n                                # If we can't determine the primary key, skip adding to_field\n                                pass\n                        \n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+          "explanation": "classic_swe step 19 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/core/management/commands/inspectdb.py",
+          "before": "                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        if ref_db_table != table_name:  # Don't check self-references\n                            try:\n                                ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                                if ref_pk_column and ref_db_column != ref_pk_column:\n                                    # The foreign key references a non-primary key field\n                                    extra_params['to_field'] = ref_db_column\n                            except Exception:\n                                # If we can't determine the primary key, skip adding to_field\n                                pass",
+          "after": "                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        try:\n                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                            if ref_pk_column and ref_db_column != ref_pk_column:\n                                # The foreign key references a non-primary key field\n                                extra_params['to_field'] = ref_db_column\n                        except Exception:\n                            # If we can't determine the primary key, skip adding to_field\n                            pass",
+          "explanation": "classic_swe step 36 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/core/management/commands/inspectdb.py",
+          "before": "                    column_name = row.name\n                    is_relation = column_name in relations",
+          "after": "                    column_name = row.name\n                    is_relation = column_name in relations\n                    \n                    # Also check if this column is a foreign key in constraints\n                    constraint_fk_info = None\n                    for constraint in constraints.values():\n                        if (constraint.get('foreign_key') and \n                            constraint.get('columns') and \n                            len(constraint['columns']) == 1 and \n                            constraint['columns'][0] == column_name):\n                            constraint_fk_info = constraint['foreign_key']\n                            is_relation = True\n                            break",
+          "explanation": "classic_swe step 52 #1"
+        },
+        {
+          "filename": "django/core/management/commands/inspectdb.py",
+          "before": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        rel_to = (\n                            \"self\" if relations[column_name][1] == table_name\n                            else table2model(relations[column_name][1])\n                        )\n                        \n                        # Check if the foreign key references a non-primary key field\n                        ref_db_column = relations[column_name][0]\n                        ref_db_table = relations[column_name][1]\n                        try:\n                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                            if ref_pk_column and ref_db_column != ref_pk_column:\n                                # The foreign key references a non-primary key field\n                                extra_params['to_field'] = ref_db_column\n                        except Exception:\n                            # If we can't determine the primary key, skip adding to_field\n                            pass\n                        \n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+          "after": "                    if is_relation:\n                        if extra_params.pop('unique', False) or extra_params.get('primary_key'):\n                            rel_type = 'OneToOneField'\n                        else:\n                            rel_type = 'ForeignKey'\n                        \n                        # Use constraint info if available, otherwise fall back to relations\n                        if constraint_fk_info:\n                            ref_db_table, ref_db_column = constraint_fk_info\n                        else:\n                            ref_db_column = relations[column_name][0]\n                            ref_db_table = relations[column_name][1]\n                        \n                        rel_to = (\n                            \"self\" if ref_db_table == table_name\n                            else table2model(ref_db_table)\n                        )\n                        \n                        # Check if the foreign key references a non-primary key field\n                        try:\n                            ref_pk_column = connection.introspection.get_primary_key_column(cursor, ref_db_table)\n                            if ref_pk_column and ref_db_column != ref_pk_column:\n                                # The foreign key references a non-primary key field\n                                extra_params['to_field'] = ref_db_column\n                        except Exception:\n                            # If we can't determine the primary key, skip adding to_field\n                            pass\n                        \n                        if rel_to in known_models:\n                            field_type = '%s(%s' % (rel_type, rel_to)\n                        else:\n                            field_type = \"%s('%s'\" % (rel_type, rel_to)",
+          "explanation": "classic_swe step 53 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 14,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 14,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/core/management/commands/inspectdb.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/core/management/commands/inspectdb.py"
+    ],
+    "gold_files": [
+      "django/core/management/commands/inspectdb.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 32,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

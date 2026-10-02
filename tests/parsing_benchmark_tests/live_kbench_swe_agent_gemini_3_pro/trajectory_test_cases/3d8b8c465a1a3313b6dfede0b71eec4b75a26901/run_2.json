@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <linux/bpf_mem_alloc.h>\n#include <linux/gfp.h>\n#include <linux/memory.h>\n#include <linux/mutex.h>\n#include <linux/slab.h>\n#include <linux/sprintf.h>\n",
+          "before": "#include <linux/bpf_mem_alloc.h>\n#include <linux/gfp.h>\n#include <linux/memory.h>\n#include <linux/mutex.h>\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/stream.c b/kernel/bpf/stream.c\nindex 96145ea4496b..d3358c8afe0c 100644\n--- a/kernel/bpf/stream.c\n+++ b/kernel/bpf/stream.c\n@@ -7,6 +7,8 @@\n #include <linux/gfp.h>\n #include <linux/memory.h>\n #include <linux/mutex.h>\n+#include <linux/slab.h>\n+#include <linux/sprintf.h>\n \n static void bpf_stream_elem_init(struct bpf_stream_elem *elem, int len)\n {",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "kernel/bpf/stream.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n{\n\tva_list args;\n\tchar *str;\n\tint ret;\n\n\tva_start(args, fmt);\n\tstr = kvasprintf(GFP_KERNEL, fmt, args);\n\tva_end(args);\n\n\tif (!str)\n\t\treturn -ENOMEM;\n\n\tret = strlen(str);\n\tss->len += ret;\n\t/* Exclude NULL byte during push. */\n\tret = __bpf_stream_push_str(&ss->log, str, ret);\n\tkfree(str);\n\treturn ret;\n}\n",
+          "before": "int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n{\n\tstruct bpf_bprintf_buffers *buf;\n\tva_list args;\n\tint ret;\n\n\tif (bpf_try_get_buffers(&buf))\n\t\treturn -EBUSY;\n\n\tva_start(args, fmt);\n\tret = vsnprintf(buf->buf, ARRAY_SIZE(buf->buf), fmt, args);\n\tva_end(args);\n\tss->len += ret;\n\t/* Exclude NULL byte during push. */\n\tret = __bpf_stream_push_str(&ss->log, buf->buf, ret);\n\tbpf_put_buffers();\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/stream.c b/kernel/bpf/stream.c\nindex 96145ea4496b..a638d79b7038 100644\n--- a/kernel/bpf/stream.c\n+++ b/kernel/bpf/stream.c\n@@ -7,6 +7,8 @@\n #include <linux/gfp.h>\n #include <linux/memory.h>\n #include <linux/mutex.h>\n+#include <linux/slab.h>\n+#include <linux/sprintf.h>\n \n static void bpf_stream_elem_init(struct bpf_stream_elem *elem, int len)\n {\n@@ -290,20 +292,22 @@ void bpf_stream_stage_free(struct bpf_stream_stage *ss)\n \n int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n {\n-\tstruct bpf_bprintf_buffers *buf;\n \tva_list args;\n+\tchar *str;\n \tint ret;\n \n-\tif (bpf_try_get_buffers(&buf))\n-\t\treturn -EBUSY;\n-\n \tva_start(args, fmt);\n-\tret = vsnprintf(buf->buf, ARRAY_SIZE(buf->buf), fmt, args);\n+\tstr = kvasprintf(GFP_KERNEL, fmt, args);\n \tva_end(args);\n+\n+\tif (!str)\n+\t\treturn -ENOMEM;\n+\n+\tret = strlen(str);\n \tss->len += ret;\n \t/* Exclude NULL byte during push. */\n-\tret = __bpf_stream_push_str(&ss->log, buf->buf, ret);\n-\tbpf_put_buffers();\n+\tret = __bpf_stream_push_str(&ss->log, str, ret);\n+\tkfree(str);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "kernel/bpf/stream.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "#include <linux/task_work.h>\n#include <linux/irq_work.h>\n#include <linux/preempt.h>\n",
+          "before": "#include <linux/task_work.h>\n#include <linux/irq_work.h>\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c\nindex 865b0dae38d1..214ca562ffe3 100644\n--- a/kernel/bpf/helpers.c\n+++ b/kernel/bpf/helpers.c\n@@ -28,6 +28,7 @@\n #include <linux/verification.h>\n #include <linux/task_work.h>\n #include <linux/irq_work.h>\n+#include <linux/preempt.h>\n #include <linux/buildid.h>\n \n #include \"../../lib/kstrtox.h\"\ndiff --git a/kernel/bpf/stream.c b/kernel/bpf/stream.c\nindex 96145ea4496b..a638d79b7038 100644\n--- a/kernel/bpf/stream.c\n+++ b/kernel/bpf/stream.c\n@@ -7,6 +7,8 @@\n #include <linux/gfp.h>\n #include <linux/memory.h>\n #include <linux/mutex.h>\n+#include <linux/slab.h>\n+#include <linux/sprintf.h>\n \n static void bpf_stream_elem_init(struct bpf_stream_elem *elem, int len)\n {\n@@ -290,20 +292,22 @@ void bpf_stream_stage_free(struct bpf_stream_stage *ss)\n \n int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n {\n-\tstruct bpf_bprintf_buffers *buf;\n \tva_list args;\n+\tchar *str;\n \tint ret;\n \n-\tif (bpf_try_get_buffers(&buf))\n-\t\treturn -EBUSY;\n-\n \tva_start(args, fmt);\n-\tret = vsnprintf(buf->buf, ARRAY_SIZE(buf->buf), fmt, args);\n+\tstr = kvasprintf(GFP_KERNEL, fmt, args);\n \tva_end(args);\n+\n+\tif (!str)\n+\t\treturn -ENOMEM;\n+\n+\tret = strlen(str);\n \tss->len += ret;\n \t/* Exclude NULL byte during push. */\n-\tret = __bpf_stream_push_str(&ss->log, buf->buf, ret);\n-\tbpf_put_buffers();\n+\tret = __bpf_stream_push_str(&ss->log, str, ret);\n+\tkfree(str);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "kernel/bpf/helpers.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n{\n\tint nest_level;\n\n\tpreempt_disable();\n\tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n\tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n\t\tthis_cpu_dec(bpf_bprintf_nest_level);\n\t\tpreempt_enable();\n\t\treturn -EBUSY;\n\t}\n\t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n\n\treturn 0;\n}\n\nvoid bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n\t\treturn;\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n\tpreempt_enable();\n}\n",
+          "before": "int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n{\n\tint nest_level;\n\n\tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n\tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n\t\tthis_cpu_dec(bpf_bprintf_nest_level);\n\t\treturn -EBUSY;\n\t}\n\t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n\n\treturn 0;\n}\n\nvoid bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n\t\treturn;\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c\nindex 865b0dae38d1..66264bf52d46 100644\n--- a/kernel/bpf/helpers.c\n+++ b/kernel/bpf/helpers.c\n@@ -28,6 +28,7 @@\n #include <linux/verification.h>\n #include <linux/task_work.h>\n #include <linux/irq_work.h>\n+#include <linux/preempt.h>\n #include <linux/buildid.h>\n \n #include \"../../lib/kstrtox.h\"\n@@ -774,9 +775,11 @@ int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n {\n \tint nest_level;\n \n+\tpreempt_disable();\n \tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n \tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n \t\tthis_cpu_dec(bpf_bprintf_nest_level);\n+\t\tpreempt_enable();\n \t\treturn -EBUSY;\n \t}\n \t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n@@ -789,6 +792,7 @@ void bpf_put_buffers(void)\n \tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n \t\treturn;\n \tthis_cpu_dec(bpf_bprintf_nest_level);\n+\tpreempt_enable();\n }\n \n void bpf_bprintf_cleanup(struct bpf_bprintf_data *data)\ndiff --git a/kernel/bpf/stream.c b/kernel/bpf/stream.c\nindex 96145ea4496b..a638d79b7038 100644\n--- a/kernel/bpf/stream.c\n+++ b/kernel/bpf/stream.c\n@@ -7,6 +7,8 @@\n #include <linux/gfp.h>\n #include <linux/memory.h>\n #include <linux/mutex.h>\n+#include <linux/slab.h>\n+#include <linux/sprintf.h>\n \n static void bpf_stream_elem_init(struct bpf_stream_elem *elem, int len)\n {\n@@ -290,20 +292,22 @@ void bpf_stream_stage_free(struct bpf_stream_stage *ss)\n \n int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n {\n-\tstruct bpf_bprintf_buffers *buf;\n \tva_list args;\n+\tchar *str;\n \tint ret;\n \n-\tif (bpf_try_get_buffers(&buf))\n-\t\treturn -EBUSY;\n-\n \tva_start(args, fmt);\n-\tret = vsnprintf(buf->buf, ARRAY_SIZE(buf->buf), fmt, args);\n+\tstr = kvasprintf(GFP_KERNEL, fmt, args);\n \tva_end(args);\n+\n+\tif (!str)\n+\t\treturn -ENOMEM;\n+\n+\tret = strlen(str);\n \tss->len += ret;\n \t/* Exclude NULL byte during push. */\n-\tret = __bpf_stream_push_str(&ss->log, buf->buf, ret);\n-\tbpf_put_buffers();\n+\tret = __bpf_stream_push_str(&ss->log, str, ret);\n+\tkfree(str);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "kernel/bpf/helpers.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "\tva_start(args, fmt);\n\tstr = kvasprintf(GFP_ATOMIC, fmt, args);\n\tva_end(args);\n",
+          "before": "\tva_start(args, fmt);\n\tstr = kvasprintf(GFP_KERNEL, fmt, args);\n\tva_end(args);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c\nindex 865b0dae38d1..66264bf52d46 100644\n--- a/kernel/bpf/helpers.c\n+++ b/kernel/bpf/helpers.c\n@@ -28,6 +28,7 @@\n #include <linux/verification.h>\n #include <linux/task_work.h>\n #include <linux/irq_work.h>\n+#include <linux/preempt.h>\n #include <linux/buildid.h>\n \n #include \"../../lib/kstrtox.h\"\n@@ -774,9 +775,11 @@ int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n {\n \tint nest_level;\n \n+\tpreempt_disable();\n \tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n \tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n \t\tthis_cpu_dec(bpf_bprintf_nest_level);\n+\t\tpreempt_enable();\n \t\treturn -EBUSY;\n \t}\n \t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n@@ -789,6 +792,7 @@ void bpf_put_buffers(void)\n \tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n \t\treturn;\n \tthis_cpu_dec(bpf_bprintf_nest_level);\n+\tpreempt_enable();\n }\n \n void bpf_bprintf_cleanup(struct bpf_bprintf_data *data)\ndiff --git a/kernel/bpf/stream.c b/kernel/bpf/stream.c\nindex 96145ea4496b..71cbb37addec 100644\n--- a/kernel/bpf/stream.c\n+++ b/kernel/bpf/stream.c\n@@ -7,6 +7,8 @@\n #include <linux/gfp.h>\n #include <linux/memory.h>\n #include <linux/mutex.h>\n+#include <linux/slab.h>\n+#include <linux/sprintf.h>\n \n static void bpf_stream_elem_init(struct bpf_stream_elem *elem, int len)\n {\n@@ -290,20 +292,22 @@ void bpf_stream_stage_free(struct bpf_stream_stage *ss)\n \n int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n {\n-\tstruct bpf_bprintf_buffers *buf;\n \tva_list args;\n+\tchar *str;\n \tint ret;\n \n-\tif (bpf_try_get_buffers(&buf))\n-\t\treturn -EBUSY;\n-\n \tva_start(args, fmt);\n-\tret = vsnprintf(buf->buf, ARRAY_SIZE(buf->buf), fmt, args);\n+\tstr = kvasprintf(GFP_ATOMIC, fmt, args);\n \tva_end(args);\n+\n+\tif (!str)\n+\t\treturn -ENOMEM;\n+\n+\tret = strlen(str);\n \tss->len += ret;\n \t/* Exclude NULL byte during push. */\n-\tret = __bpf_stream_push_str(&ss->log, buf->buf, ret);\n-\tbpf_put_buffers();\n+\tret = __bpf_stream_push_str(&ss->log, str, ret);\n+\tkfree(str);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "kernel/bpf/stream.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "\talloc_size = offsetof(struct bpf_stream_elem, str[len]);\n\telem = kmalloc_nolock(alloc_size, __GFP_ZERO | GFP_ATOMIC, -1);\n\tif (!elem)\n\t\treturn NULL;\n",
+          "before": "\talloc_size = offsetof(struct bpf_stream_elem, str[len]);\n\telem = kmalloc_nolock(alloc_size, __GFP_ZERO, -1);\n\tif (!elem)\n\t\treturn NULL;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c\nindex 865b0dae38d1..66264bf52d46 100644\n--- a/kernel/bpf/helpers.c\n+++ b/kernel/bpf/helpers.c\n@@ -28,6 +28,7 @@\n #include <linux/verification.h>\n #include <linux/task_work.h>\n #include <linux/irq_work.h>\n+#include <linux/preempt.h>\n #include <linux/buildid.h>\n \n #include \"../../lib/kstrtox.h\"\n@@ -774,9 +775,11 @@ int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n {\n \tint nest_level;\n \n+\tpreempt_disable();\n \tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n \tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n \t\tthis_cpu_dec(bpf_bprintf_nest_level);\n+\t\tpreempt_enable();\n \t\treturn -EBUSY;\n \t}\n \t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n@@ -789,6 +792,7 @@ void bpf_put_buffers(void)\n \tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n \t\treturn;\n \tthis_cpu_dec(bpf_bprintf_nest_level);\n+\tpreempt_enable();\n }\n \n void bpf_bprintf_cleanup(struct bpf_bprintf_data *data)\ndiff --git a/kernel/bpf/stream.c b/kernel/bpf/stream.c\nindex 96145ea4496b..a44a5f85b885 100644\n--- a/kernel/bpf/stream.c\n+++ b/kernel/bpf/stream.c\n@@ -7,6 +7,8 @@\n #include <linux/gfp.h>\n #include <linux/memory.h>\n #include <linux/mutex.h>\n+#include <linux/slab.h>\n+#include <linux/sprintf.h>\n \n static void bpf_stream_elem_init(struct bpf_stream_elem *elem, int len)\n {\n@@ -30,7 +32,7 @@ static struct bpf_stream_elem *bpf_stream_elem_alloc(int len)\n \t\treturn NULL;\n \n \talloc_size = offsetof(struct bpf_stream_elem, str[len]);\n-\telem = kmalloc_nolock(alloc_size, __GFP_ZERO, -1);\n+\telem = kmalloc_nolock(alloc_size, __GFP_ZERO | GFP_ATOMIC, -1);\n \tif (!elem)\n \t\treturn NULL;\n \n@@ -290,20 +292,22 @@ void bpf_stream_stage_free(struct bpf_stream_stage *ss)\n \n int bpf_stream_stage_printk(struct bpf_stream_stage *ss, const char *fmt, ...)\n {\n-\tstruct bpf_bprintf_buffers *buf;\n \tva_list args;\n+\tchar *str;\n \tint ret;\n \n-\tif (bpf_try_get_buffers(&buf))\n-\t\treturn -EBUSY;\n-\n \tva_start(args, fmt);\n-\tret = vsnprintf(buf->buf, ARRAY_SIZE(buf->buf), fmt, args);\n+\tstr = kvasprintf(GFP_ATOMIC, fmt, args);\n \tva_end(args);\n+\n+\tif (!str)\n+\t\treturn -ENOMEM;\n+\n+\tret = strlen(str);\n \tss->len += ret;\n \t/* Exclude NULL byte during push. */\n-\tret = __bpf_stream_push_str(&ss->log, buf->buf, ret);\n-\tbpf_put_buffers();\n+\tret = __bpf_stream_push_str(&ss->log, str, ret);\n+\tkfree(str);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "kernel/bpf/stream.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 1,
+      "start_step": 25
+    }
+  ],
+  "success_step": 41
+}

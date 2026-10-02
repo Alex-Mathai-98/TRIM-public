@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (msg == NETDEV_UNREGISTER) {\n\t\tstruct packet_mclist *ml;\n\n\t\tfor (;;) {\n\t\t\tstruct sock *sk_target = NULL;\n\n\t\t\trcu_read_lock();\n\t\t\tsk_for_each_rcu(sk, &net->packet.sklist) {\n\t\t\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\t\t\tfor (ml = po->mclist; ml; ml = ml->next) {\n\t\t\t\t\tif (ml->ifindex == dev->ifindex) {\n\t\t\t\t\t\tsk_target = sk;\n\t\t\t\t\t\tsock_hold(sk_target);\n\t\t\t\t\t\tgoto found;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\trcu_read_unlock();\n\t\t\tbreak;\nfound:\n\t\t\trcu_read_unlock();\n\t\t\tpacket_dev_mclist_delete(dev, &pkt_sk(sk_target)->mclist);\n\t\t\tsock_put(sk_target);\n\t\t}\n\t}\n\n\trcu_read_lock();\n\tsk_for_each_rcu(sk, &net->packet.sklist) {\n\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\tswitch (msg) {\n\t\tcase NETDEV_UNREGISTER:\n\t\t\tif (po->mclist)\n\t\t\t\tpacket_dev_mclist_delete(dev, &po->mclist);\n\t\t\tfallthrough;\n\n\t\tcase NETDEV_DOWN:",
+          "before": "\trcu_read_lock();\n\tsk_for_each_rcu(sk, &net->packet.sklist) {\n\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\tswitch (msg) {\n\t\tcase NETDEV_UNREGISTER:\n\t\t\tif (po->mclist)\n\t\t\t\tpacket_dev_mclist_delete(dev, &po->mclist);\n\t\t\tfallthrough;\n\n\t\tcase NETDEV_DOWN:",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/packet/af_packet.c\n+++ /linux/net/packet/af_packet.c\n@@ -4239,0 +4240,27 @@\n+\tif (msg == NETDEV_UNREGISTER) {\n+\t\tstruct packet_mclist *ml;\n+\n+\t\tfor (;;) {\n+\t\t\tstruct sock *sk_target = NULL;\n+\n+\t\t\trcu_read_lock();\n+\t\t\tsk_for_each_rcu(sk, &net->packet.sklist) {\n+\t\t\t\tstruct packet_sock *po = pkt_sk(sk);\n+\n+\t\t\t\tfor (ml = po->mclist; ml; ml = ml->next) {\n+\t\t\t\t\tif (ml->ifindex == dev->ifindex) {\n+\t\t\t\t\t\tsk_target = sk;\n+\t\t\t\t\t\tsock_hold(sk_target);\n+\t\t\t\t\t\tgoto found;\n+\t\t\t\t\t}\n+\t\t\t\t}\n+\t\t\t}\n+\t\t\trcu_read_unlock();\n+\t\t\tbreak;\n+found:\n+\t\t\trcu_read_unlock();\n+\t\t\tpacket_dev_mclist_delete(dev, &pkt_sk(sk_target)->mclist);\n+\t\t\tsock_put(sk_target);\n+\t\t}\n+\t}\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 84",
+          "filename": "net/packet/af_packet.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 84
+        }
+      ],
+      "end_step": 84,
+      "revision_index": 0,
+      "start_step": 84
+    }
+  ],
+  "success_step": 84
+}

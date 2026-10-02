@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&vsock_register_mutex);\n\n\tswitch (sk->sk_type) {\n\tcase SOCK_DGRAM:\n\t\tnew_transport = transport_dgram;\n\t\tbreak;\n\tcase SOCK_STREAM:\n\tcase SOCK_SEQPACKET:\n\t\tif (vsock_use_local_transport(remote_cid))\n\t\t\tnew_transport = transport_local;\n\t\telse if (remote_cid <= VMADDR_CID_HOST || !transport_h2g ||\n\t\t\t (remote_flags & VMADDR_FLAG_TO_HOST))\n\t\t\tnew_transport = transport_g2h;\n\t\telse\n\t\t\tnew_transport = transport_h2g;\n\t\tbreak;\n\tdefault:\n\t\tret = -ESOCKTNOSUPPORT;\n\t\tgoto err;\n\t}\n\n\tif (vsk->transport) {\n\t\tif (vsk->transport == new_transport) {\n\t\t\tmutex_unlock(&vsock_register_mutex);\n\t\t\treturn 0;\n\t\t}\n\t}\n\n\t/* We increase the module refcnt to prevent the transport unloading\n\t * while there are open sockets assigned to it.\n\t */\n\tif (!new_transport || !try_module_get(new_transport->module)) {\n\t\tmutex_unlock(&vsock_register_mutex);\n\t\treturn -ENODEV;\n\t}\n\n\t/* It's safe to release the mutex after a successful try_module_get().\n\t * Whichever transport `new_transport` points at, it won't go away until\n\t * the last module_put() below or in vsock_deassign_transport().\n\t */\n\tmutex_unlock(&vsock_register_mutex);\n\n\tif (vsk->transport) {\n\t\t/* transport->release() must be called with sock lock acquired.\n\t\t * This path can only be taken during vsock_connect(), where we\n\t\t * have already held the sock lock. In the other cases, this\n\t\t * function is called on a new socket which is not assigned to\n\t\t * any transport.\n\t\t */\n\t\tvsk->transport->release(vsk);\n\t\tvsock_deassign_transport(vsk);\n\n\t\t/* transport's release() and destruct() can touch some socket\n\t\t * state, since we are reassigning the socket to a new transport\n\t\t * during vsock_connect(), let's reset these fields to have a\n\t\t * clean state.\n\t\t */\n\t\tsock_reset_flag(sk, SOCK_DONE);\n\t\tsk->sk_state = TCP_CLOSE;\n\t\tvsk->peer_shutdown = 0;\n\t}",
+          "before": "\tmutex_lock(&vsock_register_mutex);\n\n\tswitch (sk->sk_type) {\n\tcase SOCK_DGRAM:\n\t\tnew_transport = transport_dgram;\n\t\tbreak;\n\tcase SOCK_STREAM:\n\tcase SOCK_SEQPACKET:\n\t\tif (vsock_use_local_transport(remote_cid))\n\t\t\tnew_transport = transport_local;\n\t\telse if (remote_cid <= VMADDR_CID_HOST || !transport_h2g ||\n\t\t\t (remote_flags & VMADDR_FLAG_TO_HOST))\n\t\t\tnew_transport = transport_g2h;\n\t\telse\n\t\t\tnew_transport = transport_h2g;\n\t\tbreak;\n\tdefault:\n\t\tret = -ESOCKTNOSUPPORT;\n\t\tgoto err;\n\t}\n\n\tif (vsk->transport) {\n\t\tif (vsk->transport == new_transport) {\n\t\t\tret = 0;\n\t\t\tgoto err;\n\t\t}\n\n\t\t/* transport->release() must be called with sock lock acquired.\n\t\t * This path can only be taken during vsock_connect(), where we\n\t\t * have already held the sock lock. In the other cases, this\n\t\t * function is called on a new socket which is not assigned to\n\t\t * any transport.\n\t\t */\n\t\tvsk->transport->release(vsk);\n\t\tvsock_deassign_transport(vsk);\n\n\t\t/* transport's release() and destruct() can touch some socket\n\t\t * state, since we are reassigning the socket to a new transport\n\t\t * during vsock_connect(), let's reset these fields to have a\n\t\t * clean state.\n\t\t */\n\t\tsock_reset_flag(sk, SOCK_DONE);\n\t\tsk->sk_state = TCP_CLOSE;\n\t\tvsk->peer_shutdown = 0;\n\t}\n\n\t/* We increase the module refcnt to prevent the transport unloading\n\t * while there are open sockets assigned to it.\n\t */\n\tif (!new_transport || !try_module_get(new_transport->module)) {\n\t\tret = -ENODEV;\n\t\tgoto err;\n\t}\n\n\t/* It's safe to release the mutex after a successful try_module_get().\n\t * Whichever transport `new_transport` points at, it won't go away until\n\t * the last module_put() below or in vsock_deassign_transport().\n\t */\n\tmutex_unlock(&vsock_register_mutex);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c\nindex 4c2db6cca557..f59f16afc8e5 100644\n--- a/net/vmw_vsock/af_vsock.c\n+++ b/net/vmw_vsock/af_vsock.c\n@@ -489,10 +489,26 @@ int vsock_assign_transport(struct vsock_sock *vsk, struct vsock_sock *psk)\n \n \tif (vsk->transport) {\n \t\tif (vsk->transport == new_transport) {\n-\t\t\tret = 0;\n-\t\t\tgoto err;\n+\t\t\tmutex_unlock(&vsock_register_mutex);\n+\t\t\treturn 0;\n \t\t}\n+\t}\n+\n+\t/* We increase the module refcnt to prevent the transport unloading\n+\t * while there are open sockets assigned to it.\n+\t */\n+\tif (!new_transport || !try_module_get(new_transport->module)) {\n+\t\tmutex_unlock(&vsock_register_mutex);\n+\t\treturn -ENODEV;\n+\t}\n+\n+\t/* It's safe to release the mutex after a successful try_module_get().\n+\t * Whichever transport `new_transport` points at, it won't go away until\n+\t * the last module_put() below or in vsock_deassign_transport().\n+\t */\n+\tmutex_unlock(&vsock_register_mutex);\n \n+\tif (vsk->transport) {\n \t\t/* transport->release() must be called with sock lock acquired.\n \t\t * This path can only be taken during vsock_connect(), where we\n \t\t * have already held the sock lock. In the other cases, this\n@@ -512,20 +528,6 @@ int vsock_assign_transport(struct vsock_sock *vsk, struct vsock_sock *psk)\n \t\tvsk->peer_shutdown = 0;\n \t}\n \n-\t/* We increase the module refcnt to prevent the transport unloading\n-\t * while there are open sockets assigned to it.\n-\t */\n-\tif (!new_transport || !try_module_get(new_transport->module)) {\n-\t\tret = -ENODEV;\n-\t\tgoto err;\n-\t}\n-\n-\t/* It's safe to release the mutex after a successful try_module_get().\n-\t * Whichever transport `new_transport` points at, it won't go away until\n-\t * the last module_put() below or in vsock_deassign_transport().\n-\t */\n-\tmutex_unlock(&vsock_register_mutex);\n-\n \tif (sk->sk_type == SOCK_SEQPACKET) {\n \t\tif (!new_transport->seqpacket_allow ||\n \t\t    !new_transport->seqpacket_allow(remote_cid)) {",
+          "explanation": "classic_swe step 12 #1",
+          "filename": "net/vmw_vsock/af_vsock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        }
+      ],
+      "end_step": 12,
+      "revision_index": 0,
+      "start_step": 12
+    }
+  ],
+  "success_step": 12
+}

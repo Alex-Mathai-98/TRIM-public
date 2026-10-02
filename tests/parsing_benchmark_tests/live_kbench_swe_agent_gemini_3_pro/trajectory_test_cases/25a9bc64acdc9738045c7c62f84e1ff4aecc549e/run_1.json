@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/afs/internal.h b/fs/afs/internal.h\nindex 440b0e731093..3c56e8b5d3d0 100644\n--- a/fs/afs/internal.h\n+++ b/fs/afs/internal.h\n@@ -1047,6 +1047,7 @@ struct afs_cell *afs_lookup_cell(struct afs_net *net,\n extern struct afs_cell *afs_use_cell(struct afs_cell *, enum afs_cell_trace);\n void afs_unuse_cell(struct afs_cell *cell, enum afs_cell_trace reason);\n extern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);\n+extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_see_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_put_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_queue_cell(struct afs_cell *, enum afs_cell_trace);",
+          "explanation": "classic_swe step 24 insert #1",
+          "filename": "fs/afs/internal.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1050,
+          "step_index": 24
+        },
+        {
+          "after": "struct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n{\n\tint r;\n\n\tif (__refcount_inc_not_zero(&cell->ref, &r)) {\n\t\ttrace_afs_cell(cell->debug_id, r + 1, atomic_read(&cell->active), reason);\n\t\treturn cell;\n\t}\n\treturn NULL;\n}\n\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/afs/cell.c b/fs/afs/cell.c\nindex 0168bbf53fe0..06c03d9c2258 100644\n--- a/fs/afs/cell.c\n+++ b/fs/afs/cell.c\n@@ -540,6 +540,18 @@ static void afs_destroy_cell_work(struct work_struct *work)\n /*\n  * Get a reference on a cell record.\n  */\n+struct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n+{\n+\tint r;\n+\n+\tif (__refcount_inc_not_zero(&cell->ref, &r)) {\n+\t\ttrace_afs_cell(cell->debug_id, r + 1, atomic_read(&cell->active), reason);\n+\t\treturn cell;\n+\t}\n+\treturn NULL;\n+}\n+\n+\n struct afs_cell *afs_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n {\n \tint r;\ndiff --git a/fs/afs/internal.h b/fs/afs/internal.h\nindex 440b0e731093..3c56e8b5d3d0 100644\n--- a/fs/afs/internal.h\n+++ b/fs/afs/internal.h\n@@ -1047,6 +1047,7 @@ struct afs_cell *afs_lookup_cell(struct afs_net *net,\n extern struct afs_cell *afs_use_cell(struct afs_cell *, enum afs_cell_trace);\n void afs_unuse_cell(struct afs_cell *cell, enum afs_cell_trace reason);\n extern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);\n+extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_see_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_put_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_queue_cell(struct afs_cell *, enum afs_cell_trace);",
+          "explanation": "classic_swe step 25 insert #1",
+          "filename": "fs/afs/cell.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 543,
+          "step_index": 25
+        },
+        {
+          "after": "static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)\n{\n\tstruct afs_cell *cell;\n\tloff_t newpos;\n\n\t_enter(\"%llu\", ctx->pos);\n\n\tfor (;;) {\n\t\tunsigned int ix = ctx->pos >> 1;\n\n\t\trcu_read_lock();\n\t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n\t\tif (!cell) {\n\t\t\trcu_read_unlock();\n\t\t\treturn 0;\n\t\t}\n\t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD) {\n\t\t\trcu_read_unlock();\n\t\t\tctx->pos = (ix + 1) << 1;\n\t\t\tcontinue;\n\t\t}\n\t\tif (!afs_try_get_cell(cell, afs_cell_trace_use_lookup_dynroot)) {\n\t\t\trcu_read_unlock();\n\t\t\tctx->pos = (ix + 1) << 1;\n\t\t\tcontinue;\n\t\t}\n\t\trcu_read_unlock();\n\n\t\tnewpos = ix << 1;\n\t\tif (newpos > ctx->pos)\n\t\t\tctx->pos = newpos;\n\n\t\t_debug(\"pos %llu -> cell %u\", ctx->pos, cell->dynroot_ino);\n\n\t\tif ((ctx->pos & 1) == 0) {\n\t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n\t\t\t\t      cell->dynroot_ino, DT_DIR)) {\n\t\t\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n\t\t\t\treturn 0;\n\t\t\t}\n\t\t\tctx->pos++;\n\t\t}\n\t\tif ((ctx->pos & 1) == 1) {\n\t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n\t\t\t\t      cell->dynroot_ino + 1, DT_DIR)) {\n\t\t\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n\t\t\t\treturn 0;\n\t\t\t}\n\t\t\tctx->pos++;\n\t\t}\n\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n\t}\n}\n",
+          "before": "static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)\n{\n\tconst struct afs_cell *cell;\n\tloff_t newpos;\n\n\t_enter(\"%llu\", ctx->pos);\n\n\tfor (;;) {\n\t\tunsigned int ix = ctx->pos >> 1;\n\n\t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n\t\tif (!cell)\n\t\t\treturn 0;\n\t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD) {\n\t\t\tctx->pos += 2;\n\t\t\tctx->pos &= ~1;\n\t\t\tcontinue;\n\t\t}\n\n\t\tnewpos = ix << 1;\n\t\tif (newpos > ctx->pos)\n\t\t\tctx->pos = newpos;\n\n\t\t_debug(\"pos %llu -> cell %u\", ctx->pos, cell->dynroot_ino);\n\n\t\tif ((ctx->pos & 1) == 0) {\n\t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n\t\t\t\t      cell->dynroot_ino, DT_DIR))\n\t\t\t\treturn 0;\n\t\t\tctx->pos++;\n\t\t}\n\t\tif ((ctx->pos & 1) == 1) {\n\t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n\t\t\t\t      cell->dynroot_ino + 1, DT_DIR))\n\t\t\t\treturn 0;\n\t\t\tctx->pos++;\n\t\t}\n\t}\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/afs/cell.c b/fs/afs/cell.c\nindex 0168bbf53fe0..06c03d9c2258 100644\n--- a/fs/afs/cell.c\n+++ b/fs/afs/cell.c\n@@ -540,6 +540,18 @@ static void afs_destroy_cell_work(struct work_struct *work)\n /*\n  * Get a reference on a cell record.\n  */\n+struct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n+{\n+\tint r;\n+\n+\tif (__refcount_inc_not_zero(&cell->ref, &r)) {\n+\t\ttrace_afs_cell(cell->debug_id, r + 1, atomic_read(&cell->active), reason);\n+\t\treturn cell;\n+\t}\n+\treturn NULL;\n+}\n+\n+\n struct afs_cell *afs_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n {\n \tint r;\ndiff --git a/fs/afs/dynroot.c b/fs/afs/dynroot.c\nindex 691e0ae607a1..b0a318230bb0 100644\n--- a/fs/afs/dynroot.c\n+++ b/fs/afs/dynroot.c\n@@ -282,7 +282,7 @@ static struct dentry *afs_lookup_atcell(struct inode *dir, struct dentry *dentry\n  */\n static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)\n {\n-\tconst struct afs_cell *cell;\n+\tstruct afs_cell *cell;\n \tloff_t newpos;\n \n \t_enter(\"%llu\", ctx->pos);\n@@ -290,15 +290,24 @@ static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ct\n \tfor (;;) {\n \t\tunsigned int ix = ctx->pos >> 1;\n \n+\t\trcu_read_lock();\n \t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n-\t\tif (!cell)\n+\t\tif (!cell) {\n+\t\t\trcu_read_unlock();\n \t\t\treturn 0;\n+\t\t}\n \t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n \t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD) {\n-\t\t\tctx->pos += 2;\n-\t\t\tctx->pos &= ~1;\n+\t\t\trcu_read_unlock();\n+\t\t\tctx->pos = (ix + 1) << 1;\n \t\t\tcontinue;\n \t\t}\n+\t\tif (!afs_try_get_cell(cell, afs_cell_trace_use_lookup_dynroot)) {\n+\t\t\trcu_read_unlock();\n+\t\t\tctx->pos = (ix + 1) << 1;\n+\t\t\tcontinue;\n+\t\t}\n+\t\trcu_read_unlock();\n \n \t\tnewpos = ix << 1;\n \t\tif (newpos > ctx->pos)\n@@ -308,18 +317,22 @@ static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ct\n \n \t\tif ((ctx->pos & 1) == 0) {\n \t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n-\t\t\t\t      cell->dynroot_ino, DT_DIR))\n+\t\t\t\t      cell->dynroot_ino, DT_DIR)) {\n+\t\t\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n \t\t\t\treturn 0;\n+\t\t\t}\n \t\t\tctx->pos++;\n \t\t}\n \t\tif ((ctx->pos & 1) == 1) {\n \t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n-\t\t\t\t      cell->dynroot_ino + 1, DT_DIR))\n+\t\t\t\t      cell->dynroot_ino + 1, DT_DIR)) {\n+\t\t\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n \t\t\t\treturn 0;\n+\t\t\t}\n \t\t\tctx->pos++;\n \t\t}\n+\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n \t}\n-\treturn 0;\n }\n \n /*\ndiff --git a/fs/afs/internal.h b/fs/afs/internal.h\nindex 440b0e731093..3c56e8b5d3d0 100644\n--- a/fs/afs/internal.h\n+++ b/fs/afs/internal.h\n@@ -1047,6 +1047,7 @@ struct afs_cell *afs_lookup_cell(struct afs_net *net,\n extern struct afs_cell *afs_use_cell(struct afs_cell *, enum afs_cell_trace);\n void afs_unuse_cell(struct afs_cell *cell, enum afs_cell_trace reason);\n extern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);\n+extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_see_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_put_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_queue_cell(struct afs_cell *, enum afs_cell_trace);",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO)\n\t\tret = afs_dynroot_readdir_cells(net, ctx);\n\n\treturn ret;\n}\n",
+          "before": "\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {\n\t\trcu_read_lock();\n\t\tret = afs_dynroot_readdir_cells(net, ctx);\n\t\trcu_read_unlock();\n\t}\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/afs/cell.c b/fs/afs/cell.c\nindex 0168bbf53fe0..06c03d9c2258 100644\n--- a/fs/afs/cell.c\n+++ b/fs/afs/cell.c\n@@ -540,6 +540,18 @@ static void afs_destroy_cell_work(struct work_struct *work)\n /*\n  * Get a reference on a cell record.\n  */\n+struct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n+{\n+\tint r;\n+\n+\tif (__refcount_inc_not_zero(&cell->ref, &r)) {\n+\t\ttrace_afs_cell(cell->debug_id, r + 1, atomic_read(&cell->active), reason);\n+\t\treturn cell;\n+\t}\n+\treturn NULL;\n+}\n+\n+\n struct afs_cell *afs_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n {\n \tint r;\ndiff --git a/fs/afs/dynroot.c b/fs/afs/dynroot.c\nindex 691e0ae607a1..f566b997cd24 100644\n--- a/fs/afs/dynroot.c\n+++ b/fs/afs/dynroot.c\n@@ -282,7 +282,7 @@ static struct dentry *afs_lookup_atcell(struct inode *dir, struct dentry *dentry\n  */\n static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)\n {\n-\tconst struct afs_cell *cell;\n+\tstruct afs_cell *cell;\n \tloff_t newpos;\n \n \t_enter(\"%llu\", ctx->pos);\n@@ -290,15 +290,24 @@ static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ct\n \tfor (;;) {\n \t\tunsigned int ix = ctx->pos >> 1;\n \n+\t\trcu_read_lock();\n \t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n-\t\tif (!cell)\n+\t\tif (!cell) {\n+\t\t\trcu_read_unlock();\n \t\t\treturn 0;\n+\t\t}\n \t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n \t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD) {\n-\t\t\tctx->pos += 2;\n-\t\t\tctx->pos &= ~1;\n+\t\t\trcu_read_unlock();\n+\t\t\tctx->pos = (ix + 1) << 1;\n \t\t\tcontinue;\n \t\t}\n+\t\tif (!afs_try_get_cell(cell, afs_cell_trace_use_lookup_dynroot)) {\n+\t\t\trcu_read_unlock();\n+\t\t\tctx->pos = (ix + 1) << 1;\n+\t\t\tcontinue;\n+\t\t}\n+\t\trcu_read_unlock();\n \n \t\tnewpos = ix << 1;\n \t\tif (newpos > ctx->pos)\n@@ -308,18 +317,22 @@ static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ct\n \n \t\tif ((ctx->pos & 1) == 0) {\n \t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n-\t\t\t\t      cell->dynroot_ino, DT_DIR))\n+\t\t\t\t      cell->dynroot_ino, DT_DIR)) {\n+\t\t\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n \t\t\t\treturn 0;\n+\t\t\t}\n \t\t\tctx->pos++;\n \t\t}\n \t\tif ((ctx->pos & 1) == 1) {\n \t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n-\t\t\t\t      cell->dynroot_ino + 1, DT_DIR))\n+\t\t\t\t      cell->dynroot_ino + 1, DT_DIR)) {\n+\t\t\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n \t\t\t\treturn 0;\n+\t\t\t}\n \t\t\tctx->pos++;\n \t\t}\n+\t\tafs_put_cell(cell, afs_cell_trace_unuse_lookup_dynroot);\n \t}\n-\treturn 0;\n }\n \n /*\n@@ -347,11 +360,9 @@ static int afs_dynroot_readdir(struct file *file, struct dir_context *ctx)\n \t\tctx->pos = 4;\n \t}\n \n-\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {\n-\t\trcu_read_lock();\n+\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO)\n \t\tret = afs_dynroot_readdir_cells(net, ctx);\n-\t\trcu_read_unlock();\n-\t}\n+\n \treturn ret;\n }\n \ndiff --git a/fs/afs/internal.h b/fs/afs/internal.h\nindex 440b0e731093..3c56e8b5d3d0 100644\n--- a/fs/afs/internal.h\n+++ b/fs/afs/internal.h\n@@ -1047,6 +1047,7 @@ struct afs_cell *afs_lookup_cell(struct afs_net *net,\n extern struct afs_cell *afs_use_cell(struct afs_cell *, enum afs_cell_trace);\n void afs_unuse_cell(struct afs_cell *cell, enum afs_cell_trace reason);\n extern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);\n+extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_see_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_put_cell(struct afs_cell *, enum afs_cell_trace);\n extern void afs_queue_cell(struct afs_cell *, enum afs_cell_trace);",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 0,
+      "start_step": 24
+    }
+  ],
+  "success_step": 27
+}

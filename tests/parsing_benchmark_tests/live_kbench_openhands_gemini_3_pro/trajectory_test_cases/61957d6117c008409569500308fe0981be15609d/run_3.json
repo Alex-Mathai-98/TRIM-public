@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static noinline_for_stack int ipvlan_process_v4_outbound(struct sk_buff *skb)\n{\n\tconst struct iphdr *ip4h;\n\tstruct net_device *dev = skb->dev;\n\tstruct net *net = dev_net(dev);\n\tstruct rtable *rt;\n\tint err, ret = NET_XMIT_DROP;\n\tstruct flowi4 fl4;\n\n\tif (unlikely(!pskb_may_pull(skb, sizeof(struct iphdr))))\n\t\tgoto err;\n\n\tip4h = ip_hdr(skb);\n\tmemset(&fl4, 0, sizeof(fl4));\n\tfl4.flowi4_oif = dev->ifindex;\n\tfl4.flowi4_tos = inet_dscp_to_dsfield(ip4h_dscp(ip4h));\n\tfl4.flowi4_flags = FLOWI_FLAG_ANYSRC;\n\tfl4.flowi4_mark = skb->mark;\n\tfl4.daddr = ip4h->daddr;\n\tfl4.saddr = ip4h->saddr;\n\n\trt = ip_route_output_flow(net, &fl4, NULL);",
+          "before": "static noinline_for_stack int ipvlan_process_v4_outbound(struct sk_buff *skb)\n{\n\tconst struct iphdr *ip4h = ip_hdr(skb);\n\tstruct net_device *dev = skb->dev;\n\tstruct net *net = dev_net(dev);\n\tstruct rtable *rt;\n\tint err, ret = NET_XMIT_DROP;\n\tstruct flowi4 fl4 = {\n\t\t.flowi4_oif = dev->ifindex,\n\t\t.flowi4_tos = inet_dscp_to_dsfield(ip4h_dscp(ip4h)),\n\t\t.flowi4_flags = FLOWI_FLAG_ANYSRC,\n\t\t.flowi4_mark = skb->mark,\n\t\t.daddr = ip4h->daddr,\n\t\t.saddr = ip4h->saddr,\n\t};\n\n\trt = ip_route_output_flow(net, &fl4, NULL);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/ipvlan/ipvlan_core.c\n+++ /linux/drivers/net/ipvlan/ipvlan_core.c\n@@ -419 +419 @@\n-\tconst struct iphdr *ip4h = ip_hdr(skb);\n+\tconst struct iphdr *ip4h;\n@@ -424,8 +424,13 @@\n-\tstruct flowi4 fl4 = {\n-\t\t.flowi4_oif = dev->ifindex,\n-\t\t.flowi4_tos = inet_dscp_to_dsfield(ip4h_dscp(ip4h)),\n-\t\t.flowi4_flags = FLOWI_FLAG_ANYSRC,\n-\t\t.flowi4_mark = skb->mark,\n-\t\t.daddr = ip4h->daddr,\n-\t\t.saddr = ip4h->saddr,\n-\t};\n+\tstruct flowi4 fl4;\n+\n+\tif (unlikely(!pskb_may_pull(skb, sizeof(struct iphdr))))\n+\t\tgoto err;\n+\n+\tip4h = ip_hdr(skb);\n+\tmemset(&fl4, 0, sizeof(fl4));\n+\tfl4.flowi4_oif = dev->ifindex;\n+\tfl4.flowi4_tos = inet_dscp_to_dsfield(ip4h_dscp(ip4h));\n+\tfl4.flowi4_flags = FLOWI_FLAG_ANYSRC;\n+\tfl4.flowi4_mark = skb->mark;\n+\tfl4.daddr = ip4h->daddr;\n+\tfl4.saddr = ip4h->saddr;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 36",
+          "filename": "drivers/net/ipvlan/ipvlan_core.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "\n\tif (unlikely(!pskb_may_pull(skb, sizeof(struct ipv6hdr))))\n\t\tgoto err;\n\n\terr = ipvlan_route_v6_outbound(dev, skb);\n\tif (unlikely(err)) {\n\t\tDEV_STATS_INC(dev, tx_errors);\n\t\tkfree_skb(skb);\n\t\treturn err;\n\t}\n",
+          "before": "\n\terr = ipvlan_route_v6_outbound(dev, skb);\n\tif (unlikely(err)) {\n\t\tDEV_STATS_INC(dev, tx_errors);\n\t\tkfree_skb(skb);\n\t\treturn err;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/ipvlan/ipvlan_core.c\n+++ /linux/drivers/net/ipvlan/ipvlan_core.c\n@@ -495,0 +496,3 @@\n+\tif (unlikely(!pskb_may_pull(skb, sizeof(struct ipv6hdr))))\n+\t\tgoto err;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 38",
+          "filename": "drivers/net/ipvlan/ipvlan_core.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        },
+        {
+          "after": "\n\tif (unlikely(net_xmit_eval(err)))\n\t\tDEV_STATS_INC(dev, tx_errors);\n\telse\n\t\tret = NET_XMIT_SUCCESS;\n\treturn ret;\nerr:\n\tDEV_STATS_INC(dev, tx_errors);\n\tkfree_skb(skb);\n\treturn ret;\n}\n",
+          "before": "\n\tif (unlikely(net_xmit_eval(err)))\n\t\tDEV_STATS_INC(dev, tx_errors);\n\telse\n\t\tret = NET_XMIT_SUCCESS;\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/ipvlan/ipvlan_core.c\n+++ /linux/drivers/net/ipvlan/ipvlan_core.c\n@@ -513,0 +514,4 @@\n+err:\n+\tDEV_STATS_INC(dev, tx_errors);\n+\tkfree_skb(skb);\n+\treturn ret;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 42",
+          "filename": "drivers/net/ipvlan/ipvlan_core.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 0,
+      "start_step": 36
+    }
+  ],
+  "success_step": 42
+}

@@ -1,0 +1,42 @@
+diff --git a/fs/bcachefs/recovery.c b/fs/bcachefs/recovery.c
+index d2b07f602da9..993f903ea6be 100644
+--- a/fs/bcachefs/recovery.c
++++ b/fs/bcachefs/recovery.c
+@@ -1125,7 +1125,9 @@ int bch2_fs_initialize(struct bch_fs *c)
+ 	 * journal_res_get() will crash if called before this has
+ 	 * set up the journal.pin FIFO and journal.cur pointer:
+ 	 */
+-	bch2_fs_journal_start(&c->journal, 1);
++	ret = bch2_fs_journal_start(&c->journal, 1);
++	if (ret)
++		goto err;
+ 	set_bit(BCH_FS_accounting_replay_done, &c->flags);
+ 	bch2_journal_set_replay_done(&c->journal);
+ 
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index 788e870bfef6..1910e8f0d9ce 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -1216,8 +1216,10 @@ static void bch2_dev_release(struct kobject *kobj)
+ 
+ static void bch2_dev_free(struct bch_dev *ca)
+ {
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
++	if (ca->io_ref[WRITE].data)
++		WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
++	if (ca->io_ref[READ].data)
++		WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
+ 
+ 	cancel_work_sync(&ca->io_error_work);
+ 
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..77c4d98954fc
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "fba9e05269cfb431f3575114976fd758545d24a0": 93401
++}
+\ No newline at end of file

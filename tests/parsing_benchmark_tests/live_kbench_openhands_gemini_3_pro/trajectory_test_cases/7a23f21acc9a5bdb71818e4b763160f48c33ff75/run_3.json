@@ -1,0 +1,195 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\trstatc_pcpu = READ_ONCE(css->rstat_cpu);\n\tif (!rstatc_pcpu)\n\t\treturn;\n\n\tlockdep_assert_preemption_disabled();\n\n\t/*\n\t * For archs withnot nmi safe cmpxchg or percpu ops support, ignore\n\t * the requests from nmi context.\n\t */\n\tif ((!IS_ENABLED(CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG) ||\n\t     !IS_ENABLED(CONFIG_ARCH_HAS_NMI_SAFE_THIS_CPU_OPS)) && in_nmi())\n\t\treturn;\n\n\trstatc = per_cpu_ptr(rstatc_pcpu, cpu);",
+          "before": "\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tlockdep_assert_preemption_disabled();\n\n\t/*\n\t * For archs withnot nmi safe cmpxchg or percpu ops support, ignore\n\t * the requests from nmi context.\n\t */\n\tif ((!IS_ENABLED(CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG) ||\n\t     !IS_ENABLED(CONFIG_ARCH_HAS_NMI_SAFE_THIS_CPU_OPS)) && in_nmi())\n\t\treturn;\n\n\trstatc = css_rstat_cpu(css, cpu);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -81,0 +82,4 @@\n+\t\treturn;\n+\n+\trstatc_pcpu = READ_ONCE(css->rstat_cpu);\n+\tif (!rstatc_pcpu)\n@@ -94 +98 @@\n-\trstatc = css_rstat_cpu(css, cpu);\n+\trstatc = per_cpu_ptr(rstatc_pcpu, cpu);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 47",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        },
+        {
+          "after": "\n\tself = &rstatc->lnode;\n\tif (this_cpu_cmpxchg(rstatc_pcpu->lnode.next, self, NULL) != self)\n\t\treturn;\n",
+          "before": "\n\tself = &rstatc->lnode;\n\trstatc_pcpu = css->rstat_cpu;\n\tif (this_cpu_cmpxchg(rstatc_pcpu->lnode.next, self, NULL) != self)\n\t\treturn;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -121 +120,0 @@\n-\trstatc_pcpu = css->rstat_cpu;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 49",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        },
+        {
+          "after": "\nstatic struct cgroup_subsys_state *css_rstat_updated_list(\n\t\tstruct cgroup_subsys_state *root, int cpu,\n\t\tstruct css_rstat_cpu __percpu *rstat_cpu)\n{\n\tstruct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);\n\tstruct cgroup_subsys_state *head = NULL, *parent, *child;\n",
+          "before": "\nstatic struct cgroup_subsys_state *css_rstat_updated_list(\n\t\tstruct cgroup_subsys_state *root, int cpu)\n{\n\tstruct css_rstat_cpu *rstatc = css_rstat_cpu(root, cpu);\n\tstruct cgroup_subsys_state *head = NULL, *parent, *child;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -282,3 +282,4 @@\n-\t\tstruct cgroup_subsys_state *root, int cpu)\n-{\n-\tstruct css_rstat_cpu *rstatc = css_rstat_cpu(root, cpu);\n+\t\tstruct cgroup_subsys_state *root, int cpu,\n+\t\tstruct css_rstat_cpu __percpu *rstat_cpu)\n+{\n+\tstruct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 51",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        },
+        {
+          "after": "\n\nstatic void __css_rstat_flush(struct cgroup_subsys_state *css,\n\t\t\t      struct css_rstat_cpu __percpu *rstat_cpu)\n{\n\tint cpu;\n\tbool is_self = css_is_self(css);\n\n\t/*\n\t * Since bpf programs can call this function, prevent access to\n\t * uninitialized rstat pointers.\n\t */\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tmight_sleep();\n\tfor_each_possible_cpu(cpu) {\n\t\tstruct cgroup_subsys_state *pos;\n\n\t\t/* Reacquire for each CPU to avoid disabling IRQs too long */\n\t\t__css_rstat_lock(css, cpu);\n\t\tpos = css_rstat_updated_list(css, cpu, rstat_cpu);\n\t\tfor (; pos; pos = pos->rstat_flush_next) {\n\t\t\tif (is_self) {\n\t\t\t\tcgroup_base_stat_flush(pos->cgroup, cpu);\n\t\t\t\tbpf_rstat_flush(pos->cgroup,\n\t\t\t\t\t\tcgroup_parent(pos->cgroup), cpu);\n\t\t\t} else\n\t\t\t\tpos->ss->css_rstat_flush(pos, cpu);\n\t\t}\n\t\t__css_rstat_unlock(css, cpu);\n\t\tif (!cond_resched())\n\t\t\tcpu_relax();\n\t}\n}\n\n__bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)\n{\n\t__css_rstat_flush(css, css->rstat_cpu);\n}\n\n",
+          "before": "\n\n__bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)\n{\n\tint cpu;\n\tbool is_self = css_is_self(css);\n\n\t/*\n\t * Since bpf programs can call this function, prevent access to\n\t * uninitialized rstat pointers.\n\t */\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tmight_sleep();\n\tfor_each_possible_cpu(cpu) {\n\t\tstruct cgroup_subsys_state *pos;\n\n\t\t/* Reacquire for each CPU to avoid disabling IRQs too long */\n\t\t__css_rstat_lock(css, cpu);\n\t\tpos = css_rstat_updated_list(css, cpu);\n\t\tfor (; pos; pos = pos->rstat_flush_next) {\n\t\t\tif (is_self) {\n\t\t\t\tcgroup_base_stat_flush(pos->cgroup, cpu);\n\t\t\t\tbpf_rstat_flush(pos->cgroup,\n\t\t\t\t\t\tcgroup_parent(pos->cgroup), cpu);\n\t\t\t} else\n\t\t\t\tpos->ss->css_rstat_flush(pos, cpu);\n\t\t}\n\t\t__css_rstat_unlock(css, cpu);\n\t\tif (!cond_resched())\n\t\t\tcpu_relax();\n\t}\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -401 +401,2 @@\n-__bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)\n+static void __css_rstat_flush(struct cgroup_subsys_state *css,\n+\t\t\t      struct css_rstat_cpu __percpu *rstat_cpu)\n@@ -419 +420 @@\n-\t\tpos = css_rstat_updated_list(css, cpu);\n+\t\tpos = css_rstat_updated_list(css, cpu, rstat_cpu);\n@@ -431,0 +433,5 @@\n+}\n+\n+__bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)\n+{\n+\t__css_rstat_flush(css, css->rstat_cpu);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        },
+        {
+          "after": "\nvoid css_rstat_exit(struct cgroup_subsys_state *css)\n{\n\tstruct css_rstat_cpu __percpu *rstat_cpu;\n\tint cpu;\n\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\t/*\n\t * Disable the updater before flushing to prevent new updates from\n\t * leaking in.\n\t */\n\trstat_cpu = css->rstat_cpu;\n\tcss->rstat_cpu = NULL;\n\tsynchronize_rcu();\n\n\t__css_rstat_flush(css, rstat_cpu);\n\n\t/* sanity check */\n\tfor_each_possible_cpu(cpu) {\n\t\tstruct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);\n\n\t\tif (WARN_ON_ONCE(rstatc->updated_children != css) ||\n\t\t    WARN_ON_ONCE(rstatc->updated_next))\n\t\t\treturn;\n\t}\n\n\tif (css_is_self(css)) {\n\t\tstruct cgroup *cgrp = css->cgroup;\n\n\t\tfree_percpu(cgrp->rstat_base_cpu);\n\t\tcgrp->rstat_base_cpu = NULL;\n\t}\n\n\tfree_percpu(rstat_cpu);\n}\n",
+          "before": "\nvoid css_rstat_exit(struct cgroup_subsys_state *css)\n{\n\tint cpu;\n\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tcss_rstat_flush(css);\n\n\t/* sanity check */\n\tfor_each_possible_cpu(cpu) {\n\t\tstruct css_rstat_cpu *rstatc = css_rstat_cpu(css, cpu);\n\n\t\tif (WARN_ON_ONCE(rstatc->updated_children != css) ||\n\t\t    WARN_ON_ONCE(rstatc->updated_next))\n\t\t\treturn;\n\t}\n\n\tif (css_is_self(css)) {\n\t\tstruct cgroup *cgrp = css->cgroup;\n\n\t\tfree_percpu(cgrp->rstat_base_cpu);\n\t\tcgrp->rstat_base_cpu = NULL;\n\t}\n\n\tfree_percpu(css->rstat_cpu);\n\tcss->rstat_cpu = NULL;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -486,0 +487 @@\n+\tstruct css_rstat_cpu __percpu *rstat_cpu;\n@@ -492 +493,9 @@\n-\tcss_rstat_flush(css);\n+\t/*\n+\t * Disable the updater before flushing to prevent new updates from\n+\t * leaking in.\n+\t */\n+\trstat_cpu = css->rstat_cpu;\n+\tcss->rstat_cpu = NULL;\n+\tsynchronize_rcu();\n+\n+\t__css_rstat_flush(css, rstat_cpu);\n@@ -496 +505 @@\n-\t\tstruct css_rstat_cpu *rstatc = css_rstat_cpu(css, cpu);\n+\t\tstruct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);\n@@ -510,2 +519 @@\n-\tfree_percpu(css->rstat_cpu);\n-\tcss->rstat_cpu = NULL;\n+\tfree_percpu(rstat_cpu);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 63",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 63
+        }
+      ],
+      "end_step": 63,
+      "revision_index": 0,
+      "start_step": 47
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tcss_process_update_tree(root->ss, cpu);\n\n\t/*\n\t * Return NULL if this subtree is not on-list.\n\t *\n\t * An exception is that if the updates are racing with\n\t * css_rstat_exit(), the cleanup flush may happen after the check\n\t * in css_rstat_updated_list() passes using a valid rstat_cpu but\n\t * the link to the parent is skipped because the later check fails\n\t * using the NULL rstat_cpu. In such case, we still want to\n\t * proceed to flush the children.\n\t */\n\tif (!rstatc->updated_next) {\n\t\tif (rstatc->updated_children == root)\n\t\t\treturn NULL;\n\t} else {\n\t\t/*\n\t\t * Unlink @root from its parent. As the updated_children list is\n\t\t * singly linked, we have to walk it to find the removal point.\n\t\t */\n\t\tparent = root->parent;\n\t\tif (parent) {\n\t\t\tstruct css_rstat_cpu *prstatc;\n\t\t\tstruct cgroup_subsys_state **nextp;\n\n\t\t\tprstatc = css_rstat_cpu(parent, cpu);\n\t\t\tnextp = &prstatc->updated_children;\n\t\t\twhile (*nextp != root) {\n\t\t\t\tstruct css_rstat_cpu *nrstatc;\n\n\t\t\t\tnrstatc = css_rstat_cpu(*nextp, cpu);\n\t\t\t\tWARN_ON_ONCE(*nextp == parent);\n\t\t\t\tnextp = &nrstatc->updated_next;\n\t\t\t}\n\t\t\t*nextp = rstatc->updated_next;\n\t\t}\n\t\trstatc->updated_next = NULL;\n\t}\n\n\t/* Push @root to the list first before pushing the children */\n",
+          "before": "\n\tcss_process_update_tree(root->ss, cpu);\n\n\t/* Return NULL if this subtree is not on-list */\n\tif (!rstatc->updated_next)\n\t\treturn NULL;\n\n\t/*\n\t * Unlink @root from its parent. As the updated_children list is\n\t * singly linked, we have to walk it to find the removal point.\n\t */\n\tparent = root->parent;\n\tif (parent) {\n\t\tstruct css_rstat_cpu *prstatc;\n\t\tstruct cgroup_subsys_state **nextp;\n\n\t\tprstatc = css_rstat_cpu(parent, cpu);\n\t\tnextp = &prstatc->updated_children;\n\t\twhile (*nextp != root) {\n\t\t\tstruct css_rstat_cpu *nrstatc;\n\n\t\t\tnrstatc = css_rstat_cpu(*nextp, cpu);\n\t\t\tWARN_ON_ONCE(*nextp == parent);\n\t\t\tnextp = &nrstatc->updated_next;\n\t\t}\n\t\t*nextp = rstatc->updated_next;\n\t}\n\n\trstatc->updated_next = NULL;\n\n\t/* Push @root to the list first before pushing the children */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -290,21 +290,33 @@\n-\t/* Return NULL if this subtree is not on-list */\n-\tif (!rstatc->updated_next)\n-\t\treturn NULL;\n-\n-\t/*\n-\t * Unlink @root from its parent. As the updated_children list is\n-\t * singly linked, we have to walk it to find the removal point.\n-\t */\n-\tparent = root->parent;\n-\tif (parent) {\n-\t\tstruct css_rstat_cpu *prstatc;\n-\t\tstruct cgroup_subsys_state **nextp;\n-\n-\t\tprstatc = css_rstat_cpu(parent, cpu);\n-\t\tnextp = &prstatc->updated_children;\n-\t\twhile (*nextp != root) {\n-\t\t\tstruct css_rstat_cpu *nrstatc;\n-\n-\t\t\tnrstatc = css_rstat_cpu(*nextp, cpu);\n-\t\t\tWARN_ON_ONCE(*nextp == parent);\n-\t\t\tnextp = &nrstatc->updated_next;\n+\t/*\n+\t * Return NULL if this subtree is not on-list.\n+\t *\n+\t * An exception is that if the updates are racing with\n+\t * css_rstat_exit(), the cleanup flush may happen after the check\n+\t * in css_rstat_updated_list() passes using a valid rstat_cpu but\n+\t * the link to the parent is skipped because the later check fails\n+\t * using the NULL rstat_cpu. In such case, we still want to\n+\t * proceed to flush the children.\n+\t */\n+\tif (!rstatc->updated_next) {\n+\t\tif (rstatc->updated_children == root)\n+\t\t\treturn NULL;\n+\t} else {\n+\t\t/*\n+\t\t * Unlink @root from its parent. As the updated_children list is\n+\t\t * singly linked, we have to walk it to find the removal point.\n+\t\t */\n+\t\tparent = root->parent;\n+\t\tif (parent) {\n+\t\t\tstruct css_rstat_cpu *prstatc;\n+\t\t\tstruct cgroup_subsys_state **nextp;\n+\n+\t\t\tprstatc = css_rstat_cpu(parent, cpu);\n+\t\t\tnextp = &prstatc->updated_children;\n+\t\t\twhile (*nextp != root) {\n+\t\t\t\tstruct css_rstat_cpu *nrstatc;\n+\n+\t\t\t\tnrstatc = css_rstat_cpu(*nextp, cpu);\n+\t\t\t\tWARN_ON_ONCE(*nextp == parent);\n+\t\t\t\tnextp = &nrstatc->updated_next;\n+\t\t\t}\n+\t\t\t*nextp = rstatc->updated_next;\n@@ -312,4 +324,2 @@\n-\t\t*nextp = rstatc->updated_next;\n-\t}\n-\n-\trstatc->updated_next = NULL;\n+\t\trstatc->updated_next = NULL;\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 73",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 73
+        }
+      ],
+      "end_step": 73,
+      "revision_index": 1,
+      "start_step": 73
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\t/*\n\t * Disable the updater before flushing to prevent new updates from\n\t * leaking in.\n\t */\n\trstat_cpu = css->rstat_cpu;\n\tif (!rstat_cpu)\n\t\treturn;\n\n\tcss->rstat_cpu = NULL;\n\tsynchronize_rcu();\n\n\t__css_rstat_flush(css, rstat_cpu);\n",
+          "before": "\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\t/*\n\t * Disable the updater before flushing to prevent new updates from\n\t * leaking in.\n\t */\n\trstat_cpu = css->rstat_cpu;\n\tcss->rstat_cpu = NULL;\n\tsynchronize_rcu();\n\n\t__css_rstat_flush(css, rstat_cpu);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/cgroup/rstat.c\n+++ /linux/kernel/cgroup/rstat.c\n@@ -507,0 +508,3 @@\n+\tif (!rstat_cpu)\n+\t\treturn;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 83",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 83
+        }
+      ],
+      "end_step": 83,
+      "revision_index": 2,
+      "start_step": 83
+    }
+  ],
+  "success_step": 83
+}

@@ -1,0 +1,145 @@
+{
+  "bug_id": "psf__requests-2317",
+  "short_path": [
+    [
+      {
+        "filename": "requests/sessions.py",
+        "before": "        method = builtin_str(method)",
+        "after": "        # Handle bytes method properly to avoid b'GET' -> \"b'GET'\" conversion\n        if isinstance(method, bytes):\n            method = method.decode('utf-8')\n        else:\n            method = builtin_str(method)",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "requests/models.py",
+        "before": "    def prepare_method(self, method):\n        \"\"\"Prepares the given HTTP method.\"\"\"\n        self.method = method\n        if self.method is not None:\n            self.method = self.method.upper()",
+        "after": "    def prepare_method(self, method):\n        \"\"\"Prepares the given HTTP method.\"\"\"\n        self.method = method\n        if self.method is not None:\n            # Handle bytes method properly to avoid b'GET' -> \"b'GET'\" conversion\n            if isinstance(self.method, bytes):\n                self.method = self.method.decode('utf-8')\n            self.method = self.method.upper()",
+        "explanation": "classic_swe step 31 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/requests/models.py b/requests/models.py\nindex 3f6a4f92..665c6cc9 100644\n--- a/requests/models.py\n+++ b/requests/models.py\n@@ -329,6 +329,9 @@ class PreparedRequest(RequestEncodingMixin, RequestHooksMixin):\n         \"\"\"Prepares the given HTTP method.\"\"\"\n         self.method = method\n         if self.method is not None:\n+            # Handle bytes method properly to avoid b'GET' -> \"b'GET'\" conversion\n+            if isinstance(self.method, bytes):\n+                self.method = self.method.decode('utf-8')\n             self.method = self.method.upper()\n \n     def prepare_url(self, url, params):\ndiff --git a/requests/sessions.py b/requests/sessions.py\nindex d701ff2e..1d3202ff 100644\n--- a/requests/sessions.py\n+++ b/requests/sessions.py\n@@ -425,7 +425,11 @@ class Session(SessionRedirectMixin):\n             If Tuple, ('cert', 'key') pair.\n         \"\"\"\n \n-        method = builtin_str(method)\n+        # Handle bytes method properly to avoid b'GET' -> \"b'GET'\" conversion\n+        if isinstance(method, bytes):\n+            method = method.decode('utf-8')\n+        else:\n+            method = builtin_str(method)\n \n         # Create the Request.\n         req = Request(\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      3,
+      8
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      3,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      3,
+      8
+    ],
+    "edit_list_after_refinement": [
+      3,
+      8
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "requests/sessions.py",
+          "before": "        method = builtin_str(method)",
+          "after": "        # Handle bytes method properly to avoid b'GET' -> \"b'GET'\" conversion\n        if isinstance(method, bytes):\n            method = method.decode('utf-8')\n        else:\n            method = builtin_str(method)",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "requests/models.py",
+          "before": "    def prepare_method(self, method):\n        \"\"\"Prepares the given HTTP method.\"\"\"\n        self.method = method\n        if self.method is not None:\n            self.method = self.method.upper()",
+          "after": "    def prepare_method(self, method):\n        \"\"\"Prepares the given HTTP method.\"\"\"\n        self.method = method\n        if self.method is not None:\n            # Handle bytes method properly to avoid b'GET' -> \"b'GET'\" conversion\n            if isinstance(self.method, bytes):\n                self.method = self.method.decode('utf-8')\n            self.method = self.method.upper()",
+          "explanation": "classic_swe step 31 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 8,
+    "f2p_fail": 0,
+    "p2p_pass": 133,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 8,
+    "f2p_fail": 0,
+    "p2p_pass": 133,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "requests/sessions.py"
+    ],
+    "extra_files_in_minimized": [
+      "requests/models.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "requests/models.py",
+      "requests/sessions.py"
+    ],
+    "gold_files": [
+      "requests/sessions.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

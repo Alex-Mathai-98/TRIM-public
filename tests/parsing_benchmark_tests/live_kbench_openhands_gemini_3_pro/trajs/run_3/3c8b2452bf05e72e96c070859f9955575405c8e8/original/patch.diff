@@ -1,0 +1,73 @@
+diff --git a/kernel/bpf/range_tree.c b/kernel/bpf/range_tree.c
+index f7915ab0a6d3..24d0924a014a 100644
+--- a/kernel/bpf/range_tree.c
++++ b/kernel/bpf/range_tree.c
+@@ -52,6 +52,23 @@ static u32 rn_size(struct range_node *rn)
+ 	return rn->rn_last - rn->rn_start + 1;
+ }
+ 
++static void *range_alloc(struct bpf_mem_alloc *ma, size_t size)
++{
++	void *p;
++
++	migrate_disable();
++	p = bpf_mem_alloc(ma, size);
++	migrate_enable();
++	return p;
++}
++
++static void range_free(struct bpf_mem_alloc *ma, void *ptr)
++{
++	migrate_disable();
++	bpf_mem_free(ma, ptr);
++	migrate_enable();
++}
++
+ /* Find range that fits best to requested size */
+ static inline struct range_node *__find_range(struct range_tree *rt, u32 len)
+ {
+@@ -150,7 +167,7 @@ int range_tree_clear(struct range_tree *rt, u32 start, u32 len)
+ 			range_it_insert(rn, rt);
+ 
+ 			/* Add a range */
+-			new_rn = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));
++			new_rn = range_alloc(&bpf_global_ma, sizeof(struct range_node));
+ 			if (!new_rn)
+ 				return -ENOMEM;
+ 			new_rn->rn_start = last + 1;
+@@ -170,7 +187,7 @@ int range_tree_clear(struct range_tree *rt, u32 start, u32 len)
+ 		} else {
+ 			/* in the middle of the clearing range */
+ 			range_it_remove(rn, rt);
+-			bpf_mem_free(&bpf_global_ma, rn);
++			range_free(&bpf_global_ma, rn);
+ 		}
+ 	}
+ 	return 0;
+@@ -223,7 +240,7 @@ int range_tree_set(struct range_tree *rt, u32 start, u32 len)
+ 		range_it_remove(right, rt);
+ 		left->rn_last = right->rn_last;
+ 		range_it_insert(left, rt);
+-		bpf_mem_free(&bpf_global_ma, right);
++		range_free(&bpf_global_ma, right);
+ 	} else if (left) {
+ 		/* Combine with the left range */
+ 		range_it_remove(left, rt);
+@@ -235,7 +252,7 @@ int range_tree_set(struct range_tree *rt, u32 start, u32 len)
+ 		right->rn_start = start;
+ 		range_it_insert(right, rt);
+ 	} else {
+-		left = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));
++		left = range_alloc(&bpf_global_ma, sizeof(struct range_node));
+ 		if (!left)
+ 			return -ENOMEM;
+ 		left->rn_start = start;
+@@ -251,7 +268,7 @@ void range_tree_destroy(struct range_tree *rt)
+ 
+ 	while ((rn = range_it_iter_first(rt, 0, -1U))) {
+ 		range_it_remove(rn, rt);
+-		bpf_mem_free(&bpf_global_ma, rn);
++		range_free(&bpf_global_ma, rn);
+ 	}
+ }
+ 

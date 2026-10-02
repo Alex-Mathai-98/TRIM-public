@@ -1,0 +1,247 @@
+{
+  "bug_id": "django__django-17084",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        has_existing_aggregation = (\n            any(\n                getattr(annotation, \"contains_aggregate\", True)\n                for annotation in self.annotations.values()\n            )\n            or having\n        )",
+        "after": "        has_existing_aggregation = (\n            any(\n                getattr(annotation, \"contains_aggregate\", True)\n                for annotation in self.annotations.values()\n            )\n            or having\n        )\n        # Check if any of the aggregates reference window functions\n        has_window_function_refs = any(\n            any(\n                getattr(self.annotations.get(ref), \"contains_over_clause\", False)\n                for ref in aggregate.get_refs()\n            )\n            for aggregate in aggregates.values()\n        )",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        if (\n            isinstance(self.group_by, tuple)\n            or self.is_sliced\n            or has_existing_aggregation\n            or refs_subquery\n            or qualify\n            or self.distinct\n            or self.combinator\n        ):",
+        "after": "        if (\n            isinstance(self.group_by, tuple)\n            or self.is_sliced\n            or has_existing_aggregation\n            or refs_subquery\n            or qualify\n            or self.distinct\n            or self.combinator\n            or has_window_function_refs\n        ):",
+        "explanation": "classic_swe step 33 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions_window/tests.py",
+        "before": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))",
+        "after": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))\n\n    def test_aggregate_over_window_function(self):\n        \"\"\"\n        Test that aggregating over window functions works correctly by using\n        a subquery. This addresses the issue where window functions inside\n        aggregate functions would cause SQL errors.\n        \"\"\"\n        # Test basic aggregation over window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n\n        # Test with Coalesce (from the original issue report)\n        from django.db.models.functions import Coalesce\n        qs = Employee.objects.annotate(\n            cumulative_salary=Coalesce(\n                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n                0, \n                output_field=IntegerField()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n\n        # Test multiple aggregates over the same window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_cumulative=Sum(\"cumulative_salary\"),\n            avg_cumulative=Avg(\"cumulative_salary\"),\n            max_cumulative=Max(\"cumulative_salary\"),\n            min_cumulative=Min(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)\n\n        # Test with partitioned window function\n        qs = Employee.objects.annotate(\n            dept_cumulative=Window(\n                Sum(\"salary\"), \n                partition_by=\"department\", \n                order_by=F(\"hire_date\").asc()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_dept_cumulative=Sum(\"dept_cumulative\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_dept_cumulative\"], int)",
+        "explanation": "classic_swe step 59 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions_window/tests.py",
+        "before": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))\n\n    def test_aggregate_over_window_function(self):\n        \"\"\"\n        Test that aggregating over window functions works correctly by using\n        a subquery. This addresses the issue where window functions inside\n        aggregate functions would cause SQL errors.\n        \"\"\"\n        # Test basic aggregation over window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n\n        # Test with Coalesce (from the original issue report)\n        from django.db.models.functions import Coalesce\n        qs = Employee.objects.annotate(\n            cumulative_salary=Coalesce(\n                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n                0, \n                output_field=IntegerField()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n\n        # Test multiple aggregates over the same window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_cumulative=Sum(\"cumulative_salary\"),\n            avg_cumulative=Avg(\"cumulative_salary\"),\n            max_cumulative=Max(\"cumulative_salary\"),\n            min_cumulative=Min(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)\n\n        # Test with partitioned window function\n        qs = Employee.objects.annotate(\n            dept_cumulative=Window(\n                Sum(\"salary\"), \n                partition_by=\"department\", \n                order_by=F(\"hire_date\").asc()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_dept_cumulative=Sum(\"dept_cumulative\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_dept_cumulative\"], int)",
+        "after": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))",
+        "explanation": "classic_swe step 64 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions_window/tests.py",
+        "before": "        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.filter(Q(window=1) | Q(department=\"Accounting\")))\n        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.exclude(window=1, department=\"Accounting\"))",
+        "after": "        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.filter(Q(window=1) | Q(department=\"Accounting\")))\n        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.exclude(window=1, department=\"Accounting\"))\n\n    def test_aggregate_over_window_function(self):\n        \"\"\"\n        Test that aggregating over window functions works correctly by using\n        a subquery. This addresses the issue where window functions inside\n        aggregate functions would cause SQL errors.\n        \"\"\"\n        # Test basic aggregation over window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n\n        # Test with Coalesce (from the original issue report)\n        from django.db.models.functions import Coalesce\n        qs = Employee.objects.annotate(\n            cumulative_salary=Coalesce(\n                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n                0, \n                output_field=IntegerField()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n\n        # Test multiple aggregates over the same window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_cumulative=Sum(\"cumulative_salary\"),\n            avg_cumulative=Avg(\"cumulative_salary\"),\n            max_cumulative=Max(\"cumulative_salary\"),\n            min_cumulative=Min(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)\n\n        # Test with partitioned window function\n        qs = Employee.objects.annotate(\n            dept_cumulative=Window(\n                Sum(\"salary\"), \n                partition_by=\"department\", \n                order_by=F(\"hire_date\").asc()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_dept_cumulative=Sum(\"dept_cumulative\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_dept_cumulative\"], int)",
+        "explanation": "classic_swe step 68 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions_window/tests.py",
+        "before": "        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)",
+        "after": "        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], (Decimal, float))\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)",
+        "explanation": "classic_swe step 70 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py\nindex 13a6809dd8..c53d092444 100644\n--- a/django/db/models/sql/query.py\n+++ b/django/db/models/sql/query.py\n@@ -436,6 +436,14 @@ class Query(BaseExpression):\n             )\n             or having\n         )\n+        # Check if any of the aggregates reference window functions\n+        has_window_function_refs = any(\n+            any(\n+                getattr(self.annotations.get(ref), \"contains_over_clause\", False)\n+                for ref in aggregate.get_refs()\n+            )\n+            for aggregate in aggregates.values()\n+        )\n         # Decide if we need to use a subquery.\n         #\n         # Existing aggregations would cause incorrect results as\n@@ -454,6 +462,7 @@ class Query(BaseExpression):\n             or qualify\n             or self.distinct\n             or self.combinator\n+            or has_window_function_refs\n         ):\n             from django.db.models.sql.subqueries import AggregateQuery\n \ndiff --git a/tests/expressions_window/tests.py b/tests/expressions_window/tests.py\nindex 3a02a36707..551a43ee92 100644\n--- a/tests/expressions_window/tests.py\n+++ b/tests/expressions_window/tests.py\n@@ -1577,6 +1577,70 @@ class WindowFunctionTests(TestCase):\n         with self.assertRaisesMessage(NotImplementedError, msg):\n             list(qs.exclude(window=1, department=\"Accounting\"))\n \n+    def test_aggregate_over_window_function(self):\n+        \"\"\"\n+        Test that aggregating over window functions works correctly by using\n+        a subquery. This addresses the issue where window functions inside\n+        aggregate functions would cause SQL errors.\n+        \"\"\"\n+        # Test basic aggregation over window function\n+        qs = Employee.objects.annotate(\n+            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n+        )\n+        result = qs.aggregate(\n+            total_salary=Sum(\"salary\"),\n+            total_cumulative=Sum(\"cumulative_salary\")\n+        )\n+        self.assertIsInstance(result[\"total_salary\"], int)\n+        self.assertIsInstance(result[\"total_cumulative\"], int)\n+        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n+\n+        # Test with Coalesce (from the original issue report)\n+        from django.db.models.functions import Coalesce\n+        qs = Employee.objects.annotate(\n+            cumulative_salary=Coalesce(\n+                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n+                0, \n+                output_field=IntegerField()\n+            )\n+        )\n+        result = qs.aggregate(\n+            total_salary=Sum(\"salary\"),\n+            total_cumulative=Sum(\"cumulative_salary\")\n+        )\n+        self.assertIsInstance(result[\"total_salary\"], int)\n+        self.assertIsInstance(result[\"total_cumulative\"], int)\n+\n+        # Test multiple aggregates over the same window function\n+        qs = Employee.objects.annotate(\n+            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n+        )\n+        result = qs.aggregate(\n+            total_cumulative=Sum(\"cumulative_salary\"),\n+            avg_cumulative=Avg(\"cumulative_salary\"),\n+            max_cumulative=Max(\"cumulative_salary\"),\n+            min_cumulative=Min(\"cumulative_salary\")\n+        )\n+        self.assertIsInstance(result[\"total_cumulative\"], int)\n+        self.assertIsInstance(result[\"avg_cumulative\"], (Decimal, float))\n+        self.assertIsInstance(result[\"max_cumulative\"], int)\n+        self.assertIsInstance(result[\"min_cumulative\"], int)\n+\n+        # Test with partitioned window function\n+        qs = Employee.objects.annotate(\n+            dept_cumulative=Window(\n+                Sum(\"salary\"), \n+                partition_by=\"department\", \n+                order_by=F(\"hire_date\").asc()\n+            )\n+        )\n+        result = qs.aggregate(\n+            total_salary=Sum(\"salary\"),\n+            total_dept_cumulative=Sum(\"dept_cumulative\")\n+        )\n+        self.assertIsInstance(result[\"total_salary\"], int)\n+        self.assertIsInstance(result[\"total_dept_cumulative\"], int)\n+\n \n class WindowUnsupportedTests(TestCase):\n     def test_unsupported_backend(self):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      6,
+      7,
+      16,
+      17,
+      18,
+      19
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      6,
+      7,
+      16,
+      17,
+      18,
+      19
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "edit_list_after_file_min": [
+      6,
+      7,
+      16,
+      17,
+      18,
+      19
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 5,
+    "greedy_removal_edit_not_applicable": 4,
+    "greedy_removal_edit_still_crashes": 3,
+    "edit_list_after_greedy": [
+      6,
+      7,
+      16,
+      17,
+      18,
+      19
+    ],
+    "edit_list_after_refinement": [
+      6,
+      7,
+      16,
+      17,
+      18,
+      19
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 6,
+  "reduction": "6_to_6",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        has_existing_aggregation = (\n            any(\n                getattr(annotation, \"contains_aggregate\", True)\n                for annotation in self.annotations.values()\n            )\n            or having\n        )",
+          "after": "        has_existing_aggregation = (\n            any(\n                getattr(annotation, \"contains_aggregate\", True)\n                for annotation in self.annotations.values()\n            )\n            or having\n        )\n        # Check if any of the aggregates reference window functions\n        has_window_function_refs = any(\n            any(\n                getattr(self.annotations.get(ref), \"contains_over_clause\", False)\n                for ref in aggregate.get_refs()\n            )\n            for aggregate in aggregates.values()\n        )",
+          "explanation": "classic_swe step 32 #1"
+        },
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        if (\n            isinstance(self.group_by, tuple)\n            or self.is_sliced\n            or has_existing_aggregation\n            or refs_subquery\n            or qualify\n            or self.distinct\n            or self.combinator\n        ):",
+          "after": "        if (\n            isinstance(self.group_by, tuple)\n            or self.is_sliced\n            or has_existing_aggregation\n            or refs_subquery\n            or qualify\n            or self.distinct\n            or self.combinator\n            or has_window_function_refs\n        ):",
+          "explanation": "classic_swe step 33 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions_window/tests.py",
+          "before": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))",
+          "after": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))\n\n    def test_aggregate_over_window_function(self):\n        \"\"\"\n        Test that aggregating over window functions works correctly by using\n        a subquery. This addresses the issue where window functions inside\n        aggregate functions would cause SQL errors.\n        \"\"\"\n        # Test basic aggregation over window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n\n        # Test with Coalesce (from the original issue report)\n        from django.db.models.functions import Coalesce\n        qs = Employee.objects.annotate(\n            cumulative_salary=Coalesce(\n                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n                0, \n                output_field=IntegerField()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n\n        # Test multiple aggregates over the same window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_cumulative=Sum(\"cumulative_salary\"),\n            avg_cumulative=Avg(\"cumulative_salary\"),\n            max_cumulative=Max(\"cumulative_salary\"),\n            min_cumulative=Min(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)\n\n        # Test with partitioned window function\n        qs = Employee.objects.annotate(\n            dept_cumulative=Window(\n                Sum(\"salary\"), \n                partition_by=\"department\", \n                order_by=F(\"hire_date\").asc()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_dept_cumulative=Sum(\"dept_cumulative\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_dept_cumulative\"], int)",
+          "explanation": "classic_swe step 59 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions_window/tests.py",
+          "before": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))\n\n    def test_aggregate_over_window_function(self):\n        \"\"\"\n        Test that aggregating over window functions works correctly by using\n        a subquery. This addresses the issue where window functions inside\n        aggregate functions would cause SQL errors.\n        \"\"\"\n        # Test basic aggregation over window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n\n        # Test with Coalesce (from the original issue report)\n        from django.db.models.functions import Coalesce\n        qs = Employee.objects.annotate(\n            cumulative_salary=Coalesce(\n                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n                0, \n                output_field=IntegerField()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n\n        # Test multiple aggregates over the same window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_cumulative=Sum(\"cumulative_salary\"),\n            avg_cumulative=Avg(\"cumulative_salary\"),\n            max_cumulative=Max(\"cumulative_salary\"),\n            min_cumulative=Min(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)\n\n        # Test with partitioned window function\n        qs = Employee.objects.annotate(\n            dept_cumulative=Window(\n                Sum(\"salary\"), \n                partition_by=\"department\", \n                order_by=F(\"hire_date\").asc()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_dept_cumulative=Sum(\"dept_cumulative\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_dept_cumulative\"], int)",
+          "after": "    def test_invalid_source_expression(self):\n        msg = \"Expression 'Upper' isn't compatible with OVER clauses.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Window(expression=Upper(\"name\"))",
+          "explanation": "classic_swe step 64 #1"
+        },
+        {
+          "filename": "tests/expressions_window/tests.py",
+          "before": "        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.filter(Q(window=1) | Q(department=\"Accounting\")))\n        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.exclude(window=1, department=\"Accounting\"))",
+          "after": "        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.filter(Q(window=1) | Q(department=\"Accounting\")))\n        with self.assertRaisesMessage(NotImplementedError, msg):\n            list(qs.exclude(window=1, department=\"Accounting\"))\n\n    def test_aggregate_over_window_function(self):\n        \"\"\"\n        Test that aggregating over window functions works correctly by using\n        a subquery. This addresses the issue where window functions inside\n        aggregate functions would cause SQL errors.\n        \"\"\"\n        # Test basic aggregation over window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertGreater(result[\"total_cumulative\"], result[\"total_salary\"])\n\n        # Test with Coalesce (from the original issue report)\n        from django.db.models.functions import Coalesce\n        qs = Employee.objects.annotate(\n            cumulative_salary=Coalesce(\n                Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc()), \n                0, \n                output_field=IntegerField()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_cumulative=Sum(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n\n        # Test multiple aggregates over the same window function\n        qs = Employee.objects.annotate(\n            cumulative_salary=Window(Sum(\"salary\"), order_by=F(\"hire_date\").asc())\n        )\n        result = qs.aggregate(\n            total_cumulative=Sum(\"cumulative_salary\"),\n            avg_cumulative=Avg(\"cumulative_salary\"),\n            max_cumulative=Max(\"cumulative_salary\"),\n            min_cumulative=Min(\"cumulative_salary\")\n        )\n        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)\n\n        # Test with partitioned window function\n        qs = Employee.objects.annotate(\n            dept_cumulative=Window(\n                Sum(\"salary\"), \n                partition_by=\"department\", \n                order_by=F(\"hire_date\").asc()\n            )\n        )\n        result = qs.aggregate(\n            total_salary=Sum(\"salary\"),\n            total_dept_cumulative=Sum(\"dept_cumulative\")\n        )\n        self.assertIsInstance(result[\"total_salary\"], int)\n        self.assertIsInstance(result[\"total_dept_cumulative\"], int)",
+          "explanation": "classic_swe step 68 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions_window/tests.py",
+          "before": "        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], Decimal)\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)",
+          "after": "        self.assertIsInstance(result[\"total_cumulative\"], int)\n        self.assertIsInstance(result[\"avg_cumulative\"], (Decimal, float))\n        self.assertIsInstance(result[\"max_cumulative\"], int)\n        self.assertIsInstance(result[\"min_cumulative\"], int)",
+          "explanation": "classic_swe step 70 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 107,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 107,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/expressions_window/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/query.py",
+      "tests/expressions_window/tests.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 3,
+    "minimized_added_lines": 73,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

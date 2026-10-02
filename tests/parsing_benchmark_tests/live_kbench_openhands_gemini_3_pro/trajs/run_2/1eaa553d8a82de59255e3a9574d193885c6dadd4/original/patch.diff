@@ -1,0 +1,110 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 8e94df88392c..2566326c7736 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -3682,6 +3682,92 @@ static const struct ethtool_ops tun_ethtool_ops = {
+ 	.set_link_ksettings = tun_set_link_ksettings,
+ };
+ 
++static int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,
++			       int size, gfp_t gfp, void (*destroy)(void *))
++{
++	unsigned long flags;
++	void ***queues;
++	void **cleanup = NULL;
++	int max_cleanup_size = 0;
++	int cleanup_cnt = 0;
++	int i;
++
++	queues = kcalloc(nrings, sizeof(*queues), gfp);
++	if (!queues)
++		return -ENOMEM;
++
++	for (i = 0; i < nrings; ++i) {
++		if (size > KMALLOC_MAX_SIZE / sizeof(void *))
++			goto nomem;
++		queues[i] = kvmalloc_array(size, sizeof(void *), gfp | __GFP_ZERO);
++		if (!queues[i])
++			goto nomem;
++		if (rings[i]->size > max_cleanup_size)
++			max_cleanup_size = rings[i]->size;
++	}
++
++	if (max_cleanup_size > 0) {
++		cleanup = kvmalloc_array(max_cleanup_size, sizeof(void *), gfp);
++		if (!cleanup)
++			goto nomem;
++	}
++
++	for (i = 0; i < nrings; ++i) {
++		int producer = 0;
++		void **old_queue;
++		void *ptr;
++
++		cleanup_cnt = 0;
++
++		spin_lock_irqsave(&(rings[i])->consumer_lock, flags);
++		spin_lock(&(rings[i])->producer_lock);
++
++		while ((ptr = __ptr_ring_consume(rings[i]))) {
++			if (producer < size) {
++				queues[i][producer++] = ptr;
++			} else {
++				if (cleanup)
++					cleanup[cleanup_cnt++] = ptr;
++				else if (destroy)
++					destroy(ptr);
++			}
++		}
++
++		if (producer >= size)
++			producer = 0;
++		__ptr_ring_set_size(rings[i], size);
++		rings[i]->producer = producer;
++		rings[i]->consumer_head = 0;
++		rings[i]->consumer_tail = 0;
++		old_queue = rings[i]->queue;
++		rings[i]->queue = queues[i];
++
++		spin_unlock(&(rings[i])->producer_lock);
++		spin_unlock_irqrestore(&(rings[i])->consumer_lock, flags);
++
++		kvfree(old_queue);
++
++		if (cleanup && destroy) {
++			int j;
++			for (j = 0; j < cleanup_cnt; j++)
++				destroy(cleanup[j]);
++		}
++	}
++
++	if (cleanup)
++		kvfree(cleanup);
++	kfree(queues);
++
++	return 0;
++
++nomem:
++	if (cleanup)
++		kvfree(cleanup);
++	for (i = 0; i < nrings; ++i)
++		kvfree(queues[i]);
++	kfree(queues);
++	return -ENOMEM;
++}
+ static int tun_queue_resize(struct tun_struct *tun)
+ {
+ 	struct net_device *dev = tun->dev;
+@@ -3701,9 +3787,9 @@ static int tun_queue_resize(struct tun_struct *tun)
+ 	list_for_each_entry(tfile, &tun->disabled, next)
+ 		rings[i++] = &tfile->tx_ring;
+ 
+-	ret = ptr_ring_resize_multiple(rings, n,
+-				       dev->tx_queue_len, GFP_KERNEL,
+-				       tun_ptr_free);
++	ret = tun_ptr_ring_resize(rings, n,
++				  dev->tx_queue_len, GFP_KERNEL,
++				  tun_ptr_free);
+ 
+ 	kfree(rings);
+ 	return ret;

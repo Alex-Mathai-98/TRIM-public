@@ -1,0 +1,22 @@
+diff --git a/io_uring/memmap.c b/io_uring/memmap.c
+index 3d71756bc598..3e91b1eb52ef 100644
+--- a/io_uring/memmap.c
++++ b/io_uring/memmap.c
+@@ -9,6 +9,7 @@
+ #include <linux/io_uring.h>
+ #include <linux/io_uring_types.h>
+ #include <asm/shmparam.h>
++#include <linux/overflow.h>
+ 
+ #include "memmap.h"
+ #include "kbuf.h"
+@@ -136,6 +137,9 @@ struct page **io_pin_pages(unsigned long uaddr, unsigned long len, int *npages)
+ 	struct page **pages;
+ 	int ret;
+ 
++	if (check_add_overflow(uaddr, len, &end))
++		return ERR_PTR(-EOVERFLOW);
++
+ 	end = (uaddr + len + PAGE_SIZE - 1) >> PAGE_SHIFT;
+ 	start = uaddr >> PAGE_SHIFT;
+ 	nr_pages = end - start;

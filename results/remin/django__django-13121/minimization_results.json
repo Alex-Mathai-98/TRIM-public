@@ -1,0 +1,305 @@
+{
+  "bug_id": "django__django-13121",
+  "short_path": [
+    [
+      {
+        "filename": "tests/expressions/tests.py",
+        "before": "        experiments.update(start=F('new_start'))\n        e0 = Experiment.objects.get(name='e0')\n        self.assertEqual(e0.start, expected_start)",
+        "after": "        experiments.update(start=F('new_start'))\n        e0 = Experiment.objects.get(name='e0')\n        self.assertEqual(e0.start, expected_start)\n\n    def test_duration_expressions(self):\n        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n        delta = datetime.timedelta(days=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n        for r in result:\n            # The duration should be estimated_time + 1 day\n            expected = r.estimated_time + delta\n            self.assertEqual(r.duration, expected)",
+        "explanation": "classic_swe step 59 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/backends/base/operations.py",
+        "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            return datetime.timedelta(0, 0, value)",
+        "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            print(f\"DEBUG: convert_durationfield_value received: {repr(value)} (type: {type(value)})\")\n            return datetime.timedelta(0, 0, value)",
+        "explanation": "classic_swe step 61 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/backends/base/operations.py",
+        "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            print(f\"DEBUG: convert_durationfield_value received: {repr(value)} (type: {type(value)})\")\n            return datetime.timedelta(0, 0, value)",
+        "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                return parse_duration(value)\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+        "explanation": "classic_swe step 63 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions/tests.py",
+        "before": "    def test_duration_expressions(self):\n        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n        delta = datetime.timedelta(days=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n        for r in result:\n            # The duration should be estimated_time + 1 day\n            expected = r.estimated_time + delta\n            self.assertEqual(r.duration, expected)",
+        "after": "    def test_duration_expressions(self):\n        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n        delta = datetime.timedelta(days=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n        for r in result:\n            # The duration should be estimated_time + 1 day\n            expected = r.estimated_time + delta\n            self.assertEqual(r.duration, expected)\n\n    def test_duration_expressions_subtraction(self):\n        \"\"\"Test that duration expressions work with timedelta subtraction.\"\"\"\n        delta = datetime.timedelta(hours=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') - delta))\n        for r in result:\n            # The duration should be estimated_time - 1 hour\n            expected = r.estimated_time - delta\n            self.assertEqual(r.duration, expected)\n\n    def test_duration_expressions_multiple_operations(self):\n        \"\"\"Test that duration expressions work with multiple operations.\"\"\"\n        delta1 = datetime.timedelta(days=1)\n        delta2 = datetime.timedelta(hours=2)\n        result = list(Experiment.objects.annotate(\n            duration=F('estimated_time') + delta1 - delta2\n        ))\n        for r in result:\n            # The duration should be estimated_time + 1 day - 2 hours\n            expected = r.estimated_time + delta1 - delta2\n            self.assertEqual(r.duration, expected)",
+        "explanation": "classic_swe step 75 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/backends/base/operations.py",
+        "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                return parse_duration(value)\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+        "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                result = parse_duration(value)\n                if result is None:\n                    # If parse_duration fails, log the problematic value\n                    import logging\n                    logging.warning(f\"Failed to parse duration string: {repr(value)}\")\n                return result\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+        "explanation": "classic_swe step 77 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions/tests.py",
+        "before": "    def test_duration_expressions_multiple_operations(self):\n        \"\"\"Test that duration expressions work with multiple operations.\"\"\"\n        delta1 = datetime.timedelta(days=1)\n        delta2 = datetime.timedelta(hours=2)\n        result = list(Experiment.objects.annotate(\n            duration=F('estimated_time') + delta1 - delta2\n        ))\n        for r in result:\n            # The duration should be estimated_time + 1 day - 2 hours\n            expected = r.estimated_time + delta1 - delta2\n            self.assertEqual(r.duration, expected)",
+        "after": "",
+        "explanation": "classic_swe step 82 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions/tests.py",
+        "before": "            self.assertEqual(r.duration, expected)\n\n\n\n\nclass ValueTests(TestCase):",
+        "after": "            self.assertEqual(r.duration, expected)\n\n\nclass ValueTests(TestCase):",
+        "explanation": "classic_swe step 83 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/backends/base/operations.py",
+        "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                result = parse_duration(value)\n                if result is None:\n                    # If parse_duration fails, log the problematic value\n                    import logging\n                    logging.warning(f\"Failed to parse duration string: {repr(value)}\")\n                return result\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+        "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                return parse_duration(value)\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+        "explanation": "classic_swe step 84 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/base/operations.py b/django/db/backends/base/operations.py\nindex 2e283a3193..ea60aa052d 100644\n--- a/django/db/backends/base/operations.py\n+++ b/django/db/backends/base/operations.py\n@@ -580,7 +580,13 @@ class BaseDatabaseOperations:\n \n     def convert_durationfield_value(self, value, expression, connection):\n         if value is not None:\n-            return datetime.timedelta(0, 0, value)\n+            if isinstance(value, str):\n+                # Handle string representations of timedeltas from duration expressions\n+                from django.utils.dateparse import parse_duration\n+                return parse_duration(value)\n+            else:\n+                # Handle numeric values (microseconds) from regular duration fields\n+                return datetime.timedelta(0, 0, value)\n \n     def check_expression_support(self, expression):\n         \"\"\"\ndiff --git a/tests/expressions/tests.py b/tests/expressions/tests.py\nindex 459a87797d..0a23cd4d33 100644\n--- a/tests/expressions/tests.py\n+++ b/tests/expressions/tests.py\n@@ -1648,6 +1648,24 @@ class FTimeDeltaTests(TestCase):\n         e0 = Experiment.objects.get(name='e0')\n         self.assertEqual(e0.start, expected_start)\n \n+    def test_duration_expressions(self):\n+        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n+        delta = datetime.timedelta(days=1)\n+        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n+        for r in result:\n+            # The duration should be estimated_time + 1 day\n+            expected = r.estimated_time + delta\n+            self.assertEqual(r.duration, expected)\n+\n+    def test_duration_expressions_subtraction(self):\n+        \"\"\"Test that duration expressions work with timedelta subtraction.\"\"\"\n+        delta = datetime.timedelta(hours=1)\n+        result = list(Experiment.objects.annotate(duration=F('estimated_time') - delta))\n+        for r in result:\n+            # The duration should be estimated_time - 1 hour\n+            expected = r.estimated_time - delta\n+            self.assertEqual(r.duration, expected)\n+\n \n class ValueTests(TestCase):\n     def test_update_TimeField_using_Value(self):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "nodes_original_count": 6,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 5,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 4,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 5,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "edit_list_after_node_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 4,
+    "greedy_removal_edit_no_crash": 2,
+    "greedy_removal_edit_not_applicable": 12,
+    "edit_list_after_greedy": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "edit_list_after_refinement": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "edits_after_node_min": 8,
+    "edits_after_file_min": 8,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 8,
+  "minimized_edit_count": 8,
+  "reduction": "8_to_8",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions/tests.py",
+          "before": "        experiments.update(start=F('new_start'))\n        e0 = Experiment.objects.get(name='e0')\n        self.assertEqual(e0.start, expected_start)",
+          "after": "        experiments.update(start=F('new_start'))\n        e0 = Experiment.objects.get(name='e0')\n        self.assertEqual(e0.start, expected_start)\n\n    def test_duration_expressions(self):\n        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n        delta = datetime.timedelta(days=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n        for r in result:\n            # The duration should be estimated_time + 1 day\n            expected = r.estimated_time + delta\n            self.assertEqual(r.duration, expected)",
+          "explanation": "classic_swe step 59 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/base/operations.py",
+          "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            return datetime.timedelta(0, 0, value)",
+          "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            print(f\"DEBUG: convert_durationfield_value received: {repr(value)} (type: {type(value)})\")\n            return datetime.timedelta(0, 0, value)",
+          "explanation": "classic_swe step 61 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/base/operations.py",
+          "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            print(f\"DEBUG: convert_durationfield_value received: {repr(value)} (type: {type(value)})\")\n            return datetime.timedelta(0, 0, value)",
+          "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                return parse_duration(value)\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+          "explanation": "classic_swe step 63 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions/tests.py",
+          "before": "    def test_duration_expressions(self):\n        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n        delta = datetime.timedelta(days=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n        for r in result:\n            # The duration should be estimated_time + 1 day\n            expected = r.estimated_time + delta\n            self.assertEqual(r.duration, expected)",
+          "after": "    def test_duration_expressions(self):\n        \"\"\"Test that duration expressions work with timedelta addition.\"\"\"\n        delta = datetime.timedelta(days=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') + delta))\n        for r in result:\n            # The duration should be estimated_time + 1 day\n            expected = r.estimated_time + delta\n            self.assertEqual(r.duration, expected)\n\n    def test_duration_expressions_subtraction(self):\n        \"\"\"Test that duration expressions work with timedelta subtraction.\"\"\"\n        delta = datetime.timedelta(hours=1)\n        result = list(Experiment.objects.annotate(duration=F('estimated_time') - delta))\n        for r in result:\n            # The duration should be estimated_time - 1 hour\n            expected = r.estimated_time - delta\n            self.assertEqual(r.duration, expected)\n\n    def test_duration_expressions_multiple_operations(self):\n        \"\"\"Test that duration expressions work with multiple operations.\"\"\"\n        delta1 = datetime.timedelta(days=1)\n        delta2 = datetime.timedelta(hours=2)\n        result = list(Experiment.objects.annotate(\n            duration=F('estimated_time') + delta1 - delta2\n        ))\n        for r in result:\n            # The duration should be estimated_time + 1 day - 2 hours\n            expected = r.estimated_time + delta1 - delta2\n            self.assertEqual(r.duration, expected)",
+          "explanation": "classic_swe step 75 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/base/operations.py",
+          "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                return parse_duration(value)\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+          "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                result = parse_duration(value)\n                if result is None:\n                    # If parse_duration fails, log the problematic value\n                    import logging\n                    logging.warning(f\"Failed to parse duration string: {repr(value)}\")\n                return result\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+          "explanation": "classic_swe step 77 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions/tests.py",
+          "before": "    def test_duration_expressions_multiple_operations(self):\n        \"\"\"Test that duration expressions work with multiple operations.\"\"\"\n        delta1 = datetime.timedelta(days=1)\n        delta2 = datetime.timedelta(hours=2)\n        result = list(Experiment.objects.annotate(\n            duration=F('estimated_time') + delta1 - delta2\n        ))\n        for r in result:\n            # The duration should be estimated_time + 1 day - 2 hours\n            expected = r.estimated_time + delta1 - delta2\n            self.assertEqual(r.duration, expected)",
+          "after": "",
+          "explanation": "classic_swe step 82 #1"
+        },
+        {
+          "filename": "tests/expressions/tests.py",
+          "before": "            self.assertEqual(r.duration, expected)\n\n\n\n\nclass ValueTests(TestCase):",
+          "after": "            self.assertEqual(r.duration, expected)\n\n\nclass ValueTests(TestCase):",
+          "explanation": "classic_swe step 83 #1"
+        },
+        {
+          "filename": "django/db/backends/base/operations.py",
+          "before": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                result = parse_duration(value)\n                if result is None:\n                    # If parse_duration fails, log the problematic value\n                    import logging\n                    logging.warning(f\"Failed to parse duration string: {repr(value)}\")\n                return result\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+          "after": "    def convert_durationfield_value(self, value, expression, connection):\n        if value is not None:\n            if isinstance(value, str):\n                # Handle string representations of timedeltas from duration expressions\n                from django.utils.dateparse import parse_duration\n                return parse_duration(value)\n            else:\n                # Handle numeric values (microseconds) from regular duration fields\n                return datetime.timedelta(0, 0, value)",
+          "explanation": "classic_swe step 84 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 168,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 168,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/backends/base/operations.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/expressions/tests.py"
+    ],
+    "missing_files_vs_gold": [
+      "django/db/backends/mysql/operations.py",
+      "django/db/backends/sqlite3/operations.py",
+      "django/db/models/expressions.py"
+    ],
+    "minimized_files": [
+      "django/db/backends/base/operations.py",
+      "tests/expressions/tests.py"
+    ],
+    "gold_files": [
+      "django/db/backends/base/operations.py",
+      "django/db/backends/mysql/operations.py",
+      "django/db/backends/sqlite3/operations.py",
+      "django/db/models/expressions.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 9,
+    "minimized_added_lines": 25,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 25,
+    "gold_deleted_lines": 45
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

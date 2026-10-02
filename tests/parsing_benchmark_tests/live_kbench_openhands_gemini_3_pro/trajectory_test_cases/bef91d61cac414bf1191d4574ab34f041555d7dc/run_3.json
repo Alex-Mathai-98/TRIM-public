@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int igmpv3_send_report(struct in_device *in_dev, struct ip_mc_list *pmc)\n{\n\tstruct sk_buff *skb = NULL;\n\tstruct net *net = dev_net(in_dev->dev);\n\tint type;\n\tint ret;\n\n\trcu_read_lock();\n\tif (!pmc) {\n\t\tfor_each_pmc_rcu(in_dev, pmc) {\n\t\t\tif (pmc->multiaddr == IGMP_ALL_HOSTS)\n\t\t\t\tcontinue;\n\t\t\tif (ipv4_is_local_multicast(pmc->multiaddr) &&\n\t\t\t    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports))\n\t\t\t\tcontinue;\n\t\t\tspin_lock_bh(&pmc->lock);\n\t\t\tif (pmc->sfcount[MCAST_EXCLUDE])\n\t\t\t\ttype = IGMPV3_MODE_IS_EXCLUDE;\n\t\t\telse\n\t\t\t\ttype = IGMPV3_MODE_IS_INCLUDE;\n\t\t\tskb = add_grec(skb, pmc, type, 0, 0);\n\t\t\tspin_unlock_bh(&pmc->lock);\n\t\t}\n\t} else {\n\t\tspin_lock_bh(&pmc->lock);\n\t\tif (pmc->sfcount[MCAST_EXCLUDE])\n\t\t\ttype = IGMPV3_MODE_IS_EXCLUDE;\n\t\telse\n\t\t\ttype = IGMPV3_MODE_IS_INCLUDE;\n\t\tskb = add_grec(skb, pmc, type, 0, 0);\n\t\tspin_unlock_bh(&pmc->lock);\n\t}\n\tif (!skb) {\n\t\trcu_read_unlock();\n\t\treturn 0;\n\t}\n\tret = igmpv3_sendpack(skb);\n\trcu_read_unlock();\n\treturn ret;\n}",
+          "before": "static int igmpv3_send_report(struct in_device *in_dev, struct ip_mc_list *pmc)\n{\n\tstruct sk_buff *skb = NULL;\n\tstruct net *net = dev_net(in_dev->dev);\n\tint type;\n\n\tif (!pmc) {\n\t\trcu_read_lock();\n\t\tfor_each_pmc_rcu(in_dev, pmc) {\n\t\t\tif (pmc->multiaddr == IGMP_ALL_HOSTS)\n\t\t\t\tcontinue;\n\t\t\tif (ipv4_is_local_multicast(pmc->multiaddr) &&\n\t\t\t    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports))\n\t\t\t\tcontinue;\n\t\t\tspin_lock_bh(&pmc->lock);\n\t\t\tif (pmc->sfcount[MCAST_EXCLUDE])\n\t\t\t\ttype = IGMPV3_MODE_IS_EXCLUDE;\n\t\t\telse\n\t\t\t\ttype = IGMPV3_MODE_IS_INCLUDE;\n\t\t\tskb = add_grec(skb, pmc, type, 0, 0);\n\t\t\tspin_unlock_bh(&pmc->lock);\n\t\t}\n\t\trcu_read_unlock();\n\t} else {\n\t\tspin_lock_bh(&pmc->lock);\n\t\tif (pmc->sfcount[MCAST_EXCLUDE])\n\t\t\ttype = IGMPV3_MODE_IS_EXCLUDE;\n\t\telse\n\t\t\ttype = IGMPV3_MODE_IS_INCLUDE;\n\t\tskb = add_grec(skb, pmc, type, 0, 0);\n\t\tspin_unlock_bh(&pmc->lock);\n\t}\n\tif (!skb)\n\t\treturn 0;\n\treturn igmpv3_sendpack(skb);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv4/igmp.c\n+++ /linux/net/ipv4/igmp.c\n@@ -596 +596,3 @@\n-\n+\tint ret;\n+\n+\trcu_read_lock();\n@@ -598 +599,0 @@\n-\t\trcu_read_lock();\n@@ -613 +613,0 @@\n-\t\trcu_read_unlock();\n@@ -623 +623,2 @@\n-\tif (!skb)\n+\tif (!skb) {\n+\t\trcu_read_unlock();\n@@ -625 +626,4 @@\n-\treturn igmpv3_sendpack(skb);\n+\t}\n+\tret = igmpv3_sendpack(skb);\n+\trcu_read_unlock();\n+\treturn ret;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 42",
+          "filename": "net/ipv4/igmp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        },
+        {
+          "after": "\nstatic int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,\n\tint type)\n{\n\tstruct sk_buff *skb;\n\tstruct iphdr *iph;\n\tstruct igmphdr *ih;\n\tstruct rtable *rt;\n\tstruct net_device *dev = in_dev->dev;\n\tstruct net *net = dev_net(dev);\n\t__be32\tgroup = pmc ? pmc->multiaddr : 0;\n\tstruct flowi4 fl4;\n\t__be32\tdst;\n\tint hlen, tlen;\n\tint ret;\n\n\trcu_read_lock();\n\tif (type == IGMPV3_HOST_MEMBERSHIP_REPORT) {\n\t\tret = igmpv3_send_report(in_dev, pmc);\n\t\trcu_read_unlock();\n\t\treturn ret;\n\t}\n\n\tif (ipv4_is_local_multicast(group) &&\n\t    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports)) {\n\t\trcu_read_unlock();\n\t\treturn 0;\n\t}\n\n\tif (type == IGMP_HOST_LEAVE_MESSAGE)\n\t\tdst = IGMP_ALL_ROUTER;\n\telse\n\t\tdst = group;\n\n\trt = ip_route_output_ports(net, &fl4, NULL, dst, 0,\n\t\t\t\t   0, 0,\n\t\t\t\t   IPPROTO_IGMP, 0, dev->ifindex);\n\tif (IS_ERR(rt)) {\n\t\trcu_read_unlock();\n\t\treturn -1;\n\t}\n\n\thlen = LL_RESERVED_SPACE(dev);\n\ttlen = dev->needed_tailroom;\n\tskb = alloc_skb(IGMP_SIZE + hlen + tlen, GFP_ATOMIC);\n\tif (!skb) {\n\t\tip_rt_put(rt);\n\t\trcu_read_unlock();\n\t\treturn -1;\n\t}\n\tskb->priority = TC_PRIO_CONTROL;\n\n\tskb_dst_set(skb, &rt->dst);\n\n\tskb_reserve(skb, hlen);\n\n\tskb_reset_network_header(skb);\n\tiph = ip_hdr(skb);\n\tskb_put(skb, sizeof(struct iphdr) + 4);\n\n\tiph->version  = 4;\n\tiph->ihl      = (sizeof(struct iphdr)+4)>>2;\n\tiph->tos      = 0xc0;\n\tiph->frag_off = htons(IP_DF);\n\tiph->ttl      = 1;\n\tiph->daddr    = dst;\n\tiph->saddr    = fl4.saddr;\n\tiph->protocol = IPPROTO_IGMP;\n\tip_select_ident(net, skb, NULL);\n\t((u8 *)&iph[1])[0] = IPOPT_RA;\n\t((u8 *)&iph[1])[1] = 4;\n\t((u8 *)&iph[1])[2] = 0;\n\t((u8 *)&iph[1])[3] = 0;\n\n\tih = skb_put(skb, sizeof(struct igmphdr));\n\tih->type = type;\n\tih->code = 0;\n\tih->csum = 0;\n\tih->group = group;\n\tih->csum = ip_compute_csum((void *)ih, sizeof(struct igmphdr));\n\n\tret = ip_local_out(net, skb->sk, skb);\n\trcu_read_unlock();\n\treturn ret;\n}\n",
+          "before": "\nstatic int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,\n\tint type)\n{\n\tstruct sk_buff *skb;\n\tstruct iphdr *iph;\n\tstruct igmphdr *ih;\n\tstruct rtable *rt;\n\tstruct net_device *dev = in_dev->dev;\n\tstruct net *net = dev_net(dev);\n\t__be32\tgroup = pmc ? pmc->multiaddr : 0;\n\tstruct flowi4 fl4;\n\t__be32\tdst;\n\tint hlen, tlen;\n\n\tif (type == IGMPV3_HOST_MEMBERSHIP_REPORT)\n\t\treturn igmpv3_send_report(in_dev, pmc);\n\n\tif (ipv4_is_local_multicast(group) &&\n\t    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports))\n\t\treturn 0;\n\n\tif (type == IGMP_HOST_LEAVE_MESSAGE)\n\t\tdst = IGMP_ALL_ROUTER;\n\telse\n\t\tdst = group;\n\n\trt = ip_route_output_ports(net, &fl4, NULL, dst, 0,\n\t\t\t\t   0, 0,\n\t\t\t\t   IPPROTO_IGMP, 0, dev->ifindex);\n\tif (IS_ERR(rt))\n\t\treturn -1;\n\n\thlen = LL_RESERVED_SPACE(dev);\n\ttlen = dev->needed_tailroom;\n\tskb = alloc_skb(IGMP_SIZE + hlen + tlen, GFP_ATOMIC);\n\tif (!skb) {\n\t\tip_rt_put(rt);\n\t\treturn -1;\n\t}\n\tskb->priority = TC_PRIO_CONTROL;\n\n\tskb_dst_set(skb, &rt->dst);\n\n\tskb_reserve(skb, hlen);\n\n\tskb_reset_network_header(skb);\n\tiph = ip_hdr(skb);\n\tskb_put(skb, sizeof(struct iphdr) + 4);\n\n\tiph->version  = 4;\n\tiph->ihl      = (sizeof(struct iphdr)+4)>>2;\n\tiph->tos      = 0xc0;\n\tiph->frag_off = htons(IP_DF);\n\tiph->ttl      = 1;\n\tiph->daddr    = dst;\n\tiph->saddr    = fl4.saddr;\n\tiph->protocol = IPPROTO_IGMP;\n\tip_select_ident(net, skb, NULL);\n\t((u8 *)&iph[1])[0] = IPOPT_RA;\n\t((u8 *)&iph[1])[1] = 4;\n\t((u8 *)&iph[1])[2] = 0;\n\t((u8 *)&iph[1])[3] = 0;\n\n\tih = skb_put(skb, sizeof(struct igmphdr));\n\tih->type = type;\n\tih->code = 0;\n\tih->csum = 0;\n\tih->group = group;\n\tih->csum = ip_compute_csum((void *)ih, sizeof(struct igmphdr));\n\n\treturn ip_local_out(net, skb->sk, skb);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv4/igmp.c\n+++ /linux/net/ipv4/igmp.c\n@@ -746,3 +746,8 @@\n-\n-\tif (type == IGMPV3_HOST_MEMBERSHIP_REPORT)\n-\t\treturn igmpv3_send_report(in_dev, pmc);\n+\tint ret;\n+\n+\trcu_read_lock();\n+\tif (type == IGMPV3_HOST_MEMBERSHIP_REPORT) {\n+\t\tret = igmpv3_send_report(in_dev, pmc);\n+\t\trcu_read_unlock();\n+\t\treturn ret;\n+\t}\n@@ -751 +756,2 @@\n-\t    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports))\n+\t    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports)) {\n+\t\trcu_read_unlock();\n@@ -752,0 +759 @@\n+\t}\n@@ -762 +769,2 @@\n-\tif (IS_ERR(rt))\n+\tif (IS_ERR(rt)) {\n+\t\trcu_read_unlock();\n@@ -763,0 +772 @@\n+\t}\n@@ -769,0 +779 @@\n+\t\trcu_read_unlock();\n@@ -803 +813,3 @@\n-\treturn ip_local_out(net, skb->sk, skb);\n+\tret = ip_local_out(net, skb->sk, skb);\n+\trcu_read_unlock();\n+\treturn ret;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 46",
+          "filename": "net/ipv4/igmp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        }
+      ],
+      "end_step": 46,
+      "revision_index": 0,
+      "start_step": 42
+    }
+  ],
+  "success_step": 46
+}

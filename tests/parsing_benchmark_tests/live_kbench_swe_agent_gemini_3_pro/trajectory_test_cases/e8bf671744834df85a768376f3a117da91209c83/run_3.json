@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (ret) {\n\t\tkfree(ctx->phy_req_info);\n\t\tctx->phy_req_info = NULL;\n\t}\n\n\treturn ret;\n}\n\nint ethnl_phy_done(struct netlink_callback *cb)\n{\n\tstruct ethnl_phy_dump_ctx *ctx = (void *)cb->ctx;\n\n\tif (!ctx->phy_req_info)\n\t\treturn 0;\n\n\tif (ctx->phy_req_info->base.dev)\n\t\tethnl_parse_header_dev_put(&ctx->phy_req_info->base);\n\n\tkfree(ctx->phy_req_info);\n\n\treturn 0;\n}\n\nstatic int ethnl_phy_dump_one_dev(struct sk_buff *skb, struct net_device *dev,\n\t\t\t\t  struct netlink_callback *cb)\n{\n\tstruct ethnl_phy_dump_ctx *ctx = (void *)cb->ctx;\n\tstruct phy_req_info *pri = ctx->phy_req_info;\n\tstruct phy_device_node *pdn;\n\tint ret = 0;\n\tvoid *ehdr;\n\n\tif (!dev->link_topo)",
+          "before": "\tif (ret)\n\t\tkfree(ctx->phy_req_info);\n\n\treturn ret;\n}\n\nint ethnl_phy_done(struct netlink_callback *cb)\n{\n\tstruct ethnl_phy_dump_ctx *ctx = (void *)cb->ctx;\n\n\tif (ctx->phy_req_info->base.dev)\n\t\tethnl_parse_header_dev_put(&ctx->phy_req_info->base);\n\n\tkfree(ctx->phy_req_info);\n\n\treturn 0;\n}\n\nstatic int ethnl_phy_dump_one_dev(struct sk_buff *skb, struct net_device *dev,\n\t\t\t\t  struct netlink_callback *cb)\n{\n\tstruct ethnl_phy_dump_ctx *ctx = (void *)cb->ctx;\n\tstruct phy_req_info *pri = ctx->phy_req_info;\n\tstruct phy_device_node *pdn;\n\tint ret = 0;\n\tvoid *ehdr;\n\n\tpri->base.dev = dev;\n\n\tif (!dev->link_topo)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ethtool/phy.c b/net/ethtool/phy.c\nindex 4ef7c6e32d10..a6c9fd3e3d71 100644\n--- a/net/ethtool/phy.c\n+++ b/net/ethtool/phy.c\n@@ -224,8 +224,10 @@ int ethnl_phy_start(struct netlink_callback *cb)\n \tctx->ifindex = 0;\n \tctx->phy_index = 0;\n \n-\tif (ret)\n+\tif (ret) {\n \t\tkfree(ctx->phy_req_info);\n+\t\tctx->phy_req_info = NULL;\n+\t}\n \n \treturn ret;\n }\n@@ -234,6 +236,9 @@ int ethnl_phy_done(struct netlink_callback *cb)\n {\n \tstruct ethnl_phy_dump_ctx *ctx = (void *)cb->ctx;\n \n+\tif (!ctx->phy_req_info)\n+\t\treturn 0;\n+\n \tif (ctx->phy_req_info->base.dev)\n \t\tethnl_parse_header_dev_put(&ctx->phy_req_info->base);\n \n@@ -251,8 +256,6 @@ static int ethnl_phy_dump_one_dev(struct sk_buff *skb, struct net_device *dev,\n \tint ret = 0;\n \tvoid *ehdr;\n \n-\tpri->base.dev = dev;\n-\n \tif (!dev->link_topo)\n \t\treturn 0;",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "net/ethtool/phy.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    }
+  ],
+  "success_step": 11
+}

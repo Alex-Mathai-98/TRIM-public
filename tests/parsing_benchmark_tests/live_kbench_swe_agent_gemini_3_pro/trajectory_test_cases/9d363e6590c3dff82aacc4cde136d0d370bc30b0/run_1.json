@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct bpf_net_context __bpf_net_ctx, *old_bpf_net_ctx;\n\tint budget = READ_ONCE(net_hotdata.netdev_budget);\n\tLIST_HEAD(list);\n\tLIST_HEAD(repoll);\n\n\told_bpf_net_ctx = bpf_net_ctx_get();\n\tcurrent->bpf_net_context = &__bpf_net_ctx;\n\t__bpf_net_ctx.ri.kern_flags = 0;",
+          "before": "\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\tint budget = READ_ONCE(net_hotdata.netdev_budget);\n\tLIST_HEAD(list);\n\tLIST_HEAD(repoll);\n\n\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/dev.c b/net/core/dev.c\nindex 6ea1d20676fb..5509b1985077 100644\n--- a/net/core/dev.c\n+++ b/net/core/dev.c\n@@ -6925,12 +6925,14 @@ static __latent_entropy void net_rx_action(struct softirq_action *h)\n \tstruct softnet_data *sd = this_cpu_ptr(&softnet_data);\n \tunsigned long time_limit = jiffies +\n \t\tusecs_to_jiffies(READ_ONCE(net_hotdata.netdev_budget_usecs));\n-\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n+\tstruct bpf_net_context __bpf_net_ctx, *old_bpf_net_ctx;\n \tint budget = READ_ONCE(net_hotdata.netdev_budget);\n \tLIST_HEAD(list);\n \tLIST_HEAD(repoll);\n \n-\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n+\told_bpf_net_ctx = bpf_net_ctx_get();\n+\tcurrent->bpf_net_context = &__bpf_net_ctx;\n+\t__bpf_net_ctx.ri.kern_flags = 0;\n start:\n \tsd->in_net_rx_action = true;\n \tlocal_irq_disable();",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "net/core/dev.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "end:\n\tcurrent->bpf_net_context = old_bpf_net_ctx;\n}",
+          "before": "end:\n\tbpf_net_ctx_clear(bpf_net_ctx);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/dev.c b/net/core/dev.c\nindex 6ea1d20676fb..252ee991d84c 100644\n--- a/net/core/dev.c\n+++ b/net/core/dev.c\n@@ -6925,12 +6925,14 @@ static __latent_entropy void net_rx_action(struct softirq_action *h)\n \tstruct softnet_data *sd = this_cpu_ptr(&softnet_data);\n \tunsigned long time_limit = jiffies +\n \t\tusecs_to_jiffies(READ_ONCE(net_hotdata.netdev_budget_usecs));\n-\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n+\tstruct bpf_net_context __bpf_net_ctx, *old_bpf_net_ctx;\n \tint budget = READ_ONCE(net_hotdata.netdev_budget);\n \tLIST_HEAD(list);\n \tLIST_HEAD(repoll);\n \n-\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n+\told_bpf_net_ctx = bpf_net_ctx_get();\n+\tcurrent->bpf_net_context = &__bpf_net_ctx;\n+\t__bpf_net_ctx.ri.kern_flags = 0;\n start:\n \tsd->in_net_rx_action = true;\n \tlocal_irq_disable();\n@@ -6984,7 +6986,7 @@ static __latent_entropy void net_rx_action(struct softirq_action *h)\n \n \tnet_rps_action_and_irq_enable(sd);\n end:\n-\tbpf_net_ctx_clear(bpf_net_ctx);\n+\tcurrent->bpf_net_context = old_bpf_net_ctx;\n }\n \n struct netdev_adjacent {",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "net/core/dev.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 24
+    }
+  ],
+  "success_step": 25
+}

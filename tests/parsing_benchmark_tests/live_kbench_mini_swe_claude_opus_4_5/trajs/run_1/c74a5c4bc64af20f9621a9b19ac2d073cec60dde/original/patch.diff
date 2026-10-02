@@ -1,0 +1,72 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 9254bca2813d..79ed7b1d3ff1 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -69,6 +69,7 @@
+ #include <linux/skb_array.h>
+ #include <linux/bpf.h>
+ #include <linux/bpf_trace.h>
++#include <linux/filter.h>
+ #include <linux/mutex.h>
+ #include <linux/ieee802154.h>
+ #include <linux/if_ltalk.h>
+@@ -1667,6 +1668,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	size_t copied;
+ 	int pad = TUN_RX_PAD;
+ 	int err = 0;
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
+ 	rcu_read_lock();
+ 	xdp_prog = rcu_dereference(tun->xdp_prog);
+@@ -1699,6 +1701,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	*skb_xdp = 0;
+ 
+ 	local_bh_disable();
++	bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 	rcu_read_lock();
+ 	xdp_prog = rcu_dereference(tun->xdp_prog);
+ 	if (xdp_prog) {
+@@ -1729,12 +1732,14 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 		len = xdp.data_end - xdp.data;
+ 	}
+ 	rcu_read_unlock();
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 	local_bh_enable();
+ 
+ 	return __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);
+ 
+ out:
+ 	rcu_read_unlock();
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 	local_bh_enable();
+ 	return NULL;
+ }
+@@ -1757,6 +1762,7 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 	int skb_xdp = 1;
+ 	bool frags = tun_napi_frags_enabled(tfile);
+ 	enum skb_drop_reason drop_reason = SKB_DROP_REASON_NOT_SPECIFIED;
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
+ 	if (!(tun->flags & IFF_NO_PI)) {
+ 		if (len < sizeof(pi))
+@@ -1918,17 +1924,20 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 		int ret;
+ 
+ 		local_bh_disable();
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		rcu_read_lock();
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+ 		if (xdp_prog) {
+ 			ret = do_xdp_generic(xdp_prog, &skb);
+ 			if (ret != XDP_PASS) {
+ 				rcu_read_unlock();
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 				local_bh_enable();
+ 				goto unlock_frags;
+ 			}
+ 		}
+ 		rcu_read_unlock();
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 		local_bh_enable();
+ 	}
+ 

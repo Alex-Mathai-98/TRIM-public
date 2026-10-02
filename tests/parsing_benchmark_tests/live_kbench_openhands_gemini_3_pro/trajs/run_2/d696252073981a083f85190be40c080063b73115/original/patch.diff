@@ -1,0 +1,42 @@
+diff --git a/sound/usb/midi.c b/sound/usb/midi.c
+index acb3bf92857c..24e11f782a17 100644
+--- a/sound/usb/midi.c
++++ b/sound/usb/midi.c
+@@ -1318,9 +1318,11 @@ static void snd_usbmidi_in_endpoint_delete(struct snd_usb_midi_in_endpoint *ep)
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < INPUT_URBS; ++i)
+-		if (ep->urbs[i])
++		if (ep->urbs[i]) {
++			usb_kill_urb(ep->urbs[i]);
+ 			free_urb_and_buffer(ep->umidi, ep->urbs[i],
+ 					    ep->urbs[i]->transfer_buffer_length);
++		}
+ 	kfree(ep);
+ }
+ 
+@@ -1399,6 +1401,7 @@ static void snd_usbmidi_out_endpoint_clear(struct snd_usb_midi_out_endpoint *ep)
+ 
+ 	for (i = 0; i < OUTPUT_URBS; ++i)
+ 		if (ep->urbs[i].urb) {
++			usb_kill_urb(ep->urbs[i].urb);
+ 			free_urb_and_buffer(ep->umidi, ep->urbs[i].urb,
+ 					    ep->max_transfer);
+ 			ep->urbs[i].urb = NULL;
+@@ -1522,6 +1525,8 @@ static void snd_usbmidi_free(struct snd_usb_midi *umidi)
+ {
+ 	int i;
+ 
++	timer_shutdown_sync(&umidi->error_timer);
++
+ 	for (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {
+ 		struct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];
+ 		if (ep->out)
+@@ -1530,7 +1535,6 @@ static void snd_usbmidi_free(struct snd_usb_midi *umidi)
+ 			snd_usbmidi_in_endpoint_delete(ep->in);
+ 	}
+ 	mutex_destroy(&umidi->mutex);
+-	timer_shutdown_sync(&umidi->error_timer);
+ 	kfree(umidi);
+ }
+ 

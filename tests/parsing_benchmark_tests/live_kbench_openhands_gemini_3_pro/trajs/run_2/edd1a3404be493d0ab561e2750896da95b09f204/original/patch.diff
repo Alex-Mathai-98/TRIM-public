@@ -1,0 +1,45 @@
+diff --git a/drivers/hid/hid-core.c b/drivers/hid/hid-core.c
+index 1a231dd9e4bc..0d974a48299d 100644
+--- a/drivers/hid/hid-core.c
++++ b/drivers/hid/hid-core.c
+@@ -1978,16 +1978,35 @@ int __hid_request(struct hid_device *hid, struct hid_report *report,
+ {
+ 	char *buf;
+ 	int ret;
+-	u32 len;
++	u32 len, size = 0;
++	int i;
++	struct hid_report local_report;
++
++	for (i = 0; i < report->maxfield; i++) {
++		struct hid_field *field = report->field[i];
++		u32 end = field->report_offset + field->report_size * field->report_count;
++
++		if (end > size)
++			size = end;
++	}
++
++	local_report = *report;
++	local_report.maxfield = i;
+ 
+-	buf = hid_alloc_report_buf(report, GFP_KERNEL);
++	if (local_report.size < size)
++		local_report.size = size;
++
++	len = hid_report_len(&local_report);
++
++	if (len > 32768)
++		len = 32768;
++
++	buf = kzalloc(65536, GFP_KERNEL);
+ 	if (!buf)
+ 		return -ENOMEM;
+ 
+-	len = hid_report_len(report);
+-
+ 	if (reqtype == HID_REQ_SET_REPORT)
+-		hid_output_report(report, buf);
++		hid_output_report(&local_report, buf);
+ 
+ 	ret = hid->ll_driver->raw_request(hid, report->id, buf, len,
+ 					  report->type, reqtype);

@@ -1,0 +1,79 @@
+diff --git a/fs/file.c b/fs/file.c
+index dc3f7e120e3e..b31c19ce5926 100644
+--- a/fs/file.c
++++ b/fs/file.c
+@@ -1182,16 +1182,6 @@ struct fd fdget_raw(unsigned int fd)
+  * not be, and for directories this is a correctness
+  * issue, not a "POSIX requirement".
+  */
+-static inline bool file_needs_f_pos_lock(struct file *file)
+-{
+-	if (!(file->f_mode & FMODE_ATOMIC_POS))
+-		return false;
+-	if (__file_ref_read_raw(&file->f_ref) != FILE_REF_ONEREF)
+-		return true;
+-	if (file->f_op->iterate_shared)
+-		return true;
+-	return false;
+-}
+ 
+ bool file_seek_cur_needs_f_lock(struct file *file)
+ {
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index 969b458100fe..05ea43453a7e 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -271,13 +271,25 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)
+ 	 * files, so we use the real file to perform seeks.
+ 	 */
+ 	ovl_inode_lock(inode);
+-	realfile->f_pos = file->f_pos;
++	if (file_needs_f_pos_lock(realfile)) {
++		mutex_lock_nested(&realfile->f_pos_lock, SINGLE_DEPTH_NESTING);
++		realfile->f_pos = file->f_pos;
+ 
+-	old_cred = ovl_override_creds(inode->i_sb);
+-	ret = vfs_llseek(realfile, offset, whence);
+-	ovl_revert_creds(old_cred);
++		old_cred = ovl_override_creds(inode->i_sb);
++		ret = vfs_llseek(realfile, offset, whence);
++		ovl_revert_creds(old_cred);
++
++		file->f_pos = realfile->f_pos;
++		mutex_unlock(&realfile->f_pos_lock);
++	} else {
++		realfile->f_pos = file->f_pos;
++
++		old_cred = ovl_override_creds(inode->i_sb);
++		ret = vfs_llseek(realfile, offset, whence);
++		ovl_revert_creds(old_cred);
+ 
+-	file->f_pos = realfile->f_pos;
++		file->f_pos = realfile->f_pos;
++	}
+ 	ovl_inode_unlock(inode);
+ 
+ 	return ret;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 016b0fe1536e..c33d656d0f42 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2178,6 +2178,18 @@ struct file_operations {
+ /* Supports synchronous page faults for mappings */
+ #define FOP_MMAP_SYNC		((__force fop_flags_t)(1 << 2))
+ /* Supports non-exclusive O_DIRECT writes from multiple threads */
++
++static inline bool file_needs_f_pos_lock(struct file *file)
++{
++	if (!(file->f_mode & FMODE_ATOMIC_POS))
++		return false;
++	if (__file_ref_read_raw(&file->f_ref) != FILE_REF_ONEREF)
++		return true;
++	if (file->f_op->iterate_shared)
++		return true;
++	return false;
++}
++
+ #define FOP_DIO_PARALLEL_WRITE	((__force fop_flags_t)(1 << 3))
+ /* Contains huge pages */
+ #define FOP_HUGE_PAGES		((__force fop_flags_t)(1 << 4))

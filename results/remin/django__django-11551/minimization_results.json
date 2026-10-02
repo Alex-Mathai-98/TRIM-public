@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-11551",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/admin/checks.py",
+        "before": "    def _check_list_display_item(self, obj, item, label):\n        if callable(item):\n            return []\n        elif hasattr(obj, item):\n            return []\n        elif hasattr(obj.model, item):\n            try:\n                field = obj.model._meta.get_field(item)\n            except FieldDoesNotExist:\n                return []\n            else:\n                if isinstance(field, models.ManyToManyField):\n                    return [\n                        checks.Error(\n                            \"The value of '%s' must not be a ManyToManyField.\" % label,\n                            obj=obj.__class__,\n                            id='admin.E109',\n                        )\n                    ]\n                return []\n        else:\n            return [\n                checks.Error(\n                    \"The value of '%s' refers to '%s', which is not a callable, \"\n                    \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n                        label, item, obj.__class__.__name__,\n                        obj.model._meta.app_label, obj.model._meta.object_name,\n                    ),\n                    obj=obj.__class__,\n                    id='admin.E108',\n                )\n            ]",
+        "after": "    def _check_list_display_item(self, obj, item, label):\n        if callable(item):\n            return []\n        elif hasattr(obj, item):\n            return []\n        else:\n            try:\n                field = obj.model._meta.get_field(item)\n            except FieldDoesNotExist:\n                try:\n                    field = getattr(obj.model, item)\n                except AttributeError:\n                    return [\n                        checks.Error(\n                            \"The value of '%s' refers to '%s', which is not a callable, \"\n                            \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n                                label, item, obj.__class__.__name__,\n                                obj.model._meta.app_label, obj.model._meta.object_name,\n                            ),\n                            obj=obj.__class__,\n                            id='admin.E108',\n                        )\n                    ]\n            if isinstance(field, models.ManyToManyField):\n                return [\n                    checks.Error(\n                        \"The value of '%s' must not be a ManyToManyField.\" % label,\n                        obj=obj.__class__,\n                        id='admin.E109',\n                    )\n                ]\n            return []",
+        "explanation": "classic_swe step 69 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/admin/checks.py b/django/contrib/admin/checks.py\nindex f82c20c2f1..9fd77b5d41 100644\n--- a/django/contrib/admin/checks.py\n+++ b/django/contrib/admin/checks.py\n@@ -720,33 +720,33 @@ class ModelAdminChecks(BaseModelAdminChecks):\n             return []\n         elif hasattr(obj, item):\n             return []\n-        elif hasattr(obj.model, item):\n+        else:\n             try:\n                 field = obj.model._meta.get_field(item)\n             except FieldDoesNotExist:\n-                return []\n-            else:\n-                if isinstance(field, models.ManyToManyField):\n+                try:\n+                    field = getattr(obj.model, item)\n+                except AttributeError:\n                     return [\n                         checks.Error(\n-                            \"The value of '%s' must not be a ManyToManyField.\" % label,\n+                            \"The value of '%s' refers to '%s', which is not a callable, \"\n+                            \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n+                                label, item, obj.__class__.__name__,\n+                                obj.model._meta.app_label, obj.model._meta.object_name,\n+                            ),\n                             obj=obj.__class__,\n-                            id='admin.E109',\n+                            id='admin.E108',\n                         )\n                     ]\n-                return []\n-        else:\n-            return [\n-                checks.Error(\n-                    \"The value of '%s' refers to '%s', which is not a callable, \"\n-                    \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n-                        label, item, obj.__class__.__name__,\n-                        obj.model._meta.app_label, obj.model._meta.object_name,\n-                    ),\n-                    obj=obj.__class__,\n-                    id='admin.E108',\n-                )\n-            ]\n+            if isinstance(field, models.ManyToManyField):\n+                return [\n+                    checks.Error(\n+                        \"The value of '%s' must not be a ManyToManyField.\" % label,\n+                        obj=obj.__class__,\n+                        id='admin.E109',\n+                    )\n+                ]\n+            return []\n \n     def _check_list_display_links(self, obj):\n         \"\"\" Check that list_display_links is a unique subset of list_display.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      0
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      0
+    ],
+    "edit_list_after_file_min": [
+      0
+    ],
+    "edit_list_after_greedy": [
+      0
+    ],
+    "edit_list_after_refinement": [
+      0
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/admin/checks.py",
+          "before": "    def _check_list_display_item(self, obj, item, label):\n        if callable(item):\n            return []\n        elif hasattr(obj, item):\n            return []\n        elif hasattr(obj.model, item):\n            try:\n                field = obj.model._meta.get_field(item)\n            except FieldDoesNotExist:\n                return []\n            else:\n                if isinstance(field, models.ManyToManyField):\n                    return [\n                        checks.Error(\n                            \"The value of '%s' must not be a ManyToManyField.\" % label,\n                            obj=obj.__class__,\n                            id='admin.E109',\n                        )\n                    ]\n                return []\n        else:\n            return [\n                checks.Error(\n                    \"The value of '%s' refers to '%s', which is not a callable, \"\n                    \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n                        label, item, obj.__class__.__name__,\n                        obj.model._meta.app_label, obj.model._meta.object_name,\n                    ),\n                    obj=obj.__class__,\n                    id='admin.E108',\n                )\n            ]",
+          "after": "    def _check_list_display_item(self, obj, item, label):\n        if callable(item):\n            return []\n        elif hasattr(obj, item):\n            return []\n        else:\n            try:\n                field = obj.model._meta.get_field(item)\n            except FieldDoesNotExist:\n                try:\n                    field = getattr(obj.model, item)\n                except AttributeError:\n                    return [\n                        checks.Error(\n                            \"The value of '%s' refers to '%s', which is not a callable, \"\n                            \"an attribute of '%s', or an attribute or method on '%s.%s'.\" % (\n                                label, item, obj.__class__.__name__,\n                                obj.model._meta.app_label, obj.model._meta.object_name,\n                            ),\n                            obj=obj.__class__,\n                            id='admin.E108',\n                        )\n                    ]\n            if isinstance(field, models.ManyToManyField):\n                return [\n                    checks.Error(\n                        \"The value of '%s' must not be a ManyToManyField.\" % label,\n                        obj=obj.__class__,\n                        id='admin.E109',\n                    )\n                ]\n            return []",
+          "explanation": "classic_swe step 69 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 119,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 119,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/contrib/admin/checks.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/admin/checks.py"
+    ],
+    "gold_files": [
+      "django/contrib/admin/checks.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 19,
+    "minimized_deleted_lines": 19,
+    "gold_added_lines": 21,
+    "gold_deleted_lines": 21
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

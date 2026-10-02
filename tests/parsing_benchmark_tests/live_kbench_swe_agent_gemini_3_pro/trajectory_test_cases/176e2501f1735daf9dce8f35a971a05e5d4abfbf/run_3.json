@@ -1,0 +1,268 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3,
+      4,
+      5
+    ],
+    [
+      6
+    ],
+    [
+      7,
+      8
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\t.journal_seq\t= U64_MAX,",
+          "before": "\t\t.journal_seq\t= U32_MAX,",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_journal_iter.c b/fs/bcachefs/btree_journal_iter.c\nindex de3db161d6ab..6d25e3f85ce8 100644\n--- a/fs/bcachefs/btree_journal_iter.c\n+++ b/fs/bcachefs/btree_journal_iter.c\n@@ -259,7 +259,7 @@ int bch2_journal_key_insert_take(struct bch_fs *c, enum btree_id id,\n \t\t * Ensure these keys are done last by journal replay, to unblock\n \t\t * journal reclaim:\n \t\t */\n-\t\t.journal_seq\t= U32_MAX,\n+\t\t.journal_seq\t= U64_MAX,\n \t};\n \tstruct journal_keys *keys = &c->journal_keys;\n \tsize_t idx = bch2_journal_key_search(keys, id, level, k->k.p);",
+          "explanation": "classic_swe step 54 #1",
+          "filename": "fs/bcachefs/btree_journal_iter.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        }
+      ],
+      "end_step": 54,
+      "revision_index": 0,
+      "start_step": 54
+    },
+    {
+      "edits": [
+        {
+          "after": "\tu64 seq = wb->inc.keys.data[0].journal_seq;\n\n\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n\t\tseq = min(seq, wb->inc.keys.data[i].journal_seq);\n\n\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n\t\t\t     bch2_btree_write_buffer_journal_flush);",
+          "before": "\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n\t\t\t     bch2_btree_write_buffer_journal_flush);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_journal_iter.c b/fs/bcachefs/btree_journal_iter.c\nindex de3db161d6ab..6d25e3f85ce8 100644\n--- a/fs/bcachefs/btree_journal_iter.c\n+++ b/fs/bcachefs/btree_journal_iter.c\n@@ -259,7 +259,7 @@ int bch2_journal_key_insert_take(struct bch_fs *c, enum btree_id id,\n \t\t * Ensure these keys are done last by journal replay, to unblock\n \t\t * journal reclaim:\n \t\t */\n-\t\t.journal_seq\t= U32_MAX,\n+\t\t.journal_seq\t= U64_MAX,\n \t};\n \tstruct journal_keys *keys = &c->journal_keys;\n \tsize_t idx = bch2_journal_key_search(keys, id, level, k->k.p);\ndiff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..9610ad351af0 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -223,7 +223,12 @@ static void move_keys_from_inc_to_flushing(struct btree_write_buffer *wb)\n \tif (!wb->inc.keys.nr)\n \t\treturn;\n \n-\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n+\tu64 seq = wb->inc.keys.data[0].journal_seq;\n+\n+\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n+\t\tseq = min(seq, wb->inc.keys.data[i].journal_seq);\n+\n+\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n \t\t\t     bch2_btree_write_buffer_journal_flush);\n \n \tdarray_resize(&wb->flushing.keys, min_t(size_t, 1U << 20, wb->flushing.keys.nr + wb->inc.keys.nr));",
+          "explanation": "classic_swe step 61 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        }
+      ],
+      "end_step": 61,
+      "revision_index": 1,
+      "start_step": 61
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n\t\tseq = min_t(u64, seq, wb->inc.keys.data[i].journal_seq);",
+          "before": "\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n\t\tseq = min(seq, wb->inc.keys.data[i].journal_seq);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_journal_iter.c b/fs/bcachefs/btree_journal_iter.c\nindex de3db161d6ab..6d25e3f85ce8 100644\n--- a/fs/bcachefs/btree_journal_iter.c\n+++ b/fs/bcachefs/btree_journal_iter.c\n@@ -259,7 +259,7 @@ int bch2_journal_key_insert_take(struct bch_fs *c, enum btree_id id,\n \t\t * Ensure these keys are done last by journal replay, to unblock\n \t\t * journal reclaim:\n \t\t */\n-\t\t.journal_seq\t= U32_MAX,\n+\t\t.journal_seq\t= U64_MAX,\n \t};\n \tstruct journal_keys *keys = &c->journal_keys;\n \tsize_t idx = bch2_journal_key_search(keys, id, level, k->k.p);\ndiff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..69ced48e4c8c 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -223,7 +223,12 @@ static void move_keys_from_inc_to_flushing(struct btree_write_buffer *wb)\n \tif (!wb->inc.keys.nr)\n \t\treturn;\n \n-\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n+\tu64 seq = wb->inc.keys.data[0].journal_seq;\n+\n+\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n+\t\tseq = min_t(u64, seq, wb->inc.keys.data[i].journal_seq);\n+\n+\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n \t\t\t     bch2_btree_write_buffer_journal_flush);\n \n \tdarray_resize(&wb->flushing.keys, min_t(size_t, 1U << 20, wb->flushing.keys.nr + wb->inc.keys.nr));",
+          "explanation": "classic_swe step 66 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        }
+      ],
+      "end_step": 66,
+      "revision_index": 2,
+      "start_step": 66
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t.journal_seq\t= U32_MAX,",
+          "before": "\t\t.journal_seq\t= U64_MAX,",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..69ced48e4c8c 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -223,7 +223,12 @@ static void move_keys_from_inc_to_flushing(struct btree_write_buffer *wb)\n \tif (!wb->inc.keys.nr)\n \t\treturn;\n \n-\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n+\tu64 seq = wb->inc.keys.data[0].journal_seq;\n+\n+\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n+\t\tseq = min_t(u64, seq, wb->inc.keys.data[i].journal_seq);\n+\n+\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n \t\t\t     bch2_btree_write_buffer_journal_flush);\n \n \tdarray_resize(&wb->flushing.keys, min_t(size_t, 1U << 20, wb->flushing.keys.nr + wb->inc.keys.nr));",
+          "explanation": "classic_swe step 75 #1",
+          "filename": "fs/bcachefs/btree_journal_iter.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 75
+        },
+        {
+          "after": "\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n\t\t\t     bch2_btree_write_buffer_journal_flush);",
+          "before": "\tu64 seq = wb->inc.keys.data[0].journal_seq;\n\n\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n\t\tseq = min_t(u64, seq, wb->inc.keys.data[i].journal_seq);\n\n\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n\t\t\t     bch2_btree_write_buffer_journal_flush);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 80 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 80
+        },
+        {
+          "after": "\t\tcase BCH_JSET_ENTRY_write_buffer_keys:\n\t\t\tEBUG_ON(!w->need_flush_to_write_buffer);\n\n\t\t\tif (!seq)\n\t\t\t\tbreak;\n\n\t\t\tif (!wb.wb)\n\t\t\t\tbch2_journal_keys_to_write_buffer_start(c, &wb, seq);",
+          "before": "\t\tcase BCH_JSET_ENTRY_write_buffer_keys:\n\t\t\tEBUG_ON(!w->need_flush_to_write_buffer);\n\n\t\t\tif (!wb.wb)\n\t\t\t\tbch2_journal_keys_to_write_buffer_start(c, &wb, seq);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..a8bcfa01a94c 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -1846,6 +1846,9 @@ static int bch2_journal_write_prep(struct journal *j, struct journal_buf *w)\n \t\tcase BCH_JSET_ENTRY_write_buffer_keys:\n \t\t\tEBUG_ON(!w->need_flush_to_write_buffer);\n \n+\t\t\tif (!seq)\n+\t\t\t\tbreak;\n+\n \t\t\tif (!wb.wb)\n \t\t\t\tbch2_journal_keys_to_write_buffer_start(c, &wb, seq);",
+          "explanation": "classic_swe step 81 #1",
+          "filename": "fs/bcachefs/journal_io.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 81
+        }
+      ],
+      "end_step": 81,
+      "revision_index": 3,
+      "start_step": 75
+    },
+    {
+      "edits": [
+        {
+          "after": "\tu64 seq = le64_to_cpu(buf->data->seq);\n\n\tif (!seq)\n\t\treturn 0;\n\n\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);",
+          "before": "\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..7fa308331761 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -484,7 +484,12 @@ static int bch2_journal_keys_to_write_buffer(struct bch_fs *c, struct journal_bu\n \tstruct journal_keys_to_wb dst;\n \tint ret = 0;\n \n-\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));\n+\tu64 seq = le64_to_cpu(buf->data->seq);\n+\n+\tif (!seq)\n+\t\treturn 0;\n+\n+\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);\n \n \tfor_each_jset_entry_type(entry, buf->data, BCH_JSET_ENTRY_write_buffer_keys) {\n \t\tjset_entry_for_each_key(entry, k) {\ndiff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..a8bcfa01a94c 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -1846,6 +1846,9 @@ static int bch2_journal_write_prep(struct journal *j, struct journal_buf *w)\n \t\tcase BCH_JSET_ENTRY_write_buffer_keys:\n \t\t\tEBUG_ON(!w->need_flush_to_write_buffer);\n \n+\t\t\tif (!seq)\n+\t\t\t\tbreak;\n+\n \t\t\tif (!wb.wb)\n \t\t\t\tbch2_journal_keys_to_write_buffer_start(c, &wb, seq);",
+          "explanation": "classic_swe step 89 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 89
+        }
+      ],
+      "end_step": 89,
+      "revision_index": 4,
+      "start_step": 89
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t.journal_seq\t= U64_MAX,",
+          "before": "\t\t.journal_seq\t= U32_MAX,",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_journal_iter.c b/fs/bcachefs/btree_journal_iter.c\nindex de3db161d6ab..6d25e3f85ce8 100644\n--- a/fs/bcachefs/btree_journal_iter.c\n+++ b/fs/bcachefs/btree_journal_iter.c\n@@ -259,7 +259,7 @@ int bch2_journal_key_insert_take(struct bch_fs *c, enum btree_id id,\n \t\t * Ensure these keys are done last by journal replay, to unblock\n \t\t * journal reclaim:\n \t\t */\n-\t\t.journal_seq\t= U32_MAX,\n+\t\t.journal_seq\t= U64_MAX,\n \t};\n \tstruct journal_keys *keys = &c->journal_keys;\n \tsize_t idx = bch2_journal_key_search(keys, id, level, k->k.p);\ndiff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..7fa308331761 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -484,7 +484,12 @@ static int bch2_journal_keys_to_write_buffer(struct bch_fs *c, struct journal_bu\n \tstruct journal_keys_to_wb dst;\n \tint ret = 0;\n \n-\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));\n+\tu64 seq = le64_to_cpu(buf->data->seq);\n+\n+\tif (!seq)\n+\t\treturn 0;\n+\n+\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);\n \n \tfor_each_jset_entry_type(entry, buf->data, BCH_JSET_ENTRY_write_buffer_keys) {\n \t\tjset_entry_for_each_key(entry, k) {\ndiff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..a8bcfa01a94c 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -1846,6 +1846,9 @@ static int bch2_journal_write_prep(struct journal *j, struct journal_buf *w)\n \t\tcase BCH_JSET_ENTRY_write_buffer_keys:\n \t\t\tEBUG_ON(!w->need_flush_to_write_buffer);\n \n+\t\t\tif (!seq)\n+\t\t\t\tbreak;\n+\n \t\t\tif (!wb.wb)\n \t\t\t\tbch2_journal_keys_to_write_buffer_start(c, &wb, seq);",
+          "explanation": "classic_swe step 93 #1",
+          "filename": "fs/bcachefs/btree_journal_iter.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 93
+        },
+        {
+          "after": "\tu64 seq = wb->inc.keys.data[0].journal_seq;\n\n\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n\t\tseq = min_t(u64, seq, wb->inc.keys.data[i].journal_seq);\n\n\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n\t\t\t     bch2_btree_write_buffer_journal_flush);",
+          "before": "\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n\t\t\t     bch2_btree_write_buffer_journal_flush);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_journal_iter.c b/fs/bcachefs/btree_journal_iter.c\nindex de3db161d6ab..6d25e3f85ce8 100644\n--- a/fs/bcachefs/btree_journal_iter.c\n+++ b/fs/bcachefs/btree_journal_iter.c\n@@ -259,7 +259,7 @@ int bch2_journal_key_insert_take(struct bch_fs *c, enum btree_id id,\n \t\t * Ensure these keys are done last by journal replay, to unblock\n \t\t * journal reclaim:\n \t\t */\n-\t\t.journal_seq\t= U32_MAX,\n+\t\t.journal_seq\t= U64_MAX,\n \t};\n \tstruct journal_keys *keys = &c->journal_keys;\n \tsize_t idx = bch2_journal_key_search(keys, id, level, k->k.p);\ndiff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..673dbdf11dea 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -223,7 +223,12 @@ static void move_keys_from_inc_to_flushing(struct btree_write_buffer *wb)\n \tif (!wb->inc.keys.nr)\n \t\treturn;\n \n-\tbch2_journal_pin_add(j, wb->inc.keys.data[0].journal_seq, &wb->flushing.pin,\n+\tu64 seq = wb->inc.keys.data[0].journal_seq;\n+\n+\tfor (size_t i = 1; i < wb->inc.keys.nr; i++)\n+\t\tseq = min_t(u64, seq, wb->inc.keys.data[i].journal_seq);\n+\n+\tbch2_journal_pin_add(j, seq, &wb->flushing.pin,\n \t\t\t     bch2_btree_write_buffer_journal_flush);\n \n \tdarray_resize(&wb->flushing.keys, min_t(size_t, 1U << 20, wb->flushing.keys.nr + wb->inc.keys.nr));\n@@ -484,7 +489,12 @@ static int bch2_journal_keys_to_write_buffer(struct bch_fs *c, struct journal_bu\n \tstruct journal_keys_to_wb dst;\n \tint ret = 0;\n \n-\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));\n+\tu64 seq = le64_to_cpu(buf->data->seq);\n+\n+\tif (!seq)\n+\t\treturn 0;\n+\n+\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);\n \n \tfor_each_jset_entry_type(entry, buf->data, BCH_JSET_ENTRY_write_buffer_keys) {\n \t\tjset_entry_for_each_key(entry, k) {\ndiff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..a8bcfa01a94c 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -1846,6 +1846,9 @@ static int bch2_journal_write_prep(struct journal *j, struct journal_buf *w)\n \t\tcase BCH_JSET_ENTRY_write_buffer_keys:\n \t\t\tEBUG_ON(!w->need_flush_to_write_buffer);\n \n+\t\t\tif (!seq)\n+\t\t\t\tbreak;\n+\n \t\t\tif (!wb.wb)\n \t\t\t\tbch2_journal_keys_to_write_buffer_start(c, &wb, seq);",
+          "explanation": "classic_swe step 94 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 94
+        }
+      ],
+      "end_step": 94,
+      "revision_index": 5,
+      "start_step": 93
+    }
+  ],
+  "success_step": 94
+}

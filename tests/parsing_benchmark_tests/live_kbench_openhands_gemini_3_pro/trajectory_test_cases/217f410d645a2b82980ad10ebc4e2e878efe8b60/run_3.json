@@ -1,0 +1,158 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\ndiff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c\nindex 1234567..89abcdef 100644\n--- a/fs/gfs2/ops_fstype.c\n+++ b/fs/gfs2/ops_fstype.c\n@@ -1181,6 +1181,10 @@ static int gfs2_fill_super(struct super_block *sb, struct fs_context *fc)\n \tmapping->a_ops = &gfs2_rgrp_aops;\n \tmapping_set_gfp_mask(mapping, GFP_NOFS);\n \n+    /* Force failure to test cleanup path */\n+    error = -EINVAL;\n+    goto fail_iput;\n+\n \terror = init_names(sdp, silent);\n \tif (error)\n \t\tgoto fail_iput;\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/gfs2/repro_debug.patch\n+++ /linux/fs/gfs2/repro_debug.patch\n@@ -1,0 +2,16 @@\n+diff --git a/fs/gfs2/ops_fstype.c b/fs/gfs2/ops_fstype.c\n+index 1234567..89abcdef 100644\n+--- a/fs/gfs2/ops_fstype.c\n++++ b/fs/gfs2/ops_fstype.c\n+@@ -1181,6 +1181,10 @@ static int gfs2_fill_super(struct super_block *sb, struct fs_context *fc)\n+ \tmapping->a_ops = &gfs2_rgrp_aops;\n+ \tmapping_set_gfp_mask(mapping, GFP_NOFS);\n+\n++    /* Force failure to test cleanup path */\n++    error = -EINVAL;\n++    goto fail_iput;\n++\n+ \terror = init_names(sdp, silent);\n+ \tif (error)\n+ \t\tgoto fail_iput;\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 68",
+          "filename": "fs/gfs2/repro_debug.patch",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 68
+        }
+      ],
+      "end_step": 72,
+      "revision_index": 0,
+      "start_step": 68
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (sdp && test_bit(SDF_EVICTING, &sdp->sd_flags))\n\t\treturn 1;\n\n\treturn generic_drop_inode(inode);\n}\n",
+          "before": "\n\tif (test_bit(SDF_EVICTING, &sdp->sd_flags))\n\t\treturn 1;\n\n\treturn generic_drop_inode(inode);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/gfs2/super.c\n+++ /linux/fs/gfs2/super.c\n@@ -1052 +1052 @@\n-\tif (test_bit(SDF_EVICTING, &sdp->sd_flags))\n+\tif (sdp && test_bit(SDF_EVICTING, &sdp->sd_flags))",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 78",
+          "filename": "fs/gfs2/super.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 78
+        }
+      ],
+      "end_step": 78,
+      "revision_index": 1,
+      "start_step": 78
+    },
+    {
+      "edits": [
+        {
+          "after": "\nvoid gfs2_ordered_del_inode(struct gfs2_inode *ip)\n{\n\tstruct gfs2_sbd *sdp = GFS2_SB(&ip->i_inode);\n\n\tif (sdp) {\n\t\tspin_lock(&sdp->sd_ordered_lock);\n\t\t__ordered_del_inode(ip);\n\t\tspin_unlock(&sdp->sd_ordered_lock);\n\t}\n}\n",
+          "before": "\nvoid gfs2_ordered_del_inode(struct gfs2_inode *ip)\n{\n\tstruct gfs2_sbd *sdp = GFS2_SB(&ip->i_inode);\n\n\tspin_lock(&sdp->sd_ordered_lock);\n\t__ordered_del_inode(ip);\n\tspin_unlock(&sdp->sd_ordered_lock);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/gfs2/log.c\n+++ /linux/fs/gfs2/log.c\n@@ -761,3 +761,5 @@\n-\tspin_lock(&sdp->sd_ordered_lock);\n-\t__ordered_del_inode(ip);\n-\tspin_unlock(&sdp->sd_ordered_lock);\n+\tif (sdp) {\n+\t\tspin_lock(&sdp->sd_ordered_lock);\n+\t\t__ordered_del_inode(ip);\n+\t\tspin_unlock(&sdp->sd_ordered_lock);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 113",
+          "filename": "fs/gfs2/log.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 113
+        },
+        {
+          "after": "\n\tstruct gfs2_holder gh;\n\tenum evict_behavior behavior;\n\tint ret = 0;\n\n\tgfs2_holder_mark_uninitialized(&gh);\n",
+          "before": "\n\tstruct gfs2_holder gh;\n\tenum evict_behavior behavior;\n\tint ret;\n\n\tgfs2_holder_mark_uninitialized(&gh);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/gfs2/super.c\n+++ /linux/fs/gfs2/super.c\n@@ -1401 +1401 @@\n-\tint ret;\n+\tint ret = 0;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 117",
+          "filename": "fs/gfs2/super.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 117
+        }
+      ],
+      "end_step": 117,
+      "revision_index": 2,
+      "start_step": 113
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 121 rm #1",
+          "filename": "fs/gfs2/repro_debug.patch",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 121
+        }
+      ],
+      "end_step": 121,
+      "revision_index": 3,
+      "start_step": 121
+    }
+  ],
+  "success_step": 121
+}

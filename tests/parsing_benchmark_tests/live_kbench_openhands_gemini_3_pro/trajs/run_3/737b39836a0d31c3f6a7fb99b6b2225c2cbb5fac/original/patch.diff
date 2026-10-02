@@ -1,0 +1,37 @@
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 385c4091aa77..da2f0e96c17e 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -5127,25 +5127,31 @@ static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);
+ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
+ {
+ 	if (xdp_prog) {
++		struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 		struct xdp_buff xdp;
+ 		u32 act;
+ 		int err;
+ 
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		act = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);
+ 		if (act != XDP_PASS) {
+ 			switch (act) {
+ 			case XDP_REDIRECT:
+ 				err = xdp_do_generic_redirect((*pskb)->dev, *pskb,
+ 							      &xdp, xdp_prog);
+-				if (err)
++				if (err) {
++					bpf_net_ctx_clear(bpf_net_ctx);
+ 					goto out_redir;
++				}
+ 				break;
+ 			case XDP_TX:
+ 				generic_xdp_tx(*pskb, xdp_prog);
+ 				break;
+ 			}
++			bpf_net_ctx_clear(bpf_net_ctx);
+ 			return XDP_DROP;
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	return XDP_PASS;
+ out_redir:

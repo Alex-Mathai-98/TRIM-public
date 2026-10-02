@@ -1,0 +1,39 @@
+diff --git a/fs/ocfs2/sysfile.c b/fs/ocfs2/sysfile.c
+index 53a945da873b..0e9b585ebe76 100644
+--- a/fs/ocfs2/sysfile.c
++++ b/fs/ocfs2/sysfile.c
+@@ -107,16 +107,30 @@ struct inode *ocfs2_get_system_file_inode(struct ocfs2_super *osb,
+ 
+ 		return inode;
+ 	}
++	mutex_unlock(&osb->system_file_mutex);
+ 
+ 	/* this gets one ref thru iget */
+ 	inode = _ocfs2_get_system_file_inode(osb, type, slot);
+ 
+ 	/* add one more if putting into array for first time */
+-	if (arr && inode) {
+-		*arr = igrab(inode);
+-		BUG_ON(!*arr);
++	if (inode) {
++		mutex_lock(&osb->system_file_mutex);
++		if (arr) {
++			if (*arr) {
++				struct inode *tmp = *arr;
++
++				igrab(tmp);
++				BUG_ON(!tmp);
++
++				iput(inode);
++				inode = tmp;
++			} else {
++				*arr = igrab(inode);
++				BUG_ON(!*arr);
++			}
++		}
++		mutex_unlock(&osb->system_file_mutex);
+ 	}
+-	mutex_unlock(&osb->system_file_mutex);
+ 	return inode;
+ }
+ 

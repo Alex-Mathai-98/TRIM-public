@@ -1,0 +1,145 @@
+{
+  "bug_id": "astropy__astropy-7166",
+  "short_path": [
+    [
+      {
+        "filename": "astropy/utils/misc.py",
+        "before": "        for key, val in dct.items():\n            if (inspect.isfunction(val) and\n                is_public_member(key) and\n                val.__doc__ is None):\n                for base in cls.__mro__[1:]:\n                    super_method = getattr(base, key, None)\n                    if super_method is not None:\n                        val.__doc__ = super_method.__doc__\n                        break",
+        "after": "        for key, val in dct.items():\n            if ((inspect.isfunction(val) or isinstance(val, property)) and\n                is_public_member(key) and\n                val.__doc__ is None):\n                for base in cls.__mro__[1:]:\n                    super_method = getattr(base, key, None)\n                    if super_method is not None:\n                        val.__doc__ = super_method.__doc__\n                        break",
+        "explanation": "classic_swe step 24 #1"
+      }
+    ],
+    [
+      {
+        "filename": "astropy/utils/tests/test_misc.py",
+        "before": "def test_inherit_docstrings():\n    class Base(metaclass=misc.InheritDocstrings):\n        def __call__(self, *args):\n            \"FOO\"\n            pass\n\n    class Subclass(Base):\n        def __call__(self, *args):\n            pass\n\n    if Base.__call__.__doc__ is not None:\n        # TODO: Maybe if __doc__ is None this test should be skipped instead?\n        assert Subclass.__call__.__doc__ == \"FOO\"",
+        "after": "def test_inherit_docstrings():\n    class Base(metaclass=misc.InheritDocstrings):\n        def __call__(self, *args):\n            \"FOO\"\n            pass\n\n    class Subclass(Base):\n        def __call__(self, *args):\n            pass\n\n    if Base.__call__.__doc__ is not None:\n        # TODO: Maybe if __doc__ is None this test should be skipped instead?\n        assert Subclass.__call__.__doc__ == \"FOO\"\n\n\ndef test_inherit_docstrings_properties():\n    \"\"\"Test that InheritDocstrings works for properties.\"\"\"\n    \n    class Base(metaclass=misc.InheritDocstrings):\n        @property\n        def prop(self):\n            \"\"\"Base property docstring.\"\"\"\n            return 1\n    \n    class Derived(Base):\n        @property\n        def prop(self):\n            # Should inherit docstring\n            return 2\n    \n    # Test that property docstring inheritance works\n    assert Base.prop.__doc__ == \"Base property docstring.\"\n    assert Derived.prop.__doc__ == \"Base property docstring.\"\n    \n    # Test that properties with existing docstrings are not overridden\n    class DerivedWithDoc(Base):\n        @property\n        def prop(self):\n            \"\"\"Derived property docstring.\"\"\"\n            return 3\n    \n    assert DerivedWithDoc.prop.__doc__ == \"Derived property docstring.\"\n    \n    # Test mixed inheritance of methods and properties\n    class MixedBase(metaclass=misc.InheritDocstrings):\n        def method(self):\n            \"\"\"Base method docstring.\"\"\"\n            pass\n        \n        @property\n        def prop(self):\n            \"\"\"Base property docstring.\"\"\"\n            return 1\n    \n    class MixedDerived(MixedBase):\n        def method(self):\n            # Should inherit method docstring\n            pass\n        \n        @property\n        def prop(self):\n            # Should inherit property docstring\n            return 2\n    \n    assert MixedDerived.method.__doc__ == \"Base method docstring.\"\n    assert MixedDerived.prop.__doc__ == \"Base property docstring.\"",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/astropy/utils/misc.py b/astropy/utils/misc.py\nindex de3fb01d18..cceaeb957f 100644\n--- a/astropy/utils/misc.py\n+++ b/astropy/utils/misc.py\n@@ -528,7 +528,7 @@ class InheritDocstrings(type):\n                 not key.startswith('_'))\n \n         for key, val in dct.items():\n-            if (inspect.isfunction(val) and\n+            if ((inspect.isfunction(val) or isinstance(val, property)) and\n                 is_public_member(key) and\n                 val.__doc__ is None):\n                 for base in cls.__mro__[1:]:\ndiff --git a/astropy/utils/tests/test_misc.py b/astropy/utils/tests/test_misc.py\nindex 4f632e8d15..7069501a89 100644\n--- a/astropy/utils/tests/test_misc.py\n+++ b/astropy/utils/tests/test_misc.py\n@@ -89,6 +89,59 @@ def test_inherit_docstrings():\n         assert Subclass.__call__.__doc__ == \"FOO\"\n \n \n+def test_inherit_docstrings_properties():\n+    \"\"\"Test that InheritDocstrings works for properties.\"\"\"\n+    \n+    class Base(metaclass=misc.InheritDocstrings):\n+        @property\n+        def prop(self):\n+            \"\"\"Base property docstring.\"\"\"\n+            return 1\n+    \n+    class Derived(Base):\n+        @property\n+        def prop(self):\n+            # Should inherit docstring\n+            return 2\n+    \n+    # Test that property docstring inheritance works\n+    assert Base.prop.__doc__ == \"Base property docstring.\"\n+    assert Derived.prop.__doc__ == \"Base property docstring.\"\n+    \n+    # Test that properties with existing docstrings are not overridden\n+    class DerivedWithDoc(Base):\n+        @property\n+        def prop(self):\n+            \"\"\"Derived property docstring.\"\"\"\n+            return 3\n+    \n+    assert DerivedWithDoc.prop.__doc__ == \"Derived property docstring.\"\n+    \n+    # Test mixed inheritance of methods and properties\n+    class MixedBase(metaclass=misc.InheritDocstrings):\n+        def method(self):\n+            \"\"\"Base method docstring.\"\"\"\n+            pass\n+        \n+        @property\n+        def prop(self):\n+            \"\"\"Base property docstring.\"\"\"\n+            return 1\n+    \n+    class MixedDerived(MixedBase):\n+        def method(self):\n+            # Should inherit method docstring\n+            pass\n+        \n+        @property\n+        def prop(self):\n+            # Should inherit property docstring\n+            return 2\n+    \n+    assert MixedDerived.method.__doc__ == \"Base method docstring.\"\n+    assert MixedDerived.prop.__doc__ == \"Base property docstring.\"\n+\n+\n def test_set_locale():\n     # First, test if the required locales are available\n     current = locale.setlocale(locale.LC_ALL)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      4,
+      8
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      4,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      4,
+      8
+    ],
+    "edit_list_after_refinement": [
+      4,
+      8
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "astropy/utils/misc.py",
+          "before": "        for key, val in dct.items():\n            if (inspect.isfunction(val) and\n                is_public_member(key) and\n                val.__doc__ is None):\n                for base in cls.__mro__[1:]:\n                    super_method = getattr(base, key, None)\n                    if super_method is not None:\n                        val.__doc__ = super_method.__doc__\n                        break",
+          "after": "        for key, val in dct.items():\n            if ((inspect.isfunction(val) or isinstance(val, property)) and\n                is_public_member(key) and\n                val.__doc__ is None):\n                for base in cls.__mro__[1:]:\n                    super_method = getattr(base, key, None)\n                    if super_method is not None:\n                        val.__doc__ = super_method.__doc__\n                        break",
+          "explanation": "classic_swe step 24 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "astropy/utils/tests/test_misc.py",
+          "before": "def test_inherit_docstrings():\n    class Base(metaclass=misc.InheritDocstrings):\n        def __call__(self, *args):\n            \"FOO\"\n            pass\n\n    class Subclass(Base):\n        def __call__(self, *args):\n            pass\n\n    if Base.__call__.__doc__ is not None:\n        # TODO: Maybe if __doc__ is None this test should be skipped instead?\n        assert Subclass.__call__.__doc__ == \"FOO\"",
+          "after": "def test_inherit_docstrings():\n    class Base(metaclass=misc.InheritDocstrings):\n        def __call__(self, *args):\n            \"FOO\"\n            pass\n\n    class Subclass(Base):\n        def __call__(self, *args):\n            pass\n\n    if Base.__call__.__doc__ is not None:\n        # TODO: Maybe if __doc__ is None this test should be skipped instead?\n        assert Subclass.__call__.__doc__ == \"FOO\"\n\n\ndef test_inherit_docstrings_properties():\n    \"\"\"Test that InheritDocstrings works for properties.\"\"\"\n    \n    class Base(metaclass=misc.InheritDocstrings):\n        @property\n        def prop(self):\n            \"\"\"Base property docstring.\"\"\"\n            return 1\n    \n    class Derived(Base):\n        @property\n        def prop(self):\n            # Should inherit docstring\n            return 2\n    \n    # Test that property docstring inheritance works\n    assert Base.prop.__doc__ == \"Base property docstring.\"\n    assert Derived.prop.__doc__ == \"Base property docstring.\"\n    \n    # Test that properties with existing docstrings are not overridden\n    class DerivedWithDoc(Base):\n        @property\n        def prop(self):\n            \"\"\"Derived property docstring.\"\"\"\n            return 3\n    \n    assert DerivedWithDoc.prop.__doc__ == \"Derived property docstring.\"\n    \n    # Test mixed inheritance of methods and properties\n    class MixedBase(metaclass=misc.InheritDocstrings):\n        def method(self):\n            \"\"\"Base method docstring.\"\"\"\n            pass\n        \n        @property\n        def prop(self):\n            \"\"\"Base property docstring.\"\"\"\n            return 1\n    \n    class MixedDerived(MixedBase):\n        def method(self):\n            # Should inherit method docstring\n            pass\n        \n        @property\n        def prop(self):\n            # Should inherit property docstring\n            return 2\n    \n    assert MixedDerived.method.__doc__ == \"Base method docstring.\"\n    assert MixedDerived.prop.__doc__ == \"Base property docstring.\"",
+          "explanation": "classic_swe step 35 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 6,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 6,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "astropy/utils/misc.py"
+    ],
+    "extra_files_in_minimized": [
+      "astropy/utils/tests/test_misc.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "astropy/utils/misc.py",
+      "astropy/utils/tests/test_misc.py"
+    ],
+    "gold_files": [
+      "astropy/utils/misc.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 3,
+    "minimized_added_lines": 54,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 7
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

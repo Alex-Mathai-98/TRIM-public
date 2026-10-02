@@ -1,0 +1,262 @@
+{
+  "bug_id": "sphinx-doc__sphinx-10449",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/ext/autodoc/typehints.py",
+        "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+        "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}, obj={obj}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            print(f\"DEBUG: signature for {name}: {sig}\")\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name}: {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/typehints.py",
+        "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}, obj={obj}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            print(f\"DEBUG: signature for {name}: {sig}\")\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name}: {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+        "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype != 'class':\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/typehints.py",
+        "before": "            # Don't record return annotations for classes since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype != 'class':\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)",
+        "after": "            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)",
+        "explanation": "classic_swe step 31 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/typehints.py",
+        "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+        "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name} (objtype={objtype}): {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/typehints.py",
+        "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name} (objtype={objtype}): {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+        "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/test_ext_autodoc_configs.py",
+        "before": "    assert ('class target.typehints._ClassWithDocumentedInit(x)\\n'\n            '\\n'\n            '   Class docstring.\\n'\n            '\\n'\n            '   Parameters:\\n'\n            '      **x** (*int*) --\\n'\n            '\\n'\n            '   Return type:\\n'\n            '      None\\n'\n            '\\n'\n            '   __init__(x)\\n'\n            '\\n'\n            '      Init docstring.\\n'\n            '\\n'\n            '      Parameters:\\n'\n            '         **x** (*int*) -- Some integer\\n'\n            '\\n'\n            '      Return type:\\n'\n            '         None\\n' == context)",
+        "after": "    assert ('class target.typehints._ClassWithDocumentedInit(x)\\n'\n            '\\n'\n            '   Class docstring.\\n'\n            '\\n'\n            '   Parameters:\\n'\n            '      **x** (*int*) --\\n'\n            '\\n'\n            '   __init__(x)\\n'\n            '\\n'\n            '      Init docstring.\\n'\n            '\\n'\n            '      Parameters:\\n'\n            '         **x** (*int*) -- Some integer\\n'\n            '\\n'\n            '      Return type:\\n'\n            '         None\\n' == context)",
+        "explanation": "classic_swe step 56 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/ext/autodoc/typehints.py b/sphinx/ext/autodoc/typehints.py\nindex 06768168e..79ebaa1fe 100644\n--- a/sphinx/ext/autodoc/typehints.py\n+++ b/sphinx/ext/autodoc/typehints.py\n@@ -28,7 +28,9 @@ def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n             for param in sig.parameters.values():\n                 if param.annotation is not param.empty:\n                     annotation[param.name] = typing.stringify(param.annotation, mode)\n-            if sig.return_annotation is not sig.empty:\n+            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n+            # (the return annotation from __init__ is misleading in this context)\n+            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                 annotation['return'] = typing.stringify(sig.return_annotation, mode)\n     except (TypeError, ValueError):\n         pass\ndiff --git a/tests/test_ext_autodoc_configs.py b/tests/test_ext_autodoc_configs.py\nindex fdb82b1b9..c075a8e2d 100644\n--- a/tests/test_ext_autodoc_configs.py\n+++ b/tests/test_ext_autodoc_configs.py\n@@ -1041,9 +1041,6 @@ def test_autodoc_typehints_description_with_documented_init(app):\n             '   Parameters:\\n'\n             '      **x** (*int*) --\\n'\n             '\\n'\n-            '   Return type:\\n'\n-            '      None\\n'\n-            '\\n'\n             '   __init__(x)\\n'\n             '\\n'\n             '      Init docstring.\\n'\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3,
+      8,
+      10,
+      12,
+      13
+    ],
+    "nodes_original_count": 6,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 4,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_no_crash": 1,
+    "find_minimum_subsequence_node_not_applicable": 3,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 4,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "edit_list_after_node_min": [
+      2,
+      3,
+      8,
+      10,
+      12,
+      13
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      2,
+      3,
+      8,
+      10,
+      12,
+      13
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 4,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 8,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      8,
+      10,
+      12,
+      13
+    ],
+    "edit_list_after_refinement": [
+      2,
+      3,
+      8,
+      10,
+      12,
+      13
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 6,
+  "reduction": "6_to_6",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+          "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}, obj={obj}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            print(f\"DEBUG: signature for {name}: {sig}\")\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name}: {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}, obj={obj}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            print(f\"DEBUG: signature for {name}: {sig}\")\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name}: {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+          "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype != 'class':\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+          "explanation": "classic_swe step 18 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "            # Don't record return annotations for classes since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype != 'class':\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)",
+          "after": "            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)",
+          "explanation": "classic_swe step 31 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+          "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name} (objtype={objtype}): {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    print(f\"DEBUG: record_typehints called with objtype={objtype}, name={name}\")\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n                print(f\"DEBUG: recorded return annotation for {name} (objtype={objtype}): {annotation['return']}\")\n    except (TypeError, ValueError):\n        pass",
+          "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    if app.config.autodoc_typehints_format == 'short':\n        mode = 'smart'\n    else:\n        mode = 'fully-qualified'\n\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation, mode)\n            # Don't record return annotations for classes and exceptions since they don't have meaningful return types\n            # (the return annotation from __init__ is misleading in this context)\n            if sig.return_annotation is not sig.empty and objtype not in ('class', 'exception'):\n                annotation['return'] = typing.stringify(sig.return_annotation, mode)\n    except (TypeError, ValueError):\n        pass",
+          "explanation": "classic_swe step 41 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/test_ext_autodoc_configs.py",
+          "before": "    assert ('class target.typehints._ClassWithDocumentedInit(x)\\n'\n            '\\n'\n            '   Class docstring.\\n'\n            '\\n'\n            '   Parameters:\\n'\n            '      **x** (*int*) --\\n'\n            '\\n'\n            '   Return type:\\n'\n            '      None\\n'\n            '\\n'\n            '   __init__(x)\\n'\n            '\\n'\n            '      Init docstring.\\n'\n            '\\n'\n            '      Parameters:\\n'\n            '         **x** (*int*) -- Some integer\\n'\n            '\\n'\n            '      Return type:\\n'\n            '         None\\n' == context)",
+          "after": "    assert ('class target.typehints._ClassWithDocumentedInit(x)\\n'\n            '\\n'\n            '   Class docstring.\\n'\n            '\\n'\n            '   Parameters:\\n'\n            '      **x** (*int*) --\\n'\n            '\\n'\n            '   __init__(x)\\n'\n            '\\n'\n            '      Init docstring.\\n'\n            '\\n'\n            '      Parameters:\\n'\n            '         **x** (*int*) -- Some integer\\n'\n            '\\n'\n            '      Return type:\\n'\n            '         None\\n' == context)",
+          "explanation": "classic_swe step 56 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 30,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 30,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "sphinx/ext/autodoc/typehints.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/test_ext_autodoc_configs.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/ext/autodoc/typehints.py",
+      "tests/test_ext_autodoc_configs.py"
+    ],
+    "gold_files": [
+      "sphinx/ext/autodoc/typehints.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 3,
+    "minimized_added_lines": 3,
+    "minimized_deleted_lines": 4,
+    "gold_added_lines": 10,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

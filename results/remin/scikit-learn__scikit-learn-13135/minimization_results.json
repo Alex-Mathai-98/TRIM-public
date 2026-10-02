@@ -1,0 +1,104 @@
+{
+  "bug_id": "scikit-learn__scikit-learn-13135",
+  "short_path": [
+    [
+      {
+        "filename": "sklearn/preprocessing/_discretization.py",
+        "before": "            elif self.strategy == 'kmeans':\n                from ..cluster import KMeans  # fixes import loops\n\n                # Deterministic initialization with uniform spacing\n                uniform_edges = np.linspace(col_min, col_max, n_bins[jj] + 1)\n                init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5\n\n                # 1D k-means procedure\n                km = KMeans(n_clusters=n_bins[jj], init=init, n_init=1)\n                centers = km.fit(column[:, None]).cluster_centers_[:, 0]\n                bin_edges[jj] = (centers[1:] + centers[:-1]) * 0.5\n                bin_edges[jj] = np.r_[col_min, bin_edges[jj], col_max]",
+        "after": "            elif self.strategy == 'kmeans':\n                from ..cluster import KMeans  # fixes import loops\n\n                # Deterministic initialization with uniform spacing\n                uniform_edges = np.linspace(col_min, col_max, n_bins[jj] + 1)\n                init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5\n\n                # 1D k-means procedure\n                km = KMeans(n_clusters=n_bins[jj], init=init, n_init=1)\n                centers = km.fit(column[:, None]).cluster_centers_[:, 0]\n                # Sort centers to ensure bin_edges are monotonically increasing\n                centers = np.sort(centers)\n                bin_edges[jj] = (centers[1:] + centers[:-1]) * 0.5\n                bin_edges[jj] = np.r_[col_min, bin_edges[jj], col_max]",
+        "explanation": "classic_swe step 9 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sklearn/preprocessing/_discretization.py b/sklearn/preprocessing/_discretization.py\nindex dd969c12b2..98462b6ee7 100644\n--- a/sklearn/preprocessing/_discretization.py\n+++ b/sklearn/preprocessing/_discretization.py\n@@ -172,6 +172,8 @@ class KBinsDiscretizer(BaseEstimator, TransformerMixin):\n                 # 1D k-means procedure\n                 km = KMeans(n_clusters=n_bins[jj], init=init, n_init=1)\n                 centers = km.fit(column[:, None]).cluster_centers_[:, 0]\n+                # Sort centers to ensure bin_edges are monotonically increasing\n+                centers = np.sort(centers)\n                 bin_edges[jj] = (centers[1:] + centers[:-1]) * 0.5\n                 bin_edges[jj] = np.r_[col_min, bin_edges[jj], col_max]\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/preprocessing/_discretization.py",
+          "before": "            elif self.strategy == 'kmeans':\n                from ..cluster import KMeans  # fixes import loops\n\n                # Deterministic initialization with uniform spacing\n                uniform_edges = np.linspace(col_min, col_max, n_bins[jj] + 1)\n                init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5\n\n                # 1D k-means procedure\n                km = KMeans(n_clusters=n_bins[jj], init=init, n_init=1)\n                centers = km.fit(column[:, None]).cluster_centers_[:, 0]\n                bin_edges[jj] = (centers[1:] + centers[:-1]) * 0.5\n                bin_edges[jj] = np.r_[col_min, bin_edges[jj], col_max]",
+          "after": "            elif self.strategy == 'kmeans':\n                from ..cluster import KMeans  # fixes import loops\n\n                # Deterministic initialization with uniform spacing\n                uniform_edges = np.linspace(col_min, col_max, n_bins[jj] + 1)\n                init = (uniform_edges[1:] + uniform_edges[:-1])[:, None] * 0.5\n\n                # 1D k-means procedure\n                km = KMeans(n_clusters=n_bins[jj], init=init, n_init=1)\n                centers = km.fit(column[:, None]).cluster_centers_[:, 0]\n                # Sort centers to ensure bin_edges are monotonically increasing\n                centers = np.sort(centers)\n                bin_edges[jj] = (centers[1:] + centers[:-1]) * 0.5\n                bin_edges[jj] = np.r_[col_min, bin_edges[jj], col_max]",
+          "explanation": "classic_swe step 9 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 33,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 33,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sklearn/preprocessing/_discretization.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sklearn/preprocessing/_discretization.py"
+    ],
+    "gold_files": [
+      "sklearn/preprocessing/_discretization.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 2,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

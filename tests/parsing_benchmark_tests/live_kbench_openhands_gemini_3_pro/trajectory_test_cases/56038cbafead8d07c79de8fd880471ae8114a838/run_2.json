@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (key->security == NULL)\n\t\treturn 0;\n\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, *smack_key(key), MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, *smack_key(key), MAY_READ, rc);\n\treturn rc;\n}",
+          "before": "\tif (key->security == NULL)\n\t\treturn 0;\n\t/*\n\t * This should not occur\n\t */\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, key->security, MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);\n\treturn rc;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/smack/smack_lsm.c\n+++ /linux/security/smack/smack_lsm.c\n@@ -4642,3 +4642 @@\n-\t/*\n-\t * This should not occur\n-\t */\n+\n@@ -4656,2 +4654,2 @@\n-\trc = smk_access(tkp, key->security, MAY_READ, &ad);\n-\trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);\n+\trc = smk_access(tkp, *smack_key(key), MAY_READ, &ad);\n+\trc = smk_bu_note(\"key watch\", tkp, *smack_key(key), MAY_READ, rc);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 40",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 0,
+      "start_step": 40
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (key->security == NULL)\n\t\treturn 0;\n\n\tif (*smack_key(key) == NULL)\n\t\treturn 0;\n\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n",
+          "before": "\n\tif (key->security == NULL)\n\t\treturn 0;\n\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/smack/smack_lsm.c\n+++ /linux/security/smack/smack_lsm.c\n@@ -4642,0 +4643,3 @@\n+\tif (*smack_key(key) == NULL)\n+\t\treturn 0;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 44",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        },
+        {
+          "after": "\n\tstruct smk_audit_info ad;\n\tstruct smack_known *tkp = smk_of_current();\n\tstruct smack_known *skp;\n\tint rc;\n\n\tif (key == NULL)\n\t\treturn -EINVAL;\n\t/*\n\t * If the key hasn't been initialized give it access so that\n\t * it may do so.\n\t */\n\tif (key->security == NULL)\n\t\treturn 0;\n\n\tskp = *smack_key(key);\n\tif (skp == NULL)\n\t\treturn 0;\n\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, skp, MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, skp, MAY_READ, rc);\n\treturn rc;\n}\n",
+          "before": "\n\tstruct smk_audit_info ad;\n\tstruct smack_known *tkp = smk_of_current();\n\tint rc;\n\n\tif (key == NULL)\n\t\treturn -EINVAL;\n\t/*\n\t * If the key hasn't been initialized give it access so that\n\t * it may do so.\n\t */\n\tif (key->security == NULL)\n\t\treturn 0;\n\n\tif (*smack_key(key) == NULL)\n\t\treturn 0;\n\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, *smack_key(key), MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, *smack_key(key), MAY_READ, rc);\n\treturn rc;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/smack/smack_lsm.c\n+++ /linux/security/smack/smack_lsm.c\n@@ -4631,0 +4632 @@\n+\tstruct smack_known *skp;\n@@ -4643 +4644,2 @@\n-\tif (*smack_key(key) == NULL)\n+\tskp = *smack_key(key);\n+\tif (skp == NULL)\n@@ -4657,2 +4659,2 @@\n-\trc = smk_access(tkp, *smack_key(key), MAY_READ, &ad);\n-\trc = smk_bu_note(\"key watch\", tkp, *smack_key(key), MAY_READ, rc);\n+\trc = smk_access(tkp, skp, MAY_READ, &ad);\n+\trc = smk_bu_note(\"key watch\", tkp, skp, MAY_READ, rc);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 46",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        }
+      ],
+      "end_step": 46,
+      "revision_index": 1,
+      "start_step": 44
+    }
+  ],
+  "success_step": 46
+}

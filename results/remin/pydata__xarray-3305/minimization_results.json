@@ -1,0 +1,151 @@
+{
+  "bug_id": "pydata__xarray-3305",
+  "short_path": [
+    [
+      {
+        "filename": "xarray/core/variable.py",
+        "before": "    def quantile(self, q, dim=None, interpolation=\"linear\"):\n        \"\"\"Compute the qth quantile of the data along the specified dimension.\n\n        Returns the qth quantiles(s) of the array elements.\n\n        Parameters\n        ----------\n        q : float in range of [0,1] (or sequence of floats)\n            Quantile to compute, which must be between 0 and 1\n            inclusive.\n        dim : str or sequence of str, optional\n            Dimension(s) over which to apply quantile.\n        interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}\n            This optional parameter specifies the interpolation method to\n            use when the desired quantile lies between two data points\n            ``i < j``:\n                * linear: ``i + (j - i) * fraction``, where ``fraction`` is\n                  the fractional part of the index surrounded by ``i`` and\n                  ``j``.\n                * lower: ``i``.\n                * higher: ``j``.\n                * nearest: ``i`` or ``j``, whichever is nearest.\n                * midpoint: ``(i + j) / 2``.\n\n        Returns\n        -------\n        quantiles : Variable\n            If `q` is a single quantile, then the result\n            is a scalar. If multiple percentiles are given, first axis of\n            the result corresponds to the quantile and a quantile dimension\n            is added to the return array. The other dimensions are the\n             dimensions that remain after the reduction of the array.\n\n        See Also\n        --------\n        numpy.nanpercentile, pandas.Series.quantile, Dataset.quantile,\n        DataArray.quantile\n        \"\"\"",
+        "after": "    def quantile(self, q, dim=None, interpolation=\"linear\", keep_attrs=None):\n        \"\"\"Compute the qth quantile of the data along the specified dimension.\n\n        Returns the qth quantiles(s) of the array elements.\n\n        Parameters\n        ----------\n        q : float in range of [0,1] (or sequence of floats)\n            Quantile to compute, which must be between 0 and 1\n            inclusive.\n        dim : str or sequence of str, optional\n            Dimension(s) over which to apply quantile.\n        interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}\n            This optional parameter specifies the interpolation method to\n            use when the desired quantile lies between two data points\n            ``i < j``:\n                * linear: ``i + (j - i) * fraction``, where ``fraction`` is\n                  the fractional part of the index surrounded by ``i`` and\n                  ``j``.\n                * lower: ``i``.\n                * higher: ``j``.\n                * nearest: ``i`` or ``j``, whichever is nearest.\n                * midpoint: ``(i + j) / 2``.\n        keep_attrs : bool, optional\n            If True, the variable's attributes (`attrs`) will be copied from\n            the original object to the new one.  If False (default), the new\n            object will be returned without attributes.\n\n        Returns\n        -------\n        quantiles : Variable\n            If `q` is a single quantile, then the result\n            is a scalar. If multiple percentiles are given, first axis of\n            the result corresponds to the quantile and a quantile dimension\n            is added to the return array. The other dimensions are the\n             dimensions that remain after the reduction of the array.\n\n        See Also\n        --------\n        numpy.nanpercentile, pandas.Series.quantile, Dataset.quantile,\n        DataArray.quantile\n        \"\"\"",
+        "explanation": "classic_swe step 25 #1"
+      }
+    ],
+    [
+      {
+        "filename": "xarray/core/variable.py",
+        "before": "        qs = np.nanpercentile(\n            self.data, q * 100.0, axis=axis, interpolation=interpolation\n        )\n        return Variable(new_dims, qs)",
+        "after": "        qs = np.nanpercentile(\n            self.data, q * 100.0, axis=axis, interpolation=interpolation\n        )\n        \n        if keep_attrs is None:\n            keep_attrs = _get_keep_attrs(default=False)\n        attrs = self._attrs if keep_attrs else None\n        \n        return Variable(new_dims, qs, attrs=attrs)",
+        "explanation": "classic_swe step 26 #1"
+      }
+    ],
+    [
+      {
+        "filename": "xarray/core/dataset.py",
+        "before": "                        variables[name] = var.quantile(\n                            q, dim=reduce_dims, interpolation=interpolation\n                        )",
+        "after": "                        variables[name] = var.quantile(\n                            q, dim=reduce_dims, interpolation=interpolation, keep_attrs=keep_attrs\n                        )",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/xarray/core/dataset.py b/xarray/core/dataset.py\nindex d6f0da42..4b2b3580 100644\n--- a/xarray/core/dataset.py\n+++ b/xarray/core/dataset.py\n@@ -4768,7 +4768,7 @@ class Dataset(Mapping, ImplementsDatasetReduce, DataWithCoords):\n                             # the former is often more efficient\n                             reduce_dims = None\n                         variables[name] = var.quantile(\n-                            q, dim=reduce_dims, interpolation=interpolation\n+                            q, dim=reduce_dims, interpolation=interpolation, keep_attrs=keep_attrs\n                         )\n \n             else:\ndiff --git a/xarray/core/variable.py b/xarray/core/variable.py\nindex 2e9906ce..4937aa34 100644\n--- a/xarray/core/variable.py\n+++ b/xarray/core/variable.py\n@@ -1592,7 +1592,7 @@ class Variable(\n         \"\"\"\n         return self.broadcast_equals(other, equiv=duck_array_ops.array_notnull_equiv)\n \n-    def quantile(self, q, dim=None, interpolation=\"linear\"):\n+    def quantile(self, q, dim=None, interpolation=\"linear\", keep_attrs=None):\n         \"\"\"Compute the qth quantile of the data along the specified dimension.\n \n         Returns the qth quantiles(s) of the array elements.\n@@ -1615,6 +1615,10 @@ class Variable(\n                 * higher: ``j``.\n                 * nearest: ``i`` or ``j``, whichever is nearest.\n                 * midpoint: ``(i + j) / 2``.\n+        keep_attrs : bool, optional\n+            If True, the variable's attributes (`attrs`) will be copied from\n+            the original object to the new one.  If False (default), the new\n+            object will be returned without attributes.\n \n         Returns\n         -------\n@@ -1658,7 +1662,12 @@ class Variable(\n         qs = np.nanpercentile(\n             self.data, q * 100.0, axis=axis, interpolation=interpolation\n         )\n-        return Variable(new_dims, qs)\n+        \n+        if keep_attrs is None:\n+            keep_attrs = _get_keep_attrs(default=False)\n+        attrs = self._attrs if keep_attrs else None\n+        \n+        return Variable(new_dims, qs, attrs=attrs)\n \n     def rank(self, dim, pct=False):\n         \"\"\"Ranks the data.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      3
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1,
+      2,
+      3
+    ],
+    "greedy_removal_file_no_crash": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      1,
+      2,
+      3
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2,
+      3
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/variable.py",
+          "before": "    def quantile(self, q, dim=None, interpolation=\"linear\"):\n        \"\"\"Compute the qth quantile of the data along the specified dimension.\n\n        Returns the qth quantiles(s) of the array elements.\n\n        Parameters\n        ----------\n        q : float in range of [0,1] (or sequence of floats)\n            Quantile to compute, which must be between 0 and 1\n            inclusive.\n        dim : str or sequence of str, optional\n            Dimension(s) over which to apply quantile.\n        interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}\n            This optional parameter specifies the interpolation method to\n            use when the desired quantile lies between two data points\n            ``i < j``:\n                * linear: ``i + (j - i) * fraction``, where ``fraction`` is\n                  the fractional part of the index surrounded by ``i`` and\n                  ``j``.\n                * lower: ``i``.\n                * higher: ``j``.\n                * nearest: ``i`` or ``j``, whichever is nearest.\n                * midpoint: ``(i + j) / 2``.\n\n        Returns\n        -------\n        quantiles : Variable\n            If `q` is a single quantile, then the result\n            is a scalar. If multiple percentiles are given, first axis of\n            the result corresponds to the quantile and a quantile dimension\n            is added to the return array. The other dimensions are the\n             dimensions that remain after the reduction of the array.\n\n        See Also\n        --------\n        numpy.nanpercentile, pandas.Series.quantile, Dataset.quantile,\n        DataArray.quantile\n        \"\"\"",
+          "after": "    def quantile(self, q, dim=None, interpolation=\"linear\", keep_attrs=None):\n        \"\"\"Compute the qth quantile of the data along the specified dimension.\n\n        Returns the qth quantiles(s) of the array elements.\n\n        Parameters\n        ----------\n        q : float in range of [0,1] (or sequence of floats)\n            Quantile to compute, which must be between 0 and 1\n            inclusive.\n        dim : str or sequence of str, optional\n            Dimension(s) over which to apply quantile.\n        interpolation : {'linear', 'lower', 'higher', 'midpoint', 'nearest'}\n            This optional parameter specifies the interpolation method to\n            use when the desired quantile lies between two data points\n            ``i < j``:\n                * linear: ``i + (j - i) * fraction``, where ``fraction`` is\n                  the fractional part of the index surrounded by ``i`` and\n                  ``j``.\n                * lower: ``i``.\n                * higher: ``j``.\n                * nearest: ``i`` or ``j``, whichever is nearest.\n                * midpoint: ``(i + j) / 2``.\n        keep_attrs : bool, optional\n            If True, the variable's attributes (`attrs`) will be copied from\n            the original object to the new one.  If False (default), the new\n            object will be returned without attributes.\n\n        Returns\n        -------\n        quantiles : Variable\n            If `q` is a single quantile, then the result\n            is a scalar. If multiple percentiles are given, first axis of\n            the result corresponds to the quantile and a quantile dimension\n            is added to the return array. The other dimensions are the\n             dimensions that remain after the reduction of the array.\n\n        See Also\n        --------\n        numpy.nanpercentile, pandas.Series.quantile, Dataset.quantile,\n        DataArray.quantile\n        \"\"\"",
+          "explanation": "classic_swe step 25 #1"
+        },
+        {
+          "filename": "xarray/core/variable.py",
+          "before": "        qs = np.nanpercentile(\n            self.data, q * 100.0, axis=axis, interpolation=interpolation\n        )\n        return Variable(new_dims, qs)",
+          "after": "        qs = np.nanpercentile(\n            self.data, q * 100.0, axis=axis, interpolation=interpolation\n        )\n        \n        if keep_attrs is None:\n            keep_attrs = _get_keep_attrs(default=False)\n        attrs = self._attrs if keep_attrs else None\n        \n        return Variable(new_dims, qs, attrs=attrs)",
+          "explanation": "classic_swe step 26 #1"
+        },
+        {
+          "filename": "xarray/core/dataset.py",
+          "before": "                        variables[name] = var.quantile(\n                            q, dim=reduce_dims, interpolation=interpolation\n                        )",
+          "after": "                        variables[name] = var.quantile(\n                            q, dim=reduce_dims, interpolation=interpolation, keep_attrs=keep_attrs\n                        )",
+          "explanation": "classic_swe step 27 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 653,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 653,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "xarray/core/dataset.py",
+      "xarray/core/variable.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "xarray/core/dataset.py",
+      "xarray/core/variable.py"
+    ],
+    "gold_files": [
+      "xarray/core/dataset.py",
+      "xarray/core/variable.py"
+    ],
+    "minimized_hunks": 4,
+    "gold_hunks": 5,
+    "minimized_added_lines": 12,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 17,
+    "gold_deleted_lines": 5
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

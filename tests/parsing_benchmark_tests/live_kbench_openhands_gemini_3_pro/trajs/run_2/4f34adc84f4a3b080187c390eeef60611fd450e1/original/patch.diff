@@ -1,0 +1,97 @@
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index a99032076e04..b3982e9dd583 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -142,12 +142,16 @@ static void l2tp_tunnel_free(struct l2tp_tunnel *tunnel)
+ 	/* the tunnel is freed in the socket destructor */
+ }
+ 
++
++static void l2tp_session_unhash(struct l2tp_session *session);
++
+ static void l2tp_session_free(struct l2tp_session *session)
+ {
++	l2tp_session_unhash(session);
+ 	trace_free_session(session);
+ 	if (session->tunnel)
+ 		l2tp_tunnel_dec_refcount(session->tunnel);
+-	kfree(session);
++	kfree_rcu(session, rcu);
+ }
+ 
+ struct l2tp_tunnel *l2tp_sk_to_tunnel(struct sock *sk)
+@@ -1268,19 +1272,27 @@ static void l2tp_session_unhash(struct l2tp_session *session)
+ 		if (tunnel->version == L2TP_HDR_VER_3) {
+ 			if (hash_hashed(&session->hlist))
+ 				l2tp_session_collision_del(pn, session);
+-			else
+-				removed = idr_remove(&pn->l2tp_v3_session_idr,
+-						     session->session_id);
++			else {
++				struct l2tp_session *found;
++
++				found = idr_find(&pn->l2tp_v3_session_idr,
++						 session->session_id);
++				if (found == session)
++					removed = idr_remove(&pn->l2tp_v3_session_idr,
++							     session->session_id);
++			}
+ 		} else {
+ 			u32 session_key = l2tp_v2_session_key(tunnel->tunnel_id,
+ 							      session->session_id);
+-			removed = idr_remove(&pn->l2tp_v2_session_idr,
+-					     session_key);
++			struct l2tp_session *found;
++
++			found = idr_find(&pn->l2tp_v2_session_idr, session_key);
++			if (found == session)
++				removed = idr_remove(&pn->l2tp_v2_session_idr,
++						     session_key);
+ 		}
+ 		WARN_ON_ONCE(removed && removed != session);
+ 		spin_unlock_bh(&pn->l2tp_session_idr_lock);
+-
+-		synchronize_rcu();
+ 	}
+ }
+ 
+@@ -1289,17 +1301,20 @@ static void l2tp_session_unhash(struct l2tp_session *session)
+ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)
+ {
+ 	struct l2tp_session *session;
+-	struct list_head *pos;
+-	struct list_head *tmp;
+ 
+ 	spin_lock_bh(&tunnel->list_lock);
+ 	tunnel->acpt_newsess = false;
+-	list_for_each_safe(pos, tmp, &tunnel->session_list) {
+-		session = list_entry(pos, struct l2tp_session, list);
++	while (!list_empty(&tunnel->session_list)) {
++		session = list_first_entry(&tunnel->session_list,
++					   struct l2tp_session, list);
+ 		list_del_init(&session->list);
+-		spin_unlock_bh(&tunnel->list_lock);
+-		l2tp_session_delete(session);
+-		spin_lock_bh(&tunnel->list_lock);
++
++		if (refcount_inc_not_zero(&session->ref_count)) {
++			spin_unlock_bh(&tunnel->list_lock);
++			l2tp_session_delete(session);
++			l2tp_session_dec_refcount(session);
++			spin_lock_bh(&tunnel->list_lock);
++		}
+ 	}
+ 	spin_unlock_bh(&tunnel->list_lock);
+ }
+diff --git a/net/l2tp/l2tp_core.h b/net/l2tp/l2tp_core.h
+index 8ac81bc1bc6f..78ce8d718b6b 100644
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -91,6 +91,7 @@ struct l2tp_session {
+ 	unsigned long		hlist_key;	/* key for session hlist */
+ 	struct l2tp_session_coll_list *coll_list; /* session collision list */
+ 	struct list_head	clist;		/* for coll_list */
++	struct rcu_head		rcu;
+ 
+ 	char			name[L2TP_SESSION_NAME_MAX]; /* for logging */
+ 	char			ifname[IFNAMSIZ];

@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#define _GNU_SOURCE\n#include <sys/mman.h>\n#include <sys/syscall.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include <stdio.h>\n#include <string.h>\n#include <stdlib.h>\n\n#ifndef F_ADD_SEALS\n#define F_ADD_SEALS 1033\n#endif\n\n#ifndef F_SEAL_SHRINK\n#define F_SEAL_SHRINK 0x0002\n#endif\n\n#ifndef F_SEAL_FUTURE_WRITE\n#define F_SEAL_FUTURE_WRITE 0x0010\n#endif\n\nint main()\n{\n    int fd = memfd_create(\"test\", 0);\n    if (fd == -1) {\n        perror(\"memfd_create\");\n        return 1;\n    }\n\n    if (fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK | F_SEAL_FUTURE_WRITE) == -1) {\n        perror(\"fcntl\");\n        return 1;\n    }\n\n    // Fixed address to ensure overlap\n    void *addr = (void *)0x20ffc000; // matching address in report\n    \n    // First mmap: PROT_NONE, MAP_SHARED | MAP_FIXED\n    // Report: mmap(0x7f...c000, 0x3000, 0, 0x11, r0, 0)\n    // 0x11 = MAP_SHARED | MAP_FIXED\n    if (mmap(addr, 0x3000, PROT_NONE, MAP_SHARED | MAP_FIXED, fd, 0) == MAP_FAILED) {\n        perror(\"mmap 1\");\n    }\n\n    // Second mmap:\n    // Report: mmap(0x7f...c000, 0x1008, 0, 0x13, r0, 0)\n    // 0x13 = MAP_SHARED | MAP_PRIVATE (invalid mixture normally) or MAP_SHARED_VALIDATE?\n    // MAP_SHARED = 1, MAP_PRIVATE = 2. MAP_SHARED_VALIDATE = 3.\n    // 0x13 = 0x10 (FIXED) | 0x3 (SHARED_VALIDATE).\n    \n    // Syzkaller sometimes generates garbage flags unless it knows better.\n    // If 0x13 is passed literal, and kernel interprets 0x3 as SHARED_VALIDATE.\n    \n    if (mmap(addr, 0x2000, PROT_NONE, MAP_FIXED | MAP_SHARED_VALIDATE, fd, 0) == MAP_FAILED) {\n        perror(\"mmap 2\");\n    }\n\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 13 create #1",
+          "filename": "repro.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        },
+        {
+          "after": "\t/* If flags changed, we might be able to merge, so try again. */\n\tif (map.retry_merge) {\n\t\tstruct vm_area_struct *merged;\n\t\tVMG_MMAP_STATE(vmg, &map, vma);\n\n\t\tvma_iter_config(map.vmi, map.addr, map.end);\n\t\tmerged = vma_merge_existing_range(&vmg);\n\t\tif (merged)\n\t\t\tvma = merged;\n\t}\n\n\t__mmap_complete(&map, vma);",
+          "before": "\t/* If flags changed, we might be able to merge, so try again. */\n\tif (map.retry_merge) {\n\t\tVMG_MMAP_STATE(vmg, &map, vma);\n\n\t\tvma_iter_config(map.vmi, map.addr, map.end);\n\t\tvma_merge_existing_range(&vmg);\n\t}\n\n\t__mmap_complete(&map, vma);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vma.c b/mm/vma.c\nindex 8e31b7e25aeb..bb2119e5a0d0 100644\n--- a/mm/vma.c\n+++ b/mm/vma.c\n@@ -2460,10 +2460,13 @@ unsigned long __mmap_region(struct file *file, unsigned long addr,\n \n \t/* If flags changed, we might be able to merge, so try again. */\n \tif (map.retry_merge) {\n+\t\tstruct vm_area_struct *merged;\n \t\tVMG_MMAP_STATE(vmg, &map, vma);\n \n \t\tvma_iter_config(map.vmi, map.addr, map.end);\n-\t\tvma_merge_existing_range(&vmg);\n+\t\tmerged = vma_merge_existing_range(&vmg);\n+\t\tif (merged)\n+\t\t\tvma = merged;\n \t}\n \n \t__mmap_complete(&map, vma);",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "mm/vma.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vma.c b/mm/vma.c\nindex 8e31b7e25aeb..bb2119e5a0d0 100644\n--- a/mm/vma.c\n+++ b/mm/vma.c\n@@ -2460,10 +2460,13 @@ unsigned long __mmap_region(struct file *file, unsigned long addr,\n \n \t/* If flags changed, we might be able to merge, so try again. */\n \tif (map.retry_merge) {\n+\t\tstruct vm_area_struct *merged;\n \t\tVMG_MMAP_STATE(vmg, &map, vma);\n \n \t\tvma_iter_config(map.vmi, map.addr, map.end);\n-\t\tvma_merge_existing_range(&vmg);\n+\t\tmerged = vma_merge_existing_range(&vmg);\n+\t\tif (merged)\n+\t\t\tvma = merged;\n \t}\n \n \t__mmap_complete(&map, vma);",
+          "explanation": "classic_swe step 17 rm #1",
+          "filename": "repro.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 1,
+      "start_step": 17
+    }
+  ],
+  "success_step": 17
+}

@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\twhile (1) {\n\t\tb = READ_ONCE(*rootp);\n\n\t\tif (unlikely(!b)) {\n\t\t\tpath->level = depth_want;\n\t\t\tfor (i = path->level; i < BTREE_MAX_DEPTH; i++)\n\t\t\t\tpath->l[i].b = NULL;\n\t\t\treturn 1;\n\t\t}\n\n\t\tpath->level = READ_ONCE(b->c.level);\n\n\t\tif (unlikely(path->level < depth_want)) {",
+          "before": "\twhile (1) {\n\t\tb = READ_ONCE(*rootp);\n\t\tpath->level = READ_ONCE(b->c.level);\n\n\t\tif (unlikely(path->level < depth_want)) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c\nindex 89f9665ce70d..aefb15c63fe7 100644\n--- a/fs/bcachefs/btree_iter.c\n+++ b/fs/bcachefs/btree_iter.c\n@@ -731,6 +731,14 @@ static inline int btree_path_lock_root(struct btree_trans *trans,\n \n \twhile (1) {\n \t\tb = READ_ONCE(*rootp);\n+\n+\t\tif (unlikely(!b)) {\n+\t\t\tpath->level = depth_want;\n+\t\t\tfor (i = path->level; i < BTREE_MAX_DEPTH; i++)\n+\t\t\t\tpath->l[i].b = NULL;\n+\t\t\treturn 1;\n+\t\t}\n+\n \t\tpath->level = READ_ONCE(b->c.level);\n \n \t\tif (unlikely(path->level < depth_want)) {",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "fs/bcachefs/btree_iter.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (!path->l[i].b) {\n\t\t\tstruct btree *b = bch2_btree_id_root(c, path->btree_id)->b;\n\n\t\t\tBUG_ON(!path->cached && b && b->c.level > i);\n\t\t\tbreak;\n\t\t}",
+          "before": "\t\tif (!path->l[i].b) {\n\t\t\tBUG_ON(!path->cached &&\n\t\t\t       bch2_btree_id_root(c, path->btree_id)->b->c.level > i);\n\t\t\tbreak;\n\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c\nindex 89f9665ce70d..caba856f8bd0 100644\n--- a/fs/bcachefs/btree_iter.c\n+++ b/fs/bcachefs/btree_iter.c\n@@ -224,8 +224,9 @@ static void bch2_btree_path_verify(struct btree_trans *trans,\n \n \tfor (unsigned i = 0; i < (!path->cached ? BTREE_MAX_DEPTH : 1); i++) {\n \t\tif (!path->l[i].b) {\n-\t\t\tBUG_ON(!path->cached &&\n-\t\t\t       bch2_btree_id_root(c, path->btree_id)->b->c.level > i);\n+\t\t\tstruct btree *b = bch2_btree_id_root(c, path->btree_id)->b;\n+\n+\t\t\tBUG_ON(!path->cached && b && b->c.level > i);\n \t\t\tbreak;\n \t\t}\n \n@@ -731,6 +732,14 @@ static inline int btree_path_lock_root(struct btree_trans *trans,\n \n \twhile (1) {\n \t\tb = READ_ONCE(*rootp);\n+\n+\t\tif (unlikely(!b)) {\n+\t\t\tpath->level = depth_want;\n+\t\t\tfor (i = path->level; i < BTREE_MAX_DEPTH; i++)\n+\t\t\t\tpath->l[i].b = NULL;\n+\t\t\treturn 1;\n+\t\t}\n+\n \t\tpath->level = READ_ONCE(b->c.level);\n \n \t\tif (unlikely(path->level < depth_want)) {",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "fs/bcachefs/btree_iter.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 1,
+      "start_step": 21
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (unlikely(!b)) {\n\t\t\tpath->level = depth_want;\n\t\t\tfor (i = path->level; i < BTREE_MAX_DEPTH; i++)\n\t\t\t\tpath->l[i].b = NULL;\n\t\t\treturn -BCH_ERR_btree_node_read_error;\n\t\t}",
+          "before": "\t\tif (unlikely(!b)) {\n\t\t\tpath->level = depth_want;\n\t\t\tfor (i = path->level; i < BTREE_MAX_DEPTH; i++)\n\t\t\t\tpath->l[i].b = NULL;\n\t\t\treturn 1;\n\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c\nindex 89f9665ce70d..8206a1507302 100644\n--- a/fs/bcachefs/btree_iter.c\n+++ b/fs/bcachefs/btree_iter.c\n@@ -224,8 +224,9 @@ static void bch2_btree_path_verify(struct btree_trans *trans,\n \n \tfor (unsigned i = 0; i < (!path->cached ? BTREE_MAX_DEPTH : 1); i++) {\n \t\tif (!path->l[i].b) {\n-\t\t\tBUG_ON(!path->cached &&\n-\t\t\t       bch2_btree_id_root(c, path->btree_id)->b->c.level > i);\n+\t\t\tstruct btree *b = bch2_btree_id_root(c, path->btree_id)->b;\n+\n+\t\t\tBUG_ON(!path->cached && b && b->c.level > i);\n \t\t\tbreak;\n \t\t}\n \n@@ -731,6 +732,14 @@ static inline int btree_path_lock_root(struct btree_trans *trans,\n \n \twhile (1) {\n \t\tb = READ_ONCE(*rootp);\n+\n+\t\tif (unlikely(!b)) {\n+\t\t\tpath->level = depth_want;\n+\t\t\tfor (i = path->level; i < BTREE_MAX_DEPTH; i++)\n+\t\t\t\tpath->l[i].b = NULL;\n+\t\t\treturn -BCH_ERR_btree_node_read_error;\n+\t\t}\n+\n \t\tpath->level = READ_ONCE(b->c.level);\n \n \t\tif (unlikely(path->level < depth_want)) {",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/bcachefs/btree_iter.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 2,
+      "start_step": 28
+    }
+  ],
+  "success_step": 28
+}

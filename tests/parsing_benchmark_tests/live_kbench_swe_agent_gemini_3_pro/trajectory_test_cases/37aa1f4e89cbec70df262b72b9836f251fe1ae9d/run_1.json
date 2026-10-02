@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void set_xfrm_gro_udp_encap_rcv(__u16 encap_type, unsigned short family,\n\t\t\t\t       struct sock *sk)\n{\n#ifdef CONFIG_XFRM\n\tstruct udp_sock *up = udp_sk(sk);\n\tudp_tunnel_gro_rcv_t gro_receive = NULL;\n\n\tif (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {\n\t\tif (family == AF_INET)\n\t\t\tgro_receive = xfrm4_gro_udp_encap_rcv;\n\t\telse if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)\n\t\t\tgro_receive = ipv6_stub->xfrm6_gro_udp_encap_rcv;\n\t}\n\n\tif (up->gro_receive == gro_receive)\n\t\treturn;\n\n\tif (udp_test_bit(ENCAP_ENABLED, sk)) {\n\t\tif (up->gro_receive)\n\t\t\tudp_tunnel_update_gro_rcv(sk, false);\n\t\tWRITE_ONCE(up->gro_receive, gro_receive);\n\t\tif (gro_receive)\n\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n\t} else {\n\t\tWRITE_ONCE(up->gro_receive, gro_receive);\n\t}\n#endif\n}",
+          "before": "static void set_xfrm_gro_udp_encap_rcv(__u16 encap_type, unsigned short family,\n\t\t\t\t       struct sock *sk)\n{\n#ifdef CONFIG_XFRM\n\tif (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {\n\t\tif (family == AF_INET)\n\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, xfrm4_gro_udp_encap_rcv);\n\t\telse if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)\n\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);\n\t}\n#endif\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c\nindex 8867fe687888..3332e271b5f7 100644\n--- a/net/ipv4/udp.c\n+++ b/net/ipv4/udp.c\n@@ -2908,11 +2908,27 @@ static void set_xfrm_gro_udp_encap_rcv(__u16 encap_type, unsigned short family,\n \t\t\t\t       struct sock *sk)\n {\n #ifdef CONFIG_XFRM\n+\tstruct udp_sock *up = udp_sk(sk);\n+\tudp_tunnel_gro_rcv_t gro_receive = NULL;\n+\n \tif (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {\n \t\tif (family == AF_INET)\n-\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, xfrm4_gro_udp_encap_rcv);\n+\t\t\tgro_receive = xfrm4_gro_udp_encap_rcv;\n \t\telse if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)\n-\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);\n+\t\t\tgro_receive = ipv6_stub->xfrm6_gro_udp_encap_rcv;\n+\t}\n+\n+\tif (up->gro_receive == gro_receive)\n+\t\treturn;\n+\n+\tif (udp_test_bit(ENCAP_ENABLED, sk)) {\n+\t\tif (up->gro_receive)\n+\t\t\tudp_tunnel_update_gro_rcv(sk, false);\n+\t\tWRITE_ONCE(up->gro_receive, gro_receive);\n+\t\tif (gro_receive)\n+\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n+\t} else {\n+\t\tWRITE_ONCE(up->gro_receive, gro_receive);\n \t}\n #endif\n }",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "net/ipv4/udp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 23
+}

@@ -1,0 +1,22 @@
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 8262cc10f98d..4e7987b6cbc3 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -8,6 +8,7 @@
+  */
+ 
+ #include <linux/compat.h>
++#include <linux/rcupdate.h>
+ #include <linux/etherdevice.h>
+ #include <linux/module.h>
+ #include <linux/types.h>
+@@ -60,7 +61,8 @@ static struct devlink *netdev_to_devlink_get(struct net_device *dev)
+ u32 ethtool_op_get_link(struct net_device *dev)
+ {
+ 	/* Synchronize carrier state with link watch, see also rtnl_getlink() */
+-	__linkwatch_sync_dev(dev);
++	if (!rcu_read_lock_held())
++		__linkwatch_sync_dev(dev);
+ 
+ 	return netif_carrier_ok(dev) ? 1 : 0;
+ }

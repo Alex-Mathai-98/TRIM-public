@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <linux/fiemap.h>\n#include <linux/pagemap.h>\n\n#include <cluster/masklog.h>",
+          "before": "#include <linux/fiemap.h>\n\n#include <cluster/masklog.h>",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ocfs2/extent_map.c\n+++ /linux/fs/ocfs2/extent_map.c\n@@ -14,0 +15 @@\n+#include <linux/pagemap.h>",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 32",
+          "filename": "fs/ocfs2/extent_map.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 0,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\nint ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,\n\t\t u64 map_start, u64 map_len)\n{\n\tint ret, is_last;\n\tu32 mapping_end, cpos;\n\tunsigned int hole_size;\n\tstruct ocfs2_super *osb = OCFS2_SB(inode->i_sb);\n\tu64 len_bytes, phys_bytes, virt_bytes;\n\tstruct buffer_head *di_bh = NULL;\n\tstruct ocfs2_extent_rec rec;\n\tstruct fiemap_extent *ext_buf;\n\tint ext_count = 0, i;\n#define OCFS2_FIEMAP_BUFFER_SIZE 32\n\n\text_buf = kcalloc(OCFS2_FIEMAP_BUFFER_SIZE, sizeof(struct fiemap_extent),\n\t\t\t  GFP_KERNEL);\n\tif (!ext_buf)\n\t\treturn -ENOMEM;\n\n\tret = fiemap_prep(inode, fieinfo, map_start, &map_len, 0);\n\tif (ret)\n\t\tgoto out_free;\n\n\tret = ocfs2_inode_lock(inode, &di_bh, 0);\n\tif (ret) {\n\t\tmlog_errno(ret);\n\t\tgoto out_free;\n\t}\n\n\tdown_read(&OCFS2_I(inode)->ip_alloc_sem);\n\n\t/*\n\t * Handle inline-data and fast symlink separately.\n\t */\n\tif ((OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) ||\n\t    ocfs2_inode_is_fast_symlink(inode)) {\n\t\tret = ocfs2_fiemap_inline(inode, di_bh, fieinfo, map_start);\n\t\tgoto out_unlock;\n\t}\n\n\tcpos = map_start >> osb->s_clustersize_bits;\n\tmapping_end = ocfs2_clusters_for_bytes(inode->i_sb,\n\t\t\t\t\t       map_start + map_len);\n\tis_last = 0;\n\twhile (cpos < mapping_end && !is_last) {\n\t\tu32 fe_flags;\n\n\t\tret = ocfs2_get_clusters_nocache(inode, di_bh, cpos,\n\t\t\t\t\t\t &hole_size, &rec, &is_last);\n\t\tif (ret) {\n\t\t\tmlog_errno(ret);\n\t\t\tgoto out_unlock;\n\t\t}\n\n\t\tif (rec.e_blkno == 0ULL) {\n\t\t\tcpos += hole_size;\n\t\t\tcontinue;\n\t\t}\n\n\t\tfe_flags = 0;\n\t\tif (rec.e_flags & OCFS2_EXT_UNWRITTEN)\n\t\t\tfe_flags |= FIEMAP_EXTENT_UNWRITTEN;\n\t\tif (rec.e_flags & OCFS2_EXT_REFCOUNTED)\n\t\t\tfe_flags |= FIEMAP_EXTENT_SHARED;\n\t\tif (is_last)\n\t\t\tfe_flags |= FIEMAP_EXTENT_LAST;\n\t\tlen_bytes = (u64)le16_to_cpu(rec.e_leaf_clusters) << osb->s_clustersize_bits;\n\t\tphys_bytes = le64_to_cpu(rec.e_blkno) << osb->sb->s_blocksize_bits;\n\t\tvirt_bytes = (u64)le32_to_cpu(rec.e_cpos) << osb->s_clustersize_bits;\n\n\t\text_buf[ext_count].fe_physical = phys_bytes;\n\t\text_buf[ext_count].fe_logical = virt_bytes;\n\t\text_buf[ext_count].fe_length = len_bytes;\n\t\text_buf[ext_count].fe_flags = fe_flags;\n\t\text_count++;\n\n\t\tcpos = le32_to_cpu(rec.e_cpos)+ le16_to_cpu(rec.e_leaf_clusters);\n\n\t\tif (ext_count >= OCFS2_FIEMAP_BUFFER_SIZE) {\n\t\t\tbrelse(di_bh);\n\t\t\tdi_bh = NULL;\n\t\t\tup_read(&OCFS2_I(inode)->ip_alloc_sem);\n\t\t\tocfs2_inode_unlock(inode, 0);\n\n\t\t\tfor (i = 0; i < ext_count; i++) {\n\t\t\t\tret = fiemap_fill_next_extent(fieinfo,\n\t\t\t\t\t\t\t      ext_buf[i].fe_logical,\n\t\t\t\t\t\t\t      ext_buf[i].fe_physical,\n\t\t\t\t\t\t\t      ext_buf[i].fe_length,\n\t\t\t\t\t\t\t      ext_buf[i].fe_flags);\n\t\t\t\tif (ret)\n\t\t\t\t\tbreak;\n\t\t\t}\n\t\t\text_count = 0;\n\n\t\t\tif (ret)\n\t\t\t\tgoto out_free;\n\n\t\t\tret = ocfs2_inode_lock(inode, &di_bh, 0);\n\t\t\tif (ret) {\n\t\t\t\tmlog_errno(ret);\n\t\t\t\tgoto out_free;\n\t\t\t}\n\t\t\tdown_read(&OCFS2_I(inode)->ip_alloc_sem);\n\t\t}\n\t}\n\nout_unlock:\n\tbrelse(di_bh);\n\n\tup_read(&OCFS2_I(inode)->ip_alloc_sem);\n\n\tocfs2_inode_unlock(inode, 0);\n\n\tif (ext_count > 0 && ret == 0) {\n\t\tfor (i = 0; i < ext_count; i++) {\n\t\t\tret = fiemap_fill_next_extent(fieinfo,\n\t\t\t\t\t\t      ext_buf[i].fe_logical,\n\t\t\t\t\t\t      ext_buf[i].fe_physical,\n\t\t\t\t\t\t      ext_buf[i].fe_length,\n\t\t\t\t\t\t      ext_buf[i].fe_flags);\n\t\t\tif (ret)\n\t\t\t\tbreak;\n\t\t}\n\t}\n\n\tif (ret > 0)\n\t\tret = 0;\n\nout_free:\n\tkfree(ext_buf);\n\treturn ret;\n}\n",
+          "before": "\nint ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,\n\t\t u64 map_start, u64 map_len)\n{\n\tint ret, is_last;\n\tu32 mapping_end, cpos;\n\tunsigned int hole_size;\n\tstruct ocfs2_super *osb = OCFS2_SB(inode->i_sb);\n\tu64 len_bytes, phys_bytes, virt_bytes;\n\tstruct buffer_head *di_bh = NULL;\n\tstruct ocfs2_extent_rec rec;\n\n\tret = fiemap_prep(inode, fieinfo, map_start, &map_len, 0);\n\tif (ret)\n\t\treturn ret;\n\n\tret = ocfs2_inode_lock(inode, &di_bh, 0);\n\tif (ret) {\n\t\tmlog_errno(ret);\n\t\tgoto out;\n\t}\n\n\tdown_read(&OCFS2_I(inode)->ip_alloc_sem);\n\n\t/*\n\t * Handle inline-data and fast symlink separately.\n\t */\n\tif ((OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) ||\n\t    ocfs2_inode_is_fast_symlink(inode)) {\n\t\tret = ocfs2_fiemap_inline(inode, di_bh, fieinfo, map_start);\n\t\tgoto out_unlock;\n\t}\n\n\tcpos = map_start >> osb->s_clustersize_bits;\n\tmapping_end = ocfs2_clusters_for_bytes(inode->i_sb,\n\t\t\t\t\t       map_start + map_len);\n\tis_last = 0;\n\twhile (cpos < mapping_end && !is_last) {\n\t\tu32 fe_flags;\n\n\t\tret = ocfs2_get_clusters_nocache(inode, di_bh, cpos,\n\t\t\t\t\t\t &hole_size, &rec, &is_last);\n\t\tif (ret) {\n\t\t\tmlog_errno(ret);\n\t\t\tgoto out_unlock;\n\t\t}\n\n\t\tif (rec.e_blkno == 0ULL) {\n\t\t\tcpos += hole_size;\n\t\t\tcontinue;\n\t\t}\n\n\t\tfe_flags = 0;\n\t\tif (rec.e_flags & OCFS2_EXT_UNWRITTEN)\n\t\t\tfe_flags |= FIEMAP_EXTENT_UNWRITTEN;\n\t\tif (rec.e_flags & OCFS2_EXT_REFCOUNTED)\n\t\t\tfe_flags |= FIEMAP_EXTENT_SHARED;\n\t\tif (is_last)\n\t\t\tfe_flags |= FIEMAP_EXTENT_LAST;\n\t\tlen_bytes = (u64)le16_to_cpu(rec.e_leaf_clusters) << osb->s_clustersize_bits;\n\t\tphys_bytes = le64_to_cpu(rec.e_blkno) << osb->sb->s_blocksize_bits;\n\t\tvirt_bytes = (u64)le32_to_cpu(rec.e_cpos) << osb->s_clustersize_bits;\n\n\t\tret = fiemap_fill_next_extent(fieinfo, virt_bytes, phys_bytes,\n\t\t\t\t\t      len_bytes, fe_flags);\n\t\tif (ret)\n\t\t\tbreak;\n\n\t\tcpos = le32_to_cpu(rec.e_cpos)+ le16_to_cpu(rec.e_leaf_clusters);\n\t}\n\n\tif (ret > 0)\n\t\tret = 0;\n\nout_unlock:\n\tbrelse(di_bh);\n\n\tup_read(&OCFS2_I(inode)->ip_alloc_sem);\n\n\tocfs2_inode_unlock(inode, 0);\nout:\n\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ocfs2/extent_map.c\n+++ /linux/fs/ocfs2/extent_map.c\n@@ -754,0 +755,8 @@\n+\tstruct fiemap_extent *ext_buf;\n+\tint ext_count = 0, i;\n+#define OCFS2_FIEMAP_BUFFER_SIZE 32\n+\n+\text_buf = kcalloc(OCFS2_FIEMAP_BUFFER_SIZE, sizeof(struct fiemap_extent),\n+\t\t\t  GFP_KERNEL);\n+\tif (!ext_buf)\n+\t\treturn -ENOMEM;\n@@ -758 +766 @@\n-\t\treturn ret;\n+\t\tgoto out_free;\n@@ -763 +771 @@\n-\t\tgoto out;\n+\t\tgoto out_free;\n@@ -807,4 +815,5 @@\n-\t\tret = fiemap_fill_next_extent(fieinfo, virt_bytes, phys_bytes,\n-\t\t\t\t\t      len_bytes, fe_flags);\n-\t\tif (ret)\n-\t\t\tbreak;\n+\t\text_buf[ext_count].fe_physical = phys_bytes;\n+\t\text_buf[ext_count].fe_logical = virt_bytes;\n+\t\text_buf[ext_count].fe_length = len_bytes;\n+\t\text_buf[ext_count].fe_flags = fe_flags;\n+\t\text_count++;\n@@ -812,0 +822,47 @@\n+\n+\t\tif (ext_count >= OCFS2_FIEMAP_BUFFER_SIZE) {\n+\t\t\tbrelse(di_bh);\n+\t\t\tdi_bh = NULL;\n+\t\t\tup_read(&OCFS2_I(inode)->ip_alloc_sem);\n+\t\t\tocfs2_inode_unlock(inode, 0);\n+\n+\t\t\tfor (i = 0; i < ext_count; i++) {\n+\t\t\t\tret = fiemap_fill_next_extent(fieinfo,\n+\t\t\t\t\t\t\t      ext_buf[i].fe_logical,\n+\t\t\t\t\t\t\t      ext_buf[i].fe_physical,\n+\t\t\t\t\t\t\t      ext_buf[i].fe_length,\n+\t\t\t\t\t\t\t      ext_buf[i].fe_flags);\n+\t\t\t\tif (ret)\n+\t\t\t\t\tbreak;\n+\t\t\t}\n+\t\t\text_count = 0;\n+\n+\t\t\tif (ret)\n+\t\t\t\tgoto out_free;\n+\n+\t\t\tret = ocfs2_inode_lock(inode, &di_bh, 0);\n+\t\t\tif (ret) {\n+\t\t\t\tmlog_errno(ret);\n+\t\t\t\tgoto out_free;\n+\t\t\t}\n+\t\t\tdown_read(&OCFS2_I(inode)->ip_alloc_sem);\n+\t\t}\n+\t}\n+\n+out_unlock:\n+\tbrelse(di_bh);\n+\n+\tup_read(&OCFS2_I(inode)->ip_alloc_sem);\n+\n+\tocfs2_inode_unlock(inode, 0);\n+\n+\tif (ext_count > 0 && ret == 0) {\n+\t\tfor (i = 0; i < ext_count; i++) {\n+\t\t\tret = fiemap_fill_next_extent(fieinfo,\n+\t\t\t\t\t\t      ext_buf[i].fe_logical,\n+\t\t\t\t\t\t      ext_buf[i].fe_physical,\n+\t\t\t\t\t\t      ext_buf[i].fe_length,\n+\t\t\t\t\t\t      ext_buf[i].fe_flags);\n+\t\t\tif (ret)\n+\t\t\t\tbreak;\n+\t\t}\n@@ -818,8 +874,2 @@\n-out_unlock:\n-\tbrelse(di_bh);\n-\n-\tup_read(&OCFS2_I(inode)->ip_alloc_sem);\n-\n-\tocfs2_inode_unlock(inode, 0);\n-out:\n-\n+out_free:\n+\tkfree(ext_buf);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 60",
+          "filename": "fs/ocfs2/extent_map.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 60
+        }
+      ],
+      "end_step": 60,
+      "revision_index": 1,
+      "start_step": 60
+    }
+  ],
+  "success_step": 60
+}

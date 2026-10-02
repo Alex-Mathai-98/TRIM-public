@@ -1,0 +1,72 @@
+diff --git a/drivers/net/netdevsim/netdev.c b/drivers/net/netdevsim/netdev.c
+index 39fe28af48b9..e1ccc93949dd 100644
+--- a/drivers/net/netdevsim/netdev.c
++++ b/drivers/net/netdevsim/netdev.c
+@@ -711,7 +711,8 @@ static void nsim_queue_free(struct net_device *dev, struct nsim_rq *rq)
+ {
+ 	hrtimer_cancel(&rq->napi_timer);
+ 	local_bh_disable();
+-	dev_dstats_rx_dropped_add(dev, rq->skb_queue.qlen);
++	if (dev->dstats)
++		dev_dstats_rx_dropped_add(dev, rq->skb_queue.qlen);
+ 	local_bh_enable();
+ 	skb_queue_purge_reason(&rq->skb_queue, SKB_DROP_REASON_QUEUE_PURGE);
+ 	kfree(rq);
+diff --git a/net/ipv4/udp_tunnel_nic.c b/net/ipv4/udp_tunnel_nic.c
+index ff66db48453c..4189d1d37416 100644
+--- a/net/ipv4/udp_tunnel_nic.c
++++ b/net/ipv4/udp_tunnel_nic.c
+@@ -304,8 +304,8 @@ udp_tunnel_nic_device_sync(struct net_device *dev, struct udp_tunnel_nic *utn)
+ 	if (!utn->need_sync)
+ 		return;
+ 
+-	queue_work(udp_tunnel_nic_workqueue, &utn->work);
+ 	utn->work_pending = 1;
++	queue_work(udp_tunnel_nic_workqueue, &utn->work);
+ }
+ 
+ static bool
+@@ -736,12 +736,13 @@ static void udp_tunnel_nic_device_sync_work(struct work_struct *work)
+ 	rtnl_lock();
+ 	mutex_lock(&utn->lock);
+ 
+-	utn->work_pending = 0;
+ 	__udp_tunnel_nic_device_sync(utn->dev, utn);
+ 
+ 	if (utn->need_replay)
+ 		udp_tunnel_nic_replay(utn->dev, utn);
+ 
++	if (!work_pending(&utn->work))
++		utn->work_pending = 0;
+ 	mutex_unlock(&utn->lock);
+ 	rtnl_unlock();
+ }
+@@ -899,14 +900,16 @@ udp_tunnel_nic_unregister(struct net_device *dev, struct udp_tunnel_nic *utn)
+ 	 * from the work which we will boot immediately.
+ 	 */
+ 	udp_tunnel_nic_flush(dev, utn);
+-	udp_tunnel_nic_unlock(dev);
+ 
+ 	/* Wait for the work to be done using the state, netdev core will
+ 	 * retry unregister until we give up our reference on this device.
+ 	 */
+-	if (utn->work_pending)
++	if (utn->work_pending) {
++		udp_tunnel_nic_unlock(dev);
+ 		return;
++	}
+ 
++	udp_tunnel_nic_unlock(dev);
+ 	udp_tunnel_nic_free(utn);
+ release_dev:
+ 	dev->udp_tunnel_nic = NULL;
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..e1b6c2fce04b
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "5af58e1ad106297447d45b6a1fafe3146b1dbd97": 90782
++}
+\ No newline at end of file

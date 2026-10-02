@@ -1,0 +1,52 @@
+diff --git a/fs/nilfs2/bmap.c b/fs/nilfs2/bmap.c
+index ccc1a7aa52d2..36d4c512747b 100644
+--- a/fs/nilfs2/bmap.c
++++ b/fs/nilfs2/bmap.c
+@@ -97,7 +97,7 @@ int nilfs_bmap_lookup_contig(struct nilfs_bmap *bmap, __u64 key, __u64 *ptrp,
+ 	ret = bmap->b_ops->bop_lookup_contig(bmap, key, ptrp, maxblocks);
+ 	up_read(&bmap->b_sem);
+ 
+-	return nilfs_bmap_convert_error(bmap, __func__, ret);
++	return ret;
+ }
+ 
+ static int nilfs_bmap_do_insert(struct nilfs_bmap *bmap, __u64 key, __u64 ptr)
+diff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c
+index 6613b8fcceb0..aa921d761f98 100644
+--- a/fs/nilfs2/inode.c
++++ b/fs/nilfs2/inode.c
+@@ -83,6 +83,17 @@ int nilfs_get_block(struct inode *inode, sector_t blkoff,
+ 	down_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);
+ 	ret = nilfs_bmap_lookup_contig(ii->i_bmap, blkoff, &blknum, maxblocks);
+ 	up_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);
++
++	if (ret < 0 && ret != -ENOENT) {
++		if (ret == -EINVAL) {
++			nilfs_error(inode->i_sb,
++				    "broken bmap (inode number=%lu)",
++				    inode->i_ino);
++			ret = -EIO;
++		}
++		goto out;
++	}
++
+ 	if (ret >= 0) {	/* found */
+ 		map_bh(bh_result, inode->i_sb, blknum);
+ 		if (ret > 0)
+@@ -1161,8 +1172,15 @@ int nilfs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		if (n < 0) {
+ 			int past_eof;
+ 
+-			if (unlikely(n != -ENOENT))
++			if (unlikely(n != -ENOENT)) {
++				if (n == -EINVAL) {
++					nilfs_error(inode->i_sb,
++						    "broken bmap (inode number=%lu)",
++						    inode->i_ino);
++					n = -EIO;
++				}
+ 				break; /* error */
++			}
+ 
+ 			/* HOLE */
+ 			blkoff++;

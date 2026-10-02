@@ -1,0 +1,49 @@
+diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c
+index abf4aadca96c..787c68359784 100644
+--- a/drivers/iommu/iommufd/io_pagetable.c
++++ b/drivers/iommu/iommufd/io_pagetable.c
+@@ -78,6 +78,10 @@ static bool __alloc_iova_check_hole(struct interval_tree_double_span_iter *span,
+ 	if (span->is_used || span->last_hole - span->start_hole < length - 1)
+ 		return false;
+ 
++	/* Check for ALIGN() overflow */
++	if (span->start_hole > ULONG_MAX - (iova_alignment - 1))
++		return false;
++
+ 	span->start_hole = ALIGN(span->start_hole, iova_alignment) |
+ 			   page_offset;
+ 	if (span->start_hole > span->last_hole ||
+@@ -94,6 +98,10 @@ static bool __alloc_iova_check_used(struct interval_tree_span_iter *span,
+ 	if (span->is_hole || span->last_used - span->start_used < length - 1)
+ 		return false;
+ 
++	/* Check for ALIGN() overflow */
++	if (span->start_used > ULONG_MAX - (iova_alignment - 1))
++		return false;
++
+ 	span->start_used = ALIGN(span->start_used, iova_alignment) |
+ 			   page_offset;
+ 	if (span->start_used > span->last_used ||
+diff --git a/drivers/iommu/iommufd/selftest.c b/drivers/iommu/iommufd/selftest.c
+index a5dc36219a90..144596367e2d 100644
+--- a/drivers/iommu/iommufd/selftest.c
++++ b/drivers/iommu/iommufd/selftest.c
+@@ -1259,13 +1259,17 @@ static int iommufd_test_add_reserved(struct iommufd_ucmd *ucmd,
+ 				     unsigned long start, size_t length)
+ {
+ 	struct iommufd_ioas *ioas;
++	unsigned long last;
+ 	int rc;
+ 
++	if (length == 0 || check_add_overflow(start, length - 1, &last))
++		return -EOVERFLOW;
++
+ 	ioas = iommufd_get_ioas(ucmd->ictx, mockpt_id);
+ 	if (IS_ERR(ioas))
+ 		return PTR_ERR(ioas);
+ 	down_write(&ioas->iopt.iova_rwsem);
+-	rc = iopt_reserve_iova(&ioas->iopt, start, start + length - 1, NULL);
++	rc = iopt_reserve_iova(&ioas->iopt, start, last, NULL);
+ 	up_write(&ioas->iopt.iova_rwsem);
+ 	iommufd_put_object(ucmd->ictx, &ioas->obj);
+ 	return rc;

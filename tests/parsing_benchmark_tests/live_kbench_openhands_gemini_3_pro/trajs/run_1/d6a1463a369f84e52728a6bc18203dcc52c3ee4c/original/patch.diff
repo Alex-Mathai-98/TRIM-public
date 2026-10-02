@@ -1,0 +1,31 @@
+diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
+index 213206ebdd58..c1e18b939320 100644
+--- a/fs/ocfs2/dir.c
++++ b/fs/ocfs2/dir.c
+@@ -411,6 +411,13 @@ static struct buffer_head *ocfs2_find_entry_id(const char *name,
+ 	di = (struct ocfs2_dinode *)di_bh->b_data;
+ 	data = &di->id2.i_data;
+ 
++	if (i_size_read(dir) > dir->i_sb->s_blocksize -
++			       offsetof(struct ocfs2_dinode, id2.i_data.id_data)) {
++		brelse(di_bh);
++		goto out;
++	}
++
++
+ 	found = ocfs2_search_dirblock(di_bh, dir, name, namelen, 0,
+ 				      data->id_data, i_size_read(dir), res_dir);
+ 	if (found == 1)
+@@ -3398,6 +3405,12 @@ static int ocfs2_find_dir_space_id(struct inode *dir, struct buffer_head *di_bh,
+ 		offset += le16_to_cpu(de->rec_len);
+ 	}
+ 
++
++	if (!last_de) {
++		ret = -EIO;
++		goto out;
++	}
++
+ 	/*
+ 	 * We're going to require expansion of the directory - figure
+ 	 * out how many blocks we'll need so that a place for the

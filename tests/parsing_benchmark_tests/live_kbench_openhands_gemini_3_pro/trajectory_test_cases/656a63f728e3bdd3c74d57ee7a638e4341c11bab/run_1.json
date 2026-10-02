@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&sdp->open_rel_lock);\n\tkref_get(&sdp->d_ref);\n\tkref_put(&sfp->f_ref, sg_remove_sfp);\n\tsdp->open_cnt--;\n\n\t/* possibly many open()s waiting on exlude clearing, start many;\n\t * only open(O_EXCL)s wait on 0==open_cnt so only start one */\n\tif (sdp->exclude) {\n\t\tsdp->exclude = false;\n\t\twake_up_interruptible_all(&sdp->open_wait);\n\t} else if (0 == sdp->open_cnt) {\n\t\twake_up_interruptible(&sdp->open_wait);\n\t}\n\tmutex_unlock(&sdp->open_rel_lock);\n\tkref_put(&sdp->d_ref, sg_device_destroy);\n\treturn 0;",
+          "before": "\tmutex_lock(&sdp->open_rel_lock);\n\tkref_put(&sfp->f_ref, sg_remove_sfp);\n\tsdp->open_cnt--;\n\n\t/* possibly many open()s waiting on exlude clearing, start many;\n\t * only open(O_EXCL)s wait on 0==open_cnt so only start one */\n\tif (sdp->exclude) {\n\t\tsdp->exclude = false;\n\t\twake_up_interruptible_all(&sdp->open_wait);\n\t} else if (0 == sdp->open_cnt) {\n\t\twake_up_interruptible(&sdp->open_wait);\n\t}\n\tmutex_unlock(&sdp->open_rel_lock);\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/scsi/sg.c\n+++ /linux/drivers/scsi/sg.c\n@@ -388,0 +389 @@\n+\tkref_get(&sdp->d_ref);\n@@ -400,0 +402 @@\n+\tkref_put(&sdp->d_ref, sg_device_destroy);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 35",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 0,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tsdp = kzalloc(sizeof(Sg_device), GFP_KERNEL);\n\tif (!sdp) {\n\t\tsdev_printk(KERN_WARNING, scsidp, \"%s: kmalloc Sg_device \"\n\t\t\t    \"failure\\n\", __func__);\n\t\treturn ERR_PTR(-ENOMEM);\n\t}\n\n\tif (scsi_device_get(scsidp)) {\n\t\tkfree(sdp);\n\t\treturn ERR_PTR(-ENODEV);\n\t}\n\tsdp->device = scsidp;\n\n\tidr_preload(GFP_KERNEL);\n",
+          "before": "\n\tsdp = kzalloc(sizeof(Sg_device), GFP_KERNEL);\n\tif (!sdp) {\n\t\tsdev_printk(KERN_WARNING, scsidp, \"%s: kmalloc Sg_device \"\n\t\t\t    \"failure\\n\", __func__);\n\t\treturn ERR_PTR(-ENOMEM);\n\t}\n\n\tidr_preload(GFP_KERNEL);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/scsi/sg.c\n+++ /linux/drivers/scsi/sg.c\n@@ -1444,0 +1445,6 @@\n+\n+\tif (scsi_device_get(scsidp)) {\n+\t\tkfree(sdp);\n+\t\treturn ERR_PTR(-ENODEV);\n+\t}\n+\tsdp->device = scsidp;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 61",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        },
+        {
+          "after": "\n\tSCSI_LOG_TIMEOUT(3, sdev_printk(KERN_INFO, scsidp,\n\t\t\t\t\t\"sg_alloc: dev=%d \\n\", k));\n\tsprintf(sdp->name, \"sg%d\", k);\n\tmutex_init(&sdp->open_rel_lock);\n",
+          "before": "\n\tSCSI_LOG_TIMEOUT(3, sdev_printk(KERN_INFO, scsidp,\n\t\t\t\t\t\"sg_alloc: dev=%d \\n\", k));\n\tsprintf(sdp->name, \"sg%d\", k);\n\tsdp->device = scsidp;\n\tmutex_init(&sdp->open_rel_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/scsi/sg.c\n+++ /linux/drivers/scsi/sg.c\n@@ -1474 +1473,0 @@\n-\tsdp->device = scsidp;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 63",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 63
+        },
+        {
+          "after": "\n\n\tif (error) {\n\t\tscsi_device_put(scsidp);\n\t\tkfree(sdp);\n\t\treturn ERR_PTR(error);\n\t}\n\treturn sdp;\n}\n\n",
+          "before": "\n\n\tif (error) {\n\t\tkfree(sdp);\n\t\treturn ERR_PTR(error);\n\t}\n\treturn sdp;\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/scsi/sg.c\n+++ /linux/drivers/scsi/sg.c\n@@ -1488,0 +1489 @@\n+\t\tscsi_device_put(scsidp);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 65",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 65
+        },
+        {
+          "after": "\n\n\twrite_unlock_irqrestore(&sg_index_lock, iflags);\n\tscsi_device_put(sdp->device);\n\tkfree(sdp);\n\nout:\n\n",
+          "before": "\n\n\twrite_unlock_irqrestore(&sg_index_lock, iflags);\n\tkfree(sdp);\n\nout:\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/scsi/sg.c\n+++ /linux/drivers/scsi/sg.c\n@@ -1561,0 +1562 @@\n+\tscsi_device_put(sdp->device);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 67",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "\n\n\n\tblk_trace_remove(q);\n\tblk_put_queue(q);\n\tscsi_device_put(sdp->device);\n\n\twrite_lock_irqsave(&sg_index_lock, flags);\n\n\n",
+          "before": "\n\n\n\tblk_trace_remove(q);\n\tblk_put_queue(q);\n\n\twrite_lock_irqsave(&sg_index_lock, flags);\n\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/scsi/sg.c\n+++ /linux/drivers/scsi/sg.c\n@@ -1585,0 +1586 @@\n+\tscsi_device_put(sdp->device);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 69",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "revision_index": 1,
+      "start_step": 61
+    }
+  ],
+  "success_step": 69
+}

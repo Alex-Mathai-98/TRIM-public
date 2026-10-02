@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(ring_buffer_unmap(iter->array_buffer->buffer, iter->cpu_file));\n\tput_snapshot_map(iter->tr);\n}\n\nstatic void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma));\n}\n\nstatic const struct vm_operations_struct tracing_buffers_vmops = {\n\t.open\t\t= tracing_buffers_mmap_open,\n\t.close\t\t= tracing_buffers_mmap_close,\n};",
+          "before": "static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(ring_buffer_unmap(iter->array_buffer->buffer, iter->cpu_file));\n\tput_snapshot_map(iter->tr);\n}\n\nstatic const struct vm_operations_struct tracing_buffers_vmops = {\n\t.close\t\t= tracing_buffers_mmap_close,\n};",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex d1e527cf2aae..ed6557be0f15 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -8781,7 +8781,16 @@ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n \tput_snapshot_map(iter->tr);\n }\n \n+static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n+{\n+\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n+\tstruct trace_iterator *iter = &info->iter;\n+\n+\tWARN_ON(ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma));\n+}\n+\n static const struct vm_operations_struct tracing_buffers_vmops = {\n+\t.open\t\t= tracing_buffers_mmap_open,\n \t.close\t\t= tracing_buffers_mmap_close,\n };",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "kernel/trace/trace.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "\treturn err;\n}\n\nvoid ring_buffer_vm_open(struct trace_buffer *buffer, int cpu)\n{\n\tstruct ring_buffer_per_cpu *cpu_buffer;\n\n\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n\t\treturn;\n\n\tcpu_buffer = buffer->buffers[cpu];\n\n\tguard(mutex)(&cpu_buffer->mapping_lock);\n\t/*\n\t * This is called from the vm_ops->open() callback. The VMA is being\n\t * copied or split. The VMA is already mapped, so just increment the\n\t * refcount.\n\t */\n\tif (!WARN_ON_ONCE(!cpu_buffer->user_mapped))\n\t\t__rb_inc_dec_mapped(cpu_buffer, true);\n}\nEXPORT_SYMBOL_GPL(ring_buffer_vm_open);\n\nint ring_buffer_unmap(struct trace_buffer *buffer, int cpu)",
+          "before": "\treturn err;\n}\n\nint ring_buffer_unmap(struct trace_buffer *buffer, int cpu)",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 1244d2c5c384..19028488f238 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7276,6 +7276,26 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \treturn err;\n }\n \n+void ring_buffer_vm_open(struct trace_buffer *buffer, int cpu)\n+{\n+\tstruct ring_buffer_per_cpu *cpu_buffer;\n+\n+\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n+\t\treturn;\n+\n+\tcpu_buffer = buffer->buffers[cpu];\n+\n+\tguard(mutex)(&cpu_buffer->mapping_lock);\n+\t/*\n+\t * This is called from the vm_ops->open() callback. The VMA is being\n+\t * copied or split. The VMA is already mapped, so just increment the\n+\t * refcount.\n+\t */\n+\tif (!WARN_ON_ONCE(!cpu_buffer->user_mapped))\n+\t\t__rb_inc_dec_mapped(cpu_buffer, true);\n+}\n+EXPORT_SYMBOL_GPL(ring_buffer_vm_open);\n+\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\n {\n \tstruct ring_buffer_per_cpu *cpu_buffer;\ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex d1e527cf2aae..ed6557be0f15 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -8781,7 +8781,16 @@ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n \tput_snapshot_map(iter->tr);\n }\n \n+static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n+{\n+\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n+\tstruct trace_iterator *iter = &info->iter;\n+\n+\tWARN_ON(ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma));\n+}\n+\n static const struct vm_operations_struct tracing_buffers_vmops = {\n+\t.open\t\t= tracing_buffers_mmap_open,\n \t.close\t\t= tracing_buffers_mmap_close,\n };",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n\t\t    struct vm_area_struct *vma);\nvoid ring_buffer_vm_open(struct trace_buffer *buffer, int cpu);\nint ring_buffer_unmap(struct trace_buffer *buffer, int cpu);\nint ring_buffer_map_get_reader(struct trace_buffer *buffer, int cpu);",
+          "before": "int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n\t\t    struct vm_area_struct *vma);\nint ring_buffer_unmap(struct trace_buffer *buffer, int cpu);\nint ring_buffer_map_get_reader(struct trace_buffer *buffer, int cpu);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/ring_buffer.h b/include/linux/ring_buffer.h\nindex 876358cfe1b1..8114dc7a66c8 100644\n--- a/include/linux/ring_buffer.h\n+++ b/include/linux/ring_buffer.h\n@@ -248,6 +248,7 @@ int trace_rb_cpu_prepare(unsigned int cpu, struct hlist_node *node);\n \n int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t\t    struct vm_area_struct *vma);\n+void ring_buffer_vm_open(struct trace_buffer *buffer, int cpu);\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu);\n int ring_buffer_map_get_reader(struct trace_buffer *buffer, int cpu);\n #endif /* _LINUX_RING_BUFFER_H */\ndiff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 1244d2c5c384..19028488f238 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7276,6 +7276,26 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \treturn err;\n }\n \n+void ring_buffer_vm_open(struct trace_buffer *buffer, int cpu)\n+{\n+\tstruct ring_buffer_per_cpu *cpu_buffer;\n+\n+\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n+\t\treturn;\n+\n+\tcpu_buffer = buffer->buffers[cpu];\n+\n+\tguard(mutex)(&cpu_buffer->mapping_lock);\n+\t/*\n+\t * This is called from the vm_ops->open() callback. The VMA is being\n+\t * copied or split. The VMA is already mapped, so just increment the\n+\t * refcount.\n+\t */\n+\tif (!WARN_ON_ONCE(!cpu_buffer->user_mapped))\n+\t\t__rb_inc_dec_mapped(cpu_buffer, true);\n+}\n+EXPORT_SYMBOL_GPL(ring_buffer_vm_open);\n+\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\n {\n \tstruct ring_buffer_per_cpu *cpu_buffer;\ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex d1e527cf2aae..ed6557be0f15 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -8781,7 +8781,16 @@ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n \tput_snapshot_map(iter->tr);\n }\n \n+static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n+{\n+\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n+\tstruct trace_iterator *iter = &info->iter;\n+\n+\tWARN_ON(ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma));\n+}\n+\n static const struct vm_operations_struct tracing_buffers_vmops = {\n+\t.open\t\t= tracing_buffers_mmap_open,\n \t.close\t\t= tracing_buffers_mmap_close,\n };",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "include/linux/ring_buffer.h",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tring_buffer_vm_open(iter->array_buffer->buffer, iter->cpu_file);\n}",
+          "before": "static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma));\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/ring_buffer.h b/include/linux/ring_buffer.h\nindex 876358cfe1b1..8114dc7a66c8 100644\n--- a/include/linux/ring_buffer.h\n+++ b/include/linux/ring_buffer.h\n@@ -248,6 +248,7 @@ int trace_rb_cpu_prepare(unsigned int cpu, struct hlist_node *node);\n \n int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t\t    struct vm_area_struct *vma);\n+void ring_buffer_vm_open(struct trace_buffer *buffer, int cpu);\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu);\n int ring_buffer_map_get_reader(struct trace_buffer *buffer, int cpu);\n #endif /* _LINUX_RING_BUFFER_H */\ndiff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 1244d2c5c384..19028488f238 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7276,6 +7276,26 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \treturn err;\n }\n \n+void ring_buffer_vm_open(struct trace_buffer *buffer, int cpu)\n+{\n+\tstruct ring_buffer_per_cpu *cpu_buffer;\n+\n+\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n+\t\treturn;\n+\n+\tcpu_buffer = buffer->buffers[cpu];\n+\n+\tguard(mutex)(&cpu_buffer->mapping_lock);\n+\t/*\n+\t * This is called from the vm_ops->open() callback. The VMA is being\n+\t * copied or split. The VMA is already mapped, so just increment the\n+\t * refcount.\n+\t */\n+\tif (!WARN_ON_ONCE(!cpu_buffer->user_mapped))\n+\t\t__rb_inc_dec_mapped(cpu_buffer, true);\n+}\n+EXPORT_SYMBOL_GPL(ring_buffer_vm_open);\n+\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\n {\n \tstruct ring_buffer_per_cpu *cpu_buffer;\ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex d1e527cf2aae..7555a6aa4524 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -8781,7 +8781,16 @@ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n \tput_snapshot_map(iter->tr);\n }\n \n+static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n+{\n+\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n+\tstruct trace_iterator *iter = &info->iter;\n+\n+\tring_buffer_vm_open(iter->array_buffer->buffer, iter->cpu_file);\n+}\n+\n static const struct vm_operations_struct tracing_buffers_vmops = {\n+\t.open\t\t= tracing_buffers_mmap_open,\n \t.close\t\t= tracing_buffers_mmap_close,\n };",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "kernel/trace/trace.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 22
+    }
+  ],
+  "success_step": 28
+}

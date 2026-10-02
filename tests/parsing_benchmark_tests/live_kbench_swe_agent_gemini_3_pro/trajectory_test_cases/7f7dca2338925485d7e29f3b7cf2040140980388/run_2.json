@@ -1,0 +1,199 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct {\n\t\tu64 _data[BKEY_U64s_MAX];\n\t} p_buf;\n\tstruct bkey_packed *p = (void *) &p_buf;\n\tstruct bkey_packed *packed_search = NULL;\n\tstruct btree_node_iter_set *pos = iter->data;\n\tstruct bkey_packed *k[MAX_BSETS];\n\tunsigned i;\n\n\tEBUG_ON(bpos_lt(*search, b->data->min_key));\n\tEBUG_ON(bpos_gt(*search, b->data->max_key));\n\tbset_aux_tree_verify(b);\n\n\tmemset(iter, 0, sizeof(*iter));\n\n\tswitch (bch2_bkey_pack_pos_lossy(p, *search, b)) {\n\tcase BKEY_PACK_POS_EXACT:\n\t\tpacked_search = p;\n\t\tbreak;\n\tcase BKEY_PACK_POS_SMALLER:\n\t\tpacked_search = NULL;\n\t\tbreak;\n\tcase BKEY_PACK_POS_FAIL:\n\t\tbtree_node_iter_init_pack_failed(iter, b, search);\n\t\treturn;\n\t}\n\n\tfor (i = 0; i < b->nsets; i++) {\n\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n\t\tprefetch_four_cachelines(k[i]);\n\t}\n\n\tfor (i = 0; i < b->nsets; i++) {\n\t\tstruct bset_tree *t = b->set + i;\n\t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n\n\t\tk[i] = bch2_bset_search_linear(b, t, search,\n\t\t\t\t\t       packed_search, p, k[i]);",
+          "before": "\tstruct bkey_packed p, *packed_search = NULL;\n\tstruct btree_node_iter_set *pos = iter->data;\n\tstruct bkey_packed *k[MAX_BSETS];\n\tunsigned i;\n\n\tEBUG_ON(bpos_lt(*search, b->data->min_key));\n\tEBUG_ON(bpos_gt(*search, b->data->max_key));\n\tbset_aux_tree_verify(b);\n\n\tmemset(iter, 0, sizeof(*iter));\n\n\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n\tcase BKEY_PACK_POS_EXACT:\n\t\tpacked_search = &p;\n\t\tbreak;\n\tcase BKEY_PACK_POS_SMALLER:\n\t\tpacked_search = NULL;\n\t\tbreak;\n\tcase BKEY_PACK_POS_FAIL:\n\t\tbtree_node_iter_init_pack_failed(iter, b, search);\n\t\treturn;\n\t}\n\n\tfor (i = 0; i < b->nsets; i++) {\n\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n\t\tprefetch_four_cachelines(k[i]);\n\t}\n\n\tfor (i = 0; i < b->nsets; i++) {\n\t\tstruct bset_tree *t = b->set + i;\n\t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n\n\t\tk[i] = bch2_bset_search_linear(b, t, search,\n\t\t\t\t\t       packed_search, &p, k[i]);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c\nindex 32841f762eb2..9ace1565fb4b 100644\n--- a/fs/bcachefs/bset.c\n+++ b/fs/bcachefs/bset.c\n@@ -1307,7 +1307,11 @@ __flatten\n void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\t\t       struct btree *b, struct bpos *search)\n {\n-\tstruct bkey_packed p, *packed_search = NULL;\n+\tstruct {\n+\t\tu64 _data[BKEY_U64s_MAX];\n+\t} p_buf;\n+\tstruct bkey_packed *p = (void *) &p_buf;\n+\tstruct bkey_packed *packed_search = NULL;\n \tstruct btree_node_iter_set *pos = iter->data;\n \tstruct bkey_packed *k[MAX_BSETS];\n \tunsigned i;\n@@ -1318,9 +1322,9 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \n \tmemset(iter, 0, sizeof(*iter));\n \n-\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n+\tswitch (bch2_bkey_pack_pos_lossy(p, *search, b)) {\n \tcase BKEY_PACK_POS_EXACT:\n-\t\tpacked_search = &p;\n+\t\tpacked_search = p;\n \t\tbreak;\n \tcase BKEY_PACK_POS_SMALLER:\n \t\tpacked_search = NULL;\n@@ -1331,7 +1335,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t}\n \n \tfor (i = 0; i < b->nsets; i++) {\n-\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n+\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n \t\tprefetch_four_cachelines(k[i]);\n \t}\n \n@@ -1340,7 +1344,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n \n \t\tk[i] = bch2_bset_search_linear(b, t, search,\n-\t\t\t\t\t       packed_search, &p, k[i]);\n+\t\t\t\t\t       packed_search, p, k[i]);\n \t\tif (k[i] != end)\n \t\t\t*pos++ = (struct btree_node_iter_set) {\n \t\t\t\t__btree_node_key_to_offset(b, k[i]),",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "fs/bcachefs/bset.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct {\n\t\tu64 _data[BKEY_U64s_MAX];\n\t} p_buf;\n\tstruct bkey_packed *p = (void *) &p_buf;\n\tstruct bkey_packed *packed_search = NULL;\n\tstruct btree_node_iter_set *pos = iter->data;\n\tstruct bkey_packed *k[MAX_BSETS];\n\tunsigned i;\n\n\tEBUG_ON(bpos_lt(*search, b->data->min_key));\n\tEBUG_ON(bpos_gt(*search, b->data->max_key));\n\tbset_aux_tree_verify(b);\n\n\tmemset(iter, 0, sizeof(*iter));\n\tmemset(p, 0, sizeof(p_buf));\n\n\tswitch (bch2_bkey_pack_pos_lossy(p, *search, b)) {",
+          "before": "\tstruct {\n\t\tu64 _data[BKEY_U64s_MAX];\n\t} p_buf;\n\tstruct bkey_packed *p = (void *) &p_buf;\n\tstruct bkey_packed *packed_search = NULL;\n\tstruct btree_node_iter_set *pos = iter->data;\n\tstruct bkey_packed *k[MAX_BSETS];\n\tunsigned i;\n\n\tEBUG_ON(bpos_lt(*search, b->data->min_key));\n\tEBUG_ON(bpos_gt(*search, b->data->max_key));\n\tbset_aux_tree_verify(b);\n\n\tmemset(iter, 0, sizeof(*iter));\n\n\tswitch (bch2_bkey_pack_pos_lossy(p, *search, b)) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c\nindex 32841f762eb2..fb4daea9581b 100644\n--- a/fs/bcachefs/bset.c\n+++ b/fs/bcachefs/bset.c\n@@ -1307,7 +1307,11 @@ __flatten\n void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\t\t       struct btree *b, struct bpos *search)\n {\n-\tstruct bkey_packed p, *packed_search = NULL;\n+\tstruct {\n+\t\tu64 _data[BKEY_U64s_MAX];\n+\t} p_buf;\n+\tstruct bkey_packed *p = (void *) &p_buf;\n+\tstruct bkey_packed *packed_search = NULL;\n \tstruct btree_node_iter_set *pos = iter->data;\n \tstruct bkey_packed *k[MAX_BSETS];\n \tunsigned i;\n@@ -1317,10 +1321,11 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \tbset_aux_tree_verify(b);\n \n \tmemset(iter, 0, sizeof(*iter));\n+\tmemset(p, 0, sizeof(p_buf));\n \n-\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n+\tswitch (bch2_bkey_pack_pos_lossy(p, *search, b)) {\n \tcase BKEY_PACK_POS_EXACT:\n-\t\tpacked_search = &p;\n+\t\tpacked_search = p;\n \t\tbreak;\n \tcase BKEY_PACK_POS_SMALLER:\n \t\tpacked_search = NULL;\n@@ -1331,7 +1336,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t}\n \n \tfor (i = 0; i < b->nsets; i++) {\n-\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n+\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n \t\tprefetch_four_cachelines(k[i]);\n \t}\n \n@@ -1340,7 +1345,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n \n \t\tk[i] = bch2_bset_search_linear(b, t, search,\n-\t\t\t\t\t       packed_search, &p, k[i]);\n+\t\t\t\t\t       packed_search, p, k[i]);\n \t\tif (k[i] != end)\n \t\t\t*pos++ = (struct btree_node_iter_set) {\n \t\t\t\t__btree_node_key_to_offset(b, k[i]),",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/bcachefs/bset.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\tint ret = bch2_bkey_pack_pos_lossy(p, *search, b);\n\tif (ret != BKEY_PACK_POS_FAIL)\n\t\tp->format = KEY_FORMAT_LOCAL_BTREE;\n\n\tswitch (ret) {\n\tcase BKEY_PACK_POS_EXACT:\n\t\tpacked_search = p;\n\t\tbreak;\n\tcase BKEY_PACK_POS_SMALLER:\n\t\tpacked_search = NULL;\n\t\tbreak;\n\tcase BKEY_PACK_POS_FAIL:\n\t\tbtree_node_iter_init_pack_failed(iter, b, search);\n\t\treturn;\n\t}",
+          "before": "\tswitch (bch2_bkey_pack_pos_lossy(p, *search, b)) {\n\tcase BKEY_PACK_POS_EXACT:\n\t\tpacked_search = p;\n\t\tbreak;\n\tcase BKEY_PACK_POS_SMALLER:\n\t\tpacked_search = NULL;\n\t\tbreak;\n\tcase BKEY_PACK_POS_FAIL:\n\t\tbtree_node_iter_init_pack_failed(iter, b, search);\n\t\treturn;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c\nindex 32841f762eb2..b96844fc3a22 100644\n--- a/fs/bcachefs/bset.c\n+++ b/fs/bcachefs/bset.c\n@@ -1307,7 +1307,11 @@ __flatten\n void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\t\t       struct btree *b, struct bpos *search)\n {\n-\tstruct bkey_packed p, *packed_search = NULL;\n+\tstruct {\n+\t\tu64 _data[BKEY_U64s_MAX];\n+\t} p_buf;\n+\tstruct bkey_packed *p = (void *) &p_buf;\n+\tstruct bkey_packed *packed_search = NULL;\n \tstruct btree_node_iter_set *pos = iter->data;\n \tstruct bkey_packed *k[MAX_BSETS];\n \tunsigned i;\n@@ -1317,10 +1321,15 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \tbset_aux_tree_verify(b);\n \n \tmemset(iter, 0, sizeof(*iter));\n+\tmemset(p, 0, sizeof(p_buf));\n \n-\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n+\tint ret = bch2_bkey_pack_pos_lossy(p, *search, b);\n+\tif (ret != BKEY_PACK_POS_FAIL)\n+\t\tp->format = KEY_FORMAT_LOCAL_BTREE;\n+\n+\tswitch (ret) {\n \tcase BKEY_PACK_POS_EXACT:\n-\t\tpacked_search = &p;\n+\t\tpacked_search = p;\n \t\tbreak;\n \tcase BKEY_PACK_POS_SMALLER:\n \t\tpacked_search = NULL;\n@@ -1331,7 +1340,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t}\n \n \tfor (i = 0; i < b->nsets; i++) {\n-\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n+\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n \t\tprefetch_four_cachelines(k[i]);\n \t}\n \n@@ -1340,7 +1349,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n \n \t\tk[i] = bch2_bset_search_linear(b, t, search,\n-\t\t\t\t\t       packed_search, &p, k[i]);\n+\t\t\t\t\t       packed_search, p, k[i]);\n \t\tif (k[i] != end)\n \t\t\t*pos++ = (struct btree_node_iter_set) {\n \t\t\t\t__btree_node_key_to_offset(b, k[i]),",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "fs/bcachefs/bset.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 2,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tBUG_ON(!bkey_packed(p));",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c\nindex 32841f762eb2..ed37ac8a1778 100644\n--- a/fs/bcachefs/bset.c\n+++ b/fs/bcachefs/bset.c\n@@ -1307,7 +1307,11 @@ __flatten\n void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\t\t       struct btree *b, struct bpos *search)\n {\n-\tstruct bkey_packed p, *packed_search = NULL;\n+\tstruct {\n+\t\tu64 _data[BKEY_U64s_MAX];\n+\t} p_buf;\n+\tstruct bkey_packed *p = (void *) &p_buf;\n+\tstruct bkey_packed *packed_search = NULL;\n \tstruct btree_node_iter_set *pos = iter->data;\n \tstruct bkey_packed *k[MAX_BSETS];\n \tunsigned i;\n@@ -1317,10 +1321,16 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \tbset_aux_tree_verify(b);\n \n \tmemset(iter, 0, sizeof(*iter));\n+\tmemset(p, 0, sizeof(p_buf));\n \n-\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n+\tint ret = bch2_bkey_pack_pos_lossy(p, *search, b);\n+\tif (ret != BKEY_PACK_POS_FAIL)\n+\t\tp->format = KEY_FORMAT_LOCAL_BTREE;\n+\t\tBUG_ON(!bkey_packed(p));\n+\n+\tswitch (ret) {\n \tcase BKEY_PACK_POS_EXACT:\n-\t\tpacked_search = &p;\n+\t\tpacked_search = p;\n \t\tbreak;\n \tcase BKEY_PACK_POS_SMALLER:\n \t\tpacked_search = NULL;\n@@ -1331,7 +1341,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t}\n \n \tfor (i = 0; i < b->nsets; i++) {\n-\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n+\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n \t\tprefetch_four_cachelines(k[i]);\n \t}\n \n@@ -1340,7 +1350,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n \n \t\tk[i] = bch2_bset_search_linear(b, t, search,\n-\t\t\t\t\t       packed_search, &p, k[i]);\n+\t\t\t\t\t       packed_search, p, k[i]);\n \t\tif (k[i] != end)\n \t\t\t*pos++ = (struct btree_node_iter_set) {\n \t\t\t\t__btree_node_key_to_offset(b, k[i]),",
+          "explanation": "classic_swe step 36 insert #1",
+          "filename": "fs/bcachefs/bset.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1329,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 3,
+      "start_step": 36
+    },
+    {
+      "edits": [
+        {
+          "after": "\tswitch (ret) {\n\tcase BKEY_PACK_POS_EXACT:\n\t\tpacked_search = p;\n\t\tbreak;\n\tcase BKEY_PACK_POS_SMALLER:\n\t\tpacked_search = NULL;\n\t\tbreak;\n\tcase BKEY_PACK_POS_FAIL:\n\t\tbtree_node_iter_init_pack_failed(iter, b, search);\n\t\treturn;\n\t}\n\n\tfor (i = 0; i < b->nsets; i++) {\n\t\tBUG_ON(!bkey_packed(p));\n\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n\t\tprefetch_four_cachelines(k[i]);\n\t}",
+          "before": "\tBUG_ON(!bkey_packed(p));\n\n\tswitch (ret) {\n\tcase BKEY_PACK_POS_EXACT:\n\t\tpacked_search = p;\n\t\tbreak;\n\tcase BKEY_PACK_POS_SMALLER:\n\t\tpacked_search = NULL;\n\t\tbreak;\n\tcase BKEY_PACK_POS_FAIL:\n\t\tbtree_node_iter_init_pack_failed(iter, b, search);\n\t\treturn;\n\t}\n\n\tfor (i = 0; i < b->nsets; i++) {\n\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n\t\tprefetch_four_cachelines(k[i]);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c\nindex 32841f762eb2..967c7ed4a03e 100644\n--- a/fs/bcachefs/bset.c\n+++ b/fs/bcachefs/bset.c\n@@ -1307,7 +1307,11 @@ __flatten\n void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\t\t       struct btree *b, struct bpos *search)\n {\n-\tstruct bkey_packed p, *packed_search = NULL;\n+\tstruct {\n+\t\tu64 _data[BKEY_U64s_MAX];\n+\t} p_buf;\n+\tstruct bkey_packed *p = (void *) &p_buf;\n+\tstruct bkey_packed *packed_search = NULL;\n \tstruct btree_node_iter_set *pos = iter->data;\n \tstruct bkey_packed *k[MAX_BSETS];\n \tunsigned i;\n@@ -1317,10 +1321,14 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \tbset_aux_tree_verify(b);\n \n \tmemset(iter, 0, sizeof(*iter));\n+\tmemset(p, 0, sizeof(p_buf));\n \n-\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n+\tint ret = bch2_bkey_pack_pos_lossy(p, *search, b);\n+\tif (ret != BKEY_PACK_POS_FAIL)\n+\t\tp->format = KEY_FORMAT_LOCAL_BTREE;\n+\t\tswitch (ret) {\n \tcase BKEY_PACK_POS_EXACT:\n-\t\tpacked_search = &p;\n+\t\tpacked_search = p;\n \t\tbreak;\n \tcase BKEY_PACK_POS_SMALLER:\n \t\tpacked_search = NULL;\n@@ -1331,7 +1339,8 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t}\n \n \tfor (i = 0; i < b->nsets; i++) {\n-\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n+\t\tBUG_ON(!bkey_packed(p));\n+\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n \t\tprefetch_four_cachelines(k[i]);\n \t}\n \n@@ -1340,7 +1349,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n \n \t\tk[i] = bch2_bset_search_linear(b, t, search,\n-\t\t\t\t\t       packed_search, &p, k[i]);\n+\t\t\t\t\t       packed_search, p, k[i]);\n \t\tif (k[i] != end)\n \t\t\t*pos++ = (struct btree_node_iter_set) {\n \t\t\t\t__btree_node_key_to_offset(b, k[i]),",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "fs/bcachefs/bset.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 4,
+      "start_step": 40
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (i = 0; i < b->nsets; i++) {\n\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n\t\tprefetch_four_cachelines(k[i]);\n\t}",
+          "before": "\tfor (i = 0; i < b->nsets; i++) {\n\t\tBUG_ON(!bkey_packed(p));\n\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n\t\tprefetch_four_cachelines(k[i]);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c\nindex 32841f762eb2..f38cbc0feba3 100644\n--- a/fs/bcachefs/bset.c\n+++ b/fs/bcachefs/bset.c\n@@ -1307,7 +1307,11 @@ __flatten\n void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\t\t       struct btree *b, struct bpos *search)\n {\n-\tstruct bkey_packed p, *packed_search = NULL;\n+\tstruct {\n+\t\tu64 _data[BKEY_U64s_MAX];\n+\t} p_buf;\n+\tstruct bkey_packed *p = (void *) &p_buf;\n+\tstruct bkey_packed *packed_search = NULL;\n \tstruct btree_node_iter_set *pos = iter->data;\n \tstruct bkey_packed *k[MAX_BSETS];\n \tunsigned i;\n@@ -1317,10 +1321,14 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \tbset_aux_tree_verify(b);\n \n \tmemset(iter, 0, sizeof(*iter));\n+\tmemset(p, 0, sizeof(p_buf));\n \n-\tswitch (bch2_bkey_pack_pos_lossy(&p, *search, b)) {\n+\tint ret = bch2_bkey_pack_pos_lossy(p, *search, b);\n+\tif (ret != BKEY_PACK_POS_FAIL)\n+\t\tp->format = KEY_FORMAT_LOCAL_BTREE;\n+\t\tswitch (ret) {\n \tcase BKEY_PACK_POS_EXACT:\n-\t\tpacked_search = &p;\n+\t\tpacked_search = p;\n \t\tbreak;\n \tcase BKEY_PACK_POS_SMALLER:\n \t\tpacked_search = NULL;\n@@ -1331,7 +1339,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t}\n \n \tfor (i = 0; i < b->nsets; i++) {\n-\t\tk[i] = __bch2_bset_search(b, b->set + i, search, &p);\n+\t\tk[i] = __bch2_bset_search(b, b->set + i, search, p);\n \t\tprefetch_four_cachelines(k[i]);\n \t}\n \n@@ -1340,7 +1348,7 @@ void bch2_btree_node_iter_init(struct btree_node_iter *iter,\n \t\tstruct bkey_packed *end = btree_bkey_last(b, t);\n \n \t\tk[i] = bch2_bset_search_linear(b, t, search,\n-\t\t\t\t\t       packed_search, &p, k[i]);\n+\t\t\t\t\t       packed_search, p, k[i]);\n \t\tif (k[i] != end)\n \t\t\t*pos++ = (struct btree_node_iter_set) {\n \t\t\t\t__btree_node_key_to_offset(b, k[i]),",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "fs/bcachefs/bset.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 5,
+      "start_step": 42
+    }
+  ],
+  "success_step": 42
+}

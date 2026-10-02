@@ -1,0 +1,36 @@
+diff --git a/mm/huge_memory.c b/mm/huge_memory.c
+index 3ca89e0279a7..c1e6b9d54b64 100644
+--- a/mm/huge_memory.c
++++ b/mm/huge_memory.c
+@@ -1406,6 +1406,8 @@ static void insert_pfn_pmd(struct vm_area_struct *vma, unsigned long addr,
+  */
+ vm_fault_t vmf_insert_pfn_pmd(struct vm_fault *vmf, pfn_t pfn, bool write)
+ {
++	return VM_FAULT_SIGBUS;
++
+ 	unsigned long addr = vmf->address & PMD_MASK;
+ 	struct vm_area_struct *vma = vmf->vma;
+ 	pgprot_t pgprot = vma->vm_page_prot;
+@@ -1422,6 +1424,9 @@ vm_fault_t vmf_insert_pfn_pmd(struct vm_fault *vmf, pfn_t pfn, bool write)
+ 						(VM_PFNMAP|VM_MIXEDMAP));
+ 	BUG_ON((vma->vm_flags & VM_PFNMAP) && is_cow_mapping(vma->vm_flags));
+ 
++	if (is_cow_mapping(vma->vm_flags))
++		return VM_FAULT_SIGBUS;
++
+ 	if (addr < vma->vm_start || addr >= vma->vm_end)
+ 		return VM_FAULT_SIGBUS;
+ 
+@@ -1599,7 +1604,11 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,
+ 		 * applied special bit, or we made the PRIVATE mapping be
+ 		 * able to wrongly write to the backend MMIO.
+ 		 */
+-		VM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));
++		if (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd)) {
++			spin_unlock(src_ptl);
++			spin_unlock(dst_ptl);
++			return -ENOMEM;
++		}
+ 		goto set_pmd;
+ 	}
+ 

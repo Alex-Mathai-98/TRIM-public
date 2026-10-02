@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (xdp_prog) {\n\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\t\tstruct xdp_buff xdp;\n\t\tu32 act;\n\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n",
+          "before": "\tif (xdp_prog) {\n\t\tstruct xdp_buff xdp;\n\t\tu32 act;\n\n\t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..c2aac2f21fef 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1702,9 +1702,11 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \trcu_read_lock();\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "\t\tif (err < 0) {\n\t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n\t\t\t\tput_page(alloc_frag->page);\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\tgoto out;\n\t\t}\n\n\t\tif (err == XDP_REDIRECT)\n\t\t\txdp_do_flush();\n\t\tif (err != XDP_PASS) {\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\tgoto out;\n\t\t}\n\n\t\tpad = xdp.data - xdp.data_hard_start;\n\t\tlen = xdp.data_end - xdp.data;\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t}\n",
+          "before": "\t\tif (err < 0) {\n\t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n\t\t\t\tput_page(alloc_frag->page);\n\t\t\tgoto out;\n\t\t}\n\n\t\tif (err == XDP_REDIRECT)\n\t\t\txdp_do_flush();\n\t\tif (err != XDP_PASS)\n\t\t\tgoto out;\n\n\t\tpad = xdp.data - xdp.data_hard_start;\n\t\tlen = xdp.data_end - xdp.data;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..816a6338cada 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1702,9 +1702,11 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \trcu_read_lock();\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);\n \n@@ -1717,16 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t}\n \trcu_read_unlock();\n \tlocal_bh_enable();",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "\t\tstruct tun_page tpage;\n\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\t\tint n = ctl->num;\n\t\tint flush = 0, queued = 0;\n\n\t\tmemset(&tpage, 0, sizeof(tpage));\n\n\t\tlocal_bh_disable();\n\t\trcu_read_lock();\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\n\t\tfor (i = 0; i < n; i++) {\n",
+          "before": "\t\tstruct tun_page tpage;\n\t\tint n = ctl->num;\n\t\tint flush = 0, queued = 0;\n\n\t\tmemset(&tpage, 0, sizeof(tpage));\n\n\t\tlocal_bh_disable();\n\t\trcu_read_lock();\n\n\t\tfor (i = 0; i < n; i++) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..f11e5c860113 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1702,9 +1702,11 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \trcu_read_lock();\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);\n \n@@ -1717,16 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t}\n \trcu_read_unlock();\n \tlocal_bh_enable();\n@@ -2567,6 +2573,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \tif (m->msg_controllen == sizeof(struct tun_msg_ctl) &&\n \t    ctl && ctl->type == TUN_MSG_PTR) {\n \t\tstruct tun_page tpage;\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tint n = ctl->num;\n \t\tint flush = 0, queued = 0;\n \n@@ -2574,6 +2581,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \n \t\tlocal_bh_disable();\n \t\trcu_read_lock();\n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \n \t\tfor (i = 0; i < n; i++) {\n \t\t\txdp = &((struct xdp_buff *)ctl->ptr)[i];",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "\t\tif (tfile->napi_enabled && queued > 0)\n\t\t\tnapi_schedule(&tfile->napi);\n\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\trcu_read_unlock();\n\t\tlocal_bh_enable();\n",
+          "before": "\t\tif (tfile->napi_enabled && queued > 0)\n\t\t\tnapi_schedule(&tfile->napi);\n\n\t\trcu_read_unlock();\n\t\tlocal_bh_enable();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..32b6c1c6787c 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1702,9 +1702,11 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \trcu_read_lock();\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);\n \n@@ -1717,16 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t}\n \trcu_read_unlock();\n \tlocal_bh_enable();\n@@ -2567,6 +2573,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \tif (m->msg_controllen == sizeof(struct tun_msg_ctl) &&\n \t    ctl && ctl->type == TUN_MSG_PTR) {\n \t\tstruct tun_page tpage;\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tint n = ctl->num;\n \t\tint flush = 0, queued = 0;\n \n@@ -2574,6 +2581,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \n \t\tlocal_bh_disable();\n \t\trcu_read_lock();\n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \n \t\tfor (i = 0; i < n; i++) {\n \t\t\txdp = &((struct xdp_buff *)ctl->ptr)[i];\n@@ -2588,6 +2596,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \t\tif (tfile->napi_enabled && queued > 0)\n \t\t\tnapi_schedule(&tfile->napi);\n \n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\trcu_read_unlock();\n \t\tlocal_bh_enable();",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 0,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (skb_xdp) {\n\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\t\tstruct bpf_prog *xdp_prog;\n\t\tint ret;\n\n\t\tlocal_bh_disable();\n\t\trcu_read_lock();\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\t\txdp_prog = rcu_dereference(tun->xdp_prog);\n\t\tif (xdp_prog) {\n\t\t\tret = do_xdp_generic(xdp_prog, &skb);\n\t\t\tif (ret != XDP_PASS) {\n\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\t\trcu_read_unlock();\n\t\t\t\tlocal_bh_enable();\n\t\t\t\tgoto unlock_frags;\n\t\t\t}\n\t\t}\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\trcu_read_unlock();\n\t\tlocal_bh_enable();\n\t}\n",
+          "before": "\tif (skb_xdp) {\n\t\tstruct bpf_prog *xdp_prog;\n\t\tint ret;\n\n\t\tlocal_bh_disable();\n\t\trcu_read_lock();\n\t\txdp_prog = rcu_dereference(tun->xdp_prog);\n\t\tif (xdp_prog) {\n\t\t\tret = do_xdp_generic(xdp_prog, &skb);\n\t\t\tif (ret != XDP_PASS) {\n\t\t\t\trcu_read_unlock();\n\t\t\t\tlocal_bh_enable();\n\t\t\t\tgoto unlock_frags;\n\t\t\t}\n\t\t}\n\t\trcu_read_unlock();\n\t\tlocal_bh_enable();\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..4aa9ebce46b7 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1702,9 +1702,11 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \trcu_read_lock();\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);\n \n@@ -1717,16 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t}\n \trcu_read_unlock();\n \tlocal_bh_enable();\n@@ -1914,20 +1920,24 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,\n \tskb_record_rx_queue(skb, tfile->queue_index);\n \n \tif (skb_xdp) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct bpf_prog *xdp_prog;\n \t\tint ret;\n \n \t\tlocal_bh_disable();\n \t\trcu_read_lock();\n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\txdp_prog = rcu_dereference(tun->xdp_prog);\n \t\tif (xdp_prog) {\n \t\t\tret = do_xdp_generic(xdp_prog, &skb);\n \t\t\tif (ret != XDP_PASS) {\n+\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\t\trcu_read_unlock();\n \t\t\t\tlocal_bh_enable();\n \t\t\t\tgoto unlock_frags;\n \t\t\t}\n \t\t}\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\trcu_read_unlock();\n \t\tlocal_bh_enable();\n \t}\n@@ -2567,6 +2577,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \tif (m->msg_controllen == sizeof(struct tun_msg_ctl) &&\n \t    ctl && ctl->type == TUN_MSG_PTR) {\n \t\tstruct tun_page tpage;\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tint n = ctl->num;\n \t\tint flush = 0, queued = 0;\n \n@@ -2574,6 +2585,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \n \t\tlocal_bh_disable();\n \t\trcu_read_lock();\n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \n \t\tfor (i = 0; i < n; i++) {\n \t\t\txdp = &((struct xdp_buff *)ctl->ptr)[i];\n@@ -2588,6 +2600,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)\n \t\tif (tfile->napi_enabled && queued > 0)\n \t\t\tnapi_schedule(&tfile->napi);\n \n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\trcu_read_unlock();\n \t\tlocal_bh_enable();",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 1,
+      "start_step": 41
+    }
+  ],
+  "success_step": 41
+}

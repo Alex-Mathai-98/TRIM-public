@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (stat_data_v1(ih)) {\n\t\tstruct stat_data_v1 *sd;\n\t\tunsigned long blocks;\n\n\t\tif (ih_item_len(ih) != SD_V1_SIZE) {\n\t\t\treiserfs_error(inode->i_sb, \"ib-1\", \"stat-data item length %d is too small/large for SD_V1_SIZE\", ih_item_len(ih));\n\t\t\treiserfs_make_bad_inode(inode);\n\t\t\treturn;\n\t\t}\n\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n\n\t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);",
+          "before": "\tif (stat_data_v1(ih)) {\n\t\tstruct stat_data_v1 *sd =\n\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n\t\tunsigned long blocks;\n\n\t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..bc308a5dd9df 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1246,10 +1246,16 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \treiserfs_init_xattr_rwsem(inode);\n \n \tif (stat_data_v1(ih)) {\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n \t\tunsigned long blocks;\n \n+\t\tif (ih_item_len(ih) != SD_V1_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"ib-1\", \"stat-data item length %d is too small/large for SD_V1_SIZE\", ih_item_len(ih));\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\n \t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);\n \t\tset_inode_sd_version(inode, STAT_DATA_V1);\n \t\tinode->i_mode = sd_v1_mode(sd);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "\t} else {\n\t\t/*\n\t\t * new stat data found, but object may have old items\n\t\t * (directories and symlinks)\n\t\t */\n\t\tstruct stat_data *sd;\n\n\t\tif (ih_item_len(ih) != SD_V2_SIZE) {\n\t\t\treiserfs_error(inode->i_sb, \"ib-2\", \"stat-data item length %d is too small/large for SD_V2_SIZE\", ih_item_len(ih));\n\t\t\treiserfs_make_bad_inode(inode);\n\t\t\treturn;\n\t\t}\n\t\tsd = (struct stat_data *)ih_item_body(bh, ih);\n\n\t\tinode->i_mode = sd_v2_mode(sd);",
+          "before": "\t} else {\n\t\t/*\n\t\t * new stat data found, but object may have old items\n\t\t * (directories and symlinks)\n\t\t */\n\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n\n\t\tinode->i_mode = sd_v2_mode(sd);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..9d82d5850add 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1246,10 +1246,16 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \treiserfs_init_xattr_rwsem(inode);\n \n \tif (stat_data_v1(ih)) {\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n \t\tunsigned long blocks;\n \n+\t\tif (ih_item_len(ih) != SD_V1_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"ib-1\", \"stat-data item length %d is too small/large for SD_V1_SIZE\", ih_item_len(ih));\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\n \t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);\n \t\tset_inode_sd_version(inode, STAT_DATA_V1);\n \t\tinode->i_mode = sd_v1_mode(sd);\n@@ -1302,7 +1308,14 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\t * new stat data found, but object may have old items\n \t\t * (directories and symlinks)\n \t\t */\n-\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n+\t\tstruct stat_data *sd;\n+\n+\t\tif (ih_item_len(ih) != SD_V2_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"ib-2\", \"stat-data item length %d is too small/large for SD_V2_SIZE\", ih_item_len(ih));\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\t\tsd = (struct stat_data *)ih_item_body(bh, ih);\n \n \t\tinode->i_mode = sd_v2_mode(sd);\n \t\tset_nlink(inode, sd_v2_nlink(sd));",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 28
+    }
+  ],
+  "success_step": 29
+}

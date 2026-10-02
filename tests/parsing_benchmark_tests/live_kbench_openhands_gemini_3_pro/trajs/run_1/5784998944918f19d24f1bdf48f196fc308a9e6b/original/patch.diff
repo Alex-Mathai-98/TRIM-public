@@ -1,0 +1,65 @@
+diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
+index 7799f4d16ce9..059536b383f0 100644
+--- a/fs/ocfs2/dir.c
++++ b/fs/ocfs2/dir.c
+@@ -809,11 +809,16 @@ static int ocfs2_dx_dir_lookup_rec(struct inode *inode,
+ 	}
+ 
+ 	if (!found) {
+-		ret = ocfs2_error(inode->i_sb,
+-				  "Inode %lu has bad extent record (%u, %u, 0) in btree\n",
+-				  inode->i_ino,
+-				  le32_to_cpu(rec->e_cpos),
+-				  ocfs2_rec_clusters(el, rec));
++		if (rec)
++			ret = ocfs2_error(inode->i_sb,
++					  "Inode %lu has bad extent record (%u, %u, 0) in btree\n",
++					  inode->i_ino,
++					  le32_to_cpu(rec->e_cpos),
++					  ocfs2_rec_clusters(el, rec));
++		else
++			ret = ocfs2_error(inode->i_sb,
++					  "Inode %lu has empty extent list in btree\n",
++					  inode->i_ino);
+ 		goto out;
+ 	}
+ 
+diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
+index e5f58ff2175f..bf929eb853aa 100644
+--- a/fs/ocfs2/journal.c
++++ b/fs/ocfs2/journal.c
+@@ -1031,7 +1031,8 @@ static int ocfs2_journal_toggle_dirty(struct ocfs2_super *osb,
+ 	/* The journal bh on the osb always comes from ocfs2_journal_init()
+ 	 * and was validated there inside ocfs2_inode_lock_full().  It's a
+ 	 * code bug if we mess it up. */
+-	BUG_ON(!OCFS2_IS_VALID_DINODE(fe));
++	if (!OCFS2_IS_VALID_DINODE(fe))
++		return ocfs2_error(osb->sb, "Invalid journal dinode\n");
+ 
+ 	flags = le32_to_cpu(fe->id1.journal1.ij_flags);
+ 	if (dirty)
+diff --git a/fs/ocfs2/suballoc.c b/fs/ocfs2/suballoc.c
+index 6ac4dcd54588..e79ee4051d46 100644
+--- a/fs/ocfs2/suballoc.c
++++ b/fs/ocfs2/suballoc.c
+@@ -2565,8 +2565,18 @@ static int _ocfs2_free_suballoc_bits(handle_t *handle,
+ 	 * allocator and gotten alloc_bh from the lock call.  This
+ 	 * validates the dinode buffer.  Any corruption that has happened
+ 	 * is a code bug. */
+-	BUG_ON(!OCFS2_IS_VALID_DINODE(fe));
+-	BUG_ON((count + start_bit) > ocfs2_bits_per_group(cl));
++	if (!OCFS2_IS_VALID_DINODE(fe)) {
++		status = ocfs2_error(alloc_inode->i_sb,
++				     "Invalid dinode: signature = %.*s\n",
++				     (int)sizeof(fe->i_signature),
++				     fe->i_signature);
++		goto bail;
++	}
++	if ((count + start_bit) > ocfs2_bits_per_group(cl)) {
++		status = ocfs2_error(alloc_inode->i_sb,
++				     "Invalid bit count in suballoc\n");
++		goto bail;
++	}
+ 
+ 	trace_ocfs2_free_suballoc_bits(
+ 		(unsigned long long)OCFS2_I(alloc_inode)->ip_blkno,

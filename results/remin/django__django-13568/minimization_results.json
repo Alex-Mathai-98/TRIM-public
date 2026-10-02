@@ -1,0 +1,172 @@
+{
+  "bug_id": "django__django-13568",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/auth/checks.py",
+        "before": "from itertools import chain\nfrom types import MethodType\n\nfrom django.apps import apps\nfrom django.conf import settings\nfrom django.core import checks\n\nfrom .management import _get_builtin_permissions",
+        "after": "from itertools import chain\nfrom types import MethodType\n\nfrom django.apps import apps\nfrom django.conf import settings\nfrom django.core import checks\nfrom django.db.models.constraints import UniqueConstraint\n\nfrom .management import _get_builtin_permissions",
+        "explanation": "classic_swe step 13 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/auth/checks.py",
+        "before": "from .management import _get_builtin_permissions\n\n\ndef check_user_model(app_configs=None, **kwargs):",
+        "after": "from .management import _get_builtin_permissions\n\n\ndef _is_field_unique(cls, field_name):\n    \"\"\"\n    Check if a field is unique either through field.unique=True or through\n    a UniqueConstraint that includes only this field.\n    \"\"\"\n    # Check if the field has unique=True\n    field = cls._meta.get_field(field_name)\n    if field.unique:\n        return True\n    \n    # Check if there's a UniqueConstraint that makes this field unique\n    for constraint in cls._meta.constraints:\n        if (isinstance(constraint, UniqueConstraint) and \n            constraint.fields == (field_name,) and \n            constraint.condition is None):\n            return True\n    \n    return False\n\n\ndef check_user_model(app_configs=None, **kwargs):",
+        "explanation": "classic_swe step 14 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/auth/checks.py",
+        "before": "    # Check that the username field is unique\n    if not cls._meta.get_field(cls.USERNAME_FIELD).unique:",
+        "after": "    # Check that the username field is unique\n    if not _is_field_unique(cls, cls.USERNAME_FIELD):",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/auth/checks.py b/django/contrib/auth/checks.py\nindex 65fc266f7e..3c94d163a9 100644\n--- a/django/contrib/auth/checks.py\n+++ b/django/contrib/auth/checks.py\n@@ -4,10 +4,31 @@ from types import MethodType\n from django.apps import apps\n from django.conf import settings\n from django.core import checks\n+from django.db.models.constraints import UniqueConstraint\n \n from .management import _get_builtin_permissions\n \n \n+def _is_field_unique(cls, field_name):\n+    \"\"\"\n+    Check if a field is unique either through field.unique=True or through\n+    a UniqueConstraint that includes only this field.\n+    \"\"\"\n+    # Check if the field has unique=True\n+    field = cls._meta.get_field(field_name)\n+    if field.unique:\n+        return True\n+    \n+    # Check if there's a UniqueConstraint that makes this field unique\n+    for constraint in cls._meta.constraints:\n+        if (isinstance(constraint, UniqueConstraint) and \n+            constraint.fields == (field_name,) and \n+            constraint.condition is None):\n+            return True\n+    \n+    return False\n+\n+\n def check_user_model(app_configs=None, **kwargs):\n     if app_configs is None:\n         cls = apps.get_model(settings.AUTH_USER_MODEL)\n@@ -52,7 +73,7 @@ def check_user_model(app_configs=None, **kwargs):\n         )\n \n     # Check that the username field is unique\n-    if not cls._meta.get_field(cls.USERNAME_FIELD).unique:\n+    if not _is_field_unique(cls, cls.USERNAME_FIELD):\n         if (settings.AUTHENTICATION_BACKENDS ==\n                 ['django.contrib.auth.backends.ModelBackend']):\n             errors.append(\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      5,
+      6,
+      11,
+      12
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      4,
+      5,
+      6
+    ],
+    "edit_list_after_file_min": [
+      4,
+      5,
+      6
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 3,
+    "edit_list_after_greedy": [
+      4,
+      5,
+      6
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      4,
+      5,
+      6
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 3,
+  "reduction": "5_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/auth/checks.py",
+          "before": "from itertools import chain\nfrom types import MethodType\n\nfrom django.apps import apps\nfrom django.conf import settings\nfrom django.core import checks\n\nfrom .management import _get_builtin_permissions",
+          "after": "from itertools import chain\nfrom types import MethodType\n\nfrom django.apps import apps\nfrom django.conf import settings\nfrom django.core import checks\nfrom django.db.models.constraints import UniqueConstraint\n\nfrom .management import _get_builtin_permissions",
+          "explanation": "classic_swe step 13 #1"
+        },
+        {
+          "filename": "django/contrib/auth/checks.py",
+          "before": "from .management import _get_builtin_permissions\n\n\ndef check_user_model(app_configs=None, **kwargs):",
+          "after": "from .management import _get_builtin_permissions\n\n\ndef _is_field_unique(cls, field_name):\n    \"\"\"\n    Check if a field is unique either through field.unique=True or through\n    a UniqueConstraint that includes only this field.\n    \"\"\"\n    # Check if the field has unique=True\n    field = cls._meta.get_field(field_name)\n    if field.unique:\n        return True\n    \n    # Check if there's a UniqueConstraint that makes this field unique\n    for constraint in cls._meta.constraints:\n        if (isinstance(constraint, UniqueConstraint) and \n            constraint.fields == (field_name,) and \n            constraint.condition is None):\n            return True\n    \n    return False\n\n\ndef check_user_model(app_configs=None, **kwargs):",
+          "explanation": "classic_swe step 14 #1"
+        },
+        {
+          "filename": "django/contrib/auth/checks.py",
+          "before": "    # Check that the username field is unique\n    if not cls._meta.get_field(cls.USERNAME_FIELD).unique:",
+          "after": "    # Check that the username field is unique\n    if not _is_field_unique(cls, cls.USERNAME_FIELD):",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/auth_tests/test_checks.py",
+          "before": "from django.contrib.auth.checks import (\n    check_models_permissions, check_user_model,\n)\nfrom django.contrib.auth.models import AbstractBaseUser\nfrom django.core import checks\nfrom django.db import models\nfrom django.test import (\n    SimpleTestCase, override_settings, override_system_checks,\n)\nfrom django.test.utils import isolate_apps\n\nfrom .models import CustomUserNonUniqueUsername",
+          "after": "from django.contrib.auth.checks import (\n    check_models_permissions, check_user_model,\n)\nfrom django.contrib.auth.models import AbstractBaseUser\nfrom django.core import checks\nfrom django.db import models\nfrom django.db.models.constraints import UniqueConstraint\nfrom django.test import (\n    SimpleTestCase, override_settings, override_system_checks,\n)\nfrom django.test.utils import isolate_apps\n\nfrom .models import CustomUserNonUniqueUsername",
+          "explanation": "classic_swe step 33 #1"
+        },
+        {
+          "filename": "tests/auth_tests/test_checks.py",
+          "before": "                ),\n            ])\n\n    @override_settings(AUTH_USER_MODEL='auth_tests.BadUser')",
+          "after": "                ),\n            ])\n\n    @override_settings(AUTH_USER_MODEL='auth_tests.CustomUserUniqueConstraintUsername')\n    def test_username_unique_constraint(self):\n        \"\"\"\n        A USERNAME_FIELD with a UniqueConstraint should not raise an error.\n        \"\"\"\n        class CustomUserUniqueConstraintUsername(AbstractBaseUser):\n            username = models.CharField(max_length=30)\n            USERNAME_FIELD = 'username'\n\n            class Meta:\n                constraints = [\n                    UniqueConstraint(fields=['username'], name='unique_username')\n                ]\n\n        errors = checks.run_checks(app_configs=self.apps.get_app_configs())\n        self.assertEqual(errors, [])\n\n    @override_settings(AUTH_USER_MODEL='auth_tests.CustomUserConditionalUniqueConstraint')\n    def test_username_conditional_unique_constraint(self):\n        \"\"\"\n        A USERNAME_FIELD with a conditional UniqueConstraint should raise an error\n        because the constraint doesn't guarantee uniqueness in all cases.\n        \"\"\"\n        class CustomUserConditionalUniqueConstraint(AbstractBaseUser):\n            username = models.CharField(max_length=30)\n            is_active = models.BooleanField(default=True)\n            USERNAME_FIELD = 'username'\n\n            class Meta:\n                constraints = [\n                    UniqueConstraint(\n                        fields=['username'], \n                        name='unique_username',\n                        condition=models.Q(is_active=True)\n                    )\n                ]\n\n        errors = checks.run_checks(app_configs=self.apps.get_app_configs())\n        self.assertEqual(errors, [\n            checks.Error(\n                \"'CustomUserConditionalUniqueConstraint.username' must be \"\n                \"unique because it is named as the 'USERNAME_FIELD'.\",\n                obj=CustomUserConditionalUniqueConstraint,\n                id='auth.E003',\n            ),\n        ])\n\n    @override_settings(AUTH_USER_MODEL='auth_tests.CustomUserMultiFieldUniqueConstraint')\n    def test_username_multi_field_unique_constraint(self):\n        \"\"\"\n        A USERNAME_FIELD with a multi-field UniqueConstraint should raise an error\n        because the constraint doesn't guarantee uniqueness of the username field alone.\n        \"\"\"\n        class CustomUserMultiFieldUniqueConstraint(AbstractBaseUser):\n            username = models.CharField(max_length=30)\n            email = models.EmailField()\n            USERNAME_FIELD = 'username'\n\n            class Meta:\n                constraints = [\n                    UniqueConstraint(fields=['username', 'email'], name='unique_username_email')\n                ]\n\n        errors = checks.run_checks(app_configs=self.apps.get_app_configs())\n        self.assertEqual(errors, [\n            checks.Error(\n                \"'CustomUserMultiFieldUniqueConstraint.username' must be \"\n                \"unique because it is named as the 'USERNAME_FIELD'.\",\n                obj=CustomUserMultiFieldUniqueConstraint,\n                id='auth.E003',\n            ),\n        ])\n\n    @override_settings(AUTH_USER_MODEL='auth_tests.BadUser')",
+          "explanation": "classic_swe step 34 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 13,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 13,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/contrib/auth/checks.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/auth/checks.py"
+    ],
+    "gold_files": [
+      "django/contrib/auth/checks.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 22,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,104 @@
+{
+  "bug_id": "pytest-dev__pytest-5262",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/capture.py",
+        "before": "class EncodedFile(object):\n    errors = \"strict\"  # possibly needed by py3 code (issue555)\n\n    def __init__(self, buffer, encoding):\n        self.buffer = buffer\n        self.encoding = encoding\n\n    def write(self, obj):\n        if isinstance(obj, six.text_type):\n            obj = obj.encode(self.encoding, \"replace\")\n        elif _PY3:\n            raise TypeError(\n                \"write() argument must be str, not {}\".format(type(obj).__name__)\n            )\n        self.buffer.write(obj)\n\n    def writelines(self, linelist):\n        data = \"\".join(linelist)\n        self.write(data)\n\n    @property\n    def name(self):\n        \"\"\"Ensure that file.name is a string.\"\"\"\n        return repr(self.buffer)\n\n    def __getattr__(self, name):\n        return getattr(object.__getattribute__(self, \"buffer\"), name)",
+        "after": "class EncodedFile(object):\n    errors = \"strict\"  # possibly needed by py3 code (issue555)\n\n    def __init__(self, buffer, encoding):\n        self.buffer = buffer\n        self.encoding = encoding\n\n    def write(self, obj):\n        if isinstance(obj, six.text_type):\n            obj = obj.encode(self.encoding, \"replace\")\n        elif _PY3:\n            raise TypeError(\n                \"write() argument must be str, not {}\".format(type(obj).__name__)\n            )\n        self.buffer.write(obj)\n\n    def writelines(self, linelist):\n        data = \"\".join(linelist)\n        self.write(data)\n\n    @property\n    def name(self):\n        \"\"\"Ensure that file.name is a string.\"\"\"\n        return repr(self.buffer)\n\n    @property\n    def mode(self):\n        \"\"\"Return the mode of the underlying buffer, but without 'b' since this is a text wrapper.\"\"\"\n        # Get the mode from the underlying buffer and remove 'b' if present\n        # since EncodedFile provides a text interface\n        buffer_mode = getattr(self.buffer, 'mode', '')\n        return buffer_mode.replace('b', '')\n\n    def __getattr__(self, name):\n        return getattr(object.__getattribute__(self, \"buffer\"), name)",
+        "explanation": "classic_swe step 10 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/capture.py b/src/_pytest/capture.py\nindex 25eab7fdf..8a44afea8 100644\n--- a/src/_pytest/capture.py\n+++ b/src/_pytest/capture.py\n@@ -447,6 +447,14 @@ class EncodedFile(object):\n         \"\"\"Ensure that file.name is a string.\"\"\"\n         return repr(self.buffer)\n \n+    @property\n+    def mode(self):\n+        \"\"\"Return the mode of the underlying buffer, but without 'b' since this is a text wrapper.\"\"\"\n+        # Get the mode from the underlying buffer and remove 'b' if present\n+        # since EncodedFile provides a text interface\n+        buffer_mode = getattr(self.buffer, 'mode', '')\n+        return buffer_mode.replace('b', '')\n+\n     def __getattr__(self, name):\n         return getattr(object.__getattribute__(self, \"buffer\"), name)\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/capture.py",
+          "before": "class EncodedFile(object):\n    errors = \"strict\"  # possibly needed by py3 code (issue555)\n\n    def __init__(self, buffer, encoding):\n        self.buffer = buffer\n        self.encoding = encoding\n\n    def write(self, obj):\n        if isinstance(obj, six.text_type):\n            obj = obj.encode(self.encoding, \"replace\")\n        elif _PY3:\n            raise TypeError(\n                \"write() argument must be str, not {}\".format(type(obj).__name__)\n            )\n        self.buffer.write(obj)\n\n    def writelines(self, linelist):\n        data = \"\".join(linelist)\n        self.write(data)\n\n    @property\n    def name(self):\n        \"\"\"Ensure that file.name is a string.\"\"\"\n        return repr(self.buffer)\n\n    def __getattr__(self, name):\n        return getattr(object.__getattribute__(self, \"buffer\"), name)",
+          "after": "class EncodedFile(object):\n    errors = \"strict\"  # possibly needed by py3 code (issue555)\n\n    def __init__(self, buffer, encoding):\n        self.buffer = buffer\n        self.encoding = encoding\n\n    def write(self, obj):\n        if isinstance(obj, six.text_type):\n            obj = obj.encode(self.encoding, \"replace\")\n        elif _PY3:\n            raise TypeError(\n                \"write() argument must be str, not {}\".format(type(obj).__name__)\n            )\n        self.buffer.write(obj)\n\n    def writelines(self, linelist):\n        data = \"\".join(linelist)\n        self.write(data)\n\n    @property\n    def name(self):\n        \"\"\"Ensure that file.name is a string.\"\"\"\n        return repr(self.buffer)\n\n    @property\n    def mode(self):\n        \"\"\"Return the mode of the underlying buffer, but without 'b' since this is a text wrapper.\"\"\"\n        # Get the mode from the underlying buffer and remove 'b' if present\n        # since EncodedFile provides a text interface\n        buffer_mode = getattr(self.buffer, 'mode', '')\n        return buffer_mode.replace('b', '')\n\n    def __getattr__(self, name):\n        return getattr(object.__getattribute__(self, \"buffer\"), name)",
+          "explanation": "classic_swe step 10 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 108,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 108,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "src/_pytest/capture.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/capture.py"
+    ],
+    "gold_files": [
+      "src/_pytest/capture.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

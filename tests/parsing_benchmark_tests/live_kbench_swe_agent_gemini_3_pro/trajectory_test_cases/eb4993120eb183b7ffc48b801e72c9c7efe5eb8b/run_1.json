@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void bpf_uprobe_unregister(struct bpf_uprobe *uprobes, u32 cnt)\n{\n\tu32 i;\n\n\tfor (i = 0; i < cnt; i++) {\n\t\tif (uprobes[i].uprobe)\n\t\t\tuprobe_unregister(uprobes[i].uprobe, &uprobes[i].consumer);\n\t}\n}",
+          "before": "static void bpf_uprobe_unregister(struct bpf_uprobe *uprobes, u32 cnt)\n{\n\tu32 i;\n\n\tfor (i = 0; i < cnt; i++)\n\t\tuprobe_unregister(uprobes[i].uprobe, &uprobes[i].consumer);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c\nindex 4e391daafa64..998cb501f4f3 100644\n--- a/kernel/trace/bpf_trace.c\n+++ b/kernel/trace/bpf_trace.c\n@@ -3183,8 +3183,10 @@ static void bpf_uprobe_unregister(struct bpf_uprobe *uprobes, u32 cnt)\n {\n \tu32 i;\n \n-\tfor (i = 0; i < cnt; i++)\n-\t\tuprobe_unregister(uprobes[i].uprobe, &uprobes[i].consumer);\n+\tfor (i = 0; i < cnt; i++) {\n+\t\tif (uprobes[i].uprobe)\n+\t\t\tuprobe_unregister(uprobes[i].uprobe, &uprobes[i].consumer);\n+\t}\n }\n \n static void bpf_uprobe_multi_link_release(struct bpf_link *link)",
+          "explanation": "classic_swe step 12 #1",
+          "filename": "kernel/trace/bpf_trace.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        },
+        {
+          "after": "\tbpf_link_init(&link->link, BPF_LINK_TYPE_UPROBE_MULTI,\n\t\t      &bpf_uprobe_multi_link_lops, prog);\n\n\terr = bpf_link_prime(&link->link, &link_primer);\n\tif (err)\n\t\tgoto error_free;\n\n\tfor (i = 0; i < cnt; i++) {\n\t\tuprobes[i].uprobe = uprobe_register(d_real_inode(link->path.dentry),\n\t\t\t\t\t\t    uprobes[i].offset,\n\t\t\t\t\t\t    uprobes[i].ref_ctr_offset,\n\t\t\t\t\t\t    &uprobes[i].consumer);\n\t\tif (IS_ERR(uprobes[i].uprobe)) {\n\t\t\terr = PTR_ERR(uprobes[i].uprobe);\n\t\t\tuprobes[i].uprobe = NULL;\n\t\t\tbpf_link_cleanup(&link_primer);\n\t\t\treturn err;\n\t\t}\n\t}",
+          "before": "\tbpf_link_init(&link->link, BPF_LINK_TYPE_UPROBE_MULTI,\n\t\t      &bpf_uprobe_multi_link_lops, prog);\n\n\tfor (i = 0; i < cnt; i++) {\n\t\tuprobes[i].uprobe = uprobe_register(d_real_inode(link->path.dentry),\n\t\t\t\t\t\t    uprobes[i].offset,\n\t\t\t\t\t\t    uprobes[i].ref_ctr_offset,\n\t\t\t\t\t\t    &uprobes[i].consumer);\n\t\tif (IS_ERR(uprobes[i].uprobe)) {\n\t\t\terr = PTR_ERR(uprobes[i].uprobe);\n\t\t\tbpf_uprobe_unregister(uprobes, i);\n\t\t\tgoto error_free;\n\t\t}\n\t}\n\n\terr = bpf_link_prime(&link->link, &link_primer);\n\tif (err)\n\t\tgoto error_free;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/bpf_trace.c b/kernel/trace/bpf_trace.c\nindex 4e391daafa64..ff325a890d00 100644\n--- a/kernel/trace/bpf_trace.c\n+++ b/kernel/trace/bpf_trace.c\n@@ -3183,8 +3183,10 @@ static void bpf_uprobe_unregister(struct bpf_uprobe *uprobes, u32 cnt)\n {\n \tu32 i;\n \n-\tfor (i = 0; i < cnt; i++)\n-\t\tuprobe_unregister(uprobes[i].uprobe, &uprobes[i].consumer);\n+\tfor (i = 0; i < cnt; i++) {\n+\t\tif (uprobes[i].uprobe)\n+\t\t\tuprobe_unregister(uprobes[i].uprobe, &uprobes[i].consumer);\n+\t}\n }\n \n static void bpf_uprobe_multi_link_release(struct bpf_link *link)\n@@ -3477,6 +3479,10 @@ int bpf_uprobe_multi_link_attach(const union bpf_attr *attr, struct bpf_prog *pr\n \tbpf_link_init(&link->link, BPF_LINK_TYPE_UPROBE_MULTI,\n \t\t      &bpf_uprobe_multi_link_lops, prog);\n \n+\terr = bpf_link_prime(&link->link, &link_primer);\n+\tif (err)\n+\t\tgoto error_free;\n+\n \tfor (i = 0; i < cnt; i++) {\n \t\tuprobes[i].uprobe = uprobe_register(d_real_inode(link->path.dentry),\n \t\t\t\t\t\t    uprobes[i].offset,\n@@ -3484,15 +3490,12 @@ int bpf_uprobe_multi_link_attach(const union bpf_attr *attr, struct bpf_prog *pr\n \t\t\t\t\t\t    &uprobes[i].consumer);\n \t\tif (IS_ERR(uprobes[i].uprobe)) {\n \t\t\terr = PTR_ERR(uprobes[i].uprobe);\n-\t\t\tbpf_uprobe_unregister(uprobes, i);\n-\t\t\tgoto error_free;\n+\t\t\tuprobes[i].uprobe = NULL;\n+\t\t\tbpf_link_cleanup(&link_primer);\n+\t\t\treturn err;\n \t\t}\n \t}\n \n-\terr = bpf_link_prime(&link->link, &link_primer);\n-\tif (err)\n-\t\tgoto error_free;\n-\n \treturn bpf_link_settle(&link_primer);\n \n error_free:",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "kernel/trace/bpf_trace.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 12
+    }
+  ],
+  "success_step": 14
+}

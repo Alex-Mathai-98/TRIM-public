@@ -1,0 +1,41 @@
+diff --git a/fs/gfs2/log.c b/fs/gfs2/log.c
+index 115c4ac457e9..f854c290c0a6 100644
+--- a/fs/gfs2/log.c
++++ b/fs/gfs2/log.c
+@@ -758,9 +758,11 @@ void gfs2_ordered_del_inode(struct gfs2_inode *ip)
+ {
+ 	struct gfs2_sbd *sdp = GFS2_SB(&ip->i_inode);
+ 
+-	spin_lock(&sdp->sd_ordered_lock);
+-	__ordered_del_inode(ip);
+-	spin_unlock(&sdp->sd_ordered_lock);
++	if (sdp) {
++		spin_lock(&sdp->sd_ordered_lock);
++		__ordered_del_inode(ip);
++		spin_unlock(&sdp->sd_ordered_lock);
++	}
+ }
+ 
+ void gfs2_add_revoke(struct gfs2_sbd *sdp, struct gfs2_bufdata *bd)
+diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
+index 7c518c4ff638..57743df0da9f 100644
+--- a/fs/gfs2/super.c
++++ b/fs/gfs2/super.c
+@@ -1049,7 +1049,7 @@ static int gfs2_drop_inode(struct inode *inode)
+ 	/*
+ 	 * No longer cache inodes when trying to evict them all.
+ 	 */
+-	if (test_bit(SDF_EVICTING, &sdp->sd_flags))
++	if (sdp && test_bit(SDF_EVICTING, &sdp->sd_flags))
+ 		return 1;
+ 
+ 	return generic_drop_inode(inode);
+@@ -1398,7 +1398,7 @@ static void gfs2_evict_inode(struct inode *inode)
+ 	struct gfs2_inode *ip = GFS2_I(inode);
+ 	struct gfs2_holder gh;
+ 	enum evict_behavior behavior;
+-	int ret;
++	int ret = 0;
+ 
+ 	gfs2_holder_mark_uninitialized(&gh);
+ 	if (inode->i_nlink || sb_rdonly(sb) || !ip->i_no_addr)

@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (journal_buckets_v2) {\n\t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n\t\tu64 total = 0;\n\n\t\tfor (unsigned i = 0; i < nr; i++)\n\t\t\ttotal += le64_to_cpu(journal_buckets_v2->d[i].nr);\n\n\t\tif (total > UINT_MAX)\n\t\t\treturn -BCH_ERR_invalid_sb_journal;\n\n\t\tja->nr = total;\n\t} else if (journal_buckets) {",
+          "before": "\tif (journal_buckets_v2) {\n\t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n\n\t\tfor (unsigned i = 0; i < nr; i++)\n\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n\t} else if (journal_buckets) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/journal.c b/fs/bcachefs/journal.c\nindex 649e3a01608a..022047a50a5f 100644\n--- a/fs/bcachefs/journal.c\n+++ b/fs/bcachefs/journal.c\n@@ -1307,9 +1307,15 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)\n \n \tif (journal_buckets_v2) {\n \t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n+\t\tu64 total = 0;\n \n \t\tfor (unsigned i = 0; i < nr; i++)\n-\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\t\t\ttotal += le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\n+\t\tif (total > UINT_MAX)\n+\t\t\treturn -BCH_ERR_invalid_sb_journal;\n+\n+\t\tja->nr = total;\n \t} else if (journal_buckets) {\n \t\tja->nr = bch2_nr_journal_buckets(journal_buckets);\n \t}",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/bcachefs/journal.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tfor (unsigned i = 0; i < nr; i++) {\n\t\t\tu64 l = le64_to_cpu(journal_buckets_v2->d[i].nr);\n\n\t\t\tif (l > ja->nr - dst)\n\t\t\t\treturn -BCH_ERR_invalid_sb_journal;\n\n\t\t\tfor (unsigned j = 0; j < l; j++)\n\t\t\t\tja->buckets[dst++] =\n\t\t\t\t\tle64_to_cpu(journal_buckets_v2->d[i].start) + j;\n\t\t}",
+          "before": "\t\tfor (unsigned i = 0; i < nr; i++)\n\t\t\tfor (unsigned j = 0; j < le64_to_cpu(journal_buckets_v2->d[i].nr); j++)\n\t\t\t\tja->buckets[dst++] =\n\t\t\t\t\tle64_to_cpu(journal_buckets_v2->d[i].start) + j;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/journal.c b/fs/bcachefs/journal.c\nindex 649e3a01608a..8f013a51bc25 100644\n--- a/fs/bcachefs/journal.c\n+++ b/fs/bcachefs/journal.c\n@@ -1307,9 +1307,15 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)\n \n \tif (journal_buckets_v2) {\n \t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n+\t\tu64 total = 0;\n \n \t\tfor (unsigned i = 0; i < nr; i++)\n-\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\t\t\ttotal += le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\n+\t\tif (total > UINT_MAX)\n+\t\t\treturn -BCH_ERR_invalid_sb_journal;\n+\n+\t\tja->nr = total;\n \t} else if (journal_buckets) {\n \t\tja->nr = bch2_nr_journal_buckets(journal_buckets);\n \t}\n@@ -1339,10 +1345,16 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)\n \t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n \t\tunsigned dst = 0;\n \n-\t\tfor (unsigned i = 0; i < nr; i++)\n-\t\t\tfor (unsigned j = 0; j < le64_to_cpu(journal_buckets_v2->d[i].nr); j++)\n+\t\tfor (unsigned i = 0; i < nr; i++) {\n+\t\t\tu64 l = le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\n+\t\t\tif (l > ja->nr - dst)\n+\t\t\t\treturn -BCH_ERR_invalid_sb_journal;\n+\n+\t\t\tfor (unsigned j = 0; j < l; j++)\n \t\t\t\tja->buckets[dst++] =\n \t\t\t\t\tle64_to_cpu(journal_buckets_v2->d[i].start) + j;\n+\t\t}\n \t} else if (journal_buckets) {\n \t\tfor (unsigned i = 0; i < ja->nr; i++)\n \t\t\tja->buckets[i] = le64_to_cpu(journal_buckets->buckets[i]);",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "fs/bcachefs/journal.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 1,
+      "start_step": 21
+    }
+  ],
+  "success_step": 21
+}

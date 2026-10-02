@@ -1,0 +1,145 @@
+{
+  "bug_id": "django__django-12713",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/admin/options.py",
+        "before": "    def formfield_for_manytomany(self, db_field, request, **kwargs):\n        \"\"\"\n        Get a form Field for a ManyToManyField.\n        \"\"\"\n        # If it uses an intermediary model that isn't auto created, don't show\n        # a field in admin.\n        if not db_field.remote_field.through._meta.auto_created:\n            return None\n        db = kwargs.get('using')\n\n        autocomplete_fields = self.get_autocomplete_fields(request)\n        if db_field.name in autocomplete_fields:\n            kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)\n        elif db_field.name in self.raw_id_fields:\n            kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)\n        elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:\n            kwargs['widget'] = widgets.FilteredSelectMultiple(\n                db_field.verbose_name,\n                db_field.name in self.filter_vertical\n            )",
+        "after": "    def formfield_for_manytomany(self, db_field, request, **kwargs):\n        \"\"\"\n        Get a form Field for a ManyToManyField.\n        \"\"\"\n        # If it uses an intermediary model that isn't auto created, don't show\n        # a field in admin.\n        if not db_field.remote_field.through._meta.auto_created:\n            return None\n        db = kwargs.get('using')\n\n        if 'widget' not in kwargs:\n            autocomplete_fields = self.get_autocomplete_fields(request)\n            if db_field.name in autocomplete_fields:\n                kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)\n            elif db_field.name in self.raw_id_fields:\n                kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)\n            elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:\n                kwargs['widget'] = widgets.FilteredSelectMultiple(\n                    db_field.verbose_name,\n                    db_field.name in self.filter_vertical\n                )",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/admin_widgets/tests.py",
+        "before": "    def test_filtered_many_to_many(self):\n        self.assertFormfield(Band, 'members', widgets.FilteredSelectMultiple,\n                             filter_vertical=['members'])\n\n    def test_formfield_overrides(self):",
+        "after": "    def test_filtered_many_to_many(self):\n        self.assertFormfield(Band, 'members', widgets.FilteredSelectMultiple,\n                             filter_vertical=['members'])\n\n    def test_many_to_many_widget_override(self):\n        \"\"\"\n        Test that widget parameter is respected in formfield_for_manytomany\n        even when field is in filter_horizontal, raw_id_fields, or autocomplete_fields.\n        \"\"\"\n        class MyModelAdmin(admin.ModelAdmin):\n            filter_horizontal = ['members']\n            raw_id_fields = ['members']\n            autocomplete_fields = ['members']\n\n        ma = MyModelAdmin(Band, admin.site)\n        field = Band._meta.get_field('members')\n        \n        # Test with custom widget - should override all field configurations\n        custom_widget = forms.CheckboxSelectMultiple(attrs={'class': 'custom'})\n        formfield = ma.formfield_for_manytomany(field, request=None, widget=custom_widget)\n        \n        # Widget type should be preserved\n        self.assertIsInstance(formfield.widget, forms.CheckboxSelectMultiple)\n        # Widget attributes should be preserved\n        self.assertEqual(formfield.widget.attrs, {'class': 'custom'})\n\n    def test_formfield_overrides(self):",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/admin/options.py b/django/contrib/admin/options.py\nindex 69a5fbf389..db7df891e3 100644\n--- a/django/contrib/admin/options.py\n+++ b/django/contrib/admin/options.py\n@@ -249,16 +249,17 @@ class BaseModelAdmin(metaclass=forms.MediaDefiningClass):\n             return None\n         db = kwargs.get('using')\n \n-        autocomplete_fields = self.get_autocomplete_fields(request)\n-        if db_field.name in autocomplete_fields:\n-            kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)\n-        elif db_field.name in self.raw_id_fields:\n-            kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)\n-        elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:\n-            kwargs['widget'] = widgets.FilteredSelectMultiple(\n-                db_field.verbose_name,\n-                db_field.name in self.filter_vertical\n-            )\n+        if 'widget' not in kwargs:\n+            autocomplete_fields = self.get_autocomplete_fields(request)\n+            if db_field.name in autocomplete_fields:\n+                kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)\n+            elif db_field.name in self.raw_id_fields:\n+                kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)\n+            elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:\n+                kwargs['widget'] = widgets.FilteredSelectMultiple(\n+                    db_field.verbose_name,\n+                    db_field.name in self.filter_vertical\n+                )\n \n         if 'queryset' not in kwargs:\n             queryset = self.get_field_queryset(db, db_field, request)\ndiff --git a/tests/admin_widgets/tests.py b/tests/admin_widgets/tests.py\nindex 719d0d8095..4c3f6bdb85 100644\n--- a/tests/admin_widgets/tests.py\n+++ b/tests/admin_widgets/tests.py\n@@ -117,6 +117,28 @@ class AdminFormfieldForDBFieldTests(SimpleTestCase):\n         self.assertFormfield(Band, 'members', widgets.FilteredSelectMultiple,\n                              filter_vertical=['members'])\n \n+    def test_many_to_many_widget_override(self):\n+        \"\"\"\n+        Test that widget parameter is respected in formfield_for_manytomany\n+        even when field is in filter_horizontal, raw_id_fields, or autocomplete_fields.\n+        \"\"\"\n+        class MyModelAdmin(admin.ModelAdmin):\n+            filter_horizontal = ['members']\n+            raw_id_fields = ['members']\n+            autocomplete_fields = ['members']\n+\n+        ma = MyModelAdmin(Band, admin.site)\n+        field = Band._meta.get_field('members')\n+        \n+        # Test with custom widget - should override all field configurations\n+        custom_widget = forms.CheckboxSelectMultiple(attrs={'class': 'custom'})\n+        formfield = ma.formfield_for_manytomany(field, request=None, widget=custom_widget)\n+        \n+        # Widget type should be preserved\n+        self.assertIsInstance(formfield.widget, forms.CheckboxSelectMultiple)\n+        # Widget attributes should be preserved\n+        self.assertEqual(formfield.widget.attrs, {'class': 'custom'})\n+\n     def test_formfield_overrides(self):\n         self.assertFormfield(Event, 'start_date', forms.TextInput,\n                              formfield_overrides={DateField: {'widget': forms.TextInput}})\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      11
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      2,
+      11
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      2,
+      11
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      2,
+      11
+    ],
+    "edit_list_after_refinement": [
+      2,
+      11
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/admin/options.py",
+          "before": "    def formfield_for_manytomany(self, db_field, request, **kwargs):\n        \"\"\"\n        Get a form Field for a ManyToManyField.\n        \"\"\"\n        # If it uses an intermediary model that isn't auto created, don't show\n        # a field in admin.\n        if not db_field.remote_field.through._meta.auto_created:\n            return None\n        db = kwargs.get('using')\n\n        autocomplete_fields = self.get_autocomplete_fields(request)\n        if db_field.name in autocomplete_fields:\n            kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)\n        elif db_field.name in self.raw_id_fields:\n            kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)\n        elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:\n            kwargs['widget'] = widgets.FilteredSelectMultiple(\n                db_field.verbose_name,\n                db_field.name in self.filter_vertical\n            )",
+          "after": "    def formfield_for_manytomany(self, db_field, request, **kwargs):\n        \"\"\"\n        Get a form Field for a ManyToManyField.\n        \"\"\"\n        # If it uses an intermediary model that isn't auto created, don't show\n        # a field in admin.\n        if not db_field.remote_field.through._meta.auto_created:\n            return None\n        db = kwargs.get('using')\n\n        if 'widget' not in kwargs:\n            autocomplete_fields = self.get_autocomplete_fields(request)\n            if db_field.name in autocomplete_fields:\n                kwargs['widget'] = AutocompleteSelectMultiple(db_field.remote_field, self.admin_site, using=db)\n            elif db_field.name in self.raw_id_fields:\n                kwargs['widget'] = widgets.ManyToManyRawIdWidget(db_field.remote_field, self.admin_site, using=db)\n            elif db_field.name in [*self.filter_vertical, *self.filter_horizontal]:\n                kwargs['widget'] = widgets.FilteredSelectMultiple(\n                    db_field.verbose_name,\n                    db_field.name in self.filter_vertical\n                )",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/admin_widgets/tests.py",
+          "before": "    def test_filtered_many_to_many(self):\n        self.assertFormfield(Band, 'members', widgets.FilteredSelectMultiple,\n                             filter_vertical=['members'])\n\n    def test_formfield_overrides(self):",
+          "after": "    def test_filtered_many_to_many(self):\n        self.assertFormfield(Band, 'members', widgets.FilteredSelectMultiple,\n                             filter_vertical=['members'])\n\n    def test_many_to_many_widget_override(self):\n        \"\"\"\n        Test that widget parameter is respected in formfield_for_manytomany\n        even when field is in filter_horizontal, raw_id_fields, or autocomplete_fields.\n        \"\"\"\n        class MyModelAdmin(admin.ModelAdmin):\n            filter_horizontal = ['members']\n            raw_id_fields = ['members']\n            autocomplete_fields = ['members']\n\n        ma = MyModelAdmin(Band, admin.site)\n        field = Band._meta.get_field('members')\n        \n        # Test with custom widget - should override all field configurations\n        custom_widget = forms.CheckboxSelectMultiple(attrs={'class': 'custom'})\n        formfield = ma.formfield_for_manytomany(field, request=None, widget=custom_widget)\n        \n        # Widget type should be preserved\n        self.assertIsInstance(formfield.widget, forms.CheckboxSelectMultiple)\n        # Widget attributes should be preserved\n        self.assertEqual(formfield.widget.attrs, {'class': 'custom'})\n\n    def test_formfield_overrides(self):",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 58,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 58,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/admin_widgets/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/admin/options.py",
+      "tests/admin_widgets/tests.py"
+    ],
+    "gold_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 33,
+    "minimized_deleted_lines": 10,
+    "gold_added_lines": 19,
+    "gold_deleted_lines": 11
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

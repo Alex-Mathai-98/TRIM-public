@@ -1,0 +1,62 @@
+diff --git a/net/core/gro_cells.c b/net/core/gro_cells.c
+index ff8e5b64bf6b..66d2c75b3419 100644
+--- a/net/core/gro_cells.c
++++ b/net/core/gro_cells.c
+@@ -27,7 +27,9 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)
+ 
+ 	cell = this_cpu_ptr(gcells->cells);
+ 
++	spin_lock_bh(&cell->napi_skbs.lock);
+ 	if (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {
++		spin_unlock_bh(&cell->napi_skbs.lock);
+ drop:
+ 		dev_core_stats_rx_dropped_inc(dev);
+ 		kfree_skb(skb);
+@@ -39,6 +41,8 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)
+ 	if (skb_queue_len(&cell->napi_skbs) == 1)
+ 		napi_schedule(&cell->napi);
+ 
++	spin_unlock_bh(&cell->napi_skbs.lock);
++
+ 	res = NET_RX_SUCCESS;
+ 
+ unlock:
+@@ -53,15 +57,28 @@ static int gro_cell_poll(struct napi_struct *napi, int budget)
+ 	struct gro_cell *cell = container_of(napi, struct gro_cell, napi);
+ 	struct sk_buff *skb;
+ 	int work_done = 0;
++	struct sk_buff_head q;
++
++	__skb_queue_head_init(&q);
++
++	spin_lock(&cell->napi_skbs.lock);
++	skb_queue_splice_init(&cell->napi_skbs, &q);
++	spin_unlock(&cell->napi_skbs.lock);
+ 
+ 	while (work_done < budget) {
+-		skb = __skb_dequeue(&cell->napi_skbs);
++		skb = __skb_dequeue(&q);
+ 		if (!skb)
+ 			break;
+ 		napi_gro_receive(napi, skb);
+ 		work_done++;
+ 	}
+ 
++	if (!skb_queue_empty(&q)) {
++		spin_lock(&cell->napi_skbs.lock);
++		skb_queue_splice(&q, &cell->napi_skbs);
++		spin_unlock(&cell->napi_skbs.lock);
++	}
++
+ 	if (work_done < budget)
+ 		napi_complete_done(napi, work_done);
+ 	return work_done;
+@@ -78,7 +95,7 @@ int gro_cells_init(struct gro_cells *gcells, struct net_device *dev)
+ 	for_each_possible_cpu(i) {
+ 		struct gro_cell *cell = per_cpu_ptr(gcells->cells, i);
+ 
+-		__skb_queue_head_init(&cell->napi_skbs);
++		skb_queue_head_init(&cell->napi_skbs);
+ 
+ 		set_bit(NAPI_STATE_NO_BUSY_POLL, &cell->napi.state);
+ 

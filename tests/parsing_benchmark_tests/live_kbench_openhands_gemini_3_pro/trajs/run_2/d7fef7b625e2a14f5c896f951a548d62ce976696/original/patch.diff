@@ -1,0 +1,32 @@
+diff --git a/fs/fat/misc.c b/fs/fat/misc.c
+index c7a2d27120ba..000226f4bc91 100644
+--- a/fs/fat/misc.c
++++ b/fs/fat/misc.c
+@@ -125,6 +125,14 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
+ 		last = dclus;
+ 	}
+ 
++	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
++		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
++			     new_fclus,
++			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
++		fat_cache_inval_inode(inode);
++		return -EIO;
++	}
++
+ 	/* add new one to the last of the cluster chain */
+ 	if (last) {
+ 		struct fat_entry fatent;
+@@ -157,12 +165,6 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
+ 		} else
+ 			mark_inode_dirty(inode);
+ 	}
+-	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
+-		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
+-			     new_fclus,
+-			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
+-		fat_cache_inval_inode(inode);
+-	}
+ 	inode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);
+ 
+ 	return 0;

@@ -1,0 +1,30 @@
+diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+index 3d404624bb96..16f00263a576 100644
+--- a/fs/ocfs2/super.c
++++ b/fs/ocfs2/super.c
+@@ -2322,6 +2322,8 @@ static int ocfs2_verify_volume(struct ocfs2_dinode *di,
+ 
+ 	if (memcmp(di->i_signature, OCFS2_SUPER_BLOCK_SIGNATURE,
+ 		   strlen(OCFS2_SUPER_BLOCK_SIGNATURE)) == 0) {
++		u32 blksz_bits;
++
+ 		/* We have to do a raw check of the feature here */
+ 		if (le32_to_cpu(di->id2.i_super.s_feature_incompat) &
+ 		    OCFS2_FEATURE_INCOMPAT_META_ECC) {
+@@ -2333,10 +2335,14 @@ static int ocfs2_verify_volume(struct ocfs2_dinode *di,
+ 				goto out;
+ 		}
+ 		status = -EINVAL;
+-		if ((1 << le32_to_cpu(di->id2.i_super.s_blocksize_bits)) != blksz) {
++		blksz_bits = le32_to_cpu(di->id2.i_super.s_blocksize_bits);
++		if (blksz_bits > 31) {
++			mlog(ML_ERROR, "found superblock with bad blocksize bits: %u\n",
++			     blksz_bits);
++		} else if ((1 << blksz_bits) != blksz) {
+ 			mlog(ML_ERROR, "found superblock with incorrect block "
+ 			     "size: found %u, should be %u\n",
+-			     1 << le32_to_cpu(di->id2.i_super.s_blocksize_bits),
++			     1 << blksz_bits,
+ 			       blksz);
+ 		} else if (le16_to_cpu(di->id2.i_super.s_major_rev_level) !=
+ 			   OCFS2_MAJOR_REV_LEVEL ||

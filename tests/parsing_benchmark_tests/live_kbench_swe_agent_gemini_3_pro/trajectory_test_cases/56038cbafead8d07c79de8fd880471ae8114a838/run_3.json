@@ -1,0 +1,126 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tad.a.u.key_struct.key = key->serial;\n\t/*\n\t * Validate key->description before using it.\n\t */\n\tif (key->description && virt_addr_valid(key->description))\n\t\tad.a.u.key_struct.key_desc = key->description;\n",
+          "before": "\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c\nindex da0c2bffbd08..936851b461f2 100644\n--- a/security/smack/smack_lsm.c\n+++ b/security/smack/smack_lsm.c\n@@ -4651,7 +4651,11 @@ static int smack_watch_key(struct key *key)\n #ifdef CONFIG_AUDIT\n \tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n \tad.a.u.key_struct.key = key->serial;\n-\tad.a.u.key_struct.key_desc = key->description;\n+\t/*\n+\t * Validate key->description before using it.\n+\t */\n+\tif (key->description && virt_addr_valid(key->description))\n+\t\tad.a.u.key_struct.key_desc = key->description;\n #endif\n \trc = smk_access(tkp, key->security, MAY_READ, &ad);\n \trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "#include <linux/mm.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c\nindex da0c2bffbd08..8dd3dd685f77 100644\n--- a/security/smack/smack_lsm.c\n+++ b/security/smack/smack_lsm.c\n@@ -45,6 +45,7 @@\n #include <linux/watch_queue.h>\n #include <linux/io_uring/cmd.h>\n #include <uapi/linux/lsm.h>\n+#include <linux/mm.h>\n #include \"smack.h\"\n \n #define TRANS_TRUE\t\"TRUE\"\n@@ -4651,7 +4652,11 @@ static int smack_watch_key(struct key *key)\n #ifdef CONFIG_AUDIT\n \tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n \tad.a.u.key_struct.key = key->serial;\n-\tad.a.u.key_struct.key_desc = key->description;\n+\t/*\n+\t * Validate key->description before using it.\n+\t */\n+\tif (key->description && virt_addr_valid(key->description))\n+\t\tad.a.u.key_struct.key_desc = key->description;\n #endif\n \trc = smk_access(tkp, key->security, MAY_READ, &ad);\n \trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);",
+          "explanation": "classic_swe step 28 insert #1",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 48,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "\tad.a.u.key_struct.key = key->serial;\n\t/*\n\t * Validate key->description before using it.\n\t * If the key is corrupted, the description might be invalid.\n\t * In that case, we should not proceed with access check as\n\t * key->security might also be corrupted.\n\t */\n\tif (key->description && !virt_addr_valid(key->description))\n\t\treturn -EINVAL;\n\n\tad.a.u.key_struct.key_desc = key->description;\n",
+          "before": "\tad.a.u.key_struct.key = key->serial;\n\t/*\n\t * Validate key->description before using it.\n\t */\n\tif (key->description && virt_addr_valid(key->description))\n\t\tad.a.u.key_struct.key_desc = key->description;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c\nindex da0c2bffbd08..1327cef80ba5 100644\n--- a/security/smack/smack_lsm.c\n+++ b/security/smack/smack_lsm.c\n@@ -45,6 +45,7 @@\n #include <linux/watch_queue.h>\n #include <linux/io_uring/cmd.h>\n #include <uapi/linux/lsm.h>\n+#include <linux/mm.h>\n #include \"smack.h\"\n \n #define TRANS_TRUE\t\"TRUE\"\n@@ -4651,6 +4652,15 @@ static int smack_watch_key(struct key *key)\n #ifdef CONFIG_AUDIT\n \tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n \tad.a.u.key_struct.key = key->serial;\n+\t/*\n+\t * Validate key->description before using it.\n+\t * If the key is corrupted, the description might be invalid.\n+\t * In that case, we should not proceed with access check as\n+\t * key->security might also be corrupted.\n+\t */\n+\tif (key->description && !virt_addr_valid(key->description))\n+\t\treturn -EINVAL;\n+\n \tad.a.u.key_struct.key_desc = key->description;\n #endif\n \trc = smk_access(tkp, key->security, MAY_READ, &ad);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 1,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (key == NULL)\n\t\treturn -EINVAL;\n\n\t/*\n\t * If the key is corrupted, the pointers might be invalid.\n\t * Verify key->type.\n\t */\n\tif (!key->type || !virt_addr_valid(key->type))\n\t\treturn -EINVAL;\n",
+          "before": "\tif (key == NULL)\n\t\treturn -EINVAL;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c\nindex da0c2bffbd08..f137616fb7c8 100644\n--- a/security/smack/smack_lsm.c\n+++ b/security/smack/smack_lsm.c\n@@ -45,6 +45,7 @@\n #include <linux/watch_queue.h>\n #include <linux/io_uring/cmd.h>\n #include <uapi/linux/lsm.h>\n+#include <linux/mm.h>\n #include \"smack.h\"\n \n #define TRANS_TRUE\t\"TRUE\"\n@@ -4633,6 +4634,13 @@ static int smack_watch_key(struct key *key)\n \n \tif (key == NULL)\n \t\treturn -EINVAL;\n+\n+\t/*\n+\t * If the key is corrupted, the pointers might be invalid.\n+\t * Verify key->type.\n+\t */\n+\tif (!key->type || !virt_addr_valid(key->type))\n+\t\treturn -EINVAL;\n \t/*\n \t * If the key hasn't been initialized give it access so that\n \t * it may do so.\n@@ -4651,6 +4659,15 @@ static int smack_watch_key(struct key *key)\n #ifdef CONFIG_AUDIT\n \tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n \tad.a.u.key_struct.key = key->serial;\n+\t/*\n+\t * Validate key->description before using it.\n+\t * If the key is corrupted, the description might be invalid.\n+\t * In that case, we should not proceed with access check as\n+\t * key->security might also be corrupted.\n+\t */\n+\tif (key->description && !virt_addr_valid(key->description))\n+\t\treturn -EINVAL;\n+\n \tad.a.u.key_struct.key_desc = key->description;\n #endif\n \trc = smk_access(tkp, key->security, MAY_READ, &ad);",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 2,
+      "start_step": 35
+    }
+  ],
+  "success_step": 35
+}

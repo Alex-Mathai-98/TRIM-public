@@ -1,0 +1,91 @@
+diff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c
+index 1f6d083682b8..7576d87dad17 100644
+--- a/net/bluetooth/mgmt.c
++++ b/net/bluetooth/mgmt.c
+@@ -1319,7 +1319,7 @@ static void mgmt_set_powered_complete(struct hci_dev *hdev, void *data, int err)
+ 
+ 	/* Make sure cmd still outstanding. */
+ 	if (cmd != pending_find(MGMT_OP_SET_POWERED, hdev))
+-		return;
++		goto free;
+ 
+ 	cp = cmd->param;
+ 
+@@ -1346,6 +1346,9 @@ static void mgmt_set_powered_complete(struct hci_dev *hdev, void *data, int err)
+ 	}
+ 
+ 	mgmt_pending_remove(cmd);
++
++free:
++	mgmt_pending_free(cmd);
+ }
+ 
+ static int set_powered_sync(struct hci_dev *hdev, void *data)
+@@ -1398,6 +1401,8 @@ static int set_powered(struct sock *sk, struct hci_dev *hdev, void *data,
+ 		goto failed;
+ 	}
+ 
++	kref_get(&cmd->ref);
++
+ 	/* Cancel potentially blocking sync operation before power off */
+ 	if (cp->val == 0x00) {
+ 		hci_cmd_sync_cancel_sync(hdev, -EHOSTDOWN);
+@@ -1409,8 +1414,10 @@ static int set_powered(struct sock *sk, struct hci_dev *hdev, void *data,
+ 					  mgmt_set_powered_complete);
+ 	}
+ 
+-	if (err < 0)
++	if (err < 0) {
+ 		mgmt_pending_remove(cmd);
++		mgmt_pending_free(cmd);
++	}
+ 
+ failed:
+ 	hci_dev_unlock(hdev);
+diff --git a/net/bluetooth/mgmt_util.c b/net/bluetooth/mgmt_util.c
+index 17ab909a7c07..dec20a01b2ed 100644
+--- a/net/bluetooth/mgmt_util.c
++++ b/net/bluetooth/mgmt_util.c
+@@ -273,6 +273,8 @@ struct mgmt_pending_cmd *mgmt_pending_new(struct sock *sk, u16 opcode,
+ 	cmd->opcode = opcode;
+ 	cmd->index = hdev->id;
+ 
++	kref_init(&cmd->ref);
++
+ 	cmd->param = kmemdup(data, len, GFP_KERNEL);
+ 	if (!cmd->param) {
+ 		kfree(cmd);
+@@ -302,13 +304,20 @@ struct mgmt_pending_cmd *mgmt_pending_add(struct sock *sk, u16 opcode,
+ 	return cmd;
+ }
+ 
+-void mgmt_pending_free(struct mgmt_pending_cmd *cmd)
++static void mgmt_pending_kfree(struct kref *ref)
+ {
++	struct mgmt_pending_cmd *cmd = container_of(ref, struct mgmt_pending_cmd, ref);
++
+ 	sock_put(cmd->sk);
+ 	kfree(cmd->param);
+ 	kfree(cmd);
+ }
+ 
++void mgmt_pending_free(struct mgmt_pending_cmd *cmd)
++{
++	kref_put(&cmd->ref, mgmt_pending_kfree);
++}
++
+ void mgmt_pending_remove(struct mgmt_pending_cmd *cmd)
+ {
+ 	list_del(&cmd->list);
+diff --git a/net/bluetooth/mgmt_util.h b/net/bluetooth/mgmt_util.h
+index bdf978605d5a..53c86278247c 100644
+--- a/net/bluetooth/mgmt_util.h
++++ b/net/bluetooth/mgmt_util.h
+@@ -32,6 +32,7 @@ struct mgmt_mesh_tx {
+ 
+ struct mgmt_pending_cmd {
+ 	struct list_head list;
++	struct kref ref;
+ 	u16 opcode;
+ 	int index;
+ 	void *param;

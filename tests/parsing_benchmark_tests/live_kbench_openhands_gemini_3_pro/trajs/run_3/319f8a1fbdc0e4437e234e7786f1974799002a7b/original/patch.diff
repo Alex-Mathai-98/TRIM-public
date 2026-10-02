@@ -1,0 +1,35 @@
+diff --git a/kernel/signal.c b/kernel/signal.c
+index 989b1cc9116a..74c15e2cacb4 100644
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -2011,7 +2011,6 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)
+ 			 * wait for __exit_signal() to do its job. Otherwise if
+ 			 * ignored, it's not supposed to be queued. Try to survive.
+ 			 */
+-			WARN_ON_ONCE(!(t->signal->flags & SIGNAL_GROUP_EXIT));
+ 			goto out;
+ 		}
+ 
+@@ -2046,17 +2045,17 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)
+ 		goto out;
+ 	}
+ 
+-	/* This should never happen and leaks a reference count */
+-	if (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))
+-		hlist_del_init(&tmr->ignored_list);
+-
+ 	if (unlikely(!list_empty(&q->list))) {
+ 		/* This holds a reference count already */
+ 		result = TRACE_SIGNAL_ALREADY_PENDING;
+ 		goto out;
+ 	}
+ 
+-	posixtimer_sigqueue_getref(q);
++	if (!hlist_unhashed(&tmr->ignored_list))
++		hlist_del_init(&tmr->ignored_list);
++	else
++		posixtimer_sigqueue_getref(q);
++
+ 	posixtimer_queue_sigqueue(q, t, tmr->it_pid_type);
+ 	result = TRACE_SIGNAL_DELIVERED;
+ out:

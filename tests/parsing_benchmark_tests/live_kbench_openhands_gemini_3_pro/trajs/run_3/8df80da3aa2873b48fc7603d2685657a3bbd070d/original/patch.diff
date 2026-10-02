@@ -1,0 +1,48 @@
+diff --git a/net/kcm/kcmsock.c b/net/kcm/kcmsock.c
+index a4971e6fa943..c672a67d3908 100644
+--- a/net/kcm/kcmsock.c
++++ b/net/kcm/kcmsock.c
+@@ -1693,15 +1693,16 @@ static int kcm_release(struct socket *sock)
+ 	 */
+ 	__skb_queue_purge(&sk->sk_write_queue);
+ 
++	release_sock(sk);
++
++	spin_lock_bh(&mux->lock);
++
+ 	/* Set tx_stopped. This is checked when psock is bound to a kcm and we
+ 	 * get a writespace callback. This prevents further work being queued
+ 	 * from the callback (unbinding the psock occurs after canceling work.
+ 	 */
+ 	kcm->tx_stopped = 1;
+ 
+-	release_sock(sk);
+-
+-	spin_lock_bh(&mux->lock);
+ 	if (kcm->tx_wait) {
+ 		/* Take of tx_wait list, after this point there should be no way
+ 		 * that a psock will be assigned to this kcm.
+@@ -1711,11 +1712,6 @@ static int kcm_release(struct socket *sock)
+ 	}
+ 	spin_unlock_bh(&mux->lock);
+ 
+-	/* Cancel work. After this point there should be no outside references
+-	 * to the kcm socket.
+-	 */
+-	cancel_work_sync(&kcm->tx_work);
+-
+ 	lock_sock(sk);
+ 	psock = kcm->tx_psock;
+ 	if (psock) {
+@@ -1728,6 +1724,11 @@ static int kcm_release(struct socket *sock)
+ 	}
+ 	release_sock(sk);
+ 
++	/* Cancel work. After this point there should be no outside references
++	 * to the kcm socket.
++	 */
++	cancel_work_sync(&kcm->tx_work);
++
+ 	WARN_ON(kcm->tx_wait);
+ 	WARN_ON(kcm->tx_psock);
+ 

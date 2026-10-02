@@ -1,0 +1,86 @@
+diff --git a/io_uring/timeout.c b/io_uring/timeout.c
+index bbe58638eca7..6ef197ecab80 100644
+--- a/io_uring/timeout.c
++++ b/io_uring/timeout.c
+@@ -85,7 +85,8 @@ static void io_timeout_complete(struct io_kiocb *req, struct io_tw_state *ts)
+ 	io_req_task_complete(req, ts);
+ }
+ 
+-static bool io_kill_timeout(struct io_kiocb *req, int status)
++static bool io_kill_timeout(struct io_kiocb *req, int status,
++			    struct list_head *list)
+ 	__must_hold(&req->ctx->timeout_lock)
+ {
+ 	struct io_timeout_data *io = req->async_data;
+@@ -98,7 +99,12 @@ static bool io_kill_timeout(struct io_kiocb *req, int status)
+ 		atomic_set(&req->ctx->cq_timeouts,
+ 			atomic_read(&req->ctx->cq_timeouts) + 1);
+ 		list_del_init(&timeout->list);
+-		io_req_queue_tw_complete(req, status);
++		if (list) {
++			io_req_set_res(req, status, 0);
++			list_add(&timeout->list, list);
++		} else {
++			io_req_queue_tw_complete(req, status);
++		}
+ 		return true;
+ 	}
+ 	return false;
+@@ -108,6 +114,7 @@ __cold void io_flush_timeouts(struct io_ring_ctx *ctx)
+ {
+ 	u32 seq;
+ 	struct io_timeout *timeout, *tmp;
++	LIST_HEAD(list);
+ 
+ 	raw_spin_lock_irq(&ctx->timeout_lock);
+ 	seq = ctx->cached_cq_tail - atomic_read(&ctx->cq_timeouts);
+@@ -131,10 +138,19 @@ __cold void io_flush_timeouts(struct io_ring_ctx *ctx)
+ 		if (events_got < events_needed)
+ 			break;
+ 
+-		io_kill_timeout(req, 0);
++		io_kill_timeout(req, 0, &list);
+ 	}
+ 	ctx->cq_last_tm_flush = seq;
+ 	raw_spin_unlock_irq(&ctx->timeout_lock);
++
++	while (!list_empty(&list)) {
++		struct io_kiocb *req;
++
++		timeout = list_first_entry(&list, struct io_timeout, list);
++		list_del(&timeout->list);
++		req = cmd_to_io_kiocb(timeout);
++		io_req_task_work_add(req);
++	}
+ }
+ 
+ static void io_req_tw_fail_links(struct io_kiocb *link, struct io_tw_state *ts)
+@@ -662,6 +678,7 @@ __cold bool io_kill_timeouts(struct io_ring_ctx *ctx, struct io_uring_task *tctx
+ {
+ 	struct io_timeout *timeout, *tmp;
+ 	int canceled = 0;
++	LIST_HEAD(list);
+ 
+ 	/*
+ 	 * completion_lock is needed for io_match_task(). Take it before
+@@ -673,10 +690,19 @@ __cold bool io_kill_timeouts(struct io_ring_ctx *ctx, struct io_uring_task *tctx
+ 		struct io_kiocb *req = cmd_to_io_kiocb(timeout);
+ 
+ 		if (io_match_task(req, tctx, cancel_all) &&
+-		    io_kill_timeout(req, -ECANCELED))
++		    io_kill_timeout(req, -ECANCELED, &list))
+ 			canceled++;
+ 	}
+ 	raw_spin_unlock_irq(&ctx->timeout_lock);
++
++	while (!list_empty(&list)) {
++		struct io_kiocb *req;
++
++		timeout = list_first_entry(&list, struct io_timeout, list);
++		list_del(&timeout->list);
++		req = cmd_to_io_kiocb(timeout);
++		io_req_task_work_add(req);
++	}
+ 	spin_unlock(&ctx->completion_lock);
+ 	return canceled != 0;
+ }

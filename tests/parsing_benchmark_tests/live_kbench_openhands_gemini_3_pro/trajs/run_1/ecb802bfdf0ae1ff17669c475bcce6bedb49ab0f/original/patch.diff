@@ -1,0 +1,30 @@
+diff --git a/mm/mlock.c b/mm/mlock.c
+index 3cb72b579ffd..26b2278dd689 100644
+--- a/mm/mlock.c
++++ b/mm/mlock.c
+@@ -736,8 +736,10 @@ static int apply_mlockall_flags(int flags)
+ 		error = mlock_fixup(&vmi, vma, &prev, vma->vm_start, vma->vm_end,
+ 				    newflags);
+ 		/* Ignore errors, but prev needs fixing up. */
+-		if (error)
++		if (error) {
+ 			prev = vma;
++			vma_iter_set(&vmi, vma->vm_end);
++		}
+ 		cond_resched();
+ 	}
+ out:
+diff --git a/mm/vma.c b/mm/vma.c
+index 726b2a31ce59..9f54ca619838 100644
+--- a/mm/vma.c
++++ b/mm/vma.c
+@@ -818,6 +818,9 @@ static __must_check struct vm_area_struct *vma_merge_existing_range(
+ 	mmap_assert_write_locked(vmg->mm);
+ 	VM_WARN_ON_VMG(!middle, vmg); /* We are modifying a VMA, so caller must specify. */
+ 	VM_WARN_ON_VMG(vmg->next, vmg); /* We set this. */
++	if (prev && start <= prev->vm_start) {
++		printk(KERN_ERR "vma_merge_existing_range: prev=%p start=%lx prev->vm_start=%lx prev->vm_end=%lx middle=%p middle->vm_start=%lx\n", prev, start, prev->vm_start, prev->vm_end, middle, middle ? middle->vm_start : 0);
++	}
+ 	VM_WARN_ON_VMG(prev && start <= prev->vm_start, vmg);
+ 	VM_WARN_ON_VMG(start >= end, vmg);
+ 

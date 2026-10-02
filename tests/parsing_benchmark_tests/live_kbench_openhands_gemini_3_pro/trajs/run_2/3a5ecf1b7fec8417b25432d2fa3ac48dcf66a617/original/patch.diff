@@ -1,0 +1,76 @@
+diff --git a/drivers/bluetooth/hci_vhci.c b/drivers/bluetooth/hci_vhci.c
+index f7d8c3c00655..ff37828bc5ba 100644
+--- a/drivers/bluetooth/hci_vhci.c
++++ b/drivers/bluetooth/hci_vhci.c
+@@ -320,11 +320,27 @@ static inline void force_devcd_timeout(struct hci_dev *hdev,
+ #endif
+ }
+ 
++static int force_devcoredump_open(struct inode *inode, struct file *file)
++{
++	struct hci_dev *hdev = inode->i_private;
++
++	file->private_data = hdev;
++	hci_dev_hold(hdev);
++	return 0;
++}
++
++static int force_devcoredump_release(struct inode *inode, struct file *file)
++{
++	struct hci_dev *hdev = file->private_data;
++
++	hci_dev_put(hdev);
++	return 0;
++}
++
+ static ssize_t force_devcd_write(struct file *file, const char __user *user_buf,
+ 				 size_t count, loff_t *ppos)
+ {
+-	struct vhci_data *data = file->private_data;
+-	struct hci_dev *hdev = data->hdev;
++	struct hci_dev *hdev = file->private_data;
+ 	struct sk_buff *skb = NULL;
+ 	struct devcoredump_test_data dump_data;
+ 	size_t data_size;
+@@ -376,7 +392,8 @@ static ssize_t force_devcd_write(struct file *file, const char __user *user_buf,
+ }
+ 
+ static const struct file_operations force_devcoredump_fops = {
+-	.open		= simple_open,
++	.open		= force_devcoredump_open,
++	.release	= force_devcoredump_release,
+ 	.write		= force_devcd_write,
+ };
+ 
+@@ -448,7 +465,7 @@ static int __vhci_create_device(struct vhci_data *data, __u8 opcode)
+ 		debugfs_create_file("aosp_capable", 0644, hdev->debugfs, data,
+ 				    &aosp_capable_fops);
+ 
+-	debugfs_create_file("force_devcoredump", 0644, hdev->debugfs, data,
++	debugfs_create_file("force_devcoredump", 0644, hdev->debugfs, hdev,
+ 			    &force_devcoredump_fops);
+ 
+ 	hci_skb_pkt_type(skb) = HCI_VENDOR_PKT;
+diff --git a/net/bluetooth/coredump.c b/net/bluetooth/coredump.c
+index 819eacb38762..720cb79adf96 100644
+--- a/net/bluetooth/coredump.c
++++ b/net/bluetooth/coredump.c
+@@ -249,15 +249,15 @@ static void hci_devcd_dump(struct hci_dev *hdev)
+ 
+ 	size = hdev->dump.tail - hdev->dump.head;
+ 
+-	/* Emit a devcoredump with the available data */
+-	dev_coredumpv(&hdev->dev, hdev->dump.head, size, GFP_KERNEL);
+-
+ 	/* Send a copy to monitor as a diagnostic packet */
+ 	skb = bt_skb_alloc(size, GFP_ATOMIC);
+ 	if (skb) {
+ 		skb_put_data(skb, hdev->dump.head, size);
+ 		hci_recv_diag(hdev, skb);
+ 	}
++
++	/* Emit a devcoredump with the available data */
++	dev_coredumpv(&hdev->dev, hdev->dump.head, size, GFP_KERNEL);
+ }
+ 
+ static void hci_devcd_handle_pkt_complete(struct hci_dev *hdev,

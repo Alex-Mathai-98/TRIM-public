@@ -1,0 +1,19 @@
+diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c
+index 89f9665ce70d..aef8f242dc09 100644
+--- a/fs/bcachefs/btree_iter.c
++++ b/fs/bcachefs/btree_iter.c
+@@ -722,7 +722,13 @@ static inline int btree_path_lock_root(struct btree_trans *trans,
+ 				       unsigned long trace_ip)
+ {
+ 	struct bch_fs *c = trans->c;
+-	struct btree *b, **rootp = &bch2_btree_id_root(c, path->btree_id)->b;
++	struct btree_root *r = bch2_btree_id_root(c, path->btree_id);
++	struct btree *b, **rootp;
++
++	if (!r || !r->b)
++		return -BCH_ERR_no_btree_node_lock_root;
++
++	rootp = &r->b;
+ 	enum six_lock_type lock_type;
+ 	unsigned i;
+ 	int ret;

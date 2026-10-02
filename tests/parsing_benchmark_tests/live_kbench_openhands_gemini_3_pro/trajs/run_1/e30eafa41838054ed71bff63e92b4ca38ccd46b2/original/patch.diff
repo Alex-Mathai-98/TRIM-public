@@ -1,0 +1,31 @@
+diff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c
+index 6613b8fcceb0..ad3bb5a0a68d 100644
+--- a/fs/nilfs2/inode.c
++++ b/fs/nilfs2/inode.c
+@@ -89,6 +89,12 @@ int nilfs_get_block(struct inode *inode, sector_t blkoff,
+ 			bh_result->b_size = (ret << inode->i_blkbits);
+ 		goto out;
+ 	}
++	if (ret == -EINVAL) {
++		nilfs_error(inode->i_sb, "broken bmap (inode number=%lu)",
++			    inode->i_ino);
++		ret = -EIO;
++		goto out;
++	}
+ 	/* data block was not found */
+ 	if (ret == -ENOENT && create) {
+ 		struct nilfs_transaction_info ti;
+diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
+index badc2cbc895e..7bc71a06a657 100644
+--- a/fs/nilfs2/super.c
++++ b/fs/nilfs2/super.c
+@@ -89,7 +89,8 @@ static void nilfs_set_error(struct super_block *sb)
+ 	struct the_nilfs *nilfs = sb->s_fs_info;
+ 	struct nilfs_super_block **sbp;
+ 
+-	down_write(&nilfs->ns_sem);
++	if (!down_write_trylock(&nilfs->ns_sem))
++		return;
+ 	if (!(nilfs->ns_mount_state & NILFS_ERROR_FS)) {
+ 		nilfs->ns_mount_state |= NILFS_ERROR_FS;
+ 		sbp = nilfs_prepare_super(sb, 0);

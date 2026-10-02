@@ -1,0 +1,38 @@
+diff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c
+index 5e46f3764440..8c9448e444fd 100644
+--- a/net/bluetooth/mgmt.c
++++ b/net/bluetooth/mgmt.c
+@@ -5388,7 +5388,14 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,
+ {
+ 	struct mgmt_rp_remove_adv_monitor rp;
+ 	struct mgmt_pending_cmd *cmd = data;
+-	struct mgmt_cp_remove_adv_monitor *cp = cmd->param;
++	struct mgmt_cp_remove_adv_monitor *cp;
++
++	/* Make sure cmd still outstanding. */
++	if (status == -ECANCELED ||
++	    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))
++		return;
++
++	cp = cmd->param;
+ 
+ 	hci_dev_lock(hdev);
+ 
+@@ -5409,8 +5416,15 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,
+ static int mgmt_remove_adv_monitor_sync(struct hci_dev *hdev, void *data)
+ {
+ 	struct mgmt_pending_cmd *cmd = data;
+-	struct mgmt_cp_remove_adv_monitor *cp = cmd->param;
+-	u16 handle = __le16_to_cpu(cp->monitor_handle);
++	struct mgmt_cp_remove_adv_monitor *cp;
++	u16 handle;
++
++	/* Make sure cmd still outstanding. */
++	if (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))
++		return -ECANCELED;
++
++	cp = cmd->param;
++	handle = __le16_to_cpu(cp->monitor_handle);
+ 
+ 	if (!handle)
+ 		return hci_remove_all_adv_monitor(hdev);

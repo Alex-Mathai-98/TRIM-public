@@ -1,0 +1,27 @@
+diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c
+index 6673cbd8bdb9..ea3eb972f226 100644
+--- a/fs/bcachefs/opts.c
++++ b/fs/bcachefs/opts.c
+@@ -296,7 +296,8 @@ int bch2_opt_validate(const struct bch_option *opt, u64 v, struct printbuf *err)
+ 		return -BCH_ERR_ERANGE_option_too_small;
+ 	}
+ 
+-	if (opt->max && v >= opt->max) {
++	if (opt->max &&
++	    v >= opt->max - (opt->type == BCH_OPT_STR ? 1 : 0)) {
+ 		if (err)
+ 			prt_printf(err, "%s: too big (max %llu)",
+ 			       opt->attr.name, opt->max);
+@@ -646,7 +647,11 @@ int bch2_opts_from_sb(struct bch_opts *opts, struct bch_sb *sb)
+ 		if (opt->get_sb == BCH2_NO_SB_OPT)
+ 			continue;
+ 
+-		bch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));
++		u64 v = bch2_opt_from_sb(sb, id);
++		if (bch2_opt_validate(opt, v, NULL))
++			v = bch2_opt_get_by_id(&bch2_opts_default, id);
++
++		bch2_opt_set_by_id(opts, id, v);
+ 	}
+ 
+ 	return 0;

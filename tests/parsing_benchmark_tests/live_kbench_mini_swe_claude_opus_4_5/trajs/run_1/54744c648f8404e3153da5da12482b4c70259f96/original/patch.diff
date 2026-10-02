@@ -1,0 +1,27 @@
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index af87c781d6a6..ce4e67354e04 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -51,6 +51,7 @@
+ #include <net/inet_common.h>
+ #include <net/xfrm.h>
+ #include <net/protocol.h>
++#include <linux/skmsg.h>
+ #include <net/inet6_connection_sock.h>
+ #include <net/inet_ecn.h>
+ #include <net/ip6_route.h>
+@@ -1620,6 +1621,14 @@ static int l2tp_validate_socket(const struct sock *sk, const struct net *net,
+ 	    (encap == L2TP_ENCAPTYPE_IP && sk->sk_protocol != IPPROTO_L2TP))
+ 		return -EPROTONOSUPPORT;
+ 
++	/* Check if socket is already in use by sockmap */
++	rcu_read_lock();
++	if (sk_psock(sk)) {
++		rcu_read_unlock();
++		return -EBUSY;
++	}
++	rcu_read_unlock();
++
+ 	tunnel = l2tp_sk_to_tunnel(sk);
+ 	if (tunnel) {
+ 		l2tp_tunnel_put(tunnel);

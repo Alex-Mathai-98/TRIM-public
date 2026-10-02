@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct l2tp_session *session;\n\n\tspin_lock_bh(&tunnel->list_lock);\n\ttunnel->acpt_newsess = false;\n\twhile ((session = list_first_entry_or_null(&tunnel->session_list,\n\t\t\t\t\t\t   struct l2tp_session, list))) {\n\t\tlist_del_init(&session->list);\n\t\tspin_unlock_bh(&tunnel->list_lock);\n\t\tl2tp_session_delete(session);\n\t\tspin_lock_bh(&tunnel->list_lock);\n\t}\n\tspin_unlock_bh(&tunnel->list_lock);\n",
+          "before": "\tstruct l2tp_session *session;\n\tstruct list_head *pos;\n\tstruct list_head *tmp;\n\n\tspin_lock_bh(&tunnel->list_lock);\n\ttunnel->acpt_newsess = false;\n\tlist_for_each_safe(pos, tmp, &tunnel->session_list) {\n\t\tsession = list_entry(pos, struct l2tp_session, list);\n\t\tlist_del_init(&session->list);\n\t\tspin_unlock_bh(&tunnel->list_lock);\n\t\tl2tp_session_delete(session);\n\t\tspin_lock_bh(&tunnel->list_lock);\n\t}\n\tspin_unlock_bh(&tunnel->list_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c\nindex a99032076e04..bf51a03afc50 100644\n--- a/net/l2tp/l2tp_core.c\n+++ b/net/l2tp/l2tp_core.c\n@@ -1289,13 +1289,11 @@ static void l2tp_session_unhash(struct l2tp_session *session)\n static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)\n {\n \tstruct l2tp_session *session;\n-\tstruct list_head *pos;\n-\tstruct list_head *tmp;\n \n \tspin_lock_bh(&tunnel->list_lock);\n \ttunnel->acpt_newsess = false;\n-\tlist_for_each_safe(pos, tmp, &tunnel->session_list) {\n-\t\tsession = list_entry(pos, struct l2tp_session, list);\n+\twhile ((session = list_first_entry_or_null(&tunnel->session_list,\n+\t\t\t\t\t\t   struct l2tp_session, list))) {\n \t\tlist_del_init(&session->list);\n \t\tspin_unlock_bh(&tunnel->list_lock);\n \t\tl2tp_session_delete(session);",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "net/l2tp/l2tp_core.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    }
+  ],
+  "success_step": 19
+}

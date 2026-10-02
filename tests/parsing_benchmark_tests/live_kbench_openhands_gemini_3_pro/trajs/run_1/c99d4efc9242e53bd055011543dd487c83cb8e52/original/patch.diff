@@ -1,0 +1,35 @@
+diff --git a/drivers/iommu/iommufd/iova_bitmap.c b/drivers/iommu/iommufd/iova_bitmap.c
+index ab665cf38ef4..aaadc648974b 100644
+--- a/drivers/iommu/iommufd/iova_bitmap.c
++++ b/drivers/iommu/iommufd/iova_bitmap.c
+@@ -130,7 +130,7 @@ struct iova_bitmap {
+ static unsigned long iova_bitmap_offset_to_index(struct iova_bitmap *bitmap,
+ 						 unsigned long iova)
+ {
+-	unsigned long pgsize = 1 << bitmap->mapped.pgshift;
++	unsigned long pgsize = 1UL << bitmap->mapped.pgshift;
+ 
+ 	return iova / (BITS_PER_TYPE(*bitmap->bitmap) * pgsize);
+ }
+@@ -248,6 +248,9 @@ struct iova_bitmap *iova_bitmap_alloc(unsigned long iova, size_t length,
+ 	struct iova_bitmap *bitmap;
+ 	int rc;
+ 
++	if (!page_size || __ffs(page_size) >= BITS_PER_LONG - 3)
++		return ERR_PTR(-EINVAL);
++
+ 	bitmap = kzalloc(sizeof(*bitmap), GFP_KERNEL);
+ 	if (!bitmap)
+ 		return ERR_PTR(-ENOMEM);
+@@ -255,8 +258,9 @@ struct iova_bitmap *iova_bitmap_alloc(unsigned long iova, size_t length,
+ 	mapped = &bitmap->mapped;
+ 	mapped->pgshift = __ffs(page_size);
+ 	bitmap->bitmap = (u8 __user *)data;
+-	bitmap->mapped_total_index =
+-		iova_bitmap_offset_to_index(bitmap, length - 1) + 1;
++	if (length)
++		bitmap->mapped_total_index =
++			iova_bitmap_offset_to_index(bitmap, length - 1) + 1;
+ 	bitmap->iova = iova;
+ 	bitmap->length = length;
+ 	mapped->iova = iova;

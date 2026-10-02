@@ -1,0 +1,31 @@
+diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
+index 40b6bce12951..13c5d5ae1389 100644
+--- a/fs/ocfs2/aops.c
++++ b/fs/ocfs2/aops.c
+@@ -1007,6 +1007,7 @@ static int ocfs2_grab_folios_for_write(struct address_space *mapping,
+ 	unsigned long start, target_index, end_index, index;
+ 	struct inode *inode = mapping->host;
+ 	loff_t last_byte;
++	struct folio *folio;
+ 
+ 	target_index = user_pos >> PAGE_SHIFT;
+ 
+@@ -1065,14 +1066,15 @@ static int ocfs2_grab_folios_for_write(struct address_space *mapping,
+ 			wc->w_folios[i] = NULL;
+ 			continue;
+ 		} else {
+-			wc->w_folios[i] = __filemap_get_folio(mapping, index,
++			folio = __filemap_get_folio(mapping, index,
+ 					FGP_LOCK | FGP_ACCESSED | FGP_CREAT,
+ 					GFP_NOFS);
+-			if (IS_ERR(wc->w_folios[i])) {
+-				ret = PTR_ERR(wc->w_folios[i]);
++			if (IS_ERR(folio)) {
++				ret = PTR_ERR(folio);
+ 				mlog_errno(ret);
+ 				goto out;
+ 			}
++			wc->w_folios[i] = folio;
+ 		}
+ 		folio_wait_stable(wc->w_folios[i]);
+ 

@@ -1,0 +1,15 @@
+diff --git a/net/ipv6/ip6_offload.c b/net/ipv6/ip6_offload.c
+index 9822163428b0..b824f4248dfe 100644
+--- a/net/ipv6/ip6_offload.c
++++ b/net/ipv6/ip6_offload.c
+@@ -148,6 +148,10 @@ static struct sk_buff *ipv6_gso_segment(struct sk_buff *skb,
+ 
+ 	ops = rcu_dereference(inet6_offloads[proto]);
+ 	if (likely(ops && ops->callbacks.gso_segment)) {
++		if (unlikely(skb_headroom(skb) > 65535)) {
++			segs = ERR_PTR(-EINVAL);
++			goto out;
++		}
+ 		skb_reset_transport_header(skb);
+ 		segs = ops->callbacks.gso_segment(skb, features);
+ 		if (!segs)

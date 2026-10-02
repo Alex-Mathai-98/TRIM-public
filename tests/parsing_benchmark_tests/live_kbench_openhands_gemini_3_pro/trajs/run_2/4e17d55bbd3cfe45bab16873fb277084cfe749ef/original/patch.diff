@@ -1,0 +1,28 @@
+diff --git a/fs/udf/inode.c b/fs/udf/inode.c
+index f24aa98e6869..71fd8461209f 100644
+--- a/fs/udf/inode.c
++++ b/fs/udf/inode.c
+@@ -2184,9 +2184,10 @@ void udf_write_aext(struct inode *inode, struct extent_position *epos,
+ 		    UDF_SB(inode->i_sb)->s_udfrev >= 0x0201) {
+ 			struct allocExtDesc *aed =
+ 				(struct allocExtDesc *)epos->bh->b_data;
+-			udf_update_tag(epos->bh->b_data,
+-				       le32_to_cpu(aed->lengthAllocDescs) +
+-				       sizeof(struct allocExtDesc));
++				int len = le32_to_cpu(aed->lengthAllocDescs) +
++					  sizeof(struct allocExtDesc);
++				if (len <= epos->bh->b_size)
++					udf_update_tag(epos->bh->b_data, len);
+ 		}
+ 		mark_buffer_dirty_inode(epos->bh, inode);
+ 	} else {
+@@ -2270,7 +2271,8 @@ int udf_current_aext(struct inode *inode, struct extent_position *epos,
+ 			epos->offset = sizeof(struct allocExtDesc);
+ 		ptr = epos->bh->b_data + epos->offset;
+ 		if (check_add_overflow(sizeof(struct allocExtDesc),
+-				le32_to_cpu(header->lengthAllocDescs), &alen))
++				le32_to_cpu(header->lengthAllocDescs), &alen) ||
++		    alen > epos->bh->b_size)
+ 			return -1;
+ 	}
+ 

@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (test_bit(WDM_WWAN_IN_USE, &desc->flags)) {\n\t\trv = -EBUSY;\n\t\tgoto out;\n\t}\n\n\tget_device(&intf->dev);\n\tmutex_unlock(&wdm_mutex);\n\trv = usb_autopm_get_interface(intf);\n\tmutex_lock(&wdm_mutex);\n\n\tdesc = wdm_find_device_by_minor(minor);\n\tif (!desc || desc->intf != intf ||\n\t    test_bit(WDM_DISCONNECTING, &desc->flags)) {\n\t\tif (!rv)\n\t\t\tusb_autopm_put_interface(intf);\n\t\tput_device(&intf->dev);\n\t\tmutex_unlock(&wdm_mutex);\n\t\treturn -ENODEV;\n\t}\n\n\tfile->private_data = desc;\n\n\tif (rv < 0) {\n\t\tput_device(&intf->dev);\n\t\tdev_err(&desc->intf->dev, \"Error autopm - %d\\n\", rv);\n\t\tgoto out;\n\t}\n\n\t/* using write lock to protect desc->count */\n\tmutex_lock(&desc->wlock);\n\tif (!desc->count++) {\n\t\tdesc->werr = 0;\n\t\tdesc->rerr = 0;\n\t\trv = usb_submit_urb(desc->validity, GFP_KERNEL);\n\t\tif (rv < 0) {\n\t\t\tdesc->count--;\n\t\t\tdev_err(&desc->intf->dev,\n\t\t\t\t\"Error submitting int urb - %d\\n\", rv);\n\t\t\trv = usb_translate_errors(rv);\n\t\t}\n\t} else {\n\t\trv = 0;\n\t}\n\tmutex_unlock(&desc->wlock);\n\tif (desc->count == 1 && desc->manage_power)\n\t\tdesc->manage_power(intf, 1);\n\tput_device(&intf->dev);\n\tusb_autopm_put_interface(desc->intf);",
+          "before": "\tfile->private_data = desc;\n\n\tif (test_bit(WDM_WWAN_IN_USE, &desc->flags)) {\n\t\trv = -EBUSY;\n\t\tgoto out;\n\t}\n\n\trv = usb_autopm_get_interface(desc->intf);\n\tif (rv < 0) {\n\t\tdev_err(&desc->intf->dev, \"Error autopm - %d\\n\", rv);\n\t\tgoto out;\n\t}\n\n\t/* using write lock to protect desc->count */\n\tmutex_lock(&desc->wlock);\n\tif (!desc->count++) {\n\t\tdesc->werr = 0;\n\t\tdesc->rerr = 0;\n\t\trv = usb_submit_urb(desc->validity, GFP_KERNEL);\n\t\tif (rv < 0) {\n\t\t\tdesc->count--;\n\t\t\tdev_err(&desc->intf->dev,\n\t\t\t\t\"Error submitting int urb - %d\\n\", rv);\n\t\t\trv = usb_translate_errors(rv);\n\t\t}\n\t} else {\n\t\trv = 0;\n\t}\n\tmutex_unlock(&desc->wlock);\n\tif (desc->count == 1)\n\t\tdesc->manage_power(intf, 1);\n\tusb_autopm_put_interface(desc->intf);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/usb/class/cdc-wdm.c b/drivers/usb/class/cdc-wdm.c\nindex 86ee39db013f..6155d96216b1 100644\n--- a/drivers/usb/class/cdc-wdm.c\n+++ b/drivers/usb/class/cdc-wdm.c\n@@ -720,15 +720,30 @@ static int wdm_open(struct inode *inode, struct file *file)\n \tintf = desc->intf;\n \tif (test_bit(WDM_DISCONNECTING, &desc->flags))\n \t\tgoto out;\n-\tfile->private_data = desc;\n-\n \tif (test_bit(WDM_WWAN_IN_USE, &desc->flags)) {\n \t\trv = -EBUSY;\n \t\tgoto out;\n \t}\n \n-\trv = usb_autopm_get_interface(desc->intf);\n+\tget_device(&intf->dev);\n+\tmutex_unlock(&wdm_mutex);\n+\trv = usb_autopm_get_interface(intf);\n+\tmutex_lock(&wdm_mutex);\n+\n+\tdesc = wdm_find_device_by_minor(minor);\n+\tif (!desc || desc->intf != intf ||\n+\t    test_bit(WDM_DISCONNECTING, &desc->flags)) {\n+\t\tif (!rv)\n+\t\t\tusb_autopm_put_interface(intf);\n+\t\tput_device(&intf->dev);\n+\t\tmutex_unlock(&wdm_mutex);\n+\t\treturn -ENODEV;\n+\t}\n+\n+\tfile->private_data = desc;\n+\n \tif (rv < 0) {\n+\t\tput_device(&intf->dev);\n \t\tdev_err(&desc->intf->dev, \"Error autopm - %d\\n\", rv);\n \t\tgoto out;\n \t}\n@@ -749,8 +764,9 @@ static int wdm_open(struct inode *inode, struct file *file)\n \t\trv = 0;\n \t}\n \tmutex_unlock(&desc->wlock);\n-\tif (desc->count == 1)\n+\tif (desc->count == 1 && desc->manage_power)\n \t\tdesc->manage_power(intf, 1);\n+\tput_device(&intf->dev);\n \tusb_autopm_put_interface(desc->intf);\n out:\n \tmutex_unlock(&wdm_mutex);",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "drivers/usb/class/cdc-wdm.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "\t.supports_autosuspend = 0,",
+          "before": "\t.supports_autosuspend = 1,",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/usb/class/cdc-wdm.c b/drivers/usb/class/cdc-wdm.c\nindex 86ee39db013f..aabbe76b8513 100644\n--- a/drivers/usb/class/cdc-wdm.c\n+++ b/drivers/usb/class/cdc-wdm.c\n@@ -720,15 +720,30 @@ static int wdm_open(struct inode *inode, struct file *file)\n \tintf = desc->intf;\n \tif (test_bit(WDM_DISCONNECTING, &desc->flags))\n \t\tgoto out;\n-\tfile->private_data = desc;\n-\n \tif (test_bit(WDM_WWAN_IN_USE, &desc->flags)) {\n \t\trv = -EBUSY;\n \t\tgoto out;\n \t}\n \n-\trv = usb_autopm_get_interface(desc->intf);\n+\tget_device(&intf->dev);\n+\tmutex_unlock(&wdm_mutex);\n+\trv = usb_autopm_get_interface(intf);\n+\tmutex_lock(&wdm_mutex);\n+\n+\tdesc = wdm_find_device_by_minor(minor);\n+\tif (!desc || desc->intf != intf ||\n+\t    test_bit(WDM_DISCONNECTING, &desc->flags)) {\n+\t\tif (!rv)\n+\t\t\tusb_autopm_put_interface(intf);\n+\t\tput_device(&intf->dev);\n+\t\tmutex_unlock(&wdm_mutex);\n+\t\treturn -ENODEV;\n+\t}\n+\n+\tfile->private_data = desc;\n+\n \tif (rv < 0) {\n+\t\tput_device(&intf->dev);\n \t\tdev_err(&desc->intf->dev, \"Error autopm - %d\\n\", rv);\n \t\tgoto out;\n \t}\n@@ -749,8 +764,9 @@ static int wdm_open(struct inode *inode, struct file *file)\n \t\trv = 0;\n \t}\n \tmutex_unlock(&desc->wlock);\n-\tif (desc->count == 1)\n+\tif (desc->count == 1 && desc->manage_power)\n \t\tdesc->manage_power(intf, 1);\n+\tput_device(&intf->dev);\n \tusb_autopm_put_interface(desc->intf);\n out:\n \tmutex_unlock(&wdm_mutex);\n@@ -1361,7 +1377,7 @@ static struct usb_driver wdm_driver = {\n \t.pre_reset =\twdm_pre_reset,\n \t.post_reset =\twdm_post_reset,\n \t.id_table =\twdm_ids,\n-\t.supports_autosuspend = 1,\n+\t.supports_autosuspend = 0,\n \t.disable_hub_initiated_lpm = 1,\n };",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "drivers/usb/class/cdc-wdm.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 1,
+      "start_step": 25
+    }
+  ],
+  "success_step": 25
+}

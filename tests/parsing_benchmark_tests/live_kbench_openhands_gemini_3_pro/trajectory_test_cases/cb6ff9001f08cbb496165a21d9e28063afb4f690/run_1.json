@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\troot = kernfs_root(kn);\n\tdown_read(&root->kernfs_rwsem);\n\n\tknparent = find_next_ancestor(kn, NULL);\n\tif (!knparent) {\n\t\tdput(dentry);\n\t\tup_read(&root->kernfs_rwsem);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\n\tdo {\n\t\tstruct dentry *dtmp;\n\t\tstruct kernfs_node *kntmp;\n\t\tchar name[NAME_MAX + 1];\n\t\tint len;\n\n\t\tif (kn == knparent) {\n\t\t\tup_read(&root->kernfs_rwsem);\n\t\t\treturn dentry;\n\t\t}\n\t\tkntmp = find_next_ancestor(kn, knparent);\n\t\tif (!kntmp) {\n\t\t\tdput(dentry);\n\t\t\tup_read(&root->kernfs_rwsem);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\t\tlen = kernfs_name(kntmp, name, sizeof(name));\n\t\tup_read(&root->kernfs_rwsem);\n\t\tif (len < 0) {\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(len);\n\t\t}\n\t\tdtmp = lookup_positive_unlocked(name, dentry, len);\n\t\tdput(dentry);\n\t\tif (IS_ERR(dtmp))\n\t\t\treturn dtmp;\n\t\tdown_read(&root->kernfs_rwsem);\n\t\tknparent = kntmp;\n\t\tdentry = dtmp;\n\t} while (true);\n}",
+          "before": "\troot = kernfs_root(kn);\n\tguard(rwsem_read)(&root->kernfs_rwsem);\n\n\tknparent = find_next_ancestor(kn, NULL);\n\tif (WARN_ON(!knparent)) {\n\t\tdput(dentry);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\n\tdo {\n\t\tstruct dentry *dtmp;\n\t\tstruct kernfs_node *kntmp;\n\t\tconst char *name;\n\n\t\tif (kn == knparent)\n\t\t\treturn dentry;\n\t\tkntmp = find_next_ancestor(kn, knparent);\n\t\tif (WARN_ON(!kntmp)) {\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\t\tname = rcu_dereference(kntmp->name);\n\t\tdtmp = lookup_positive_unlocked(name, dentry, strlen(name));\n\t\tdput(dentry);\n\t\tif (IS_ERR(dtmp))\n\t\t\treturn dtmp;\n\t\tknparent = kntmp;\n\t\tdentry = dtmp;\n\t} while (true);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/kernfs/mount.c\n+++ /linux/fs/kernfs/mount.c\n@@ -223 +223 @@\n-\tguard(rwsem_read)(&root->kernfs_rwsem);\n+\tdown_read(&root->kernfs_rwsem);\n@@ -226 +226 @@\n-\tif (WARN_ON(!knparent)) {\n+\tif (!knparent) {\n@@ -227,0 +228 @@\n+\t\tup_read(&root->kernfs_rwsem);\n@@ -234,3 +235,5 @@\n-\t\tconst char *name;\n-\n-\t\tif (kn == knparent)\n+\t\tchar name[NAME_MAX + 1];\n+\t\tint len;\n+\n+\t\tif (kn == knparent) {\n+\t\t\tup_read(&root->kernfs_rwsem);\n@@ -237,0 +241 @@\n+\t\t}\n@@ -239 +243 @@\n-\t\tif (WARN_ON(!kntmp)) {\n+\t\tif (!kntmp) {\n@@ -240,0 +245 @@\n+\t\t\tup_read(&root->kernfs_rwsem);\n@@ -243,2 +248,7 @@\n-\t\tname = rcu_dereference(kntmp->name);\n-\t\tdtmp = lookup_positive_unlocked(name, dentry, strlen(name));\n+\t\tlen = kernfs_name(kntmp, name, sizeof(name));\n+\t\tup_read(&root->kernfs_rwsem);\n+\t\tif (len < 0) {\n+\t\t\tdput(dentry);\n+\t\t\treturn ERR_PTR(len);\n+\t\t}\n+\t\tdtmp = lookup_positive_unlocked(name, dentry, len);\n@@ -247,0 +258 @@\n+\t\tdown_read(&root->kernfs_rwsem);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 70",
+          "filename": "fs/kernfs/mount.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        }
+      ],
+      "end_step": 70,
+      "revision_index": 0,
+      "start_step": 70
+    }
+  ],
+  "success_step": 70
+}

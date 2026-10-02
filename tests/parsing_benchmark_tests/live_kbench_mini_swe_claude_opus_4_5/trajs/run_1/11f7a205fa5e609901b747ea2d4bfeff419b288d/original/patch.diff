@@ -1,0 +1,53 @@
+diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
+index e2e34a49e98d..ca0ab5a2eec0 100644
+--- a/net/packet/af_packet.c
++++ b/net/packet/af_packet.c
+@@ -568,20 +568,39 @@ static u16 vlan_get_tci(const struct sk_buff *skb, struct net_device *dev)
+ 	return ntohs(vh->h_vlan_TCI);
+ }
+ 
+-static __be16 vlan_get_protocol_dgram(struct sk_buff *skb)
++static __be16 vlan_get_protocol_dgram(const struct sk_buff *skb)
+ {
+ 	__be16 proto = skb->protocol;
+ 
+ 	if (unlikely(eth_type_vlan(proto))) {
+-		u8 *skb_orig_data = skb->data;
+-		int skb_orig_len = skb->len;
+-
+-		skb_push(skb, skb->data - skb_mac_header(skb));
+-		proto = __vlan_get_protocol(skb, proto, NULL);
+-		if (skb_orig_data != skb->data) {
+-			skb->data = skb_orig_data;
+-			skb->len = skb_orig_len;
++		int mac_offset = skb_mac_offset(skb);
++		unsigned int vlan_depth = skb->mac_len;
++		unsigned int parse_depth = VLAN_MAX_DEPTH;
++
++		/* Only adjust for SOCK_DGRAM where data points past MAC header */
++		if (!skb_mac_header_was_set(skb) || mac_offset >= 0)
++			return proto;
++
++		if (vlan_depth) {
++			if (vlan_depth < VLAN_HLEN)
++				return 0;
++			vlan_depth -= VLAN_HLEN;
++		} else {
++			vlan_depth = ETH_HLEN;
+ 		}
++
++		/* Adjust vlan_depth by mac_offset to account for data pointer position */
++		do {
++			struct vlan_hdr vhdr, *vh;
++
++			vh = skb_header_pointer(skb, mac_offset + vlan_depth,
++						sizeof(vhdr), &vhdr);
++			if (unlikely(!vh || !--parse_depth))
++				return proto;
++
++			proto = vh->h_vlan_encapsulated_proto;
++			vlan_depth += VLAN_HLEN;
++		} while (eth_type_vlan(proto));
+ 	}
+ 
+ 	return proto;

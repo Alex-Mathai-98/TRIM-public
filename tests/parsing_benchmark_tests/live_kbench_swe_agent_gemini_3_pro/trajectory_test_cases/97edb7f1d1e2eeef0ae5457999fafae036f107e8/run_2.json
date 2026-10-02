@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tint (*store_limit)(struct gendisk *disk, const char *page,\n\t\t\tsize_t count, struct queue_limits *lim);\n\tvoid (*load_module)(struct gendisk *disk, const char *page, size_t count);\n\tbool no_freeze;\n};\n",
+          "before": "\tint (*store_limit)(struct gendisk *disk, const char *page,\n\t\t\tsize_t count, struct queue_limits *lim);\n\tvoid (*load_module)(struct gendisk *disk, const char *page, size_t count);\n};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c\nindex 6f548a4376aa..d9d9eb01522e 100644\n--- a/block/blk-sysfs.c\n+++ b/block/blk-sysfs.c\n@@ -27,6 +27,7 @@ struct queue_sysfs_entry {\n \tint (*store_limit)(struct gendisk *disk, const char *page,\n \t\t\tsize_t count, struct queue_limits *lim);\n \tvoid (*load_module)(struct gendisk *disk, const char *page, size_t count);\n+\tbool no_freeze;\n };\n \n static ssize_t",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "block/blk-sysfs.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\tmutex_lock(&q->sysfs_lock);\n\tif (entry->no_freeze) {\n\t\tres = entry->store(disk, page, length);\n\t} else {\n\t\tmemflags = blk_mq_freeze_queue(q);\n\t\tres = entry->store(disk, page, length);\n\t\tblk_mq_unfreeze_queue(q, memflags);\n\t}\n\tmutex_unlock(&q->sysfs_lock);\n",
+          "before": "\tmutex_lock(&q->sysfs_lock);\n\tmemflags = blk_mq_freeze_queue(q);\n\tres = entry->store(disk, page, length);\n\tblk_mq_unfreeze_queue(q, memflags);\n\tmutex_unlock(&q->sysfs_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c\nindex 6f548a4376aa..d30fb78463bb 100644\n--- a/block/blk-sysfs.c\n+++ b/block/blk-sysfs.c\n@@ -27,6 +27,7 @@ struct queue_sysfs_entry {\n \tint (*store_limit)(struct gendisk *disk, const char *page,\n \t\t\tsize_t count, struct queue_limits *lim);\n \tvoid (*load_module)(struct gendisk *disk, const char *page, size_t count);\n+\tbool no_freeze;\n };\n \n static ssize_t\n@@ -711,9 +712,13 @@ queue_attr_store(struct kobject *kobj, struct attribute *attr,\n \t}\n \n \tmutex_lock(&q->sysfs_lock);\n-\tmemflags = blk_mq_freeze_queue(q);\n-\tres = entry->store(disk, page, length);\n-\tblk_mq_unfreeze_queue(q, memflags);\n+\tif (entry->no_freeze) {\n+\t\tres = entry->store(disk, page, length);\n+\t} else {\n+\t\tmemflags = blk_mq_freeze_queue(q);\n+\t\tres = entry->store(disk, page, length);\n+\t\tblk_mq_unfreeze_queue(q, memflags);\n+\t}\n \tmutex_unlock(&q->sysfs_lock);\n \treturn res;\n }",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "block/blk-sysfs.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "static struct queue_sysfs_entry queue_wb_lat_entry = {\n\t.attr = { .name = \"wbt_lat_usec\", .mode = 0644 },\n\t.show = queue_wb_lat_show,\n\t.store = queue_wb_lat_store,\n\t.no_freeze = true,\n};\n",
+          "before": "QUEUE_RW_ENTRY(queue_wb_lat, \"wbt_lat_usec\");\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/block/blk-sysfs.c b/block/blk-sysfs.c\nindex 6f548a4376aa..e69ecd91b04f 100644\n--- a/block/blk-sysfs.c\n+++ b/block/blk-sysfs.c\n@@ -27,6 +27,7 @@ struct queue_sysfs_entry {\n \tint (*store_limit)(struct gendisk *disk, const char *page,\n \t\t\tsize_t count, struct queue_limits *lim);\n \tvoid (*load_module)(struct gendisk *disk, const char *page, size_t count);\n+\tbool no_freeze;\n };\n \n static ssize_t\n@@ -556,7 +557,12 @@ static ssize_t queue_wb_lat_store(struct gendisk *disk, const char *page,\n \treturn count;\n }\n \n-QUEUE_RW_ENTRY(queue_wb_lat, \"wbt_lat_usec\");\n+static struct queue_sysfs_entry queue_wb_lat_entry = {\n+\t.attr = { .name = \"wbt_lat_usec\", .mode = 0644 },\n+\t.show = queue_wb_lat_show,\n+\t.store = queue_wb_lat_store,\n+\t.no_freeze = true,\n+};\n #endif\n \n /* Common attributes for bio-based and request-based queues. */\n@@ -711,9 +717,13 @@ queue_attr_store(struct kobject *kobj, struct attribute *attr,\n \t}\n \n \tmutex_lock(&q->sysfs_lock);\n-\tmemflags = blk_mq_freeze_queue(q);\n-\tres = entry->store(disk, page, length);\n-\tblk_mq_unfreeze_queue(q, memflags);\n+\tif (entry->no_freeze) {\n+\t\tres = entry->store(disk, page, length);\n+\t} else {\n+\t\tmemflags = blk_mq_freeze_queue(q);\n+\t\tres = entry->store(disk, page, length);\n+\t\tblk_mq_unfreeze_queue(q, memflags);\n+\t}\n \tmutex_unlock(&q->sysfs_lock);\n \treturn res;\n }",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "block/blk-sysfs.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 0,
+      "start_step": 27
+    }
+  ],
+  "success_step": 31
+}

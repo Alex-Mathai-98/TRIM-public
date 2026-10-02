@@ -1,0 +1,369 @@
+{
+  "bug_id": "sympy__sympy-13091",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/core/basic.py",
+        "before": "            try:\n                other = _sympify(other)\n            except SympifyError:\n                return False    # sympy != other",
+        "after": "            try:\n                other = _sympify(other)\n            except SympifyError:\n                return NotImplemented    # sympy != other",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "            return bool(mlib.mpf_eq(self._mpf_, ompf))\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return False    # sympy != other  -->  not ==",
+        "after": "            return bool(mlib.mpf_eq(self._mpf_, ompf))\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented    # sympy != other  -->  not ==",
+        "explanation": "classic_swe step 33 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "    def ceiling(self):\n        return -Integer(-self.p // self.q)\n\n    def __eq__(self, other):\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return False    # sympy != other  -->  not ==",
+        "after": "    def ceiling(self):\n        return -Integer(-self.p // self.q)\n\n    def __eq__(self, other):\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented    # sympy != other  -->  not ==",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/function.py",
+        "before": "    def __eq__(self, other):\n        if not isinstance(other, Lambda):\n            return False",
+        "after": "    def __eq__(self, other):\n        if not isinstance(other, Lambda):\n            return NotImplemented",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/function.py",
+        "before": "    def __eq__(self, other):\n        if not isinstance(other, Subs):\n            return False",
+        "after": "    def __eq__(self, other):\n        if not isinstance(other, Subs):\n            return NotImplemented",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/basic.py",
+        "before": "    def __ne__(self, other):\n        \"\"\"a != b  -> Compare two symbolic trees and see whether they are different\n\n           this is the same as:\n\n             a.compare(b) != 0\n\n           but faster\n        \"\"\"\n        return not self.__eq__(other)",
+        "after": "    def __ne__(self, other):\n        \"\"\"a != b  -> Compare two symbolic trees and see whether they are different\n\n           this is the same as:\n\n             a.compare(b) != 0\n\n           but faster\n        \"\"\"\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+        "explanation": "classic_swe step 51 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "        return False    # Float != non-Number\n\n    def __ne__(self, other):\n        return not self.__eq__(other)",
+        "after": "        return False    # Float != non-Number\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+        "explanation": "classic_swe step 70 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "        return False\n\n    def __ne__(self, other):\n        return not self.__eq__(other)",
+        "after": "        return False\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+        "explanation": "classic_swe step 72 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "    def __ne__(self, other):\n        return not self.__eq__(other)\n\n    def __gt__(self, other):",
+        "after": "    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result\n\n    def __gt__(self, other):",
+        "explanation": "classic_swe step 75 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/core/basic.py b/sympy/core/basic.py\nindex db4e971848..1fcb67d29f 100644\n--- a/sympy/core/basic.py\n+++ b/sympy/core/basic.py\n@@ -313,7 +313,7 @@ def __eq__(self, other):\n             try:\n                 other = _sympify(other)\n             except SympifyError:\n-                return False    # sympy != other\n+                return NotImplemented    # sympy != other\n \n             if type(self) != type(other):\n                 return False\n@@ -329,7 +329,10 @@ def __ne__(self, other):\n \n            but faster\n         \"\"\"\n-        return not self.__eq__(other)\n+        result = self.__eq__(other)\n+        if result is NotImplemented:\n+            return NotImplemented\n+        return not result\n \n     def dummy_eq(self, other, symbol=None):\n         \"\"\"\ndiff --git a/sympy/core/function.py b/sympy/core/function.py\nindex 75dd9ec150..670f527d57 100644\n--- a/sympy/core/function.py\n+++ b/sympy/core/function.py\n@@ -1596,7 +1596,7 @@ def __call__(self, *args):\n \n     def __eq__(self, other):\n         if not isinstance(other, Lambda):\n-            return False\n+            return NotImplemented\n         if self.nargs != other.nargs:\n             return False\n \n@@ -1756,7 +1756,7 @@ def _has(self, pattern):\n \n     def __eq__(self, other):\n         if not isinstance(other, Subs):\n-            return False\n+            return NotImplemented\n         return self._expr == other._expr\n \n     def __ne__(self, other):\ndiff --git a/sympy/core/numbers.py b/sympy/core/numbers.py\nindex 864d055087..50ea12fff0 100644\n--- a/sympy/core/numbers.py\n+++ b/sympy/core/numbers.py\n@@ -1258,7 +1258,7 @@ def __eq__(self, other):\n         try:\n             other = _sympify(other)\n         except SympifyError:\n-            return False    # sympy != other  -->  not ==\n+            return NotImplemented    # sympy != other  -->  not ==\n         if isinstance(other, NumberSymbol):\n             if other.is_irrational:\n                 return False\n@@ -1276,7 +1276,10 @@ def __eq__(self, other):\n         return False    # Float != non-Number\n \n     def __ne__(self, other):\n-        return not self.__eq__(other)\n+        result = self.__eq__(other)\n+        if result is NotImplemented:\n+            return NotImplemented\n+        return not result\n \n     def __gt__(self, other):\n         try:\n@@ -1719,7 +1722,7 @@ def __eq__(self, other):\n         try:\n             other = _sympify(other)\n         except SympifyError:\n-            return False    # sympy != other  -->  not ==\n+            return NotImplemented    # sympy != other  -->  not ==\n         if isinstance(other, NumberSymbol):\n             if other.is_irrational:\n                 return False\n@@ -1734,7 +1737,10 @@ def __eq__(self, other):\n         return False\n \n     def __ne__(self, other):\n-        return not self.__eq__(other)\n+        result = self.__eq__(other)\n+        if result is NotImplemented:\n+            return NotImplemented\n+        return not result\n \n     def __gt__(self, other):\n         try:\n@@ -2112,7 +2118,10 @@ def __eq__(self, other):\n         return Rational.__eq__(self, other)\n \n     def __ne__(self, other):\n-        return not self.__eq__(other)\n+        result = self.__eq__(other)\n+        if result is NotImplemented:\n+            return NotImplemented\n+        return not result\n \n     def __gt__(self, other):\n         try:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 3,
+    "edit_list_after_file_min": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_no_crash": 4,
+    "greedy_removal_edit_still_crashes": 15,
+    "edit_list_after_greedy": [
+      3,
+      4,
+      5,
+      7,
+      8,
+      10,
+      13,
+      14,
+      15
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      3,
+      4,
+      5,
+      7,
+      8,
+      10,
+      13,
+      14,
+      15
+    ],
+    "edits_after_node_min": 13,
+    "edits_after_file_min": 13,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 13,
+  "minimized_edit_count": 9,
+  "reduction": "13_to_9",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/basic.py",
+          "before": "            try:\n                other = _sympify(other)\n            except SympifyError:\n                return False    # sympy != other",
+          "after": "            try:\n                other = _sympify(other)\n            except SympifyError:\n                return NotImplemented    # sympy != other",
+          "explanation": "classic_swe step 20 #1"
+        },
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "            return bool(mlib.mpf_eq(self._mpf_, ompf))\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return False    # sympy != other  -->  not ==",
+          "after": "            return bool(mlib.mpf_eq(self._mpf_, ompf))\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented    # sympy != other  -->  not ==",
+          "explanation": "classic_swe step 33 #1"
+        },
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "    def ceiling(self):\n        return -Integer(-self.p // self.q)\n\n    def __eq__(self, other):\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return False    # sympy != other  -->  not ==",
+          "after": "    def ceiling(self):\n        return -Integer(-self.p // self.q)\n\n    def __eq__(self, other):\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented    # sympy != other  -->  not ==",
+          "explanation": "classic_swe step 37 #1"
+        },
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "    def __eq__(self, other):\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return False    # sympy != other  -->  not ==",
+          "after": "    def __eq__(self, other):\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented    # sympy != other  -->  not ==",
+          "explanation": "classic_swe step 39 #1"
+        },
+        {
+          "filename": "sympy/core/function.py",
+          "before": "    def __eq__(self, other):\n        if not isinstance(other, Lambda):\n            return False",
+          "after": "    def __eq__(self, other):\n        if not isinstance(other, Lambda):\n            return NotImplemented",
+          "explanation": "classic_swe step 41 #1"
+        },
+        {
+          "filename": "sympy/core/function.py",
+          "before": "    def __eq__(self, other):\n        if not isinstance(other, Subs):\n            return False",
+          "after": "    def __eq__(self, other):\n        if not isinstance(other, Subs):\n            return NotImplemented",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/basic.py",
+          "before": "    def __ne__(self, other):\n        \"\"\"a != b  -> Compare two symbolic trees and see whether they are different\n\n           this is the same as:\n\n             a.compare(b) != 0\n\n           but faster\n        \"\"\"\n        return not self.__eq__(other)",
+          "after": "    def __ne__(self, other):\n        \"\"\"a != b  -> Compare two symbolic trees and see whether they are different\n\n           this is the same as:\n\n             a.compare(b) != 0\n\n           but faster\n        \"\"\"\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+          "explanation": "classic_swe step 51 #1"
+        },
+        {
+          "filename": "sympy/core/function.py",
+          "before": "        return selfexpr == otherexpr\n\n    def __ne__(self, other):\n        return not(self == other)",
+          "after": "        return selfexpr == otherexpr\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+          "explanation": "classic_swe step 58 #1"
+        },
+        {
+          "filename": "sympy/core/function.py",
+          "before": "        return self._expr == other._expr\n\n    def __ne__(self, other):\n        return not(self == other)",
+          "after": "        return self._expr == other._expr\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+          "explanation": "classic_swe step 60 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "        return False    # Float != non-Number\n\n    def __ne__(self, other):\n        return not self.__eq__(other)",
+          "after": "        return False    # Float != non-Number\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+          "explanation": "classic_swe step 70 #1"
+        },
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "        return False\n\n    def __ne__(self, other):\n        return not self.__eq__(other)",
+          "after": "        return False\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+          "explanation": "classic_swe step 72 #1"
+        },
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "    def __ne__(self, other):\n        return not self.__eq__(other)\n\n    def __gt__(self, other):",
+          "after": "    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result\n\n    def __gt__(self, other):",
+          "explanation": "classic_swe step 75 #1"
+        },
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "        return False    # NumberSymbol != non-(Number|self)\n\n    def __ne__(self, other):\n        return not self.__eq__(other)",
+          "after": "        return False    # NumberSymbol != non-(Number|self)\n\n    def __ne__(self, other):\n        result = self.__eq__(other)\n        if result is NotImplemented:\n            return NotImplemented\n        return not result",
+          "explanation": "classic_swe step 80 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 89,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 89,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "sympy/core/basic.py",
+      "sympy/core/numbers.py"
+    ],
+    "extra_files_in_minimized": [
+      "sympy/core/function.py"
+    ],
+    "missing_files_vs_gold": [
+      "sympy/core/exprtools.py",
+      "sympy/geometry/entity.py",
+      "sympy/physics/optics/medium.py",
+      "sympy/physics/vector/dyadic.py",
+      "sympy/physics/vector/frame.py",
+      "sympy/physics/vector/vector.py",
+      "sympy/polys/agca/modules.py",
+      "sympy/polys/domains/domain.py",
+      "sympy/polys/domains/expressiondomain.py",
+      "sympy/polys/domains/pythonrational.py",
+      "sympy/polys/domains/quotientring.py",
+      "sympy/polys/fields.py",
+      "sympy/polys/monomials.py",
+      "sympy/polys/polyclasses.py",
+      "sympy/polys/polytools.py",
+      "sympy/polys/rings.py",
+      "sympy/polys/rootoftools.py",
+      "sympy/tensor/array/ndim_array.py",
+      "sympy/utilities/enumerative.py"
+    ],
+    "minimized_files": [
+      "sympy/core/basic.py",
+      "sympy/core/function.py",
+      "sympy/core/numbers.py"
+    ],
+    "gold_files": [
+      "sympy/core/basic.py",
+      "sympy/core/exprtools.py",
+      "sympy/core/numbers.py",
+      "sympy/geometry/entity.py",
+      "sympy/physics/optics/medium.py",
+      "sympy/physics/vector/dyadic.py",
+      "sympy/physics/vector/frame.py",
+      "sympy/physics/vector/vector.py",
+      "sympy/polys/agca/modules.py",
+      "sympy/polys/domains/domain.py",
+      "sympy/polys/domains/expressiondomain.py",
+      "sympy/polys/domains/pythonrational.py",
+      "sympy/polys/domains/quotientring.py",
+      "sympy/polys/fields.py",
+      "sympy/polys/monomials.py",
+      "sympy/polys/polyclasses.py",
+      "sympy/polys/polytools.py",
+      "sympy/polys/rings.py",
+      "sympy/polys/rootoftools.py",
+      "sympy/tensor/array/ndim_array.py",
+      "sympy/utilities/enumerative.py"
+    ],
+    "minimized_hunks": 9,
+    "gold_hunks": 45,
+    "minimized_added_lines": 21,
+    "minimized_deleted_lines": 9,
+    "gold_added_lines": 56,
+    "gold_deleted_lines": 56
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

@@ -1,0 +1,277 @@
+{
+  "bug_id": "django__django-15554",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/datastructures.py",
+        "before": "    def equals(self, other):\n        # Ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]",
+        "after": "    def equals(self, other):\n        return self.identity == other.identity",
+        "explanation": "classic_swe step 36 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        # Create a new alias for this table.\n        if alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = (\n                filtered_relation.alias if filtered_relation is not None else table_name\n            )\n            self.table_map[table_name] = [alias]",
+        "after": "        # Create a new alias for this table.\n        if filtered_relation is not None:\n            # Use the filtered relation's alias\n            alias = filtered_relation.alias\n            if alias_list:\n                alias_list.append(alias)\n            else:\n                self.table_map[table_name] = [alias]\n        elif alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = table_name\n            self.table_map[table_name] = [alias]",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/datastructures.py",
+        "before": "    def equals(self, other):\n        return self.identity == other.identity\n\n    def demote(self):",
+        "after": "    def equals(self, other):\n        # Ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]\n\n    def demote(self):",
+        "explanation": "classic_swe step 51 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        # Create a new alias for this table.\n        if filtered_relation is not None:\n            # Use the filtered relation's alias\n            alias = filtered_relation.alias\n            if alias_list:\n                alias_list.append(alias)\n            else:\n                self.table_map[table_name] = [alias]\n        elif alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = table_name\n            self.table_map[table_name] = [alias]",
+        "after": "        # Create a new alias for this table.\n        if alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = (\n                filtered_relation.alias if filtered_relation is not None else table_name\n            )\n            self.table_map[table_name] = [alias]",
+        "explanation": "classic_swe step 52 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/datastructures.py",
+        "before": "    def equals(self, other):\n        # Ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]",
+        "after": "    def equals(self, other):\n        # If both joins have filtered_relation, include it in equality check.\n        # This ensures that multiple FilteredRelation objects with different\n        # conditions but same relation don't get reused.\n        if self.filtered_relation is not None and other.filtered_relation is not None:\n            return self.identity == other.identity\n        # Otherwise, ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]",
+        "explanation": "classic_swe step 54 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        # Create a new alias for this table.\n        if alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = (\n                filtered_relation.alias if filtered_relation is not None else table_name\n            )\n            self.table_map[table_name] = [alias]",
+        "after": "        # Create a new alias for this table.\n        if filtered_relation is not None:\n            # Always use the filtered relation's alias when provided\n            alias = filtered_relation.alias\n            if alias_list:\n                alias_list.append(alias)\n            else:\n                self.table_map[table_name] = [alias]\n        elif alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = table_name\n            self.table_map[table_name] = [alias]",
+        "explanation": "classic_swe step 56 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/filtered_relation/tests.py",
+        "before": "    def test_without_join(self):\n        self.assertSequenceEqual(\n            Author.objects.annotate(\n                book_alice=FilteredRelation(\n                    \"book\", condition=Q(book__title__iexact=\"poem by alice\")\n                ),\n            ),\n            [self.author1, self.author2],\n        )",
+        "after": "    def test_without_join(self):\n        self.assertSequenceEqual(\n            Author.objects.annotate(\n                book_alice=FilteredRelation(\n                    \"book\", condition=Q(book__title__iexact=\"poem by alice\")\n                ),\n            ),\n            [self.author1, self.author2],\n        )\n\n    def test_multiple_filtered_relations_different_conditions(self):\n        \"\"\"\n        Test that multiple FilteredRelation objects with different conditions\n        but for the same relation create separate joins.\n        \"\"\"\n        qs = Author.objects.alias(\n            available_books=FilteredRelation(\n                \"book\",\n                condition=Q(book__state=Book.AVAILABLE)\n            ),\n            rented_books=FilteredRelation(\n                \"book\", \n                condition=Q(book__state=Book.RENTED)\n            )\n        ).annotate(\n            available_count=Count(\"available_books\"),\n            rented_count=Count(\"rented_books\")\n        )\n        \n        # Check that both aliases appear in the SQL\n        sql_str = str(qs.query)\n        self.assertIn('available_books', sql_str)\n        self.assertIn('rented_books', sql_str)\n        \n        # Check that we have 2 JOIN clauses\n        join_count = sql_str.upper().count('JOIN')\n        self.assertEqual(join_count, 2)\n\n    def test_multiple_filtered_relations_with_case_when(self):\n        \"\"\"\n        Test the exact scenario from the PR description using Case/When.\n        \"\"\"\n        qs = Author.objects.alias(\n            available_books=FilteredRelation(\n                \"book\",\n                condition=Q(book__state=Book.AVAILABLE)\n            ),\n            rented_books=FilteredRelation(\n                \"book\", \n                condition=Q(book__state=Book.RENTED)\n            )\n        ).annotate(\n            available_title=F(\"available_books__title\"),\n            rented_title=F(\"rented_books__title\"),\n            final_title=Case(\n                When(\n                    available_title__isnull=True,\n                    then=F(\"rented_title\"),\n                ),\n                default=F(\"available_title\")\n            )\n        )\n        \n        # Check that both aliases appear in the SQL\n        sql_str = str(qs.query)\n        self.assertIn('available_books', sql_str)\n        self.assertIn('rented_books', sql_str)\n        \n        # Check that we have 2 JOIN clauses\n        join_count = sql_str.upper().count('JOIN')\n        self.assertEqual(join_count, 2)",
+        "explanation": "classic_swe step 73 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/datastructures.py b/django/db/models/sql/datastructures.py\nindex 1edf040e82..aaec79fe88 100644\n--- a/django/db/models/sql/datastructures.py\n+++ b/django/db/models/sql/datastructures.py\n@@ -162,7 +162,12 @@ class Join:\n         return hash(self.identity)\n \n     def equals(self, other):\n-        # Ignore filtered_relation in equality check.\n+        # If both joins have filtered_relation, include it in equality check.\n+        # This ensures that multiple FilteredRelation objects with different\n+        # conditions but same relation don't get reused.\n+        if self.filtered_relation is not None and other.filtered_relation is not None:\n+            return self.identity == other.identity\n+        # Otherwise, ignore filtered_relation in equality check.\n         return self.identity[:-1] == other.identity[:-1]\n \n     def demote(self):\ndiff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py\nindex 54f3258eac..4b8173d3a5 100644\n--- a/django/db/models/sql/query.py\n+++ b/django/db/models/sql/query.py\n@@ -804,14 +804,19 @@ class Query(BaseExpression):\n             return alias, False\n \n         # Create a new alias for this table.\n-        if alias_list:\n+        if filtered_relation is not None:\n+            # Always use the filtered relation's alias when provided\n+            alias = filtered_relation.alias\n+            if alias_list:\n+                alias_list.append(alias)\n+            else:\n+                self.table_map[table_name] = [alias]\n+        elif alias_list:\n             alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n             alias_list.append(alias)\n         else:\n             # The first occurrence of a table uses the table name directly.\n-            alias = (\n-                filtered_relation.alias if filtered_relation is not None else table_name\n-            )\n+            alias = table_name\n             self.table_map[table_name] = [alias]\n         self.alias_refcount[alias] = 1\n         return alias, True\ndiff --git a/tests/filtered_relation/tests.py b/tests/filtered_relation/tests.py\nindex 790a90d9e2..9a45c0c512 100644\n--- a/tests/filtered_relation/tests.py\n+++ b/tests/filtered_relation/tests.py\n@@ -164,6 +164,68 @@ class FilteredRelationTests(TestCase):\n             [self.author1, self.author2],\n         )\n \n+    def test_multiple_filtered_relations_different_conditions(self):\n+        \"\"\"\n+        Test that multiple FilteredRelation objects with different conditions\n+        but for the same relation create separate joins.\n+        \"\"\"\n+        qs = Author.objects.alias(\n+            available_books=FilteredRelation(\n+                \"book\",\n+                condition=Q(book__state=Book.AVAILABLE)\n+            ),\n+            rented_books=FilteredRelation(\n+                \"book\", \n+                condition=Q(book__state=Book.RENTED)\n+            )\n+        ).annotate(\n+            available_count=Count(\"available_books\"),\n+            rented_count=Count(\"rented_books\")\n+        )\n+        \n+        # Check that both aliases appear in the SQL\n+        sql_str = str(qs.query)\n+        self.assertIn('available_books', sql_str)\n+        self.assertIn('rented_books', sql_str)\n+        \n+        # Check that we have 2 JOIN clauses\n+        join_count = sql_str.upper().count('JOIN')\n+        self.assertEqual(join_count, 2)\n+\n+    def test_multiple_filtered_relations_with_case_when(self):\n+        \"\"\"\n+        Test the exact scenario from the PR description using Case/When.\n+        \"\"\"\n+        qs = Author.objects.alias(\n+            available_books=FilteredRelation(\n+                \"book\",\n+                condition=Q(book__state=Book.AVAILABLE)\n+            ),\n+            rented_books=FilteredRelation(\n+                \"book\", \n+                condition=Q(book__state=Book.RENTED)\n+            )\n+        ).annotate(\n+            available_title=F(\"available_books__title\"),\n+            rented_title=F(\"rented_books__title\"),\n+            final_title=Case(\n+                When(\n+                    available_title__isnull=True,\n+                    then=F(\"rented_title\"),\n+                ),\n+                default=F(\"available_title\")\n+            )\n+        )\n+        \n+        # Check that both aliases appear in the SQL\n+        sql_str = str(qs.query)\n+        self.assertIn('available_books', sql_str)\n+        self.assertIn('rented_books', sql_str)\n+        \n+        # Check that we have 2 JOIN clauses\n+        join_count = sql_str.upper().count('JOIN')\n+        self.assertEqual(join_count, 2)\n+\n     def test_with_join(self):\n         self.assertSequenceEqual(\n             Author.objects.annotate(\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      19
+    ],
+    "nodes_original_count": 5,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 2,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "find_minimum_subsequence_node_not_applicable": 2,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "greedy_removal_node_not_applicable": 3,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "edit_list_after_node_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      19
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      19
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 5,
+    "greedy_removal_edit_still_crashes": 1,
+    "greedy_removal_edit_not_applicable": 8,
+    "edit_list_after_greedy": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      19
+    ],
+    "edit_list_after_refinement": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      19
+    ],
+    "edits_after_node_min": 7,
+    "edits_after_file_min": 7,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 7,
+  "minimized_edit_count": 7,
+  "reduction": "7_to_7",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/datastructures.py",
+          "before": "    def equals(self, other):\n        # Ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]",
+          "after": "    def equals(self, other):\n        return self.identity == other.identity",
+          "explanation": "classic_swe step 36 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        # Create a new alias for this table.\n        if alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = (\n                filtered_relation.alias if filtered_relation is not None else table_name\n            )\n            self.table_map[table_name] = [alias]",
+          "after": "        # Create a new alias for this table.\n        if filtered_relation is not None:\n            # Use the filtered relation's alias\n            alias = filtered_relation.alias\n            if alias_list:\n                alias_list.append(alias)\n            else:\n                self.table_map[table_name] = [alias]\n        elif alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = table_name\n            self.table_map[table_name] = [alias]",
+          "explanation": "classic_swe step 41 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/datastructures.py",
+          "before": "    def equals(self, other):\n        return self.identity == other.identity\n\n    def demote(self):",
+          "after": "    def equals(self, other):\n        # Ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]\n\n    def demote(self):",
+          "explanation": "classic_swe step 51 #1"
+        },
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        # Create a new alias for this table.\n        if filtered_relation is not None:\n            # Use the filtered relation's alias\n            alias = filtered_relation.alias\n            if alias_list:\n                alias_list.append(alias)\n            else:\n                self.table_map[table_name] = [alias]\n        elif alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = table_name\n            self.table_map[table_name] = [alias]",
+          "after": "        # Create a new alias for this table.\n        if alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = (\n                filtered_relation.alias if filtered_relation is not None else table_name\n            )\n            self.table_map[table_name] = [alias]",
+          "explanation": "classic_swe step 52 #1"
+        },
+        {
+          "filename": "django/db/models/sql/datastructures.py",
+          "before": "    def equals(self, other):\n        # Ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]",
+          "after": "    def equals(self, other):\n        # If both joins have filtered_relation, include it in equality check.\n        # This ensures that multiple FilteredRelation objects with different\n        # conditions but same relation don't get reused.\n        if self.filtered_relation is not None and other.filtered_relation is not None:\n            return self.identity == other.identity\n        # Otherwise, ignore filtered_relation in equality check.\n        return self.identity[:-1] == other.identity[:-1]",
+          "explanation": "classic_swe step 54 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        # Create a new alias for this table.\n        if alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = (\n                filtered_relation.alias if filtered_relation is not None else table_name\n            )\n            self.table_map[table_name] = [alias]",
+          "after": "        # Create a new alias for this table.\n        if filtered_relation is not None:\n            # Always use the filtered relation's alias when provided\n            alias = filtered_relation.alias\n            if alias_list:\n                alias_list.append(alias)\n            else:\n                self.table_map[table_name] = [alias]\n        elif alias_list:\n            alias = \"%s%d\" % (self.alias_prefix, len(self.alias_map) + 1)\n            alias_list.append(alias)\n        else:\n            # The first occurrence of a table uses the table name directly.\n            alias = table_name\n            self.table_map[table_name] = [alias]",
+          "explanation": "classic_swe step 56 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/filtered_relation/tests.py",
+          "before": "    def test_without_join(self):\n        self.assertSequenceEqual(\n            Author.objects.annotate(\n                book_alice=FilteredRelation(\n                    \"book\", condition=Q(book__title__iexact=\"poem by alice\")\n                ),\n            ),\n            [self.author1, self.author2],\n        )",
+          "after": "    def test_without_join(self):\n        self.assertSequenceEqual(\n            Author.objects.annotate(\n                book_alice=FilteredRelation(\n                    \"book\", condition=Q(book__title__iexact=\"poem by alice\")\n                ),\n            ),\n            [self.author1, self.author2],\n        )\n\n    def test_multiple_filtered_relations_different_conditions(self):\n        \"\"\"\n        Test that multiple FilteredRelation objects with different conditions\n        but for the same relation create separate joins.\n        \"\"\"\n        qs = Author.objects.alias(\n            available_books=FilteredRelation(\n                \"book\",\n                condition=Q(book__state=Book.AVAILABLE)\n            ),\n            rented_books=FilteredRelation(\n                \"book\", \n                condition=Q(book__state=Book.RENTED)\n            )\n        ).annotate(\n            available_count=Count(\"available_books\"),\n            rented_count=Count(\"rented_books\")\n        )\n        \n        # Check that both aliases appear in the SQL\n        sql_str = str(qs.query)\n        self.assertIn('available_books', sql_str)\n        self.assertIn('rented_books', sql_str)\n        \n        # Check that we have 2 JOIN clauses\n        join_count = sql_str.upper().count('JOIN')\n        self.assertEqual(join_count, 2)\n\n    def test_multiple_filtered_relations_with_case_when(self):\n        \"\"\"\n        Test the exact scenario from the PR description using Case/When.\n        \"\"\"\n        qs = Author.objects.alias(\n            available_books=FilteredRelation(\n                \"book\",\n                condition=Q(book__state=Book.AVAILABLE)\n            ),\n            rented_books=FilteredRelation(\n                \"book\", \n                condition=Q(book__state=Book.RENTED)\n            )\n        ).annotate(\n            available_title=F(\"available_books__title\"),\n            rented_title=F(\"rented_books__title\"),\n            final_title=Case(\n                When(\n                    available_title__isnull=True,\n                    then=F(\"rented_title\"),\n                ),\n                default=F(\"available_title\")\n            )\n        )\n        \n        # Check that both aliases appear in the SQL\n        sql_str = str(qs.query)\n        self.assertIn('available_books', sql_str)\n        self.assertIn('rented_books', sql_str)\n        \n        # Check that we have 2 JOIN clauses\n        join_count = sql_str.upper().count('JOIN')\n        self.assertEqual(join_count, 2)",
+          "explanation": "classic_swe step 73 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 41,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 41,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "extra_files_in_minimized": [
+      "django/db/models/sql/datastructures.py",
+      "tests/filtered_relation/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/datastructures.py",
+      "django/db/models/sql/query.py",
+      "tests/filtered_relation/tests.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 9,
+    "minimized_added_lines": 77,
+    "minimized_deleted_lines": 5,
+    "gold_added_lines": 38,
+    "gold_deleted_lines": 9
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

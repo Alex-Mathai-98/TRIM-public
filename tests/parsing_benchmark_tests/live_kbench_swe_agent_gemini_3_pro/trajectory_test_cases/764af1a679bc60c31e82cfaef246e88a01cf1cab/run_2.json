@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tdrain_workqueue(hdev->workqueue);\n\tdrain_workqueue(hdev->req_workqueue);\n",
+          "before": "\tdrain_workqueue(hdev->workqueue);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c\nindex c86f4e42e69c..31d0c9d4bae4 100644\n--- a/net/bluetooth/hci_sync.c\n+++ b/net/bluetooth/hci_sync.c\n@@ -5196,6 +5196,7 @@ int hci_dev_close_sync(struct hci_dev *hdev)\n \t * ensuring the workqueue is empty up front.\n \t */\n \tdrain_workqueue(hdev->workqueue);\n+\tdrain_workqueue(hdev->req_workqueue);\n \n \thci_dev_lock(hdev);",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "net/bluetooth/hci_sync.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "\tdrain_workqueue(hdev->workqueue);\n",
+          "before": "\tdrain_workqueue(hdev->workqueue);\n\tdrain_workqueue(hdev->req_workqueue);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "net/bluetooth/hci_sync.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "\t\tif (entry->func) {\n\t\t\tint err;\n\n\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n\t\t\t\thci_req_sync_lock(hdev);\n\t\t\t\terr = entry->func(hdev, entry->data);\n\t\t\t\tif (entry->destroy)\n\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n\t\t\t\thci_req_sync_unlock(hdev);\n\t\t\t}\n\t\t}\n",
+          "before": "\t\tif (entry->func) {\n\t\t\tint err;\n\n\t\t\thci_req_sync_lock(hdev);\n\t\t\terr = entry->func(hdev, entry->data);\n\t\t\tif (entry->destroy)\n\t\t\t\tentry->destroy(hdev, entry->data, err);\n\t\t\thci_req_sync_unlock(hdev);\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c\nindex c86f4e42e69c..0d92fbcb5193 100644\n--- a/net/bluetooth/hci_sync.c\n+++ b/net/bluetooth/hci_sync.c\n@@ -328,11 +328,13 @@ static void hci_cmd_sync_work(struct work_struct *work)\n \t\tif (entry->func) {\n \t\t\tint err;\n \n-\t\t\thci_req_sync_lock(hdev);\n-\t\t\terr = entry->func(hdev, entry->data);\n-\t\t\tif (entry->destroy)\n-\t\t\t\tentry->destroy(hdev, entry->data, err);\n-\t\t\thci_req_sync_unlock(hdev);\n+\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n+\t\t\t\thci_req_sync_lock(hdev);\n+\t\t\t\terr = entry->func(hdev, entry->data);\n+\t\t\t\tif (entry->destroy)\n+\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n+\t\t\t\thci_req_sync_unlock(hdev);\n+\t\t\t}\n \t\t}\n \n \t\tkfree(entry);",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "net/bluetooth/hci_sync.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        },
+        {
+          "after": "\tdrain_workqueue(hdev->workqueue);\n\n\thci_req_sync_unlock(hdev);\n\tdrain_workqueue(hdev->req_workqueue);\n\thci_req_sync_lock(hdev);\n",
+          "before": "\tdrain_workqueue(hdev->workqueue);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c\nindex c86f4e42e69c..dfb0c5da2918 100644\n--- a/net/bluetooth/hci_sync.c\n+++ b/net/bluetooth/hci_sync.c\n@@ -328,11 +328,13 @@ static void hci_cmd_sync_work(struct work_struct *work)\n \t\tif (entry->func) {\n \t\t\tint err;\n \n-\t\t\thci_req_sync_lock(hdev);\n-\t\t\terr = entry->func(hdev, entry->data);\n-\t\t\tif (entry->destroy)\n-\t\t\t\tentry->destroy(hdev, entry->data, err);\n-\t\t\thci_req_sync_unlock(hdev);\n+\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n+\t\t\t\thci_req_sync_lock(hdev);\n+\t\t\t\terr = entry->func(hdev, entry->data);\n+\t\t\t\tif (entry->destroy)\n+\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n+\t\t\t\thci_req_sync_unlock(hdev);\n+\t\t\t}\n \t\t}\n \n \t\tkfree(entry);\n@@ -5197,6 +5199,10 @@ int hci_dev_close_sync(struct hci_dev *hdev)\n \t */\n \tdrain_workqueue(hdev->workqueue);\n \n+\thci_req_sync_unlock(hdev);\n+\tdrain_workqueue(hdev->req_workqueue);\n+\thci_req_sync_lock(hdev);\n+\n \thci_dev_lock(hdev);\n \n \thci_discovery_set_state(hdev, DISCOVERY_STOPPED);",
+          "explanation": "classic_swe step 47 #1",
+          "filename": "net/bluetooth/hci_sync.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 1,
+      "start_step": 43
+    },
+    {
+      "edits": [
+        {
+          "after": "\tdrain_workqueue(hdev->workqueue);\n\n\thci_dev_lock(hdev);\n",
+          "before": "\tdrain_workqueue(hdev->workqueue);\n\n\thci_req_sync_unlock(hdev);\n\tdrain_workqueue(hdev->req_workqueue);\n\thci_req_sync_lock(hdev);\n\n\thci_dev_lock(hdev);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c\nindex c86f4e42e69c..0d92fbcb5193 100644\n--- a/net/bluetooth/hci_sync.c\n+++ b/net/bluetooth/hci_sync.c\n@@ -328,11 +328,13 @@ static void hci_cmd_sync_work(struct work_struct *work)\n \t\tif (entry->func) {\n \t\t\tint err;\n \n-\t\t\thci_req_sync_lock(hdev);\n-\t\t\terr = entry->func(hdev, entry->data);\n-\t\t\tif (entry->destroy)\n-\t\t\t\tentry->destroy(hdev, entry->data, err);\n-\t\t\thci_req_sync_unlock(hdev);\n+\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n+\t\t\t\thci_req_sync_lock(hdev);\n+\t\t\t\terr = entry->func(hdev, entry->data);\n+\t\t\t\tif (entry->destroy)\n+\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n+\t\t\t\thci_req_sync_unlock(hdev);\n+\t\t\t}\n \t\t}\n \n \t\tkfree(entry);",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "net/bluetooth/hci_sync.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        },
+        {
+          "after": "\t\tif (entry->func) {\n\t\t\tint err;\n\n\t\t\thci_req_sync_lock(hdev);\n\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n\t\t\t\terr = entry->func(hdev, entry->data);\n\t\t\t\tif (entry->destroy)\n\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n\t\t\t}\n\t\t\thci_req_sync_unlock(hdev);\n\t\t}\n",
+          "before": "\t\tif (entry->func) {\n\t\t\tint err;\n\n\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n\t\t\t\thci_req_sync_lock(hdev);\n\t\t\t\terr = entry->func(hdev, entry->data);\n\t\t\t\tif (entry->destroy)\n\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n\t\t\t\thci_req_sync_unlock(hdev);\n\t\t\t}\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sync.c b/net/bluetooth/hci_sync.c\nindex c86f4e42e69c..9ea4990ff863 100644\n--- a/net/bluetooth/hci_sync.c\n+++ b/net/bluetooth/hci_sync.c\n@@ -329,9 +329,11 @@ static void hci_cmd_sync_work(struct work_struct *work)\n \t\t\tint err;\n \n \t\t\thci_req_sync_lock(hdev);\n-\t\t\terr = entry->func(hdev, entry->data);\n-\t\t\tif (entry->destroy)\n-\t\t\t\tentry->destroy(hdev, entry->data, err);\n+\t\t\tif (test_bit(HCI_UP, &hdev->flags)) {\n+\t\t\t\terr = entry->func(hdev, entry->data);\n+\t\t\t\tif (entry->destroy)\n+\t\t\t\t\tentry->destroy(hdev, entry->data, err);\n+\t\t\t}\n \t\t\thci_req_sync_unlock(hdev);\n \t\t}",
+          "explanation": "classic_swe step 53 #1",
+          "filename": "net/bluetooth/hci_sync.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        }
+      ],
+      "end_step": 53,
+      "revision_index": 2,
+      "start_step": 51
+    }
+  ],
+  "success_step": 53
+}

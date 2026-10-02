@@ -1,0 +1,30 @@
+diff --git a/mm/memory.c b/mm/memory.c
+index 064fc55d8eab..2de65a89d28d 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2859,6 +2859,7 @@ int remap_pfn_range_notrack(struct vm_area_struct *vma, unsigned long addr,
+ 		unsigned long pfn, unsigned long size, pgprot_t prot)
+ {
+ 	int error = remap_pfn_range_internal(vma, addr, pfn, size, prot);
++	bool has_vm_pat = vma->vm_flags & VM_PAT;
+ 
+ 	if (!error)
+ 		return 0;
+@@ -2868,7 +2869,17 @@ int remap_pfn_range_notrack(struct vm_area_struct *vma, unsigned long addr,
+ 	 * maintain page reference counts, and callers may free
+ 	 * pages due to the error. So zap it early.
+ 	 */
++	/*
++	 * If VM_PAT is set, we need to clear it before calling
++	 * zap_page_range_single() to prevent untrack_pfn() from being
++	 * called with pfn=0, size=0, which would fail because no pages
++	 * might be mapped yet. The caller will handle the untracking.
++	 */
++	if (has_vm_pat)
++		untrack_pfn_clear(vma);
+ 	zap_page_range_single(vma, addr, size, NULL);
++	if (has_vm_pat)
++		vm_flags_set(vma, VM_PAT);
+ 	return error;
+ }
+ 

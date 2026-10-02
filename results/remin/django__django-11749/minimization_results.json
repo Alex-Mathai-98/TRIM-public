@@ -1,0 +1,141 @@
+{
+  "bug_id": "django__django-11749",
+  "short_path": [
+    [
+      {
+        "filename": "django/core/management/__init__.py",
+        "before": "    parser_actions = list(get_actions(parser))\n    # Any required arguments which are passed in via **options must be passed\n    # to parse_args().\n    parse_args += [\n        '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n        for opt in parser_actions if opt.required and opt.dest in options\n    ]",
+        "after": "    parser_actions = list(get_actions(parser))\n    # Any required arguments which are passed in via **options must be passed\n    # to parse_args().\n    parse_args += [\n        '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n        for opt in parser_actions if opt.required and opt.dest in options\n    ]\n    \n    # Handle required mutually exclusive groups\n    for group in parser._mutually_exclusive_groups:\n        if group.required:\n            # Check if any option from this group is provided in options\n            group_options_provided = [\n                opt for opt in group._group_actions \n                if opt.dest in arg_options\n            ]\n            # Add the first provided option from the group to parse_args\n            if group_options_provided:\n                opt = group_options_provided[0]\n                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))",
+        "explanation": "classic_swe step 10 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/management/__init__.py",
+        "before": "    # Handle required mutually exclusive groups\n    for group in parser._mutually_exclusive_groups:\n        if group.required:\n            # Check if any option from this group is provided in options\n            group_options_provided = [\n                opt for opt in group._group_actions \n                if opt.dest in arg_options\n            ]\n            # Add the first provided option from the group to parse_args\n            if group_options_provided:\n                opt = group_options_provided[0]\n                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))",
+        "after": "    # Handle required mutually exclusive groups\n    for group in parser._mutually_exclusive_groups:\n        if group.required:\n            # Check if any option from this group is provided in options\n            group_options_provided = [\n                opt for opt in group._group_actions \n                if opt.dest in arg_options\n            ]\n            # Add the first provided option from the group to parse_args\n            if group_options_provided:\n                opt = group_options_provided[0]\n                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))\n        \n        # Check for mutual exclusion conflicts in all groups (required or not)\n        group_options_provided = [\n            opt for opt in group._group_actions \n            if opt.dest in arg_options\n        ]\n        if len(group_options_provided) > 1:\n            # Multiple options from the same mutually exclusive group provided\n            # Add all of them to parse_args to let argparse handle the error\n            for opt in group_options_provided:\n                arg_string = '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n                if arg_string not in parse_args:\n                    parse_args.append(arg_string)",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/core/management/__init__.py b/django/core/management/__init__.py\nindex 5f2e64761e..ac1b00a5e1 100644\n--- a/django/core/management/__init__.py\n+++ b/django/core/management/__init__.py\n@@ -136,6 +136,32 @@ def call_command(command_name, *args, **options):\n         '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n         for opt in parser_actions if opt.required and opt.dest in options\n     ]\n+    \n+    # Handle required mutually exclusive groups\n+    for group in parser._mutually_exclusive_groups:\n+        if group.required:\n+            # Check if any option from this group is provided in options\n+            group_options_provided = [\n+                opt for opt in group._group_actions \n+                if opt.dest in arg_options\n+            ]\n+            # Add the first provided option from the group to parse_args\n+            if group_options_provided:\n+                opt = group_options_provided[0]\n+                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))\n+        \n+        # Check for mutual exclusion conflicts in all groups (required or not)\n+        group_options_provided = [\n+            opt for opt in group._group_actions \n+            if opt.dest in arg_options\n+        ]\n+        if len(group_options_provided) > 1:\n+            # Multiple options from the same mutually exclusive group provided\n+            # Add all of them to parse_args to let argparse handle the error\n+            for opt in group_options_provided:\n+                arg_string = '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n+                if arg_string not in parse_args:\n+                    parse_args.append(arg_string)\n     defaults = parser.parse_args(args=parse_args)\n     defaults = dict(defaults._get_kwargs(), **arg_options)\n     # Raise an error if any unknown options were passed.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      3
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      3
+    ],
+    "edit_list_after_file_min": [
+      1,
+      3
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      1,
+      3
+    ],
+    "edit_list_after_refinement": [
+      1,
+      3
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/core/management/__init__.py",
+          "before": "    parser_actions = list(get_actions(parser))\n    # Any required arguments which are passed in via **options must be passed\n    # to parse_args().\n    parse_args += [\n        '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n        for opt in parser_actions if opt.required and opt.dest in options\n    ]",
+          "after": "    parser_actions = list(get_actions(parser))\n    # Any required arguments which are passed in via **options must be passed\n    # to parse_args().\n    parse_args += [\n        '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n        for opt in parser_actions if opt.required and opt.dest in options\n    ]\n    \n    # Handle required mutually exclusive groups\n    for group in parser._mutually_exclusive_groups:\n        if group.required:\n            # Check if any option from this group is provided in options\n            group_options_provided = [\n                opt for opt in group._group_actions \n                if opt.dest in arg_options\n            ]\n            # Add the first provided option from the group to parse_args\n            if group_options_provided:\n                opt = group_options_provided[0]\n                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))",
+          "explanation": "classic_swe step 10 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/core/management/__init__.py",
+          "before": "    # Handle required mutually exclusive groups\n    for group in parser._mutually_exclusive_groups:\n        if group.required:\n            # Check if any option from this group is provided in options\n            group_options_provided = [\n                opt for opt in group._group_actions \n                if opt.dest in arg_options\n            ]\n            # Add the first provided option from the group to parse_args\n            if group_options_provided:\n                opt = group_options_provided[0]\n                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))",
+          "after": "    # Handle required mutually exclusive groups\n    for group in parser._mutually_exclusive_groups:\n        if group.required:\n            # Check if any option from this group is provided in options\n            group_options_provided = [\n                opt for opt in group._group_actions \n                if opt.dest in arg_options\n            ]\n            # Add the first provided option from the group to parse_args\n            if group_options_provided:\n                opt = group_options_provided[0]\n                parse_args.append('{}={}'.format(min(opt.option_strings), arg_options[opt.dest]))\n        \n        # Check for mutual exclusion conflicts in all groups (required or not)\n        group_options_provided = [\n            opt for opt in group._group_actions \n            if opt.dest in arg_options\n        ]\n        if len(group_options_provided) > 1:\n            # Multiple options from the same mutually exclusive group provided\n            # Add all of them to parse_args to let argparse handle the error\n            for opt in group_options_provided:\n                arg_string = '{}={}'.format(min(opt.option_strings), arg_options[opt.dest])\n                if arg_string not in parse_args:\n                    parse_args.append(arg_string)",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 34,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 34,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/core/management/__init__.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/core/management/__init__.py"
+    ],
+    "gold_files": [
+      "django/core/management/__init__.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 26,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 9,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

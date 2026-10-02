@@ -1,0 +1,54 @@
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 5b680deb1c9b..04805f28e2d8 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1188,6 +1188,14 @@ ext4_xattr_inode_dec_ref_all(handle_t *handle, struct inode *parent,
+ 		if (err)
+ 			continue;
+ 
++		if (ea_inode->i_nlink != 1) {
++			ext4_warning_inode(ea_inode,
++					   "EA inode corrupt: i_nlink=%u",
++					   ea_inode->i_nlink);
++			iput(ea_inode);
++			continue;
++		}
++
+ 		err = ext4_expand_inode_array(ea_inode_array, ea_inode);
+ 		if (err) {
+ 			ext4_warning_inode(ea_inode,
+@@ -2603,7 +2611,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 		.value = NULL,
+ 		.value_len = 0,
+ 		.name_index = entry->e_name_index,
+-		.in_inode = !!entry->e_value_inum,
++		.in_inode = value_size ? !!entry->e_value_inum : 0,
+ 	};
+ 	struct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);
+ 	int needs_kvfree = 0;
+@@ -2624,6 +2632,25 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 
+ 	/* Save the entry name and the entry value */
+ 	if (entry->e_value_inum) {
++		struct inode *ea_inode;
++
++		error = ext4_xattr_inode_iget(inode,
++					      le32_to_cpu(entry->e_value_inum),
++					      le32_to_cpu(entry->e_hash),
++					      &ea_inode);
++		if (error)
++			goto out;
++
++		if (ea_inode->i_nlink != 1) {
++			ext4_warning_inode(ea_inode,
++					   "EA inode corrupt: i_nlink=%u",
++					   ea_inode->i_nlink);
++			iput(ea_inode);
++			error = -EFSCORRUPTED;
++			goto out;
++		}
++		iput(ea_inode);
++
+ 		buffer = kvmalloc(value_size, GFP_NOFS);
+ 		if (!buffer) {
+ 			error = -ENOMEM;

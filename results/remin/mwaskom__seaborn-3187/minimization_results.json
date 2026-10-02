@@ -1,0 +1,162 @@
+{
+  "bug_id": "mwaskom__seaborn-3187",
+  "short_path": [
+    [
+      {
+        "filename": "seaborn/_core/scales.py",
+        "before": "        if prop.legend:\n            axis.set_view_interval(vmin, vmax)\n            locs = axis.major.locator()\n            locs = locs[(vmin <= locs) & (locs <= vmax)]\n            labels = axis.major.formatter.format_ticks(locs)\n            new._legend = list(locs), list(labels)",
+        "after": "        if prop.legend:\n            axis.set_view_interval(vmin, vmax)\n            locs = axis.major.locator()\n            locs = locs[(vmin <= locs) & (locs <= vmax)]\n            labels = axis.major.formatter.format_ticks(locs)\n            \n            # Handle ScalarFormatter offset for large numbers\n            formatter = axis.major.formatter\n            if hasattr(formatter, 'get_offset') and formatter.get_offset():\n                offset = formatter.get_offset()\n                try:\n                    # Parse the offset (could be in scientific notation like '1e6')\n                    offset_value = float(offset)\n                    # Reconstruct the full values by multiplying labels by offset\n                    corrected_labels = []\n                    for label in labels:\n                        try:\n                            # Convert label to float and multiply by offset\n                            full_value = float(label) * offset_value\n                            # Format the full value appropriately\n                            if full_value == int(full_value):\n                                corrected_labels.append(str(int(full_value)))\n                            else:\n                                corrected_labels.append(str(full_value))\n                        except (ValueError, TypeError):\n                            # If we can't parse the label, keep it as is\n                            corrected_labels.append(label)\n                    labels = corrected_labels\n                except (ValueError, TypeError):\n                    # If we can't parse the offset, keep original labels\n                    pass\n            \n            new._legend = list(locs), list(labels)",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "seaborn/utils.py",
+        "before": "    # TODO: The following two lines should be replaced\n    # once pinned matplotlib>=3.1.0 with:\n    # formatted_levels = formatter.format_ticks(raw_levels)\n    formatter.set_locs(raw_levels)\n    formatted_levels = [formatter(x) for x in raw_levels]",
+        "after": "    # TODO: The following two lines should be replaced\n    # once pinned matplotlib>=3.1.0 with:\n    # formatted_levels = formatter.format_ticks(raw_levels)\n    formatter.set_locs(raw_levels)\n    formatted_levels = formatter.format_ticks(raw_levels)\n    \n    # Handle ScalarFormatter offset for large numbers\n    if hasattr(formatter, 'get_offset') and formatter.get_offset():\n        offset = formatter.get_offset()\n        try:\n            # Parse the offset (could be in scientific notation like '1e6')\n            offset_value = float(offset)\n            # Reconstruct the full values by multiplying labels by offset\n            corrected_labels = []\n            for label in formatted_levels:\n                try:\n                    # Handle unicode minus sign (U+2212) used by matplotlib\n                    label_clean = label.replace('\u2212', '-')\n                    # Convert label to float and multiply by offset\n                    full_value = float(label_clean) * offset_value\n                    # Format the full value appropriately\n                    if full_value == int(full_value):\n                        corrected_labels.append(str(int(full_value)))\n                    else:\n                        corrected_labels.append(str(full_value))\n                except (ValueError, TypeError):\n                    # If we can't parse the label, keep it as is\n                    corrected_labels.append(label)\n            formatted_levels = corrected_labels\n        except (ValueError, TypeError):\n            # If we can't parse the offset, keep original labels\n            pass",
+        "explanation": "classic_swe step 62 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/seaborn/_core/scales.py b/seaborn/_core/scales.py\nindex 55874bf2..a912fc8e 100644\n--- a/seaborn/_core/scales.py\n+++ b/seaborn/_core/scales.py\n@@ -379,6 +379,33 @@ class ContinuousBase(Scale):\n             locs = axis.major.locator()\n             locs = locs[(vmin <= locs) & (locs <= vmax)]\n             labels = axis.major.formatter.format_ticks(locs)\n+            \n+            # Handle ScalarFormatter offset for large numbers\n+            formatter = axis.major.formatter\n+            if hasattr(formatter, 'get_offset') and formatter.get_offset():\n+                offset = formatter.get_offset()\n+                try:\n+                    # Parse the offset (could be in scientific notation like '1e6')\n+                    offset_value = float(offset)\n+                    # Reconstruct the full values by multiplying labels by offset\n+                    corrected_labels = []\n+                    for label in labels:\n+                        try:\n+                            # Convert label to float and multiply by offset\n+                            full_value = float(label) * offset_value\n+                            # Format the full value appropriately\n+                            if full_value == int(full_value):\n+                                corrected_labels.append(str(int(full_value)))\n+                            else:\n+                                corrected_labels.append(str(full_value))\n+                        except (ValueError, TypeError):\n+                            # If we can't parse the label, keep it as is\n+                            corrected_labels.append(label)\n+                    labels = corrected_labels\n+                except (ValueError, TypeError):\n+                    # If we can't parse the offset, keep original labels\n+                    pass\n+            \n             new._legend = list(locs), list(labels)\n \n         return new\ndiff --git a/seaborn/utils.py b/seaborn/utils.py\nindex 2407853c..914ad9ba 100644\n--- a/seaborn/utils.py\n+++ b/seaborn/utils.py\n@@ -705,7 +705,34 @@ def locator_to_legend_entries(locator, limits, dtype):\n     # once pinned matplotlib>=3.1.0 with:\n     # formatted_levels = formatter.format_ticks(raw_levels)\n     formatter.set_locs(raw_levels)\n-    formatted_levels = [formatter(x) for x in raw_levels]\n+    formatted_levels = formatter.format_ticks(raw_levels)\n+    \n+    # Handle ScalarFormatter offset for large numbers\n+    if hasattr(formatter, 'get_offset') and formatter.get_offset():\n+        offset = formatter.get_offset()\n+        try:\n+            # Parse the offset (could be in scientific notation like '1e6')\n+            offset_value = float(offset)\n+            # Reconstruct the full values by multiplying labels by offset\n+            corrected_labels = []\n+            for label in formatted_levels:\n+                try:\n+                    # Handle unicode minus sign (U+2212) used by matplotlib\n+                    label_clean = label.replace('\u2212', '-')\n+                    # Convert label to float and multiply by offset\n+                    full_value = float(label_clean) * offset_value\n+                    # Format the full value appropriately\n+                    if full_value == int(full_value):\n+                        corrected_labels.append(str(int(full_value)))\n+                    else:\n+                        corrected_labels.append(str(full_value))\n+                except (ValueError, TypeError):\n+                    # If we can't parse the label, keep it as is\n+                    corrected_labels.append(label)\n+            formatted_levels = corrected_labels\n+        except (ValueError, TypeError):\n+            # If we can't parse the offset, keep original labels\n+            pass\n \n     return raw_levels, formatted_levels\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      20,
+      23
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_no_crash": 1,
+    "node_list_after_phase2": [
+      0,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      2
+    ],
+    "edit_list_after_node_min": [
+      4,
+      23
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      4,
+      23
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      4,
+      23
+    ],
+    "edit_list_after_refinement": [
+      4,
+      23
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 2,
+  "reduction": "3_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "seaborn/_core/scales.py",
+          "before": "        if prop.legend:\n            axis.set_view_interval(vmin, vmax)\n            locs = axis.major.locator()\n            locs = locs[(vmin <= locs) & (locs <= vmax)]\n            labels = axis.major.formatter.format_ticks(locs)\n            new._legend = list(locs), list(labels)",
+          "after": "        if prop.legend:\n            axis.set_view_interval(vmin, vmax)\n            locs = axis.major.locator()\n            locs = locs[(vmin <= locs) & (locs <= vmax)]\n            labels = axis.major.formatter.format_ticks(locs)\n            \n            # Handle ScalarFormatter offset for large numbers\n            formatter = axis.major.formatter\n            if hasattr(formatter, 'get_offset') and formatter.get_offset():\n                offset = formatter.get_offset()\n                try:\n                    # Parse the offset (could be in scientific notation like '1e6')\n                    offset_value = float(offset)\n                    # Reconstruct the full values by multiplying labels by offset\n                    corrected_labels = []\n                    for label in labels:\n                        try:\n                            # Convert label to float and multiply by offset\n                            full_value = float(label) * offset_value\n                            # Format the full value appropriately\n                            if full_value == int(full_value):\n                                corrected_labels.append(str(int(full_value)))\n                            else:\n                                corrected_labels.append(str(full_value))\n                        except (ValueError, TypeError):\n                            # If we can't parse the label, keep it as is\n                            corrected_labels.append(label)\n                    labels = corrected_labels\n                except (ValueError, TypeError):\n                    # If we can't parse the offset, keep original labels\n                    pass\n            \n            new._legend = list(locs), list(labels)",
+          "explanation": "classic_swe step 19 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "seaborn/_core/scales.py",
+          "before": "                    for label in labels:\n                        try:\n                            # Convert label to float and multiply by offset\n                            full_value = float(label) * offset_value\n                            # Format the full value appropriately\n                            if full_value == int(full_value):\n                                corrected_labels.append(str(int(full_value)))\n                            else:\n                                corrected_labels.append(str(full_value))\n                        except (ValueError, TypeError):\n                            # If we can't parse the label, keep it as is\n                            corrected_labels.append(label)",
+          "after": "                    for label in labels:\n                        try:\n                            # Handle unicode minus sign (U+2212) used by matplotlib\n                            label_clean = label.replace('\u2212', '-')\n                            # Convert label to float and multiply by offset\n                            full_value = float(label_clean) * offset_value\n                            # Format the full value appropriately\n                            if full_value == int(full_value):\n                                corrected_labels.append(str(int(full_value)))\n                            else:\n                                corrected_labels.append(str(full_value))\n                        except (ValueError, TypeError):\n                            # If we can't parse the label, keep it as is\n                            corrected_labels.append(label)",
+          "explanation": "classic_swe step 50 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "seaborn/utils.py",
+          "before": "    # TODO: The following two lines should be replaced\n    # once pinned matplotlib>=3.1.0 with:\n    # formatted_levels = formatter.format_ticks(raw_levels)\n    formatter.set_locs(raw_levels)\n    formatted_levels = [formatter(x) for x in raw_levels]",
+          "after": "    # TODO: The following two lines should be replaced\n    # once pinned matplotlib>=3.1.0 with:\n    # formatted_levels = formatter.format_ticks(raw_levels)\n    formatter.set_locs(raw_levels)\n    formatted_levels = formatter.format_ticks(raw_levels)\n    \n    # Handle ScalarFormatter offset for large numbers\n    if hasattr(formatter, 'get_offset') and formatter.get_offset():\n        offset = formatter.get_offset()\n        try:\n            # Parse the offset (could be in scientific notation like '1e6')\n            offset_value = float(offset)\n            # Reconstruct the full values by multiplying labels by offset\n            corrected_labels = []\n            for label in formatted_levels:\n                try:\n                    # Handle unicode minus sign (U+2212) used by matplotlib\n                    label_clean = label.replace('\u2212', '-')\n                    # Convert label to float and multiply by offset\n                    full_value = float(label_clean) * offset_value\n                    # Format the full value appropriately\n                    if full_value == int(full_value):\n                        corrected_labels.append(str(int(full_value)))\n                    else:\n                        corrected_labels.append(str(full_value))\n                except (ValueError, TypeError):\n                    # If we can't parse the label, keep it as is\n                    corrected_labels.append(label)\n            formatted_levels = corrected_labels\n        except (ValueError, TypeError):\n            # If we can't parse the offset, keep original labels\n            pass",
+          "explanation": "classic_swe step 62 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 248,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 248,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "seaborn/_core/scales.py",
+      "seaborn/utils.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "seaborn/_core/scales.py",
+      "seaborn/utils.py"
+    ],
+    "gold_files": [
+      "seaborn/_core/scales.py",
+      "seaborn/utils.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 55,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 12,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

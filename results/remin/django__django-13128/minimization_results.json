@@ -1,0 +1,171 @@
+{
+  "bug_id": "django__django-13128",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/expressions.py",
+        "before": "    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):\n        c = self.copy()\n        c.is_summary = summarize\n        c.lhs = c.lhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        c.rhs = c.rhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        return c",
+        "after": "    def _resolve_output_field(self):\n        try:\n            lhs_type = self.lhs.output_field.get_internal_type()\n        except FieldError:\n            lhs_type = None\n        try:\n            rhs_type = self.rhs.output_field.get_internal_type()\n        except FieldError:\n            rhs_type = None\n        \n        # Handle temporal subtraction: datetime - datetime = duration\n        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n            return fields.DurationField()\n        \n        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n            if self.connector in (self.ADD, self.SUB):\n                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n                    return fields.DurationField()\n                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n                    return self.lhs.output_field\n                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n                    return self.rhs.output_field\n        \n        # Fall back to the default behavior\n        return super()._resolve_output_field()\n\n    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):\n        c = self.copy()\n        c.is_summary = summarize\n        c.lhs = c.lhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        c.rhs = c.rhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        return c",
+        "explanation": "classic_swe step 12 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/expressions.py",
+        "before": "    def _resolve_output_field(self):\n        try:\n            lhs_type = self.lhs.output_field.get_internal_type()\n        except FieldError:\n            lhs_type = None\n        try:\n            rhs_type = self.rhs.output_field.get_internal_type()\n        except FieldError:\n            rhs_type = None\n        \n        # Handle temporal subtraction: datetime - datetime = duration\n        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n            return fields.DurationField()\n        \n        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n            if self.connector in (self.ADD, self.SUB):\n                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n                    return fields.DurationField()\n                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n                    return self.lhs.output_field\n                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n                    return self.rhs.output_field\n        \n        # Fall back to the default behavior\n        return super()._resolve_output_field()",
+        "after": "",
+        "explanation": "classic_swe step 29 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/expressions.py",
+        "before": "        return expression_wrapper % sql, expression_params\n\n\n\n    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):",
+        "after": "        return expression_wrapper % sql, expression_params\n\n    def _resolve_output_field(self):\n        try:\n            lhs_type = self.lhs.output_field.get_internal_type()\n        except FieldError:\n            lhs_type = None\n        try:\n            rhs_type = self.rhs.output_field.get_internal_type()\n        except FieldError:\n            rhs_type = None\n        \n        # Handle temporal subtraction: datetime - datetime = duration\n        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n            return fields.DurationField()\n        \n        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n            if self.connector in (self.ADD, self.SUB):\n                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n                    return fields.DurationField()\n                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n                    return self.lhs.output_field\n                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n                    return self.rhs.output_field\n        \n        # Fall back to the default behavior\n        return super()._resolve_output_field()\n\n    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/expressions.py b/django/db/models/expressions.py\nindex d913658291..5ea9367c64 100644\n--- a/django/db/models/expressions.py\n+++ b/django/db/models/expressions.py\n@@ -473,6 +473,34 @@ class CombinedExpression(SQLiteNumericMixin, Expression):\n         sql = connection.ops.combine_expression(self.connector, expressions)\n         return expression_wrapper % sql, expression_params\n \n+    def _resolve_output_field(self):\n+        try:\n+            lhs_type = self.lhs.output_field.get_internal_type()\n+        except FieldError:\n+            lhs_type = None\n+        try:\n+            rhs_type = self.rhs.output_field.get_internal_type()\n+        except FieldError:\n+            rhs_type = None\n+        \n+        # Handle temporal subtraction: datetime - datetime = duration\n+        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n+        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n+            return fields.DurationField()\n+        \n+        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n+        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n+            if self.connector in (self.ADD, self.SUB):\n+                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n+                    return fields.DurationField()\n+                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n+                    return self.lhs.output_field\n+                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n+                    return self.rhs.output_field\n+        \n+        # Fall back to the default behavior\n+        return super()._resolve_output_field()\n+\n     def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):\n         c = self.copy()\n         c.is_summary = summarize\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      6,
+      7
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      1,
+      6,
+      7
+    ],
+    "edit_list_after_file_min": [
+      1,
+      6,
+      7
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      1,
+      6,
+      7
+    ],
+    "edit_list_after_refinement": [
+      1,
+      6,
+      7
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/expressions.py",
+          "before": "    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):\n        c = self.copy()\n        c.is_summary = summarize\n        c.lhs = c.lhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        c.rhs = c.rhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        return c",
+          "after": "    def _resolve_output_field(self):\n        try:\n            lhs_type = self.lhs.output_field.get_internal_type()\n        except FieldError:\n            lhs_type = None\n        try:\n            rhs_type = self.rhs.output_field.get_internal_type()\n        except FieldError:\n            rhs_type = None\n        \n        # Handle temporal subtraction: datetime - datetime = duration\n        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n            return fields.DurationField()\n        \n        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n            if self.connector in (self.ADD, self.SUB):\n                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n                    return fields.DurationField()\n                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n                    return self.lhs.output_field\n                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n                    return self.rhs.output_field\n        \n        # Fall back to the default behavior\n        return super()._resolve_output_field()\n\n    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):\n        c = self.copy()\n        c.is_summary = summarize\n        c.lhs = c.lhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        c.rhs = c.rhs.resolve_expression(query, allow_joins, reuse, summarize, for_save)\n        return c",
+          "explanation": "classic_swe step 12 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/expressions.py",
+          "before": "    def _resolve_output_field(self):\n        try:\n            lhs_type = self.lhs.output_field.get_internal_type()\n        except FieldError:\n            lhs_type = None\n        try:\n            rhs_type = self.rhs.output_field.get_internal_type()\n        except FieldError:\n            rhs_type = None\n        \n        # Handle temporal subtraction: datetime - datetime = duration\n        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n            return fields.DurationField()\n        \n        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n            if self.connector in (self.ADD, self.SUB):\n                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n                    return fields.DurationField()\n                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n                    return self.lhs.output_field\n                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n                    return self.rhs.output_field\n        \n        # Fall back to the default behavior\n        return super()._resolve_output_field()",
+          "after": "",
+          "explanation": "classic_swe step 29 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/expressions.py",
+          "before": "        return expression_wrapper % sql, expression_params\n\n\n\n    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):",
+          "after": "        return expression_wrapper % sql, expression_params\n\n    def _resolve_output_field(self):\n        try:\n            lhs_type = self.lhs.output_field.get_internal_type()\n        except FieldError:\n            lhs_type = None\n        try:\n            rhs_type = self.rhs.output_field.get_internal_type()\n        except FieldError:\n            rhs_type = None\n        \n        # Handle temporal subtraction: datetime - datetime = duration\n        datetime_fields = {'DateField', 'DateTimeField', 'TimeField'}\n        if self.connector == self.SUB and lhs_type in datetime_fields and lhs_type == rhs_type:\n            return fields.DurationField()\n        \n        # Handle duration arithmetic: duration +/- duration = duration, datetime +/- duration = datetime\n        if lhs_type == 'DurationField' or rhs_type == 'DurationField':\n            if self.connector in (self.ADD, self.SUB):\n                if lhs_type == 'DurationField' and rhs_type == 'DurationField':\n                    return fields.DurationField()\n                elif lhs_type in datetime_fields and rhs_type == 'DurationField':\n                    return self.lhs.output_field\n                elif lhs_type == 'DurationField' and rhs_type in datetime_fields:\n                    return self.rhs.output_field\n        \n        # Fall back to the default behavior\n        return super()._resolve_output_field()\n\n    def resolve_expression(self, query=None, allow_joins=True, reuse=None, summarize=False, for_save=False):",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 7,
+    "f2p_fail": 0,
+    "p2p_pass": 134,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 7,
+    "f2p_fail": 0,
+    "p2p_pass": 134,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/expressions.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/expressions.py"
+    ],
+    "gold_files": [
+      "django/db/models/expressions.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 3,
+    "minimized_added_lines": 28,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 24,
+    "gold_deleted_lines": 19
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

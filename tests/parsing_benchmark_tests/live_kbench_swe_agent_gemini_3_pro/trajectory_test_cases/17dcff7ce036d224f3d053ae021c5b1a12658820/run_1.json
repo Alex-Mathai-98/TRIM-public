@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct backing_file_ctx {\n\tconst struct cred *cred;\n\tstruct file *user_file;\n\tvoid (*accessed)(struct file *file);\n\tvoid (*end_write)(struct kiocb *iocb, ssize_t);\n};\n",
+          "before": "struct backing_file_ctx {\n\tconst struct cred *cred;\n\tvoid (*accessed)(struct file *file);\n\tvoid (*end_write)(struct kiocb *iocb, ssize_t);\n};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/backing-file.h b/include/linux/backing-file.h\nindex 1476a6ed1bfd..87842fef0ef2 100644\n--- a/include/linux/backing-file.h\n+++ b/include/linux/backing-file.h\n@@ -14,6 +14,7 @@\n \n struct backing_file_ctx {\n \tconst struct cred *cred;\n+\tstruct file *user_file;\n \tvoid (*accessed)(struct file *file);\n \tvoid (*end_write)(struct kiocb *iocb, ssize_t);\n };",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "include/linux/backing-file.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "\tif (ctx->accessed)\n\t\tctx->accessed(ctx->user_file ?: vma->vm_file);\n\n\treturn ret;\n}\n",
+          "before": "\tif (ctx->accessed)\n\t\tctx->accessed(vma->vm_file);\n\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/backing-file.c b/fs/backing-file.c\nindex 526ddb4d6f76..d606d5fc7643 100644\n--- a/fs/backing-file.c\n+++ b/fs/backing-file.c\n@@ -342,7 +342,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,\n \trevert_creds_light(old_cred);\n \n \tif (ctx->accessed)\n-\t\tctx->accessed(vma->vm_file);\n+\t\tctx->accessed(ctx->user_file ?: vma->vm_file);\n \n \treturn ret;\n }\ndiff --git a/include/linux/backing-file.h b/include/linux/backing-file.h\nindex 1476a6ed1bfd..87842fef0ef2 100644\n--- a/include/linux/backing-file.h\n+++ b/include/linux/backing-file.h\n@@ -14,6 +14,7 @@\n \n struct backing_file_ctx {\n \tconst struct cred *cred;\n+\tstruct file *user_file;\n \tvoid (*accessed)(struct file *file);\n \tvoid (*end_write)(struct kiocb *iocb, ssize_t);\n };",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/backing-file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "static int ovl_mmap(struct file *file, struct vm_area_struct *vma)\n{\n\tstruct ovl_file *of = file->private_data;\n\tstruct backing_file_ctx ctx = {\n\t\t.cred = ovl_creds(file_inode(file)->i_sb),\n\t\t.user_file = file,\n\t\t.accessed = ovl_file_accessed,\n\t};\n\n\treturn backing_file_mmap(of->realfile, vma, &ctx);\n}\n",
+          "before": "static int ovl_mmap(struct file *file, struct vm_area_struct *vma)\n{\n\tstruct ovl_file *of = file->private_data;\n\tstruct backing_file_ctx ctx = {\n\t\t.cred = ovl_creds(file_inode(file)->i_sb),\n\t\t.accessed = ovl_file_accessed,\n\t};\n\n\treturn backing_file_mmap(of->realfile, vma, &ctx);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/backing-file.c b/fs/backing-file.c\nindex 526ddb4d6f76..d606d5fc7643 100644\n--- a/fs/backing-file.c\n+++ b/fs/backing-file.c\n@@ -342,7 +342,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,\n \trevert_creds_light(old_cred);\n \n \tif (ctx->accessed)\n-\t\tctx->accessed(vma->vm_file);\n+\t\tctx->accessed(ctx->user_file ?: vma->vm_file);\n \n \treturn ret;\n }\ndiff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c\nindex 969b458100fe..f4e1d441d289 100644\n--- a/fs/overlayfs/file.c\n+++ b/fs/overlayfs/file.c\n@@ -481,6 +481,7 @@ static int ovl_mmap(struct file *file, struct vm_area_struct *vma)\n \tstruct ovl_file *of = file->private_data;\n \tstruct backing_file_ctx ctx = {\n \t\t.cred = ovl_creds(file_inode(file)->i_sb),\n+\t\t.user_file = file,\n \t\t.accessed = ovl_file_accessed,\n \t};\n \ndiff --git a/include/linux/backing-file.h b/include/linux/backing-file.h\nindex 1476a6ed1bfd..87842fef0ef2 100644\n--- a/include/linux/backing-file.h\n+++ b/include/linux/backing-file.h\n@@ -14,6 +14,7 @@\n \n struct backing_file_ctx {\n \tconst struct cred *cred;\n+\tstruct file *user_file;\n \tvoid (*accessed)(struct file *file);\n \tvoid (*end_write)(struct kiocb *iocb, ssize_t);\n };",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "fs/overlayfs/file.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "ssize_t fuse_passthrough_mmap(struct file *file, struct vm_area_struct *vma)\n{\n\tstruct fuse_file *ff = file->private_data;\n\tstruct file *backing_file = fuse_file_passthrough(ff);\n\tstruct backing_file_ctx ctx = {\n\t\t.cred = ff->cred,\n\t\t.user_file = file,\n\t\t.accessed = fuse_file_accessed,\n\t};\n",
+          "before": "ssize_t fuse_passthrough_mmap(struct file *file, struct vm_area_struct *vma)\n{\n\tstruct fuse_file *ff = file->private_data;\n\tstruct file *backing_file = fuse_file_passthrough(ff);\n\tstruct backing_file_ctx ctx = {\n\t\t.cred = ff->cred,\n\t\t.accessed = fuse_file_accessed,\n\t};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/backing-file.c b/fs/backing-file.c\nindex 526ddb4d6f76..d606d5fc7643 100644\n--- a/fs/backing-file.c\n+++ b/fs/backing-file.c\n@@ -342,7 +342,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,\n \trevert_creds_light(old_cred);\n \n \tif (ctx->accessed)\n-\t\tctx->accessed(vma->vm_file);\n+\t\tctx->accessed(ctx->user_file ?: vma->vm_file);\n \n \treturn ret;\n }\ndiff --git a/fs/fuse/passthrough.c b/fs/fuse/passthrough.c\nindex 607ef735ad4a..38925186ea02 100644\n--- a/fs/fuse/passthrough.c\n+++ b/fs/fuse/passthrough.c\n@@ -135,6 +135,7 @@ ssize_t fuse_passthrough_mmap(struct file *file, struct vm_area_struct *vma)\n \tstruct file *backing_file = fuse_file_passthrough(ff);\n \tstruct backing_file_ctx ctx = {\n \t\t.cred = ff->cred,\n+\t\t.user_file = file,\n \t\t.accessed = fuse_file_accessed,\n \t};\n \ndiff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c\nindex 969b458100fe..f4e1d441d289 100644\n--- a/fs/overlayfs/file.c\n+++ b/fs/overlayfs/file.c\n@@ -481,6 +481,7 @@ static int ovl_mmap(struct file *file, struct vm_area_struct *vma)\n \tstruct ovl_file *of = file->private_data;\n \tstruct backing_file_ctx ctx = {\n \t\t.cred = ovl_creds(file_inode(file)->i_sb),\n+\t\t.user_file = file,\n \t\t.accessed = ovl_file_accessed,\n \t};\n \ndiff --git a/include/linux/backing-file.h b/include/linux/backing-file.h\nindex 1476a6ed1bfd..87842fef0ef2 100644\n--- a/include/linux/backing-file.h\n+++ b/include/linux/backing-file.h\n@@ -14,6 +14,7 @@\n \n struct backing_file_ctx {\n \tconst struct cred *cred;\n+\tstruct file *user_file;\n \tvoid (*accessed)(struct file *file);\n \tvoid (*end_write)(struct kiocb *iocb, ssize_t);\n };",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "fs/fuse/passthrough.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 21
+}

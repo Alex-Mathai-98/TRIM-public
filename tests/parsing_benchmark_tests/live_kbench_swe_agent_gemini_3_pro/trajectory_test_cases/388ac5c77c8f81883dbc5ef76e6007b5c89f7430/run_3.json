@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,\n\t\t\t\t       struct bch_sb_field *f)\n{\n\tstruct bch_sb_field_members_v2 *mi = field_to_type(f, members_v2);\n\tstruct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);\n\tunsigned i, nr_devices = sb->nr_devices;\n\n\tif (le16_to_cpu(mi->member_bytes))\n\t\tnr_devices = min_t(unsigned, nr_devices,\n\t\t\t\t   (vstruct_bytes(&mi->field) -\n\t\t\t\t    offsetof(struct bch_sb_field_members_v2, _members)) /\n\t\t\t\t   le16_to_cpu(mi->member_bytes));\n\n\tfor (i = 0; i < nr_devices; i++)\n\t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n}\n",
+          "before": "static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,\n\t\t\t\t       struct bch_sb_field *f)\n{\n\tstruct bch_sb_field_members_v2 *mi = field_to_type(f, members_v2);\n\tstruct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);\n\tunsigned i;\n\n\tfor (i = 0; i < sb->nr_devices; i++)\n\t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c\nindex 363eb0c6eb7c..034d65b5b00c 100644\n--- a/fs/bcachefs/sb-members.c\n+++ b/fs/bcachefs/sb-members.c\n@@ -341,9 +341,15 @@ static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,\n {\n \tstruct bch_sb_field_members_v2 *mi = field_to_type(f, members_v2);\n \tstruct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);\n-\tunsigned i;\n+\tunsigned i, nr_devices = sb->nr_devices;\n \n-\tfor (i = 0; i < sb->nr_devices; i++)\n+\tif (le16_to_cpu(mi->member_bytes))\n+\t\tnr_devices = min_t(unsigned, nr_devices,\n+\t\t\t\t   (vstruct_bytes(&mi->field) -\n+\t\t\t\t    offsetof(struct bch_sb_field_members_v2, _members)) /\n+\t\t\t\t   le16_to_cpu(mi->member_bytes));\n+\n+\tfor (i = 0; i < nr_devices; i++)\n \t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n }",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "fs/bcachefs/sb-members.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        },
+        {
+          "after": "\tunsigned i, nr_devices = sb->nr_devices;\n\n\tif (le16_to_cpu(mi->member_bytes)) {\n\t\tsize_t size = vstruct_bytes(&mi->field);\n\t\tsize_t offset = offsetof(struct bch_sb_field_members_v2, _members);\n\n\t\tif (size < offset)\n\t\t\tnr_devices = 0;\n\t\telse\n\t\t\tnr_devices = min_t(unsigned, nr_devices,\n\t\t\t\t\t   (size - offset) / le16_to_cpu(mi->member_bytes));\n\t}\n",
+          "before": "\tunsigned i, nr_devices = sb->nr_devices;\n\n\tif (le16_to_cpu(mi->member_bytes))\n\t\tnr_devices = min_t(unsigned, nr_devices,\n\t\t\t\t   (vstruct_bytes(&mi->field) -\n\t\t\t\t    offsetof(struct bch_sb_field_members_v2, _members)) /\n\t\t\t\t   le16_to_cpu(mi->member_bytes));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c\nindex 363eb0c6eb7c..4e36f864bb0a 100644\n--- a/fs/bcachefs/sb-members.c\n+++ b/fs/bcachefs/sb-members.c\n@@ -341,9 +341,20 @@ static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,\n {\n \tstruct bch_sb_field_members_v2 *mi = field_to_type(f, members_v2);\n \tstruct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);\n-\tunsigned i;\n+\tunsigned i, nr_devices = sb->nr_devices;\n \n-\tfor (i = 0; i < sb->nr_devices; i++)\n+\tif (le16_to_cpu(mi->member_bytes)) {\n+\t\tsize_t size = vstruct_bytes(&mi->field);\n+\t\tsize_t offset = offsetof(struct bch_sb_field_members_v2, _members);\n+\n+\t\tif (size < offset)\n+\t\t\tnr_devices = 0;\n+\t\telse\n+\t\t\tnr_devices = min_t(unsigned, nr_devices,\n+\t\t\t\t\t   (size - offset) / le16_to_cpu(mi->member_bytes));\n+\t}\n+\n+\tfor (i = 0; i < nr_devices; i++)\n \t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n }",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/bcachefs/sb-members.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "\tunsigned i, nr_devices = sb->nr_devices;\n\n\tsize_t size = vstruct_bytes(&mi->field);\n\tsize_t offset = offsetof(struct bch_sb_field_members_v2, _members);\n\n\tif (size < offset)\n\t\tnr_devices = 0;\n\telse if (le16_to_cpu(mi->member_bytes))\n\t\tnr_devices = min_t(unsigned, nr_devices,\n\t\t\t\t   (size - offset) / le16_to_cpu(mi->member_bytes));\n\n\tfor (i = 0; i < nr_devices; i++)\n\t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n",
+          "before": "\tunsigned i, nr_devices = sb->nr_devices;\n\n\tif (le16_to_cpu(mi->member_bytes)) {\n\t\tsize_t size = vstruct_bytes(&mi->field);\n\t\tsize_t offset = offsetof(struct bch_sb_field_members_v2, _members);\n\n\t\tif (size < offset)\n\t\t\tnr_devices = 0;\n\t\telse\n\t\t\tnr_devices = min_t(unsigned, nr_devices,\n\t\t\t\t\t   (size - offset) / le16_to_cpu(mi->member_bytes));\n\t}\n\n\tfor (i = 0; i < nr_devices; i++)\n\t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c\nindex 363eb0c6eb7c..2d10337966c1 100644\n--- a/fs/bcachefs/sb-members.c\n+++ b/fs/bcachefs/sb-members.c\n@@ -341,9 +341,18 @@ static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,\n {\n \tstruct bch_sb_field_members_v2 *mi = field_to_type(f, members_v2);\n \tstruct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);\n-\tunsigned i;\n+\tunsigned i, nr_devices = sb->nr_devices;\n \n-\tfor (i = 0; i < sb->nr_devices; i++)\n+\tsize_t size = vstruct_bytes(&mi->field);\n+\tsize_t offset = offsetof(struct bch_sb_field_members_v2, _members);\n+\n+\tif (size < offset)\n+\t\tnr_devices = 0;\n+\telse if (le16_to_cpu(mi->member_bytes))\n+\t\tnr_devices = min_t(unsigned, nr_devices,\n+\t\t\t\t   (size - offset) / le16_to_cpu(mi->member_bytes));\n+\n+\tfor (i = 0; i < nr_devices; i++)\n \t\tmember_to_text(out, members_v2_get(mi, i), gi, sb, i);\n }",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/bcachefs/sb-members.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 15
+    }
+  ],
+  "success_step": 17
+}

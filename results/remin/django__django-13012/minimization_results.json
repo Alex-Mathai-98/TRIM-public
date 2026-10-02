@@ -1,0 +1,145 @@
+{
+  "bug_id": "django__django-13012",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/expressions.py",
+        "before": "class ExpressionWrapper(Expression):\n    \"\"\"\n    An expression that can wrap another expression so that it can provide\n    extra context to the inner expression, such as the output_field.\n    \"\"\"\n\n    def __init__(self, expression, output_field):\n        super().__init__(output_field=output_field)\n        self.expression = expression\n\n    def set_source_expressions(self, exprs):\n        self.expression = exprs[0]\n\n    def get_source_expressions(self):\n        return [self.expression]\n\n    def as_sql(self, compiler, connection):\n        return self.expression.as_sql(compiler, connection)\n\n    def __repr__(self):\n        return \"{}({})\".format(self.__class__.__name__, self.expression)",
+        "after": "class ExpressionWrapper(Expression):\n    \"\"\"\n    An expression that can wrap another expression so that it can provide\n    extra context to the inner expression, such as the output_field.\n    \"\"\"\n\n    def __init__(self, expression, output_field):\n        super().__init__(output_field=output_field)\n        self.expression = expression\n\n    def set_source_expressions(self, exprs):\n        self.expression = exprs[0]\n\n    def get_source_expressions(self):\n        return [self.expression]\n\n    def as_sql(self, compiler, connection):\n        return self.expression.as_sql(compiler, connection)\n\n    def get_group_by_cols(self, alias=None):\n        return self.expression.get_group_by_cols(alias)\n\n    def __repr__(self):\n        return \"{}({})\".format(self.__class__.__name__, self.expression)",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions/tests.py",
+        "before": "class CombinableTests(SimpleTestCase):\n    bitwise_msg = 'Use .bitand() and .bitor() for bitwise logical operations.'\n\n    def test_negation(self):\n        c = Combinable()\n        self.assertEqual(-c, c * -1)\n\n    def test_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() & Combinable()\n\n    def test_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() | Combinable()\n\n    def test_reversed_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() & Combinable()\n\n    def test_reversed_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() | Combinable()",
+        "after": "class ExpressionWrapperTests(TestCase):\n    @classmethod\n    def setUpTestData(cls):\n        cls.company = Company.objects.create(\n            name=\"Test Company\", num_employees=10, num_chairs=5,\n            ceo=Employee.objects.create(firstname=\"John\", lastname=\"Doe\", salary=100)\n        )\n\n    def test_expression_wrapper_constant_group_by(self):\n        \"\"\"\n        Test that ExpressionWrapper with constant values doesn't include\n        the constant in the GROUP BY clause.\n        \"\"\"\n        # Test with integer constant\n        expr = ExpressionWrapper(Value(3), output_field=IntegerField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The constant should not appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertNotIn('3', group_by_part, \n                           \"Constant '3' should not appear in GROUP BY clause\")\n        \n        # Test with string constant\n        expr = ExpressionWrapper(Value('hello'), output_field=CharField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The constant should not appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertNotIn('hello', group_by_part, \n                           \"Constant 'hello' should not appear in GROUP BY clause\")\n\n    def test_expression_wrapper_field_reference_group_by(self):\n        \"\"\"\n        Test that ExpressionWrapper with field references correctly includes\n        the field in the GROUP BY clause.\n        \"\"\"\n        expr = ExpressionWrapper(F('num_chairs'), output_field=IntegerField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The field reference should appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertIn('num_chairs', group_by_part, \n                         \"Field reference 'num_chairs' should appear in GROUP BY clause\")\n\n    def test_expression_wrapper_complex_expression_group_by(self):\n        \"\"\"\n        Test that ExpressionWrapper with complex expressions (field + constant)\n        correctly includes the expression in GROUP BY but not the constant separately.\n        \"\"\"\n        expr = ExpressionWrapper(F('num_chairs') + Value(10), output_field=IntegerField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The expression should appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertIn('num_chairs', group_by_part, \n                         \"Expression with field reference should appear in GROUP BY clause\")\n            # The constant 10 should not appear separately in GROUP BY\n            self.assertNotIn(', 10', group_by_part, \n                           \"Constant '10' should not appear separately in GROUP BY clause\")\n\n\nclass CombinableTests(SimpleTestCase):\n    bitwise_msg = 'Use .bitand() and .bitor() for bitwise logical operations.'\n\n    def test_negation(self):\n        c = Combinable()\n        self.assertEqual(-c, c * -1)\n\n    def test_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() & Combinable()\n\n    def test_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() | Combinable()\n\n    def test_reversed_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() & Combinable()\n\n    def test_reversed_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() | Combinable()",
+        "explanation": "classic_swe step 26 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/expressions.py b/django/db/models/expressions.py\nindex c1a76584f0..a8f8b427ca 100644\n--- a/django/db/models/expressions.py\n+++ b/django/db/models/expressions.py\n@@ -866,6 +866,9 @@ class ExpressionWrapper(Expression):\n     def as_sql(self, compiler, connection):\n         return self.expression.as_sql(compiler, connection)\n \n+    def get_group_by_cols(self, alias=None):\n+        return self.expression.get_group_by_cols(alias)\n+\n     def __repr__(self):\n         return \"{}({})\".format(self.__class__.__name__, self.expression)\n \ndiff --git a/tests/expressions/tests.py b/tests/expressions/tests.py\nindex 72bca4f205..296ab45212 100644\n--- a/tests/expressions/tests.py\n+++ b/tests/expressions/tests.py\n@@ -1806,6 +1806,83 @@ class ReprTests(SimpleTestCase):\n         )\n \n \n+class ExpressionWrapperTests(TestCase):\n+    @classmethod\n+    def setUpTestData(cls):\n+        cls.company = Company.objects.create(\n+            name=\"Test Company\", num_employees=10, num_chairs=5,\n+            ceo=Employee.objects.create(firstname=\"John\", lastname=\"Doe\", salary=100)\n+        )\n+\n+    def test_expression_wrapper_constant_group_by(self):\n+        \"\"\"\n+        Test that ExpressionWrapper with constant values doesn't include\n+        the constant in the GROUP BY clause.\n+        \"\"\"\n+        # Test with integer constant\n+        expr = ExpressionWrapper(Value(3), output_field=IntegerField())\n+        queryset = Company.objects.annotate(\n+            expr_res=expr\n+        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n+        \n+        sql_str = str(queryset.query)\n+        # The constant should not appear in GROUP BY clause\n+        if 'GROUP BY' in sql_str:\n+            group_by_part = sql_str.split('GROUP BY')[1]\n+            self.assertNotIn('3', group_by_part, \n+                           \"Constant '3' should not appear in GROUP BY clause\")\n+        \n+        # Test with string constant\n+        expr = ExpressionWrapper(Value('hello'), output_field=CharField())\n+        queryset = Company.objects.annotate(\n+            expr_res=expr\n+        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n+        \n+        sql_str = str(queryset.query)\n+        # The constant should not appear in GROUP BY clause\n+        if 'GROUP BY' in sql_str:\n+            group_by_part = sql_str.split('GROUP BY')[1]\n+            self.assertNotIn('hello', group_by_part, \n+                           \"Constant 'hello' should not appear in GROUP BY clause\")\n+\n+    def test_expression_wrapper_field_reference_group_by(self):\n+        \"\"\"\n+        Test that ExpressionWrapper with field references correctly includes\n+        the field in the GROUP BY clause.\n+        \"\"\"\n+        expr = ExpressionWrapper(F('num_chairs'), output_field=IntegerField())\n+        queryset = Company.objects.annotate(\n+            expr_res=expr\n+        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n+        \n+        sql_str = str(queryset.query)\n+        # The field reference should appear in GROUP BY clause\n+        if 'GROUP BY' in sql_str:\n+            group_by_part = sql_str.split('GROUP BY')[1]\n+            self.assertIn('num_chairs', group_by_part, \n+                         \"Field reference 'num_chairs' should appear in GROUP BY clause\")\n+\n+    def test_expression_wrapper_complex_expression_group_by(self):\n+        \"\"\"\n+        Test that ExpressionWrapper with complex expressions (field + constant)\n+        correctly includes the expression in GROUP BY but not the constant separately.\n+        \"\"\"\n+        expr = ExpressionWrapper(F('num_chairs') + Value(10), output_field=IntegerField())\n+        queryset = Company.objects.annotate(\n+            expr_res=expr\n+        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n+        \n+        sql_str = str(queryset.query)\n+        # The expression should appear in GROUP BY clause\n+        if 'GROUP BY' in sql_str:\n+            group_by_part = sql_str.split('GROUP BY')[1]\n+            self.assertIn('num_chairs', group_by_part, \n+                         \"Expression with field reference should appear in GROUP BY clause\")\n+            # The constant 10 should not appear separately in GROUP BY\n+            self.assertNotIn(', 10', group_by_part, \n+                           \"Constant '10' should not appear separately in GROUP BY clause\")\n+\n+\n class CombinableTests(SimpleTestCase):\n     bitwise_msg = 'Use .bitand() and .bitor() for bitwise logical operations.'\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      4
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      2,
+      4
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      2,
+      4
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      2,
+      4
+    ],
+    "edit_list_after_refinement": [
+      2,
+      4
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/expressions.py",
+          "before": "class ExpressionWrapper(Expression):\n    \"\"\"\n    An expression that can wrap another expression so that it can provide\n    extra context to the inner expression, such as the output_field.\n    \"\"\"\n\n    def __init__(self, expression, output_field):\n        super().__init__(output_field=output_field)\n        self.expression = expression\n\n    def set_source_expressions(self, exprs):\n        self.expression = exprs[0]\n\n    def get_source_expressions(self):\n        return [self.expression]\n\n    def as_sql(self, compiler, connection):\n        return self.expression.as_sql(compiler, connection)\n\n    def __repr__(self):\n        return \"{}({})\".format(self.__class__.__name__, self.expression)",
+          "after": "class ExpressionWrapper(Expression):\n    \"\"\"\n    An expression that can wrap another expression so that it can provide\n    extra context to the inner expression, such as the output_field.\n    \"\"\"\n\n    def __init__(self, expression, output_field):\n        super().__init__(output_field=output_field)\n        self.expression = expression\n\n    def set_source_expressions(self, exprs):\n        self.expression = exprs[0]\n\n    def get_source_expressions(self):\n        return [self.expression]\n\n    def as_sql(self, compiler, connection):\n        return self.expression.as_sql(compiler, connection)\n\n    def get_group_by_cols(self, alias=None):\n        return self.expression.get_group_by_cols(alias)\n\n    def __repr__(self):\n        return \"{}({})\".format(self.__class__.__name__, self.expression)",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions/tests.py",
+          "before": "class CombinableTests(SimpleTestCase):\n    bitwise_msg = 'Use .bitand() and .bitor() for bitwise logical operations.'\n\n    def test_negation(self):\n        c = Combinable()\n        self.assertEqual(-c, c * -1)\n\n    def test_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() & Combinable()\n\n    def test_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() | Combinable()\n\n    def test_reversed_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() & Combinable()\n\n    def test_reversed_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() | Combinable()",
+          "after": "class ExpressionWrapperTests(TestCase):\n    @classmethod\n    def setUpTestData(cls):\n        cls.company = Company.objects.create(\n            name=\"Test Company\", num_employees=10, num_chairs=5,\n            ceo=Employee.objects.create(firstname=\"John\", lastname=\"Doe\", salary=100)\n        )\n\n    def test_expression_wrapper_constant_group_by(self):\n        \"\"\"\n        Test that ExpressionWrapper with constant values doesn't include\n        the constant in the GROUP BY clause.\n        \"\"\"\n        # Test with integer constant\n        expr = ExpressionWrapper(Value(3), output_field=IntegerField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The constant should not appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertNotIn('3', group_by_part, \n                           \"Constant '3' should not appear in GROUP BY clause\")\n        \n        # Test with string constant\n        expr = ExpressionWrapper(Value('hello'), output_field=CharField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The constant should not appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertNotIn('hello', group_by_part, \n                           \"Constant 'hello' should not appear in GROUP BY clause\")\n\n    def test_expression_wrapper_field_reference_group_by(self):\n        \"\"\"\n        Test that ExpressionWrapper with field references correctly includes\n        the field in the GROUP BY clause.\n        \"\"\"\n        expr = ExpressionWrapper(F('num_chairs'), output_field=IntegerField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The field reference should appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertIn('num_chairs', group_by_part, \n                         \"Field reference 'num_chairs' should appear in GROUP BY clause\")\n\n    def test_expression_wrapper_complex_expression_group_by(self):\n        \"\"\"\n        Test that ExpressionWrapper with complex expressions (field + constant)\n        correctly includes the expression in GROUP BY but not the constant separately.\n        \"\"\"\n        expr = ExpressionWrapper(F('num_chairs') + Value(10), output_field=IntegerField())\n        queryset = Company.objects.annotate(\n            expr_res=expr\n        ).values('expr_res', 'name').annotate(total_employees=Sum('num_employees'))\n        \n        sql_str = str(queryset.query)\n        # The expression should appear in GROUP BY clause\n        if 'GROUP BY' in sql_str:\n            group_by_part = sql_str.split('GROUP BY')[1]\n            self.assertIn('num_chairs', group_by_part, \n                         \"Expression with field reference should appear in GROUP BY clause\")\n            # The constant 10 should not appear separately in GROUP BY\n            self.assertNotIn(', 10', group_by_part, \n                           \"Constant '10' should not appear separately in GROUP BY clause\")\n\n\nclass CombinableTests(SimpleTestCase):\n    bitwise_msg = 'Use .bitand() and .bitor() for bitwise logical operations.'\n\n    def test_negation(self):\n        c = Combinable()\n        self.assertEqual(-c, c * -1)\n\n    def test_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() & Combinable()\n\n    def test_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            Combinable() | Combinable()\n\n    def test_reversed_and(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() & Combinable()\n\n    def test_reversed_or(self):\n        with self.assertRaisesMessage(NotImplementedError, self.bitwise_msg):\n            object() | Combinable()",
+          "explanation": "classic_swe step 26 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 137,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 137,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/models/expressions.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/expressions/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/expressions.py",
+      "tests/expressions/tests.py"
+    ],
+    "gold_files": [
+      "django/db/models/expressions.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 80,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

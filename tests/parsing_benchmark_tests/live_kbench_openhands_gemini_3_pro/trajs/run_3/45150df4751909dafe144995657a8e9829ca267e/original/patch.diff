@@ -1,0 +1,41 @@
+diff --git a/fs/ntfs3/bitmap.c b/fs/ntfs3/bitmap.c
+index cf4fe21a5039..710b4fc7b957 100644
+--- a/fs/ntfs3/bitmap.c
++++ b/fs/ntfs3/bitmap.c
+@@ -386,9 +386,12 @@ static void wnd_remove_free_ext(struct wnd_bitmap *wnd, size_t bit, size_t len)
+ 		new_key = end_in;
+ 		new_len = end - end_in;
+ 		len = bit - e->start.key;
+-	} else if (bit > end) {
++	} else {
+ 		bool bmax = false;
+ 
++		if (bit < end)
++			len = bit - e->start.key;
++
+ 		n3 = rb_next(n);
+ 
+ 		while (n3) {
+@@ -414,13 +417,16 @@ static void wnd_remove_free_ext(struct wnd_bitmap *wnd, size_t bit, size_t len)
+ 			wnd->count -= 1;
+ 			kmem_cache_free(ntfs_enode_cachep, e3);
+ 		}
+-		if (!bmax)
++		if (bmax) {
++			n3 = rb_first(&wnd->count_tree);
++			wnd->extent_max =
++				n3 ? rb_entry(n3, struct e_node, count.node)
++					     ->count.key
++				   : 0;
++		}
++
++		if (bit > end)
+ 			return;
+-		n3 = rb_first(&wnd->count_tree);
+-		wnd->extent_max =
+-			n3 ? rb_entry(n3, struct e_node, count.node)->count.key :
+-			     0;
+-		return;
+ 	}
+ 
+ 	if (e->count.key != wnd->extent_max) {

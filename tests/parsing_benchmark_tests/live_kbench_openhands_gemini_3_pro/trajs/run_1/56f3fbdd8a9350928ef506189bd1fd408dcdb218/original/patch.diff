@@ -1,0 +1,45 @@
+diff --git a/drivers/media/test-drivers/vidtv/vidtv_bridge.c b/drivers/media/test-drivers/vidtv/vidtv_bridge.c
+index e1dd8adeba46..aa9d4872037c 100644
+--- a/drivers/media/test-drivers/vidtv/vidtv_bridge.c
++++ b/drivers/media/test-drivers/vidtv/vidtv_bridge.c
+@@ -191,10 +191,11 @@ static int vidtv_start_streaming(struct vidtv_dvb *dvb)
+ 
+ 	mux_args.mux_buf_sz  = mux_buf_sz;
+ 
+-	dvb->streaming = true;
+ 	dvb->mux = vidtv_mux_init(dvb->fe[0], dev, &mux_args);
+ 	if (!dvb->mux)
+ 		return -ENOMEM;
++
++	dvb->streaming = true;
+ 	vidtv_mux_start_thread(dvb->mux);
+ 
+ 	dev_dbg_ratelimited(dev, "Started streaming\n");
+@@ -206,9 +207,12 @@ static int vidtv_stop_streaming(struct vidtv_dvb *dvb)
+ 	struct device *dev = &dvb->pdev->dev;
+ 
+ 	dvb->streaming = false;
+-	vidtv_mux_stop_thread(dvb->mux);
+-	vidtv_mux_destroy(dvb->mux);
+-	dvb->mux = NULL;
++
++	if (dvb->mux) {
++		vidtv_mux_stop_thread(dvb->mux);
++		vidtv_mux_destroy(dvb->mux);
++		dvb->mux = NULL;
++	}
+ 
+ 	dev_dbg_ratelimited(dev, "Stopped streaming\n");
+ 	return 0;
+@@ -231,8 +235,10 @@ static int vidtv_start_feed(struct dvb_demux_feed *feed)
+ 
+ 	if (dvb->nfeeds == 1) {
+ 		ret = vidtv_start_streaming(dvb);
+-		if (ret < 0)
++		if (ret < 0) {
++			dvb->nfeeds--;
+ 			rc = ret;
++		}
+ 	}
+ 
+ 	mutex_unlock(&dvb->feed_lock);

@@ -1,0 +1,22 @@
+diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
+index badc2cbc895e..31940ef1f376 100644
+--- a/fs/nilfs2/super.c
++++ b/fs/nilfs2/super.c
+@@ -89,7 +89,16 @@ static void nilfs_set_error(struct super_block *sb)
+ 	struct the_nilfs *nilfs = sb->s_fs_info;
+ 	struct nilfs_super_block **sbp;
+ 
+-	down_write(&nilfs->ns_sem);
++	/*
++	 * Use trylock to avoid a potential circular locking dependency
++	 * between ns_sem and other locks such as the DAT file's mi_sem
++	 * (dat_lock_key).  If the lock cannot be acquired, the error
++	 * flag will not be set on the superblock, but the error message
++	 * has already been printed and the filesystem will be remounted
++	 * read-only if the ERRORS_RO mount option is set.
++	 */
++	if (!down_write_trylock(&nilfs->ns_sem))
++		return;
+ 	if (!(nilfs->ns_mount_state & NILFS_ERROR_FS)) {
+ 		nilfs->ns_mount_state |= NILFS_ERROR_FS;
+ 		sbp = nilfs_prepare_super(sb, 0);

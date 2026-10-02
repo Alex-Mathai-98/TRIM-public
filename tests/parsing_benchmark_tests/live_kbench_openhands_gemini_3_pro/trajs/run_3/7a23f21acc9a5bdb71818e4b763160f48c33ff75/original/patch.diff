@@ -1,0 +1,180 @@
+diff --git a/kernel/cgroup/rstat.c b/kernel/cgroup/rstat.c
+index 981e2f77ad4e..1326817ae4ab 100644
+--- a/kernel/cgroup/rstat.c
++++ b/kernel/cgroup/rstat.c
+@@ -81,6 +81,10 @@ __bpf_kfunc void css_rstat_updated(struct cgroup_subsys_state *css, int cpu)
+ 	if (!css_uses_rstat(css))
+ 		return;
+ 
++	rstatc_pcpu = READ_ONCE(css->rstat_cpu);
++	if (!rstatc_pcpu)
++		return;
++
+ 	lockdep_assert_preemption_disabled();
+ 
+ 	/*
+@@ -91,7 +95,7 @@ __bpf_kfunc void css_rstat_updated(struct cgroup_subsys_state *css, int cpu)
+ 	     !IS_ENABLED(CONFIG_ARCH_HAS_NMI_SAFE_THIS_CPU_OPS)) && in_nmi())
+ 		return;
+ 
+-	rstatc = css_rstat_cpu(css, cpu);
++	rstatc = per_cpu_ptr(rstatc_pcpu, cpu);
+ 	/*
+ 	 * If already on list return. This check is racy and smp_mb() is needed
+ 	 * to pair it with the smp_mb() in css_process_update_tree() if the
+@@ -114,7 +118,6 @@ __bpf_kfunc void css_rstat_updated(struct cgroup_subsys_state *css, int cpu)
+ 	 * the llist.
+ 	 */
+ 	self = &rstatc->lnode;
+-	rstatc_pcpu = css->rstat_cpu;
+ 	if (this_cpu_cmpxchg(rstatc_pcpu->lnode.next, self, NULL) != self)
+ 		return;
+ 
+@@ -276,40 +279,51 @@ static struct cgroup_subsys_state *css_rstat_push_children(
+  * here is the css root whose updated_next can be self terminated.
+  */
+ static struct cgroup_subsys_state *css_rstat_updated_list(
+-		struct cgroup_subsys_state *root, int cpu)
++		struct cgroup_subsys_state *root, int cpu,
++		struct css_rstat_cpu __percpu *rstat_cpu)
+ {
+-	struct css_rstat_cpu *rstatc = css_rstat_cpu(root, cpu);
++	struct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);
+ 	struct cgroup_subsys_state *head = NULL, *parent, *child;
+ 
+ 	css_process_update_tree(root->ss, cpu);
+ 
+-	/* Return NULL if this subtree is not on-list */
+-	if (!rstatc->updated_next)
+-		return NULL;
+-
+ 	/*
+-	 * Unlink @root from its parent. As the updated_children list is
+-	 * singly linked, we have to walk it to find the removal point.
++	 * Return NULL if this subtree is not on-list.
++	 *
++	 * An exception is that if the updates are racing with
++	 * css_rstat_exit(), the cleanup flush may happen after the check
++	 * in css_rstat_updated_list() passes using a valid rstat_cpu but
++	 * the link to the parent is skipped because the later check fails
++	 * using the NULL rstat_cpu. In such case, we still want to
++	 * proceed to flush the children.
+ 	 */
+-	parent = root->parent;
+-	if (parent) {
+-		struct css_rstat_cpu *prstatc;
+-		struct cgroup_subsys_state **nextp;
+-
+-		prstatc = css_rstat_cpu(parent, cpu);
+-		nextp = &prstatc->updated_children;
+-		while (*nextp != root) {
+-			struct css_rstat_cpu *nrstatc;
+-
+-			nrstatc = css_rstat_cpu(*nextp, cpu);
+-			WARN_ON_ONCE(*nextp == parent);
+-			nextp = &nrstatc->updated_next;
++	if (!rstatc->updated_next) {
++		if (rstatc->updated_children == root)
++			return NULL;
++	} else {
++		/*
++		 * Unlink @root from its parent. As the updated_children list is
++		 * singly linked, we have to walk it to find the removal point.
++		 */
++		parent = root->parent;
++		if (parent) {
++			struct css_rstat_cpu *prstatc;
++			struct cgroup_subsys_state **nextp;
++
++			prstatc = css_rstat_cpu(parent, cpu);
++			nextp = &prstatc->updated_children;
++			while (*nextp != root) {
++				struct css_rstat_cpu *nrstatc;
++
++				nrstatc = css_rstat_cpu(*nextp, cpu);
++				WARN_ON_ONCE(*nextp == parent);
++				nextp = &nrstatc->updated_next;
++			}
++			*nextp = rstatc->updated_next;
+ 		}
+-		*nextp = rstatc->updated_next;
++		rstatc->updated_next = NULL;
+ 	}
+ 
+-	rstatc->updated_next = NULL;
+-
+ 	/* Push @root to the list first before pushing the children */
+ 	head = root;
+ 	root->rstat_flush_next = NULL;
+@@ -394,7 +408,8 @@ static inline void __css_rstat_unlock(struct cgroup_subsys_state *css,
+  *
+  * This function may block.
+  */
+-__bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)
++static void __css_rstat_flush(struct cgroup_subsys_state *css,
++			      struct css_rstat_cpu __percpu *rstat_cpu)
+ {
+ 	int cpu;
+ 	bool is_self = css_is_self(css);
+@@ -412,7 +427,7 @@ __bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)
+ 
+ 		/* Reacquire for each CPU to avoid disabling IRQs too long */
+ 		__css_rstat_lock(css, cpu);
+-		pos = css_rstat_updated_list(css, cpu);
++		pos = css_rstat_updated_list(css, cpu, rstat_cpu);
+ 		for (; pos; pos = pos->rstat_flush_next) {
+ 			if (is_self) {
+ 				cgroup_base_stat_flush(pos->cgroup, cpu);
+@@ -427,6 +442,11 @@ __bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)
+ 	}
+ }
+ 
++__bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)
++{
++	__css_rstat_flush(css, css->rstat_cpu);
++}
++
+ int css_rstat_init(struct cgroup_subsys_state *css)
+ {
+ 	struct cgroup *cgrp = css->cgroup;
+@@ -474,16 +494,28 @@ int css_rstat_init(struct cgroup_subsys_state *css)
+ 
+ void css_rstat_exit(struct cgroup_subsys_state *css)
+ {
++	struct css_rstat_cpu __percpu *rstat_cpu;
+ 	int cpu;
+ 
+ 	if (!css_uses_rstat(css))
+ 		return;
+ 
+-	css_rstat_flush(css);
++	/*
++	 * Disable the updater before flushing to prevent new updates from
++	 * leaking in.
++	 */
++	rstat_cpu = css->rstat_cpu;
++	if (!rstat_cpu)
++		return;
++
++	css->rstat_cpu = NULL;
++	synchronize_rcu();
++
++	__css_rstat_flush(css, rstat_cpu);
+ 
+ 	/* sanity check */
+ 	for_each_possible_cpu(cpu) {
+-		struct css_rstat_cpu *rstatc = css_rstat_cpu(css, cpu);
++		struct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);
+ 
+ 		if (WARN_ON_ONCE(rstatc->updated_children != css) ||
+ 		    WARN_ON_ONCE(rstatc->updated_next))
+@@ -497,8 +529,7 @@ void css_rstat_exit(struct cgroup_subsys_state *css)
+ 		cgrp->rstat_base_cpu = NULL;
+ 	}
+ 
+-	free_percpu(css->rstat_cpu);
+-	css->rstat_cpu = NULL;
++	free_percpu(rstat_cpu);
+ }
+ 
+ /**

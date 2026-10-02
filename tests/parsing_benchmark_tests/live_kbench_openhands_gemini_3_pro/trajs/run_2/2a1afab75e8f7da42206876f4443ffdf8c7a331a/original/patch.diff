@@ -1,0 +1,37 @@
+diff --git a/io_uring/rw.c b/io_uring/rw.c
+index 5b2241a5813c..38d5d394db68 100644
+--- a/io_uring/rw.c
++++ b/io_uring/rw.c
+@@ -100,10 +100,10 @@ static int io_import_vec(int ddir, struct io_kiocb *req,
+ 			     io_is_compat(req->ctx));
+ 	if (unlikely(ret < 0))
+ 		return ret;
+-	if (iov) {
+-		req->flags |= REQ_F_NEED_CLEANUP;
++	if (iov)
+ 		io_vec_reset_iovec(&io->vec, iov, io->iter.nr_segs);
+-	}
++	if (io->vec.iovec)
++		req->flags |= REQ_F_NEED_CLEANUP;
+ 	return 0;
+ }
+ 
+@@ -157,6 +157,8 @@ static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)
+ 
+ 	if (io_alloc_cache_put(&req->ctx->rw_cache, rw))
+ 		io_req_async_data_clear(req, 0);
++	else
++		io_vec_free(&rw->vec);
+ }
+ 
+ static void io_req_rw_cleanup(struct io_kiocb *req, unsigned int issue_flags)
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..f593d9f43022
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "2a1afab75e8f7da42206876f4443ffdf8c7a331a": 93135
++}
+\ No newline at end of file

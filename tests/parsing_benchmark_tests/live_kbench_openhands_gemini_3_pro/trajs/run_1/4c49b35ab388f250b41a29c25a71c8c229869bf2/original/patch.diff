@@ -1,0 +1,62 @@
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 88d0946b5bc9..0fa576bb4758 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -836,7 +836,12 @@ static ssize_t fuse_send_read(struct fuse_io_args *ia, loff_t pos, size_t count,
+ 	if (ia->io->async)
+ 		return fuse_async_req_send(fm, ia, count);
+ 
+-	return fuse_simple_request(fm, &ia->ap.args);
++	ssize_t ret = fuse_simple_request(fm, &ia->ap.args);
++
++	if (ret > 0 && ret > count)
++		return -EIO;
++
++	return ret;
+ }
+ 
+ static void fuse_read_update_size(struct inode *inode, loff_t size,
+@@ -1541,8 +1546,10 @@ static int fuse_get_user_pages(struct fuse_args_pages *ap, struct iov_iter *ii,
+ 	 */
+ 	struct page **pages = kzalloc(max_pages * sizeof(struct page *),
+ 				      GFP_KERNEL);
+-	if (!pages)
++	if (!pages) {
++		*nbytesp = 0;
+ 		return -ENOMEM;
++	}
+ 
+ 	while (nbytes < *nbytesp && nr_pages < max_pages) {
+ 		unsigned nfolios, i;
+diff --git a/lib/iov_iter.c b/lib/iov_iter.c
+index 9ec806f989f2..6d089f39a48c 100644
+--- a/lib/iov_iter.c
++++ b/lib/iov_iter.c
+@@ -1845,7 +1845,13 @@ static ssize_t iov_iter_extract_user_pages(struct iov_iter *i,
+ 	if (unlikely(res <= 0))
+ 		return res;
+ 	maxsize = min_t(size_t, maxsize, res * PAGE_SIZE - offset);
++	if (iter_is_ubuf(i)) {
++		printk(KERN_ERR "DEBUG: extract_user_pages calling advance iter=%p maxsize=%zu iov_offset=%zu count=%zu type=%d\n", i, maxsize, i->iov_offset, i->count, iov_iter_type(i));
++	}
+ 	iov_iter_advance(i, maxsize);
++	if (iter_is_ubuf(i)) {
++		printk(KERN_ERR "DEBUG: extract_user_pages AFTER advance iter=%p iov_offset=%zu count=%zu type=%d\n", i, i->iov_offset, i->count, iov_iter_type(i));
++	}
+ 	return maxsize;
+ }
+ 
+@@ -1903,10 +1909,12 @@ ssize_t iov_iter_extract_pages(struct iov_iter *i,
+ 	if (!maxsize)
+ 		return 0;
+ 
+-	if (likely(user_backed_iter(i)))
++	if (likely(user_backed_iter(i))) {
++		if (iter_is_ubuf(i)) printk(KERN_ERR "DEBUG: extract_pages calls user_backed for UBUF iter=%p count=%zu\n", i, i->count);
+ 		return iov_iter_extract_user_pages(i, pages, maxsize,
+ 						   maxpages, extraction_flags,
+ 						   offset0);
++	}
+ 	if (iov_iter_is_kvec(i))
+ 		return iov_iter_extract_kvec_pages(i, pages, maxsize,
+ 						   maxpages, extraction_flags,

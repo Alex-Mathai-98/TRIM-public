@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-12708",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/base/schema.py",
+        "before": "    def _delete_composed_index(self, model, fields, constraint_kwargs, sql):\n        meta_constraint_names = {constraint.name for constraint in model._meta.constraints}\n        meta_index_names = {constraint.name for constraint in model._meta.indexes}\n        columns = [model._meta.get_field(field).column for field in fields]\n        constraint_names = self._constraint_names(\n            model, columns, exclude=meta_constraint_names | meta_index_names,\n            **constraint_kwargs\n        )\n        if len(constraint_names) != 1:\n            raise ValueError(\"Found wrong number (%s) of constraints for %s(%s)\" % (\n                len(constraint_names),\n                model._meta.db_table,\n                \", \".join(columns),\n            ))\n        self.execute(self._delete_constraint_sql(sql, model, constraint_names[0]))",
+        "after": "    def _delete_composed_index(self, model, fields, constraint_kwargs, sql):\n        meta_constraint_names = {constraint.name for constraint in model._meta.constraints}\n        meta_index_names = {constraint.name for constraint in model._meta.indexes}\n        columns = [model._meta.get_field(field).column for field in fields]\n        \n        # If we're looking for index constraints, exclude unique constraints\n        # to avoid conflicts when both index_together and unique_together\n        # exist on the same fields\n        if constraint_kwargs.get('index') and not constraint_kwargs.get('unique'):\n            constraint_kwargs = constraint_kwargs.copy()\n            constraint_kwargs['unique'] = False\n        \n        constraint_names = self._constraint_names(\n            model, columns, exclude=meta_constraint_names | meta_index_names,\n            **constraint_kwargs\n        )\n        if len(constraint_names) != 1:\n            raise ValueError(\"Found wrong number (%s) of constraints for %s(%s)\" % (\n                len(constraint_names),\n                model._meta.db_table,\n                \", \".join(columns),\n            ))\n        self.execute(self._delete_constraint_sql(sql, model, constraint_names[0]))",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/base/schema.py b/django/db/backends/base/schema.py\nindex 61f88401ab..0079b1fce1 100644\n--- a/django/db/backends/base/schema.py\n+++ b/django/db/backends/base/schema.py\n@@ -403,6 +403,14 @@ class BaseDatabaseSchemaEditor:\n         meta_constraint_names = {constraint.name for constraint in model._meta.constraints}\n         meta_index_names = {constraint.name for constraint in model._meta.indexes}\n         columns = [model._meta.get_field(field).column for field in fields]\n+        \n+        # If we're looking for index constraints, exclude unique constraints\n+        # to avoid conflicts when both index_together and unique_together\n+        # exist on the same fields\n+        if constraint_kwargs.get('index') and not constraint_kwargs.get('unique'):\n+            constraint_kwargs = constraint_kwargs.copy()\n+            constraint_kwargs['unique'] = False\n+        \n         constraint_names = self._constraint_names(\n             model, columns, exclude=meta_constraint_names | meta_index_names,\n             **constraint_kwargs\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/base/schema.py",
+          "before": "    def _delete_composed_index(self, model, fields, constraint_kwargs, sql):\n        meta_constraint_names = {constraint.name for constraint in model._meta.constraints}\n        meta_index_names = {constraint.name for constraint in model._meta.indexes}\n        columns = [model._meta.get_field(field).column for field in fields]\n        constraint_names = self._constraint_names(\n            model, columns, exclude=meta_constraint_names | meta_index_names,\n            **constraint_kwargs\n        )\n        if len(constraint_names) != 1:\n            raise ValueError(\"Found wrong number (%s) of constraints for %s(%s)\" % (\n                len(constraint_names),\n                model._meta.db_table,\n                \", \".join(columns),\n            ))\n        self.execute(self._delete_constraint_sql(sql, model, constraint_names[0]))",
+          "after": "    def _delete_composed_index(self, model, fields, constraint_kwargs, sql):\n        meta_constraint_names = {constraint.name for constraint in model._meta.constraints}\n        meta_index_names = {constraint.name for constraint in model._meta.indexes}\n        columns = [model._meta.get_field(field).column for field in fields]\n        \n        # If we're looking for index constraints, exclude unique constraints\n        # to avoid conflicts when both index_together and unique_together\n        # exist on the same fields\n        if constraint_kwargs.get('index') and not constraint_kwargs.get('unique'):\n            constraint_kwargs = constraint_kwargs.copy()\n            constraint_kwargs['unique'] = False\n        \n        constraint_names = self._constraint_names(\n            model, columns, exclude=meta_constraint_names | meta_index_names,\n            **constraint_kwargs\n        )\n        if len(constraint_names) != 1:\n            raise ValueError(\"Found wrong number (%s) of constraints for %s(%s)\" % (\n                len(constraint_names),\n                model._meta.db_table,\n                \", \".join(columns),\n            ))\n        self.execute(self._delete_constraint_sql(sql, model, constraint_names[0]))",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 101,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 101,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/backends/base/schema.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/backends/base/schema.py"
+    ],
+    "gold_files": [
+      "django/db/backends/base/schema.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

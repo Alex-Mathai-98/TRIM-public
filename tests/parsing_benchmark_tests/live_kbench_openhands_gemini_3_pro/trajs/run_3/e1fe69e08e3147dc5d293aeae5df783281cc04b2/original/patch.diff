@@ -1,0 +1,36 @@
+diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c
+index 6d7a442ceb89..0267976bf2dc 100644
+--- a/net/bpf/test_run.c
++++ b/net/bpf/test_run.c
+@@ -175,10 +175,18 @@ static int xdp_test_run_setup(struct xdp_test_data *xdp, struct xdp_buff *orig_c
+ 	if (!xdp->frames)
+ 		return -ENOMEM;
+ 
+-	xdp->skbs = kvmalloc_array(xdp->batch_size, sizeof(void *), GFP_KERNEL);
++	xdp->skbs = kvcalloc(xdp->batch_size, sizeof(void *), GFP_KERNEL);
+ 	if (!xdp->skbs)
+ 		goto err_skbs;
+ 
++	if (orig_ctx->data - orig_ctx->data_meta + sizeof(struct xdp_frame) >
++	    XDP_PACKET_HEADROOM) {
++		err = -EINVAL;
++		goto err_skbs;
++	}
++
++
++
+ 	pp = page_pool_create(&pp_params);
+ 	if (IS_ERR(pp)) {
+ 		err = PTR_ERR(pp);
+@@ -274,6 +282,11 @@ static int xdp_recv_frames(struct xdp_frame **frames, int nframes,
+ 			continue;
+ 		}
+ 
++		/* We know that the frame is from the page_pool, so we can
++		 * force the recycle bit.
++		 */
++		skb_mark_for_recycle(skb);
++
+ 		list_add_tail(&skb->list, &list);
+ 	}
+ 	netif_receive_skb_list(&list);

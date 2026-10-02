@@ -1,0 +1,145 @@
+{
+  "bug_id": "django__django-14787",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/decorators.py",
+        "before": "def _multi_decorate(decorators, method):\n    \"\"\"\n    Decorate `method` with one or more function decorators. `decorators` can be\n    a single decorator or an iterable of decorators.\n    \"\"\"\n    if hasattr(decorators, '__iter__'):\n        # Apply a list/tuple of decorators if 'decorators' is one. Decorator\n        # functions are applied so that the call order is the same as the\n        # order in which they appear in the iterable.\n        decorators = decorators[::-1]\n    else:\n        decorators = [decorators]\n\n    def _wrapper(self, *args, **kwargs):\n        # bound_method has the signature that 'decorator' expects i.e. no\n        # 'self' argument, but it's a closure over self so it can call\n        # 'func'. Also, wrap method.__get__() in a function because new\n        # attributes can't be set on bound method objects, only on functions.\n        bound_method = partial(method.__get__(self, type(self)))\n        for dec in decorators:\n            bound_method = dec(bound_method)\n        return bound_method(*args, **kwargs)\n\n    # Copy any attributes that a decorator adds to the function it decorates.\n    for dec in decorators:\n        _update_method_wrapper(_wrapper, dec)\n    # Preserve any existing attributes of 'method', including the name.\n    update_wrapper(_wrapper, method)\n    return _wrapper",
+        "after": "def _multi_decorate(decorators, method):\n    \"\"\"\n    Decorate `method` with one or more function decorators. `decorators` can be\n    a single decorator or an iterable of decorators.\n    \"\"\"\n    if hasattr(decorators, '__iter__'):\n        # Apply a list/tuple of decorators if 'decorators' is one. Decorator\n        # functions are applied so that the call order is the same as the\n        # order in which they appear in the iterable.\n        decorators = decorators[::-1]\n    else:\n        decorators = [decorators]\n\n    def _wrapper(self, *args, **kwargs):\n        # bound_method has the signature that 'decorator' expects i.e. no\n        # 'self' argument, but it's a closure over self so it can call\n        # 'func'. Also, wrap method.__get__() in a function because new\n        # attributes can't be set on bound method objects, only on functions.\n        bound_method = partial(method.__get__(self, type(self)))\n        # Copy wrapper assignments from the original method to the partial object\n        # so that decorators can access attributes like __name__, __module__, etc.\n        update_wrapper(bound_method, method)\n        for dec in decorators:\n            bound_method = dec(bound_method)\n        return bound_method(*args, **kwargs)\n\n    # Copy any attributes that a decorator adds to the function it decorates.\n    for dec in decorators:\n        _update_method_wrapper(_wrapper, dec)\n    # Preserve any existing attributes of 'method', including the name.\n    update_wrapper(_wrapper, method)\n    return _wrapper",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/decorators/tests.py",
+        "before": "        with self.assertRaisesMessage(ValueError, msg):\n            @method_decorator(lambda: None, name='nonexistent_method')\n            class Test:\n                @classmethod\n                def __module__(cls):\n                    return \"tests\"\n\n\nclass XFrameOptionsDecoratorsTests(TestCase):",
+        "after": "        with self.assertRaisesMessage(ValueError, msg):\n            @method_decorator(lambda: None, name='nonexistent_method')\n            class Test:\n                @classmethod\n                def __module__(cls):\n                    return \"tests\"\n\n    def test_wrapper_assignments_preserved(self):\n        \"\"\"\n        method_decorator should preserve wrapper assignments like __name__,\n        __module__, __qualname__, __doc__, and __annotations__ so that\n        decorators can access these attributes on the function they receive.\n        \"\"\"\n        def access_name_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                name = func.__name__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_module_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                module = func.__module__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_qualname_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                qualname = func.__qualname__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_doc_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                doc = func.__doc__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_annotations_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                annotations = func.__annotations__\n                return func(*args, **kwargs)\n            return wrapper\n\n        class Test:\n            @method_decorator(access_name_decorator)\n            def test_name(self):\n                \"\"\"Test method docstring.\"\"\"\n                return \"test_name\"\n\n            @method_decorator(access_module_decorator)\n            def test_module(self):\n                return \"test_module\"\n\n            @method_decorator(access_qualname_decorator)\n            def test_qualname(self):\n                return \"test_qualname\"\n\n            @method_decorator(access_doc_decorator)\n            def test_doc(self):\n                \"\"\"Test method docstring.\"\"\"\n                return \"test_doc\"\n\n            @method_decorator(access_annotations_decorator)\n            def test_annotations(self, arg: str) -> str:\n                return f\"test_annotations: {arg}\"\n\n        # These should not raise AttributeError\n        test_instance = Test()\n        self.assertEqual(test_instance.test_name(), \"test_name\")\n        self.assertEqual(test_instance.test_module(), \"test_module\")\n        self.assertEqual(test_instance.test_qualname(), \"test_qualname\")\n        self.assertEqual(test_instance.test_doc(), \"test_doc\")\n        self.assertEqual(test_instance.test_annotations(\"hello\"), \"test_annotations: hello\")\n\n\nclass XFrameOptionsDecoratorsTests(TestCase):",
+        "explanation": "classic_swe step 22 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/utils/decorators.py b/django/utils/decorators.py\nindex 5c9a5d01c7..12c99564d1 100644\n--- a/django/utils/decorators.py\n+++ b/django/utils/decorators.py\n@@ -38,6 +38,9 @@ def _multi_decorate(decorators, method):\n         # 'func'. Also, wrap method.__get__() in a function because new\n         # attributes can't be set on bound method objects, only on functions.\n         bound_method = partial(method.__get__(self, type(self)))\n+        # Copy wrapper assignments from the original method to the partial object\n+        # so that decorators can access attributes like __name__, __module__, etc.\n+        update_wrapper(bound_method, method)\n         for dec in decorators:\n             bound_method = dec(bound_method)\n         return bound_method(*args, **kwargs)\ndiff --git a/tests/decorators/tests.py b/tests/decorators/tests.py\nindex 46b01c1852..8fc4a627f4 100644\n--- a/tests/decorators/tests.py\n+++ b/tests/decorators/tests.py\n@@ -425,6 +425,83 @@ class MethodDecoratorTests(SimpleTestCase):\n                 def __module__(cls):\n                     return \"tests\"\n \n+    def test_wrapper_assignments_preserved(self):\n+        \"\"\"\n+        method_decorator should preserve wrapper assignments like __name__,\n+        __module__, __qualname__, __doc__, and __annotations__ so that\n+        decorators can access these attributes on the function they receive.\n+        \"\"\"\n+        def access_name_decorator(func):\n+            @wraps(func)\n+            def wrapper(*args, **kwargs):\n+                # This should not raise AttributeError\n+                name = func.__name__\n+                return func(*args, **kwargs)\n+            return wrapper\n+\n+        def access_module_decorator(func):\n+            @wraps(func)\n+            def wrapper(*args, **kwargs):\n+                # This should not raise AttributeError\n+                module = func.__module__\n+                return func(*args, **kwargs)\n+            return wrapper\n+\n+        def access_qualname_decorator(func):\n+            @wraps(func)\n+            def wrapper(*args, **kwargs):\n+                # This should not raise AttributeError\n+                qualname = func.__qualname__\n+                return func(*args, **kwargs)\n+            return wrapper\n+\n+        def access_doc_decorator(func):\n+            @wraps(func)\n+            def wrapper(*args, **kwargs):\n+                # This should not raise AttributeError\n+                doc = func.__doc__\n+                return func(*args, **kwargs)\n+            return wrapper\n+\n+        def access_annotations_decorator(func):\n+            @wraps(func)\n+            def wrapper(*args, **kwargs):\n+                # This should not raise AttributeError\n+                annotations = func.__annotations__\n+                return func(*args, **kwargs)\n+            return wrapper\n+\n+        class Test:\n+            @method_decorator(access_name_decorator)\n+            def test_name(self):\n+                \"\"\"Test method docstring.\"\"\"\n+                return \"test_name\"\n+\n+            @method_decorator(access_module_decorator)\n+            def test_module(self):\n+                return \"test_module\"\n+\n+            @method_decorator(access_qualname_decorator)\n+            def test_qualname(self):\n+                return \"test_qualname\"\n+\n+            @method_decorator(access_doc_decorator)\n+            def test_doc(self):\n+                \"\"\"Test method docstring.\"\"\"\n+                return \"test_doc\"\n+\n+            @method_decorator(access_annotations_decorator)\n+            def test_annotations(self, arg: str) -> str:\n+                return f\"test_annotations: {arg}\"\n+\n+        # These should not raise AttributeError\n+        test_instance = Test()\n+        self.assertEqual(test_instance.test_name(), \"test_name\")\n+        self.assertEqual(test_instance.test_module(), \"test_module\")\n+        self.assertEqual(test_instance.test_qualname(), \"test_qualname\")\n+        self.assertEqual(test_instance.test_doc(), \"test_doc\")\n+        self.assertEqual(test_instance.test_annotations(\"hello\"), \"test_annotations: hello\")\n+\n \n class XFrameOptionsDecoratorsTests(TestCase):\n     \"\"\"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      5
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      3,
+      5
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      3,
+      5
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      3,
+      5
+    ],
+    "edit_list_after_refinement": [
+      3,
+      5
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/decorators.py",
+          "before": "def _multi_decorate(decorators, method):\n    \"\"\"\n    Decorate `method` with one or more function decorators. `decorators` can be\n    a single decorator or an iterable of decorators.\n    \"\"\"\n    if hasattr(decorators, '__iter__'):\n        # Apply a list/tuple of decorators if 'decorators' is one. Decorator\n        # functions are applied so that the call order is the same as the\n        # order in which they appear in the iterable.\n        decorators = decorators[::-1]\n    else:\n        decorators = [decorators]\n\n    def _wrapper(self, *args, **kwargs):\n        # bound_method has the signature that 'decorator' expects i.e. no\n        # 'self' argument, but it's a closure over self so it can call\n        # 'func'. Also, wrap method.__get__() in a function because new\n        # attributes can't be set on bound method objects, only on functions.\n        bound_method = partial(method.__get__(self, type(self)))\n        for dec in decorators:\n            bound_method = dec(bound_method)\n        return bound_method(*args, **kwargs)\n\n    # Copy any attributes that a decorator adds to the function it decorates.\n    for dec in decorators:\n        _update_method_wrapper(_wrapper, dec)\n    # Preserve any existing attributes of 'method', including the name.\n    update_wrapper(_wrapper, method)\n    return _wrapper",
+          "after": "def _multi_decorate(decorators, method):\n    \"\"\"\n    Decorate `method` with one or more function decorators. `decorators` can be\n    a single decorator or an iterable of decorators.\n    \"\"\"\n    if hasattr(decorators, '__iter__'):\n        # Apply a list/tuple of decorators if 'decorators' is one. Decorator\n        # functions are applied so that the call order is the same as the\n        # order in which they appear in the iterable.\n        decorators = decorators[::-1]\n    else:\n        decorators = [decorators]\n\n    def _wrapper(self, *args, **kwargs):\n        # bound_method has the signature that 'decorator' expects i.e. no\n        # 'self' argument, but it's a closure over self so it can call\n        # 'func'. Also, wrap method.__get__() in a function because new\n        # attributes can't be set on bound method objects, only on functions.\n        bound_method = partial(method.__get__(self, type(self)))\n        # Copy wrapper assignments from the original method to the partial object\n        # so that decorators can access attributes like __name__, __module__, etc.\n        update_wrapper(bound_method, method)\n        for dec in decorators:\n            bound_method = dec(bound_method)\n        return bound_method(*args, **kwargs)\n\n    # Copy any attributes that a decorator adds to the function it decorates.\n    for dec in decorators:\n        _update_method_wrapper(_wrapper, dec)\n    # Preserve any existing attributes of 'method', including the name.\n    update_wrapper(_wrapper, method)\n    return _wrapper",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/decorators/tests.py",
+          "before": "        with self.assertRaisesMessage(ValueError, msg):\n            @method_decorator(lambda: None, name='nonexistent_method')\n            class Test:\n                @classmethod\n                def __module__(cls):\n                    return \"tests\"\n\n\nclass XFrameOptionsDecoratorsTests(TestCase):",
+          "after": "        with self.assertRaisesMessage(ValueError, msg):\n            @method_decorator(lambda: None, name='nonexistent_method')\n            class Test:\n                @classmethod\n                def __module__(cls):\n                    return \"tests\"\n\n    def test_wrapper_assignments_preserved(self):\n        \"\"\"\n        method_decorator should preserve wrapper assignments like __name__,\n        __module__, __qualname__, __doc__, and __annotations__ so that\n        decorators can access these attributes on the function they receive.\n        \"\"\"\n        def access_name_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                name = func.__name__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_module_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                module = func.__module__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_qualname_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                qualname = func.__qualname__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_doc_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                doc = func.__doc__\n                return func(*args, **kwargs)\n            return wrapper\n\n        def access_annotations_decorator(func):\n            @wraps(func)\n            def wrapper(*args, **kwargs):\n                # This should not raise AttributeError\n                annotations = func.__annotations__\n                return func(*args, **kwargs)\n            return wrapper\n\n        class Test:\n            @method_decorator(access_name_decorator)\n            def test_name(self):\n                \"\"\"Test method docstring.\"\"\"\n                return \"test_name\"\n\n            @method_decorator(access_module_decorator)\n            def test_module(self):\n                return \"test_module\"\n\n            @method_decorator(access_qualname_decorator)\n            def test_qualname(self):\n                return \"test_qualname\"\n\n            @method_decorator(access_doc_decorator)\n            def test_doc(self):\n                \"\"\"Test method docstring.\"\"\"\n                return \"test_doc\"\n\n            @method_decorator(access_annotations_decorator)\n            def test_annotations(self, arg: str) -> str:\n                return f\"test_annotations: {arg}\"\n\n        # These should not raise AttributeError\n        test_instance = Test()\n        self.assertEqual(test_instance.test_name(), \"test_name\")\n        self.assertEqual(test_instance.test_module(), \"test_module\")\n        self.assertEqual(test_instance.test_qualname(), \"test_qualname\")\n        self.assertEqual(test_instance.test_doc(), \"test_doc\")\n        self.assertEqual(test_instance.test_annotations(\"hello\"), \"test_annotations: hello\")\n\n\nclass XFrameOptionsDecoratorsTests(TestCase):",
+          "explanation": "classic_swe step 22 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 20,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 20,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/utils/decorators.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/decorators/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/utils/decorators.py",
+      "tests/decorators/tests.py"
+    ],
+    "gold_files": [
+      "django/utils/decorators.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 80,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

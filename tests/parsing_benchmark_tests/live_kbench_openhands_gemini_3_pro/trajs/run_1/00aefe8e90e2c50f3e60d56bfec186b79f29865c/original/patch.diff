@@ -1,0 +1,102 @@
+diff --git a/mm/mmap.c b/mm/mmap.c
+index 582036922d05..4a75938490bd 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -1658,13 +1658,15 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 	if (pgoff + (size >> PAGE_SHIFT) < pgoff)
+ 		return ret;
+ 
+-	if (mmap_write_lock_killable(mm))
++	if (mmap_read_lock_killable(mm))
+ 		return -EINTR;
+ 
+ 	vma = vma_lookup(mm, start);
+ 
+-	if (!vma || !(vma->vm_flags & VM_SHARED))
+-		goto out;
++	if (!vma || !(vma->vm_flags & VM_SHARED)) {
++		mmap_read_unlock(mm);
++		return -EINVAL;
++	}
+ 
+ 	if (start + size > vma->vm_end) {
+ 		VMA_ITERATOR(vmi, mm, vma->vm_end);
+@@ -1672,14 +1674,20 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 
+ 		for_each_vma_range(vmi, next, start + size) {
+ 			/* hole between vmas ? */
+-			if (next->vm_start != prev->vm_end)
+-				goto out;
++			if (next->vm_start != prev->vm_end) {
++				mmap_read_unlock(mm);
++				return -EINVAL;
++			}
+ 
+-			if (next->vm_file != vma->vm_file)
+-				goto out;
++			if (next->vm_file != vma->vm_file) {
++				mmap_read_unlock(mm);
++				return -EINVAL;
++			}
+ 
+-			if (next->vm_flags != vma->vm_flags)
+-				goto out;
++			if (next->vm_flags != vma->vm_flags) {
++				mmap_read_unlock(mm);
++				return -EINVAL;
++			}
+ 
+ 			if (start + size <= next->vm_end)
+ 				break;
+@@ -1687,8 +1695,10 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 			prev = next;
+ 		}
+ 
+-		if (!next)
+-			goto out;
++		if (!next) {
++			mmap_read_unlock(mm);
++			return -EINVAL;
++		}
+ 	}
+ 
+ 	prot |= vma->vm_flags & VM_READ ? PROT_READ : 0;
+@@ -1701,15 +1711,32 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 		flags |= MAP_LOCKED;
+ 
+ 	file = get_file(vma->vm_file);
+-	ret = security_mmap_file(vma->vm_file, prot, flags);
+-	if (ret)
+-		goto out_fput;
+-	ret = do_mmap(vma->vm_file, start, size,
++	mmap_read_unlock(mm);
++
++	ret = security_mmap_file(file, prot, flags);
++	if (ret) {
++		fput(file);
++		return ret;
++	}
++
++	ret = -EINTR;
++	if (mmap_write_lock_killable(mm)) {
++		fput(file);
++		return ret;
++	}
++
++	vma = vma_lookup(mm, start);
++
++	if (!vma || vma->vm_file != file) {
++		ret = -EINVAL;
++		goto out;
++	}
++
++	ret = do_mmap(file, start, size,
+ 			prot, flags, 0, pgoff, &populate, NULL);
+-out_fput:
+-	fput(file);
+ out:
+ 	mmap_write_unlock(mm);
++	fput(file);
+ 	if (populate)
+ 		mm_populate(ret, populate);
+ 	if (!IS_ERR_VALUE(ret))

@@ -1,0 +1,40 @@
+diff --git a/check_offset.c b/check_offset.c
+new file mode 100644
+index 000000000000..6a77a073684e
+--- /dev/null
++++ b/check_offset.c
+@@ -0,0 +1,16 @@
++
++#include <linux/types.h>
++#include <linux/spinlock.h>
++#include <linux/list.h>
++
++struct swap_cluster_info {
++	spinlock_t lock;
++	u16 count;
++	u8 flags;
++	u8 order;
++	struct list_head list;
++};
++
++int main() {
++    return 0;
++}
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index 46bd4b1a3c07..e99f68569dde 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -744,7 +744,12 @@ static void swap_reclaim_full_clusters(struct swap_info_struct *si, bool force)
+ 		to_scan = si->inuse_pages / SWAPFILE_CLUSTER;
+ 
+ 	while (!list_empty(&si->full_clusters)) {
+-		ci = list_first_entry(&si->full_clusters, struct swap_cluster_info, list);
++		struct list_head *entry = si->full_clusters.next;
++
++		if ((unsigned long)entry < 4096)
++			break;
++
++		ci = list_entry(entry, struct swap_cluster_info, list);
+ 		list_move_tail(&ci->list, &si->full_clusters);
+ 		offset = cluster_offset(si, ci);
+ 		end = min(si->max, offset + SWAPFILE_CLUSTER);

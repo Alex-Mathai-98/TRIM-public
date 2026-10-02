@@ -1,0 +1,56 @@
+diff --git a/mm/shmem.c b/mm/shmem.c
+index 5a3f0f754dc0..c396e1834e94 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -4057,19 +4057,43 @@ static int shmem_rename2(struct mnt_idmap *idmap,
+ 			return error;
+ 	}
+ 
+-	error = simple_offset_rename(old_dir, old_dentry, new_dir, new_dentry);
+-	if (error)
+-		return error;
++	/*
++	 * If the new dentry is positive, but not in the valid offsets,
++	 * it means it was unlinked/removed but we still have the dentry.
++	 * In that case, we should not try to unlink it again.
++	 */
++	if (d_really_is_positive(new_dentry) && new_dentry->d_fsdata) {
++		/*
++		 * It's safer to not rely on simple_offset_rename() to tell
++		 * us if it replaced the entry or just added the new one.
++		 * If we replaced, we need to unlink the old one.
++		 */
++		int unlinked_error;
++
++		error = simple_offset_rename(old_dir, old_dentry, new_dir, new_dentry);
++		if (error)
++			return error;
++
++		unlinked_error = shmem_unlink(new_dir, new_dentry);
++		/*
++		 * We don't care about unlinked_error here, because we already
++		 * verified it was in the map.
++		 */
++		(void)unlinked_error;
+ 
+-	if (d_really_is_positive(new_dentry)) {
+-		(void) shmem_unlink(new_dir, new_dentry);
+ 		if (they_are_dirs) {
+ 			drop_nlink(d_inode(new_dentry));
+ 			drop_nlink(old_dir);
+ 		}
+-	} else if (they_are_dirs) {
+-		drop_nlink(old_dir);
+-		inc_nlink(new_dir);
++	} else {
++		error = simple_offset_rename(old_dir, old_dentry, new_dir, new_dentry);
++		if (error)
++			return error;
++
++		if (they_are_dirs) {
++			drop_nlink(old_dir);
++			inc_nlink(new_dir);
++		}
+ 	}
+ 
+ 	old_dir->i_size -= BOGO_DIRENT_SIZE;

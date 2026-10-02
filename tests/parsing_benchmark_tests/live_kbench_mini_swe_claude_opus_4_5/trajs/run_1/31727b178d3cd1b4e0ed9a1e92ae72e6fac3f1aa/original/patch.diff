@@ -1,0 +1,75 @@
+diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c
+index a8f1808a1ca5..5a248f09fe6d 100644
+--- a/kernel/bpf/syscall.c
++++ b/kernel/bpf/syscall.c
+@@ -34,6 +34,7 @@
+ #include <linux/bpf-netns.h>
+ #include <linux/rcupdate_trace.h>
+ #include <linux/memcontrol.h>
++#include <linux/tracepoint.h>
+ #include <linux/trace_events.h>
+ 
+ #include <net/netfilter/nf_bpf_link.h>
+@@ -2981,9 +2982,12 @@ static void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)
+ 	struct bpf_link *link = container_of(rcu, struct bpf_link, rcu);
+ 
+ 	/* free bpf_link and its containing memory */
++	if (link->prog)
++		bpf_prog_put(link->prog);
+ 	link->ops->dealloc_deferred(link);
+ }
+ 
++
+ static void bpf_link_defer_dealloc_mult_rcu_gp(struct rcu_head *rcu)
+ {
+ 	if (rcu_trace_implies_rcu_gp())
+@@ -2997,27 +3001,43 @@ static void bpf_link_free(struct bpf_link *link)
+ {
+ 	const struct bpf_link_ops *ops = link->ops;
+ 	bool sleepable = false;
++	bool tracepoint_faultable = false;
+ 
+ 	bpf_link_free_id(link->id);
+ 	if (link->prog) {
+ 		sleepable = link->prog->sleepable;
++		/* If this is a raw tracepoint link, check if the tracepoint
++		 * is faultable. If so, we need to use call_rcu_tasks_trace()
++		 * to wait for all preempted tracepoint callbacks to complete.
++		 */
++		if (link->type == BPF_LINK_TYPE_RAW_TRACEPOINT) {
++			struct bpf_raw_tp_link *raw_tp =
++				container_of(link, struct bpf_raw_tp_link, link);
++
++			tracepoint_faultable = tracepoint_is_faultable(raw_tp->btp->tp);
++		}
+ 		/* detach BPF program, clean up used resources */
+ 		ops->release(link);
+-		bpf_prog_put(link->prog);
+ 	}
+ 	if (ops->dealloc_deferred) {
+ 		/* schedule BPF link deallocation; if underlying BPF program
+-		 * is sleepable, we need to first wait for RCU tasks trace
+-		 * sync, then go through "classic" RCU grace period
++		 * is sleepable or if the tracepoint is faultable, we need to
++		 * first wait for RCU tasks trace sync, then go through
++		 * "classic" RCU grace period
+ 		 */
+-		if (sleepable)
++		if (sleepable || tracepoint_faultable)
+ 			call_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);
+ 		else
+ 			call_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);
+-	} else if (ops->dealloc)
+-		ops->dealloc(link);
++	} else {
++		if (link->prog)
++			bpf_prog_put(link->prog);
++		if (ops->dealloc)
++			ops->dealloc(link);
++	}
+ }
+ 
++
+ static void bpf_link_put_deferred(struct work_struct *work)
+ {
+ 	struct bpf_link *link = container_of(work, struct bpf_link, work);

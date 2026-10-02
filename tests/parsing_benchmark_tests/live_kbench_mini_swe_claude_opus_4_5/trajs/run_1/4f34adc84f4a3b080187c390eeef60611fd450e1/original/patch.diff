@@ -1,0 +1,27 @@
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index a99032076e04..8d83a038dc08 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -1289,16 +1289,18 @@ static void l2tp_session_unhash(struct l2tp_session *session)
+ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)
+ {
+ 	struct l2tp_session *session;
+-	struct list_head *pos;
+-	struct list_head *tmp;
+ 
+ 	spin_lock_bh(&tunnel->list_lock);
+ 	tunnel->acpt_newsess = false;
+-	list_for_each_safe(pos, tmp, &tunnel->session_list) {
+-		session = list_entry(pos, struct l2tp_session, list);
++	while (!list_empty(&tunnel->session_list)) {
++		session = list_first_entry(&tunnel->session_list,
++					   struct l2tp_session, list);
+ 		list_del_init(&session->list);
++		if (!refcount_inc_not_zero(&session->ref_count))
++			continue;
+ 		spin_unlock_bh(&tunnel->list_lock);
+ 		l2tp_session_delete(session);
++		l2tp_session_dec_refcount(session);
+ 		spin_lock_bh(&tunnel->list_lock);
+ 	}
+ 	spin_unlock_bh(&tunnel->list_lock);

@@ -1,0 +1,40 @@
+diff --git a/net/mac802154/iface.c b/net/mac802154/iface.c
+index c0e2da5072be..25b5fd78ec06 100644
+--- a/net/mac802154/iface.c
++++ b/net/mac802154/iface.c
+@@ -664,16 +664,21 @@ ieee802154_if_add(struct ieee802154_local *local, const char *name,
+ 	if (ret)
+ 		goto err;
+ 
+-	ret = register_netdevice(ndev);
+-	if (ret < 0)
+-		goto err;
+-
+ 	mutex_lock(&local->iflist_mtx);
+ 	list_add_tail_rcu(&sdata->list, &local->interfaces);
+ 	mutex_unlock(&local->iflist_mtx);
+ 
++	ret = register_netdevice(ndev);
++	if (ret < 0)
++		goto err_register;
++
+ 	return ndev;
+ 
++err_register:
++	mutex_lock(&local->iflist_mtx);
++	list_del_rcu(&sdata->list);
++	mutex_unlock(&local->iflist_mtx);
++	synchronize_rcu();
+ err:
+ 	free_netdev(ndev);
+ 	return ERR_PTR(ret);
+@@ -683,6 +688,9 @@ void ieee802154_if_remove(struct ieee802154_sub_if_data *sdata)
+ {
+ 	ASSERT_RTNL();
+ 
++	if (sdata->dev->reg_state != NETREG_REGISTERED)
++		return;
++
+ 	mutex_lock(&sdata->local->iflist_mtx);
+ 	list_del_rcu(&sdata->list);
+ 	mutex_unlock(&sdata->local->iflist_mtx);

@@ -1,0 +1,167 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (refcount_dec_and_test(&ns->__ns_ref)) {\n        int a = __ns_ref_active_read(ns);\n        if (a != 0) {\n            printk(KERN_ERR \"DEBUG: __ns_ref_put Ref=0 Active=%d\\n\", a);\n        }\n\t\tVFS_WARN_ON_ONCE(a);\n\t\treturn true;\n\t}\n",
+          "before": "\n\tif (refcount_dec_and_test(&ns->__ns_ref)) {\n\t\tVFS_WARN_ON_ONCE(__ns_ref_active_read(ns));\n\t\treturn true;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -261 +261,5 @@\n-\t\tVFS_WARN_ON_ONCE(__ns_ref_active_read(ns));\n+        int a = __ns_ref_active_read(ns);\n+        if (a != 0) {\n+            printk(KERN_ERR \"DEBUG: __ns_ref_put Ref=0 Active=%d\\n\", a);\n+        }\n+\t\tVFS_WARN_ON_ONCE(a);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 421",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 421
+        }
+      ],
+      "end_step": 423,
+      "revision_index": 0,
+      "start_step": 418
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\nstatic __always_inline void __ns_ref_active_get(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\tif (!is_ns_init_id(ns)) {\n\t\tint ret = atomic_inc_return(&ns->__ns_ref_active);\n\t\tWARN_ON_ONCE(ret < 0);\n\t\tif (ret == 1)\n\t\t\tns_ref_active_get_owner(ns);\n\t}\n}\n\n",
+          "before": "\n\nstatic __always_inline void __ns_ref_active_get(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\tif (!is_ns_init_id(ns))\n\t\tWARN_ON_ONCE(atomic_add_negative(1, &ns->__ns_ref_active));\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -299,2 +299,6 @@\n-\tif (!is_ns_init_id(ns))\n-\t\tWARN_ON_ONCE(atomic_add_negative(1, &ns->__ns_ref_active));\n+\tif (!is_ns_init_id(ns)) {\n+\t\tint ret = atomic_inc_return(&ns->__ns_ref_active);\n+\t\tWARN_ON_ONCE(ret < 0);\n+\t\tif (ret == 1)\n+\t\t\tns_ref_active_get_owner(ns);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 504",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 504
+        }
+      ],
+      "end_step": 504,
+      "revision_index": 1,
+      "start_step": 504
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\tint ret = atomic_inc_return(&ns->__ns_ref_active);\n\t\tWARN_ON_ONCE(ret < 0);\n\t\tif (ret == 1)\n\t\t\t__ns_ref_active_get_owner(ns);\n\t}\n}\n",
+          "before": "\n\t\tint ret = atomic_inc_return(&ns->__ns_ref_active);\n\t\tWARN_ON_ONCE(ret < 0);\n\t\tif (ret == 1)\n\t\t\tns_ref_active_get_owner(ns);\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -303 +303 @@\n-\t\t\tns_ref_active_get_owner(ns);\n+\t\t\t__ns_ref_active_get_owner(ns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 512",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 512
+        }
+      ],
+      "end_step": 512,
+      "revision_index": 2,
+      "start_step": 512
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\twrite_sequnlock(&ns_tree_lock);\n\n\t/*\n\t * Release the active reference on the owner namespace.\n\t */\n\t__ns_ref_active_put_owner(ns);\n}\nEXPORT_SYMBOL_GPL(__ns_tree_remove);\n",
+          "before": "\n\twrite_sequnlock(&ns_tree_lock);\n}\nEXPORT_SYMBOL_GPL(__ns_tree_remove);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/nstree.c\n+++ /linux/kernel/nstree.c\n@@ -218,0 +219,5 @@\n+\n+\t/*\n+\t * Release the active reference on the owner namespace.\n+\t */\n+\t__ns_ref_active_put_owner(ns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 531",
+          "filename": "kernel/nstree.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 531
+        }
+      ],
+      "end_step": 531,
+      "revision_index": 3,
+      "start_step": 531
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\nstatic __always_inline __must_check bool __ns_ref_put(struct ns_common *ns)\n{\n\tif (refcount_dec_and_test(&ns->__ns_ref)) {\n\t\tVFS_WARN_ON_ONCE(__ns_ref_active_read(ns));\n\t\treturn true;\n\t}\n\treturn false;\n}\n\n",
+          "before": "\n\nstatic __always_inline __must_check bool __ns_ref_put(struct ns_common *ns)\n{\n\tif (refcount_dec_and_test(&ns->__ns_ref)) {\n        int a = __ns_ref_active_read(ns);\n        if (a != 0) {\n            printk(KERN_ERR \"DEBUG: __ns_ref_put Ref=0 Active=%d\\n\", a);\n        }\n\t\tVFS_WARN_ON_ONCE(a);\n\t\treturn true;\n\t}\n\treturn false;\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -261,5 +261 @@\n-        int a = __ns_ref_active_read(ns);\n-        if (a != 0) {\n-            printk(KERN_ERR \"DEBUG: __ns_ref_put Ref=0 Active=%d\\n\", a);\n-        }\n-\t\tVFS_WARN_ON_ONCE(a);\n+\t\tVFS_WARN_ON_ONCE(__ns_ref_active_read(ns));",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 553",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 553
+        }
+      ],
+      "end_step": 553,
+      "revision_index": 4,
+      "start_step": 553
+    }
+  ],
+  "success_step": 553
+}

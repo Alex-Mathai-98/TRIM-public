@@ -1,0 +1,173 @@
+{
+  "bug_id": "matplotlib__matplotlib-20826",
+  "short_path": [
+    [
+      {
+        "filename": "lib/matplotlib/axes/_base.py",
+        "before": "        self._shared_axes[\"x\"].clean()\n        self._shared_axes[\"y\"].clean()\n        if self._sharex is not None:\n            self.xaxis.set_visible(xaxis_visible)\n            self.patch.set_visible(patch_visible)\n        if self._sharey is not None:\n            self.yaxis.set_visible(yaxis_visible)\n            self.patch.set_visible(patch_visible)\n\n        self.stale = True",
+        "after": "        self._shared_axes[\"x\"].clean()\n        self._shared_axes[\"y\"].clean()\n        if self._sharex is not None:\n            self.xaxis.set_visible(xaxis_visible)\n            self.patch.set_visible(patch_visible)\n        if self._sharey is not None:\n            self.yaxis.set_visible(yaxis_visible)\n            self.patch.set_visible(patch_visible)\n\n        # Restore proper tick label visibility for shared axes in subplots\n        if hasattr(self, '_label_outer_xaxis') and self._sharex is not None:\n            self._label_outer_xaxis()\n        if hasattr(self, '_label_outer_yaxis') and self._sharey is not None:\n            self._label_outer_yaxis()\n\n        self.stale = True",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/axes/_base.py",
+        "before": "        # Restore proper tick label visibility for shared axes in subplots\n        if hasattr(self, '_label_outer_xaxis') and self._sharex is not None:\n            self._label_outer_xaxis()\n        if hasattr(self, '_label_outer_yaxis') and self._sharey is not None:\n            self._label_outer_yaxis()",
+        "after": "        # Restore proper tick label visibility for shared axes in subplots\n        if (hasattr(self, '_label_outer_xaxis') and self._sharex is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_xaxis()\n        if (hasattr(self, '_label_outer_yaxis') and self._sharey is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_yaxis()",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/axes/_base.py",
+        "before": "        # Restore proper tick label visibility for shared axes in subplots\n        if (hasattr(self, '_label_outer_xaxis') and self._sharex is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_xaxis()\n        if (hasattr(self, '_label_outer_yaxis') and self._sharey is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_yaxis()",
+        "after": "        # Restore proper tick label visibility for shared axes in subplots\n        if (hasattr(self, '_label_outer_xaxis') and hasattr(self, '_subplotspec')\n            and len(list(self._shared_axes[\"x\"].get_siblings(self))) > 1):\n            self._label_outer_xaxis()\n        if (hasattr(self, '_label_outer_yaxis') and hasattr(self, '_subplotspec')\n            and len(list(self._shared_axes[\"y\"].get_siblings(self))) > 1):\n            self._label_outer_yaxis()",
+        "explanation": "classic_swe step 49 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/lib/matplotlib/axes/_base.py b/lib/matplotlib/axes/_base.py\nindex 802fd3c997..4d3582f596 100644\n--- a/lib/matplotlib/axes/_base.py\n+++ b/lib/matplotlib/axes/_base.py\n@@ -1309,6 +1309,14 @@ class _AxesBase(martist.Artist):\n             self.yaxis.set_visible(yaxis_visible)\n             self.patch.set_visible(patch_visible)\n \n+        # Restore proper tick label visibility for shared axes in subplots\n+        if (hasattr(self, '_label_outer_xaxis') and hasattr(self, '_subplotspec')\n+            and len(list(self._shared_axes[\"x\"].get_siblings(self))) > 1):\n+            self._label_outer_xaxis()\n+        if (hasattr(self, '_label_outer_yaxis') and hasattr(self, '_subplotspec')\n+            and len(list(self._shared_axes[\"y\"].get_siblings(self))) > 1):\n+            self._label_outer_yaxis()\n+\n         self.stale = True\n \n     class ArtistList(MutableSequence):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4,
+      10
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      3,
+      4,
+      10
+    ],
+    "edit_list_after_file_min": [
+      3,
+      4,
+      10
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      3,
+      4,
+      10
+    ],
+    "edit_list_after_refinement": [
+      3,
+      4,
+      10
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/axes/_base.py",
+          "before": "        self._shared_axes[\"x\"].clean()\n        self._shared_axes[\"y\"].clean()\n        if self._sharex is not None:\n            self.xaxis.set_visible(xaxis_visible)\n            self.patch.set_visible(patch_visible)\n        if self._sharey is not None:\n            self.yaxis.set_visible(yaxis_visible)\n            self.patch.set_visible(patch_visible)\n\n        self.stale = True",
+          "after": "        self._shared_axes[\"x\"].clean()\n        self._shared_axes[\"y\"].clean()\n        if self._sharex is not None:\n            self.xaxis.set_visible(xaxis_visible)\n            self.patch.set_visible(patch_visible)\n        if self._sharey is not None:\n            self.yaxis.set_visible(yaxis_visible)\n            self.patch.set_visible(patch_visible)\n\n        # Restore proper tick label visibility for shared axes in subplots\n        if hasattr(self, '_label_outer_xaxis') and self._sharex is not None:\n            self._label_outer_xaxis()\n        if hasattr(self, '_label_outer_yaxis') and self._sharey is not None:\n            self._label_outer_yaxis()\n\n        self.stale = True",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/axes/_base.py",
+          "before": "        # Restore proper tick label visibility for shared axes in subplots\n        if hasattr(self, '_label_outer_xaxis') and self._sharex is not None:\n            self._label_outer_xaxis()\n        if hasattr(self, '_label_outer_yaxis') and self._sharey is not None:\n            self._label_outer_yaxis()",
+          "after": "        # Restore proper tick label visibility for shared axes in subplots\n        if (hasattr(self, '_label_outer_xaxis') and self._sharex is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_xaxis()\n        if (hasattr(self, '_label_outer_yaxis') and self._sharey is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_yaxis()",
+          "explanation": "classic_swe step 35 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/axes/_base.py",
+          "before": "        # Restore proper tick label visibility for shared axes in subplots\n        if (hasattr(self, '_label_outer_xaxis') and self._sharex is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_xaxis()\n        if (hasattr(self, '_label_outer_yaxis') and self._sharey is not None \n            and hasattr(self, '_subplotspec')):\n            self._label_outer_yaxis()",
+          "after": "        # Restore proper tick label visibility for shared axes in subplots\n        if (hasattr(self, '_label_outer_xaxis') and hasattr(self, '_subplotspec')\n            and len(list(self._shared_axes[\"x\"].get_siblings(self))) > 1):\n            self._label_outer_xaxis()\n        if (hasattr(self, '_label_outer_yaxis') and hasattr(self, '_subplotspec')\n            and len(list(self._shared_axes[\"y\"].get_siblings(self))) > 1):\n            self._label_outer_yaxis()",
+          "explanation": "classic_swe step 49 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 673,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 673,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [],
+    "extra_files_in_minimized": [
+      "lib/matplotlib/axes/_base.py"
+    ],
+    "missing_files_vs_gold": [
+      "lib/matplotlib/axis.py"
+    ],
+    "minimized_files": [
+      "lib/matplotlib/axes/_base.py"
+    ],
+    "gold_files": [
+      "lib/matplotlib/axis.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 7,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "no_overlap"
+}

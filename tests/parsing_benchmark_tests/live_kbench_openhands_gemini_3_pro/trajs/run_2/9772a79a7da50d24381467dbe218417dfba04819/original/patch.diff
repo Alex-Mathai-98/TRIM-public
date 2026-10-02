@@ -1,0 +1,56 @@
+diff --git a/fs/jfs/jfs_discard.c b/fs/jfs/jfs_discard.c
+index 575cb2ba74fc..7e2af7752697 100644
+--- a/fs/jfs/jfs_discard.c
++++ b/fs/jfs/jfs_discard.c
+@@ -64,12 +64,12 @@ void jfs_issue_discard(struct inode *ip, u64 blkno, u64 nblocks)
+  */
+ int jfs_ioc_trim(struct inode *ip, struct fstrim_range *range)
+ {
+-	struct inode *ipbmap = JFS_SBI(ip->i_sb)->ipbmap;
+-	struct bmap *bmp = JFS_SBI(ip->i_sb)->bmap;
+-	struct super_block *sb = ipbmap->i_sb;
++	struct super_block *sb = ip->i_sb;
++	struct bmap *bmp;
+ 	int agno, agno_end;
+ 	u64 start, end, minlen;
+ 	u64 trimmed = 0;
++	int ret = 0;
+ 
+ 	/**
+ 	 * convert byte values to block size of filesystem:
+@@ -83,10 +83,24 @@ int jfs_ioc_trim(struct inode *ip, struct fstrim_range *range)
+ 	if (minlen == 0)
+ 		minlen = 1;
+ 
++	down_read(&sb->s_umount);
++	if (sb_rdonly(sb)) {
++		ret = -EROFS;
++		goto out;
++	}
++
++	bmp = JFS_SBI(sb)->bmap;
++	if (!bmp) {
++		ret = -EIO;
++		goto out;
++	}
++
+ 	if (minlen > bmp->db_agsize ||
+ 	    start >= bmp->db_mapsize ||
+-	    range->len < sb->s_blocksize)
+-		return -EINVAL;
++	    range->len < sb->s_blocksize) {
++		ret = -EINVAL;
++		goto out;
++	}
+ 
+ 	if (end >= bmp->db_mapsize)
+ 		end = bmp->db_mapsize - 1;
+@@ -102,5 +116,7 @@ int jfs_ioc_trim(struct inode *ip, struct fstrim_range *range)
+ 	}
+ 	range->len = trimmed << sb->s_blocksize_bits;
+ 
+-	return 0;
++out:
++	up_read(&sb->s_umount);
++	return ret;
+ }

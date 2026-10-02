@@ -1,0 +1,195 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5,
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void io_wq_put_and_exit(struct io_wq *wq)\n{\n\tstruct io_cb_cancel_data match = {\n\t\t.fn\t\t= io_wq_work_match_all,\n\t\t.cancel_all\t= true,\n\t};\n\n\tWARN_ON_ONCE(!test_bit(IO_WQ_BIT_EXIT, &wq->state));\n\n\tio_wq_cancel_pending_work(wq, &match);\n\tio_wq_exit_workers(wq);\n\tio_wq_destroy(wq);\n}\n",
+          "before": "void io_wq_put_and_exit(struct io_wq *wq)\n{\n\tWARN_ON_ONCE(!test_bit(IO_WQ_BIT_EXIT, &wq->state));\n\n\tio_wq_exit_workers(wq);\n\tio_wq_destroy(wq);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c\nindex 04a75d666195..7341d63e1f63 100644\n--- a/io_uring/io-wq.c\n+++ b/io_uring/io-wq.c\n@@ -1317,8 +1317,14 @@ static void io_wq_destroy(struct io_wq *wq)\n \n void io_wq_put_and_exit(struct io_wq *wq)\n {\n+\tstruct io_cb_cancel_data match = {\n+\t\t.fn\t\t= io_wq_work_match_all,\n+\t\t.cancel_all\t= true,\n+\t};\n+\n \tWARN_ON_ONCE(!test_bit(IO_WQ_BIT_EXIT, &wq->state));\n \n+\tio_wq_cancel_pending_work(wq, &match);\n \tio_wq_exit_workers(wq);\n \tio_wq_destroy(wq);\n }",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "io_uring/io-wq.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 0,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tbl = kzalloc(sizeof(*bl), GFP_ATOMIC | __GFP_ACCOUNT);\n",
+          "before": "\t\tbl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c\nindex 04a75d666195..7341d63e1f63 100644\n--- a/io_uring/io-wq.c\n+++ b/io_uring/io-wq.c\n@@ -1317,8 +1317,14 @@ static void io_wq_destroy(struct io_wq *wq)\n \n void io_wq_put_and_exit(struct io_wq *wq)\n {\n+\tstruct io_cb_cancel_data match = {\n+\t\t.fn\t\t= io_wq_work_match_all,\n+\t\t.cancel_all\t= true,\n+\t};\n+\n \tWARN_ON_ONCE(!test_bit(IO_WQ_BIT_EXIT, &wq->state));\n \n+\tio_wq_cancel_pending_work(wq, &match);\n \tio_wq_exit_workers(wq);\n \tio_wq_destroy(wq);\n }\ndiff --git a/io_uring/kbuf.c b/io_uring/kbuf.c\nindex 098109259671..2d3da981402a 100644\n--- a/io_uring/kbuf.c\n+++ b/io_uring/kbuf.c\n@@ -561,7 +561,7 @@ int io_provide_buffers(struct io_kiocb *req, unsigned int issue_flags)\n \n \tbl = io_buffer_get_list(ctx, p->bgid);\n \tif (unlikely(!bl)) {\n-\t\tbl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);\n+\t\tbl = kzalloc(sizeof(*bl), GFP_ATOMIC | __GFP_ACCOUNT);\n \t\tif (!bl) {\n \t\t\tret = -ENOMEM;\n \t\t\tgoto err;",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "io_uring/kbuf.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        },
+        {
+          "after": "void io_wq_put_and_exit(struct io_wq *wq)\n{\n\tWARN_ON_ONCE(!test_bit(IO_WQ_BIT_EXIT, &wq->state));\n\n\tio_wq_exit_workers(wq);\n\tio_wq_destroy(wq);\n}\n",
+          "before": "void io_wq_put_and_exit(struct io_wq *wq)\n{\n\tstruct io_cb_cancel_data match = {\n\t\t.fn\t\t= io_wq_work_match_all,\n\t\t.cancel_all\t= true,\n\t};\n\n\tWARN_ON_ONCE(!test_bit(IO_WQ_BIT_EXIT, &wq->state));\n\n\tio_wq_cancel_pending_work(wq, &match);\n\tio_wq_exit_workers(wq);\n\tio_wq_destroy(wq);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/kbuf.c b/io_uring/kbuf.c\nindex 098109259671..2d3da981402a 100644\n--- a/io_uring/kbuf.c\n+++ b/io_uring/kbuf.c\n@@ -561,7 +561,7 @@ int io_provide_buffers(struct io_kiocb *req, unsigned int issue_flags)\n \n \tbl = io_buffer_get_list(ctx, p->bgid);\n \tif (unlikely(!bl)) {\n-\t\tbl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);\n+\t\tbl = kzalloc(sizeof(*bl), GFP_ATOMIC | __GFP_ACCOUNT);\n \t\tif (!bl) {\n \t\t\tret = -ENOMEM;\n \t\t\tgoto err;",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "io_uring/io-wq.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        },
+        {
+          "after": "\treturn xa_err(xa_store(&ctx->io_bl_xa, bgid, bl, GFP_ATOMIC));\n",
+          "before": "\treturn xa_err(xa_store(&ctx->io_bl_xa, bgid, bl, GFP_KERNEL));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/kbuf.c b/io_uring/kbuf.c\nindex 098109259671..02137bd1e5b4 100644\n--- a/io_uring/kbuf.c\n+++ b/io_uring/kbuf.c\n@@ -85,7 +85,7 @@ static int io_buffer_add_list(struct io_ring_ctx *ctx,\n \t */\n \tbl->bgid = bgid;\n \tguard(mutex)(&ctx->mmap_lock);\n-\treturn xa_err(xa_store(&ctx->io_bl_xa, bgid, bl, GFP_KERNEL));\n+\treturn xa_err(xa_store(&ctx->io_bl_xa, bgid, bl, GFP_ATOMIC));\n }\n \n void io_kbuf_drop_legacy(struct io_kiocb *req)\n@@ -561,7 +561,7 @@ int io_provide_buffers(struct io_kiocb *req, unsigned int issue_flags)\n \n \tbl = io_buffer_get_list(ctx, p->bgid);\n \tif (unlikely(!bl)) {\n-\t\tbl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);\n+\t\tbl = kzalloc(sizeof(*bl), GFP_ATOMIC | __GFP_ACCOUNT);\n \t\tif (!bl) {\n \t\t\tret = -ENOMEM;\n \t\t\tgoto err;",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "io_uring/kbuf.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 1,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": ", bl, GFP_KERNEL));\n",
+          "before": ", bl, GFP_ATOMIC));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/kbuf.c b/io_uring/kbuf.c\nindex 098109259671..2d3da981402a 100644\n--- a/io_uring/kbuf.c\n+++ b/io_uring/kbuf.c\n@@ -561,7 +561,7 @@ int io_provide_buffers(struct io_kiocb *req, unsigned int issue_flags)\n \n \tbl = io_buffer_get_list(ctx, p->bgid);\n \tif (unlikely(!bl)) {\n-\t\tbl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);\n+\t\tbl = kzalloc(sizeof(*bl), GFP_ATOMIC | __GFP_ACCOUNT);\n \t\tif (!bl) {\n \t\t\tret = -ENOMEM;\n \t\t\tgoto err;",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "io_uring/kbuf.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        },
+        {
+          "after": "\t\tbl = kzalloc(sizeof(*bl), GFP_KERNEL_ACCOUNT);\n",
+          "before": "\t\tbl = kzalloc(sizeof(*bl), GFP_ATOMIC | __GFP_ACCOUNT);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 52 #1",
+          "filename": "io_uring/kbuf.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        },
+        {
+          "after": "\tio_worker_ref_put(wq);\n\twhile (!wait_for_completion_timeout(&wq->worker_done, HZ / 5)) {\n\t\trcu_read_lock();\n\t\tio_wq_for_each_worker(wq, io_wq_worker_wake, NULL);\n\t\trcu_read_unlock();\n\t}\n",
+          "before": "\tio_worker_ref_put(wq);\n\twait_for_completion(&wq->worker_done);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/io-wq.c b/io_uring/io-wq.c\nindex 04a75d666195..3bc625377c45 100644\n--- a/io_uring/io-wq.c\n+++ b/io_uring/io-wq.c\n@@ -1291,7 +1291,11 @@ static void io_wq_exit_workers(struct io_wq *wq)\n \tio_wq_for_each_worker(wq, io_wq_worker_wake, NULL);\n \trcu_read_unlock();\n \tio_worker_ref_put(wq);\n-\twait_for_completion(&wq->worker_done);\n+\twhile (!wait_for_completion_timeout(&wq->worker_done, HZ / 5)) {\n+\t\trcu_read_lock();\n+\t\tio_wq_for_each_worker(wq, io_wq_worker_wake, NULL);\n+\t\trcu_read_unlock();\n+\t}\n \n \tspin_lock_irq(&wq->hash->wait.lock);\n \tlist_del_init(&wq->wait.entry);",
+          "explanation": "classic_swe step 53 #1",
+          "filename": "io_uring/io-wq.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        }
+      ],
+      "end_step": 53,
+      "revision_index": 2,
+      "start_step": 51
+    }
+  ],
+  "success_step": 53
+}

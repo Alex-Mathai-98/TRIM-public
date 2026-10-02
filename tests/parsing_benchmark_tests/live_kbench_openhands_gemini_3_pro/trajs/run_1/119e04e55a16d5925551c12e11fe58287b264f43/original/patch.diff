@@ -1,0 +1,36 @@
+diff --git a/fs/erofs/zmap.c b/fs/erofs/zmap.c
+index a076cca1f547..51474c8509a9 100644
+--- a/fs/erofs/zmap.c
++++ b/fs/erofs/zmap.c
+@@ -402,6 +402,11 @@ static int z_erofs_get_extent_decompressedlen(struct z_erofs_maprecorder *m)
+ 			return err;
+ 
+ 		if (m->type == Z_EROFS_LCLUSTER_TYPE_NONHEAD) {
++			if (!m->delta[1]) {
++				erofs_err(inode->i_sb,
++					  "invalid delta[1]=0 @ lcn %llu", lcn);
++				return -EFSCORRUPTED;
++			}
+ 			DBG_BUGON(!m->delta[1] &&
+ 				  m->clusterofs != 1 << lclusterbits);
+ 		} else if (m->type == Z_EROFS_LCLUSTER_TYPE_PLAIN ||
+@@ -421,6 +426,9 @@ static int z_erofs_get_extent_decompressedlen(struct z_erofs_maprecorder *m)
+ 	} while (m->delta[1]);
+ 
+ 	map->m_llen = (lcn << lclusterbits) + m->clusterofs - map->m_la;
++
++	
++
+ 	return 0;
+ }
+ 
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..405f73111d9c
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "119e04e55a16d5925551c12e11fe58287b264f43": 91316
++}
+\ No newline at end of file

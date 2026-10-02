@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\txfs_buf_hold(bp);\n\t\tspin_lock(&qlip->qli_lock);\n\t\tlip->li_buf = bp;\n\t\tspin_unlock(&qlip->qli_lock);\n\t\txfs_trans_brelse(tp, bp);\n\t\tspin_lock(&qlip->qli_lock);\n\t}\n",
+          "before": "\t\txfs_buf_hold(bp);\n\t\tspin_lock(&qlip->qli_lock);\n\t\tlip->li_buf = bp;\n\t\txfs_trans_brelse(tp, bp);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/xfs/xfs_dquot.c b/fs/xfs/xfs_dquot.c\nindex f11d475898f2..894a460ed42c 100644\n--- a/fs/xfs/xfs_dquot.c\n+++ b/fs/xfs/xfs_dquot.c\n@@ -1342,7 +1342,9 @@ xfs_dquot_attach_buf(\n \t\txfs_buf_hold(bp);\n \t\tspin_lock(&qlip->qli_lock);\n \t\tlip->li_buf = bp;\n+\t\tspin_unlock(&qlip->qli_lock);\n \t\txfs_trans_brelse(tp, bp);\n+\t\tspin_lock(&qlip->qli_lock);\n \t}\n \tqlip->qli_dirty = true;\n \tspin_unlock(&qlip->qli_lock);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/xfs/xfs_dquot.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tlip->li_buf = bp;\n\n\t\t/*\n\t\t * We must unlock the dquot here to avoid a deadlock with the BCH\n\t\t * lock. xfs_trans_brelse() can release the buffer which might\n\t\t * acquire the BCH lock, and we must not hold the QLI lock when\n\t\t * that happens.\n\t\t */\n\t\tspin_unlock(&qlip->qli_lock);\n\t\txfs_trans_brelse(tp, bp);\n\t\tspin_lock(&qlip->qli_lock);\n",
+          "before": "\t\tlip->li_buf = bp;\n\t\tspin_unlock(&qlip->qli_lock);\n\t\txfs_trans_brelse(tp, bp);\n\t\tspin_lock(&qlip->qli_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/xfs/xfs_dquot.c b/fs/xfs/xfs_dquot.c\nindex f11d475898f2..ea6a48c08163 100644\n--- a/fs/xfs/xfs_dquot.c\n+++ b/fs/xfs/xfs_dquot.c\n@@ -1342,7 +1342,16 @@ xfs_dquot_attach_buf(\n \t\txfs_buf_hold(bp);\n \t\tspin_lock(&qlip->qli_lock);\n \t\tlip->li_buf = bp;\n+\n+\t\t/*\n+\t\t * We must unlock the dquot here to avoid a deadlock with the BCH\n+\t\t * lock. xfs_trans_brelse() can release the buffer which might\n+\t\t * acquire the BCH lock, and we must not hold the QLI lock when\n+\t\t * that happens.\n+\t\t */\n+\t\tspin_unlock(&qlip->qli_lock);\n \t\txfs_trans_brelse(tp, bp);\n+\t\tspin_lock(&qlip->qli_lock);\n \t}\n \tqlip->qli_dirty = true;\n \tspin_unlock(&qlip->qli_lock);",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "fs/xfs/xfs_dquot.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 1,
+      "start_step": 32
+    }
+  ],
+  "success_step": 32
+}

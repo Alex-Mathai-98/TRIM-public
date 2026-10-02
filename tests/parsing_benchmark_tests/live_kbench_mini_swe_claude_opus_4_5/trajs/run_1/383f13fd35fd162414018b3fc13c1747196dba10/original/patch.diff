@@ -1,0 +1,19 @@
+diff --git a/fs/ocfs2/namei.c b/fs/ocfs2/namei.c
+index 26bc59c3a813..612203099e66 100644
+--- a/fs/ocfs2/namei.c
++++ b/fs/ocfs2/namei.c
+@@ -143,6 +143,14 @@ static struct dentry *ocfs2_lookup(struct inode *dir, struct dentry *dentry,
+ bail_add:
+ 	ret = d_splice_alias(inode, dentry);
+ 
++
++	if (IS_ERR(ret)) {
++		/*
++		 * d_splice_alias() has already called iput() on the inode
++		 * when it returns an error, so we should not use inode anymore.
++		 */
++		goto bail_unlock;
++	}
+ 	if (inode) {
+ 		/*
+ 		 * If d_splice_alias() finds a DCACHE_DISCONNECTED

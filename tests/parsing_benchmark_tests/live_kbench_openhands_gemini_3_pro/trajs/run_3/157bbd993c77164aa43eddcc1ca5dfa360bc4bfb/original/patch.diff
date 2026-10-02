@@ -1,0 +1,51 @@
+diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c
+index 6d7a442ceb89..7e68b501bbf4 100644
+--- a/net/bpf/test_run.c
++++ b/net/bpf/test_run.c
+@@ -26,6 +26,11 @@
+ #include <net/netfilter/nf_bpf_link.h>
+ 
+ #define CREATE_TRACE_POINTS
++
++#include <linux/seg6_local.h>
++#include <net/seg6.h>
++#include <net/seg6_local.h>
++
+ #include <trace/events/bpf_test_run.h>
+ 
+ struct bpf_test_timer {
+@@ -1091,7 +1096,34 @@ int bpf_prog_test_run_skb(struct bpf_prog *prog, const union bpf_attr *kattr,
+ 		skb->ip_summed = CHECKSUM_COMPLETE;
+ 	}
+ 
++#if IS_ENABLED(CONFIG_IPV6_SEG6_BPF)
++	if (prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {
++		struct seg6_bpf_srh_state *srh_state;
++		struct ipv6_sr_hdr *srh = NULL;
++		int srhoff = 0;
++
++		if (skb->protocol == htons(ETH_P_IPV6)) {
++			if (ipv6_find_hdr(skb, &srhoff, IPPROTO_ROUTING, NULL, NULL) >= 0)
++				srh = (struct ipv6_sr_hdr *)(skb->data + srhoff);
++		}
++
++		local_bh_disable();
++		local_lock(&seg6_bpf_srh_states.bh_lock);
++		srh_state = this_cpu_ptr(&seg6_bpf_srh_states);
++		srh_state->srh = srh;
++		srh_state->hdrlen = srh ? srh->hdrlen << 3 : 0;
++		srh_state->valid = true;
++	}
++#endif
++
+ 	ret = bpf_test_run(prog, skb, repeat, &retval, &duration, false);
++
++#if IS_ENABLED(CONFIG_IPV6_SEG6_BPF)
++	if (prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {
++		local_unlock(&seg6_bpf_srh_states.bh_lock);
++		local_bh_enable();
++	}
++#endif
+ 	if (ret)
+ 		goto out;
+ 	if (!is_l2) {

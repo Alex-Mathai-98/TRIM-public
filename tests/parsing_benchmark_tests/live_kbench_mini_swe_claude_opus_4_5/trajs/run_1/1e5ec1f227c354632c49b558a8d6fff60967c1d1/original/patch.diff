@@ -1,0 +1,39 @@
+diff --git a/fs/bcachefs/errcode.h b/fs/bcachefs/errcode.h
+index 649263516ab1..cd90e12c967a 100644
+--- a/fs/bcachefs/errcode.h
++++ b/fs/bcachefs/errcode.h
+@@ -222,6 +222,7 @@
+ 	x(BCH_ERR_invalid_sb_layout,	invalid_sb_layout_type)			\
+ 	x(BCH_ERR_invalid_sb_layout,	invalid_sb_layout_nr_superblocks)	\
+ 	x(BCH_ERR_invalid_sb_layout,	invalid_sb_layout_superblocks_overlap)	\
++	x(BCH_ERR_invalid_sb_layout,	invalid_sb_layout_sb_max_size_bits)	\
+ 	x(BCH_ERR_invalid_sb,		invalid_sb_members_missing)		\
+ 	x(BCH_ERR_invalid_sb,		invalid_sb_members)			\
+ 	x(BCH_ERR_invalid_sb,		invalid_sb_disk_groups)			\
+diff --git a/fs/bcachefs/super-io.c b/fs/bcachefs/super-io.c
+index ce7410d72089..ba4fd4d63435 100644
+--- a/fs/bcachefs/super-io.c
++++ b/fs/bcachefs/super-io.c
+@@ -287,6 +287,12 @@ static int validate_sb_layout(struct bch_sb_layout *layout, struct printbuf *out
+ 		return -BCH_ERR_invalid_sb_layout_nr_superblocks;
+ 	}
+ 
++	if (layout->sb_max_size_bits > BCH_SB_LAYOUT_SIZE_BITS_MAX) {
++		prt_printf(out, "Invalid superblock layout: sb_max_size_bits too big (got %u, max %u)",
++		       layout->sb_max_size_bits, BCH_SB_LAYOUT_SIZE_BITS_MAX);
++		return -BCH_ERR_invalid_sb_layout_sb_max_size_bits;
++	}
++
+ 	max_sectors = 1 << layout->sb_max_size_bits;
+ 
+ 	prev_offset = le64_to_cpu(layout->sb_offset[0]);
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..9e061c893c5c
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "1e5ec1f227c354632c49b558a8d6fff60967c1d1": 86659
++}
+\ No newline at end of file

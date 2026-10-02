@@ -1,0 +1,85 @@
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 1aa67fca69b2..981d0586da55 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -2544,6 +2544,7 @@ EXPORT_SYMBOL_GPL(nfs_net_id);
+ static int nfs_net_init(struct net *net)
+ {
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
++	int error;
+ 
+ 	nfs_clients_init(net);
+ 
+@@ -2552,7 +2553,13 @@ static int nfs_net_init(struct net *net)
+ 		return -ENOMEM;
+ 	}
+ 
+-	return nfs_fs_proc_net_init(net);
++	error = nfs_fs_proc_net_init(net);
++	if (error) {
++		rpc_proc_unregister(net, "nfs");
++		nfs_clients_exit(net);
++	}
++
++	return error;
+ }
+ 
+ static void nfs_net_exit(struct net *net)
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index cca60a33697f..e483cc700562 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -2213,13 +2213,18 @@ static __net_init int nfsd_net_init(struct net *net)
+ 	nfsd4_init_leases_net(nn);
+ 	get_random_bytes(&nn->siphash_key, sizeof(nn->siphash_key));
+ 	seqlock_init(&nn->writeverf_lock);
+-	nfsd_proc_stat_init(net);
++	retval = nfsd_proc_stat_init(net);
++	if (retval)
++		goto out_proc_error;
++
+ #if IS_ENABLED(CONFIG_NFS_LOCALIO)
+ 	spin_lock_init(&nn->local_clients_lock);
+ 	INIT_LIST_HEAD(&nn->local_clients);
+ #endif
+ 	return 0;
+ 
++out_proc_error:
++	percpu_counter_destroy_many(nn->counter, NFSD_STATS_COUNTERS_NUM);
+ out_repcache_error:
+ 	nfsd_idmap_shutdown(net);
+ out_idmap_error:
+diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
+index bb22893f1157..94b41cf93ccd 100644
+--- a/fs/nfsd/stats.c
++++ b/fs/nfsd/stats.c
+@@ -73,11 +73,14 @@ static int nfsd_show(struct seq_file *seq, void *v)
+ 
+ DEFINE_PROC_SHOW_ATTRIBUTE(nfsd);
+ 
+-void nfsd_proc_stat_init(struct net *net)
++int nfsd_proc_stat_init(struct net *net)
+ {
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	svc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops);
++	if (!svc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops))
++		return -ENOMEM;
++
++	return 0;
+ }
+ 
+ void nfsd_proc_stat_shutdown(struct net *net)
+diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
+index 04aacb6c36e2..0d937cc8b439 100644
+--- a/fs/nfsd/stats.h
++++ b/fs/nfsd/stats.h
+@@ -10,7 +10,7 @@
+ #include <uapi/linux/nfsd/stats.h>
+ #include <linux/percpu_counter.h>
+ 
+-void nfsd_proc_stat_init(struct net *net);
++int nfsd_proc_stat_init(struct net *net);
+ void nfsd_proc_stat_shutdown(struct net *net);
+ 
+ static inline void nfsd_stats_rc_hits_inc(struct nfsd_net *nn)

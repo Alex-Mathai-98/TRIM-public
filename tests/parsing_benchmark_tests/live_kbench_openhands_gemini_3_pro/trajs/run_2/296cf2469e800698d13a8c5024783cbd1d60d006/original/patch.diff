@@ -1,0 +1,56 @@
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index 873e4be7e1dc..b5bbdf0d8bcb 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -2019,6 +2019,11 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 		if (ret)
+ 			goto err;
+ 
++		if (!sb.sb) {
++			ret = -EINVAL;
++			goto err;
++		}
++
+ 		BUG_ON(darray_push(&sbs, sb));
+ 	}
+ 
+@@ -2027,10 +2032,17 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 		goto err_print;
+ 	}
+ 
++retry:
++	best = NULL;
+ 	darray_for_each(sbs, sb)
+ 		if (!best || sb_cmp(sb->sb, best->sb) > 0)
+ 			best = sb;
+ 
++	if (!best) {
++		ret = -EINVAL;
++		goto err_print;
++	}
++
+ 	darray_for_each_reverse(sbs, sb) {
+ 		ret = bch2_dev_in_fs(best, sb, &opts);
+ 
+@@ -2038,15 +2050,18 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 		    ret == -BCH_ERR_device_splitbrain) {
+ 			bch2_free_super(sb);
+ 			darray_remove_item(&sbs, sb);
+-			best -= best > sb;
+-			ret = 0;
+-			continue;
++			goto retry;
+ 		}
+ 
+ 		if (ret)
+ 			goto err_print;
+ 	}
+ 
++	if (!best->sb) {
++		ret = -EINVAL;
++		goto err_print;
++	}
++
+ 	c = bch2_fs_alloc(best->sb, opts);
+ 	ret = PTR_ERR_OR_ZERO(c);
+ 	if (ret)

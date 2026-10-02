@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/* Try to get link status using Ethtool first. */\n\tif (slave_dev->ethtool_ops->get_link) {\n\t\t/* ethtool_op_get_link() calls __linkwatch_sync_dev() which\n\t\t * asserts RTNL if invalid locking.\n\t\t */\n\t\tif (slave_dev->ethtool_ops->get_link == ethtool_op_get_link &&\n\t\t    !netdev_need_ops_lock(slave_dev))\n\t\t\treturn netif_carrier_ok(slave_dev) ? BMSR_LSTATUS : 0;\n\n\t\tnetdev_lock_ops(slave_dev);\n\t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n\t\tnetdev_unlock_ops(slave_dev);\n\n\t\treturn ret ? BMSR_LSTATUS : 0;\n\t}\n",
+          "before": "\t/* Try to get link status using Ethtool first. */\n\tif (slave_dev->ethtool_ops->get_link) {\n\t\tnetdev_lock_ops(slave_dev);\n\t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n\t\tnetdev_unlock_ops(slave_dev);\n\n\t\treturn ret ? BMSR_LSTATUS : 0;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c\nindex 257333c88710..54abfa77f83a 100644\n--- a/drivers/net/bonding/bond_main.c\n+++ b/drivers/net/bonding/bond_main.c\n@@ -861,6 +861,13 @@ static int bond_check_dev_link(struct bonding *bond,\n \n \t/* Try to get link status using Ethtool first. */\n \tif (slave_dev->ethtool_ops->get_link) {\n+\t\t/* ethtool_op_get_link() calls __linkwatch_sync_dev() which\n+\t\t * asserts RTNL if invalid locking.\n+\t\t */\n+\t\tif (slave_dev->ethtool_ops->get_link == ethtool_op_get_link &&\n+\t\t    !netdev_need_ops_lock(slave_dev))\n+\t\t\treturn netif_carrier_ok(slave_dev) ? BMSR_LSTATUS : 0;\n+\n \t\tnetdev_lock_ops(slave_dev);\n \t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n \t\tnetdev_unlock_ops(slave_dev);",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 14
+    }
+  ],
+  "success_step": 14
+}

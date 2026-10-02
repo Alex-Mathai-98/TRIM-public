@@ -1,0 +1,41 @@
+diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
+index badc2cbc895e..5a43798e381d 100644
+--- a/fs/nilfs2/super.c
++++ b/fs/nilfs2/super.c
+@@ -88,19 +88,28 @@ static void nilfs_set_error(struct super_block *sb)
+ {
+ 	struct the_nilfs *nilfs = sb->s_fs_info;
+ 	struct nilfs_super_block **sbp;
++	bool locked;
+ 
+-	down_write(&nilfs->ns_sem);
++	/*
++	 * Use trylock to avoid potential deadlock when called from
++	 * error handling paths that may already hold other locks
++	 * (e.g., DAT inode's mi_sem).
++	 */
++	locked = down_write_trylock(&nilfs->ns_sem);
+ 	if (!(nilfs->ns_mount_state & NILFS_ERROR_FS)) {
+ 		nilfs->ns_mount_state |= NILFS_ERROR_FS;
+-		sbp = nilfs_prepare_super(sb, 0);
+-		if (likely(sbp)) {
+-			sbp[0]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
+-			if (sbp[1])
+-				sbp[1]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
+-			nilfs_commit_super(sb, NILFS_SB_COMMIT_ALL);
++		if (locked) {
++			sbp = nilfs_prepare_super(sb, 0);
++			if (likely(sbp)) {
++				sbp[0]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
++				if (sbp[1])
++					sbp[1]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
++				nilfs_commit_super(sb, NILFS_SB_COMMIT_ALL);
++			}
+ 		}
+ 	}
+-	up_write(&nilfs->ns_sem);
++	if (locked)
++		up_write(&nilfs->ns_sem);
+ }
+ 
+ /**

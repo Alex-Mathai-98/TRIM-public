@@ -1,0 +1,181 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache = cache;\n\t\tstruct qlist_node *next;\n\n\t\tif (unlikely(!virt_addr_valid(qlink)))\n\t\t\treturn;\n\n\t\tif (!obj_cache)\n\t\t\tobj_cache = qlink_to_cache(qlink);\n\n\t\tnext = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}\n",
+          "before": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache =\n\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n\t\tstruct qlist_node *next = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/kasan/quarantine.c b/mm/kasan/quarantine.c\nindex 6958aa713c67..02fc5e47aeb5 100644\n--- a/mm/kasan/quarantine.c\n+++ b/mm/kasan/quarantine.c\n@@ -172,9 +172,16 @@ static void qlist_free_all(struct qlist_head *q, struct kmem_cache *cache)\n \n \tqlink = q->head;\n \twhile (qlink) {\n-\t\tstruct kmem_cache *obj_cache =\n-\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n-\t\tstruct qlist_node *next = qlink->next;\n+\t\tstruct kmem_cache *obj_cache = cache;\n+\t\tstruct qlist_node *next;\n+\n+\t\tif (unlikely(!virt_addr_valid(qlink)))\n+\t\t\treturn;\n+\n+\t\tif (!obj_cache)\n+\t\t\tobj_cache = qlink_to_cache(qlink);\n+\n+\t\tnext = qlink->next;\n \n \t\tqlink_free(qlink, obj_cache);\n \t\tqlink = next;",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache =\n\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n\t\tstruct qlist_node *next = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}\n",
+          "before": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache = cache;\n\t\tstruct qlist_node *next;\n\n\t\tif (unlikely(!virt_addr_valid(qlink)))\n\t\t\treturn;\n\n\t\tif (!obj_cache)\n\t\t\tobj_cache = qlink_to_cache(qlink);\n\n\t\tnext = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\tstruct net_device *dev = skb->dev;\n\tstruct gro_cell *cell;\n\tvoid const *cells;\n\tint res;\n\n\trcu_read_lock();\n\tcells = READ_ONCE(gcells->cells);\n\tif (unlikely(!(dev->flags & IFF_UP)))\n\t\tgoto drop;\n\n\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n\n\tcell = this_cpu_ptr(cells);\n",
+          "before": "\tstruct net_device *dev = skb->dev;\n\tstruct gro_cell *cell;\n\tint res;\n\n\trcu_read_lock();\n\tif (unlikely(!(dev->flags & IFF_UP)))\n\t\tgoto drop;\n\n\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n\n\tcell = this_cpu_ptr(gcells->cells);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/gro_cells.c b/net/core/gro_cells.c\nindex ff8e5b64bf6b..e809965ab04a 100644\n--- a/net/core/gro_cells.c\n+++ b/net/core/gro_cells.c\n@@ -14,18 +14,20 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)\n {\n \tstruct net_device *dev = skb->dev;\n \tstruct gro_cell *cell;\n+\tvoid const *cells;\n \tint res;\n \n \trcu_read_lock();\n+\tcells = READ_ONCE(gcells->cells);\n \tif (unlikely(!(dev->flags & IFF_UP)))\n \t\tgoto drop;\n \n-\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n+\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n \t\tres = netif_rx(skb);\n \t\tgoto unlock;\n \t}\n \n-\tcell = this_cpu_ptr(gcells->cells);\n+\tcell = this_cpu_ptr(cells);\n \n \tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\n drop:",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 1,
+      "start_step": 21
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct gro_cell __percpu *cells = gcells->cells;\n\tint i;\n\n\tif (!cells)\n\t\treturn;\n\n\tgcells->cells = NULL;\n\t/* Wait for gro_cells_receive() to finish using cells */\n\tsynchronize_rcu();\n\n\tfor_each_possible_cpu(i) {\n\t\tstruct gro_cell *cell = per_cpu_ptr(cells, i);\n\n\t\tnapi_disable(&cell->napi);\n\t\t__netif_napi_del(&cell->napi);\n\t\t__skb_queue_purge(&cell->napi_skbs);\n\t}\n\n\tfree_percpu(cells);\n}\n",
+          "before": "\tstruct percpu_free_defer *defer;\n\tint i;\n\n\tif (!gcells->cells)\n\t\treturn;\n\tfor_each_possible_cpu(i) {\n\t\tstruct gro_cell *cell = per_cpu_ptr(gcells->cells, i);\n\n\t\tnapi_disable(&cell->napi);\n\t\t__netif_napi_del(&cell->napi);\n\t\t__skb_queue_purge(&cell->napi_skbs);\n\t}\n\t/* We need to observe an rcu grace period before freeing ->cells,\n\t * because netpoll could access dev->napi_list under rcu protection.\n\t * Try hard using call_rcu() instead of synchronize_rcu(),\n\t * because we might be called from cleanup_net(), and we\n\t * definitely do not want to block this critical task.\n\t */\n\tdefer = kmalloc(sizeof(*defer), GFP_KERNEL | __GFP_NOWARN);\n\tif (likely(defer)) {\n\t\tdefer->ptr = gcells->cells;\n\t\tcall_rcu(&defer->rcu, percpu_free_defer_callback);\n\t} else {\n\t\t/* We do not hold RTNL at this point, synchronize_net()\n\t\t * would not be able to expedite this sync.\n\t\t */\n\t\tsynchronize_rcu_expedited();\n\t\tfree_percpu(gcells->cells);\n\t}\n\tgcells->cells = NULL;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/gro_cells.c b/net/core/gro_cells.c\nindex ff8e5b64bf6b..ce0455099d65 100644\n--- a/net/core/gro_cells.c\n+++ b/net/core/gro_cells.c\n@@ -14,18 +14,20 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)\n {\n \tstruct net_device *dev = skb->dev;\n \tstruct gro_cell *cell;\n+\tvoid const *cells;\n \tint res;\n \n \trcu_read_lock();\n+\tcells = READ_ONCE(gcells->cells);\n \tif (unlikely(!(dev->flags & IFF_UP)))\n \t\tgoto drop;\n \n-\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n+\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n \t\tres = netif_rx(skb);\n \t\tgoto unlock;\n \t}\n \n-\tcell = this_cpu_ptr(gcells->cells);\n+\tcell = this_cpu_ptr(cells);\n \n \tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\n drop:\n@@ -105,35 +107,24 @@ static void percpu_free_defer_callback(struct rcu_head *head)\n \n void gro_cells_destroy(struct gro_cells *gcells)\n {\n-\tstruct percpu_free_defer *defer;\n+\tstruct gro_cell __percpu *cells = gcells->cells;\n \tint i;\n \n-\tif (!gcells->cells)\n+\tif (!cells)\n \t\treturn;\n+\n+\tgcells->cells = NULL;\n+\t/* Wait for gro_cells_receive() to finish using cells */\n+\tsynchronize_rcu();\n+\n \tfor_each_possible_cpu(i) {\n-\t\tstruct gro_cell *cell = per_cpu_ptr(gcells->cells, i);\n+\t\tstruct gro_cell *cell = per_cpu_ptr(cells, i);\n \n \t\tnapi_disable(&cell->napi);\n \t\t__netif_napi_del(&cell->napi);\n \t\t__skb_queue_purge(&cell->napi_skbs);\n \t}\n-\t/* We need to observe an rcu grace period before freeing ->cells,\n-\t * because netpoll could access dev->napi_list under rcu protection.\n-\t * Try hard using call_rcu() instead of synchronize_rcu(),\n-\t * because we might be called from cleanup_net(), and we\n-\t * definitely do not want to block this critical task.\n-\t */\n-\tdefer = kmalloc(sizeof(*defer), GFP_KERNEL | __GFP_NOWARN);\n-\tif (likely(defer)) {\n-\t\tdefer->ptr = gcells->cells;\n-\t\tcall_rcu(&defer->rcu, percpu_free_defer_callback);\n-\t} else {\n-\t\t/* We do not hold RTNL at this point, synchronize_net()\n-\t\t * would not be able to expedite this sync.\n-\t\t */\n-\t\tsynchronize_rcu_expedited();\n-\t\tfree_percpu(gcells->cells);\n-\t}\n-\tgcells->cells = NULL;\n+\n+\tfree_percpu(cells);\n }\n EXPORT_SYMBOL(gro_cells_destroy);",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\treturn 0;\n}\nEXPORT_SYMBOL(gro_cells_init);\n\nvoid gro_cells_destroy(struct gro_cells *gcells)\n",
+          "before": "\treturn 0;\n}\nEXPORT_SYMBOL(gro_cells_init);\n\nstruct percpu_free_defer {\n\tstruct rcu_head rcu;\n\tvoid __percpu\t*ptr;\n};\n\nstatic void percpu_free_defer_callback(struct rcu_head *head)\n{\n\tstruct percpu_free_defer *defer;\n\n\tdefer = container_of(head, struct percpu_free_defer, rcu);\n\tfree_percpu(defer->ptr);\n\tkfree(defer);\n}\n\nvoid gro_cells_destroy(struct gro_cells *gcells)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/gro_cells.c b/net/core/gro_cells.c\nindex ff8e5b64bf6b..ea1862db79a1 100644\n--- a/net/core/gro_cells.c\n+++ b/net/core/gro_cells.c\n@@ -14,18 +14,20 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)\n {\n \tstruct net_device *dev = skb->dev;\n \tstruct gro_cell *cell;\n+\tvoid const *cells;\n \tint res;\n \n \trcu_read_lock();\n+\tcells = READ_ONCE(gcells->cells);\n \tif (unlikely(!(dev->flags & IFF_UP)))\n \t\tgoto drop;\n \n-\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n+\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n \t\tres = netif_rx(skb);\n \t\tgoto unlock;\n \t}\n \n-\tcell = this_cpu_ptr(gcells->cells);\n+\tcell = this_cpu_ptr(cells);\n \n \tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\n drop:\n@@ -89,51 +91,26 @@ int gro_cells_init(struct gro_cells *gcells, struct net_device *dev)\n }\n EXPORT_SYMBOL(gro_cells_init);\n \n-struct percpu_free_defer {\n-\tstruct rcu_head rcu;\n-\tvoid __percpu\t*ptr;\n-};\n-\n-static void percpu_free_defer_callback(struct rcu_head *head)\n-{\n-\tstruct percpu_free_defer *defer;\n-\n-\tdefer = container_of(head, struct percpu_free_defer, rcu);\n-\tfree_percpu(defer->ptr);\n-\tkfree(defer);\n-}\n-\n void gro_cells_destroy(struct gro_cells *gcells)\n {\n-\tstruct percpu_free_defer *defer;\n+\tstruct gro_cell __percpu *cells = gcells->cells;\n \tint i;\n \n-\tif (!gcells->cells)\n+\tif (!cells)\n \t\treturn;\n+\n+\tgcells->cells = NULL;\n+\t/* Wait for gro_cells_receive() to finish using cells */\n+\tsynchronize_rcu();\n+\n \tfor_each_possible_cpu(i) {\n-\t\tstruct gro_cell *cell = per_cpu_ptr(gcells->cells, i);\n+\t\tstruct gro_cell *cell = per_cpu_ptr(cells, i);\n \n \t\tnapi_disable(&cell->napi);\n \t\t__netif_napi_del(&cell->napi);\n \t\t__skb_queue_purge(&cell->napi_skbs);\n \t}\n-\t/* We need to observe an rcu grace period before freeing ->cells,\n-\t * because netpoll could access dev->napi_list under rcu protection.\n-\t * Try hard using call_rcu() instead of synchronize_rcu(),\n-\t * because we might be called from cleanup_net(), and we\n-\t * definitely do not want to block this critical task.\n-\t */\n-\tdefer = kmalloc(sizeof(*defer), GFP_KERNEL | __GFP_NOWARN);\n-\tif (likely(defer)) {\n-\t\tdefer->ptr = gcells->cells;\n-\t\tcall_rcu(&defer->rcu, percpu_free_defer_callback);\n-\t} else {\n-\t\t/* We do not hold RTNL at this point, synchronize_net()\n-\t\t * would not be able to expedite this sync.\n-\t\t */\n-\t\tsynchronize_rcu_expedited();\n-\t\tfree_percpu(gcells->cells);\n-\t}\n-\tgcells->cells = NULL;\n+\n+\tfree_percpu(cells);\n }\n EXPORT_SYMBOL(gro_cells_destroy);",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 2,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev) || skb_shared(skb)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n",
+          "before": "\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/gro_cells.c b/net/core/gro_cells.c\nindex ff8e5b64bf6b..0b9abbf9222e 100644\n--- a/net/core/gro_cells.c\n+++ b/net/core/gro_cells.c\n@@ -14,18 +14,20 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)\n {\n \tstruct net_device *dev = skb->dev;\n \tstruct gro_cell *cell;\n+\tvoid const *cells;\n \tint res;\n \n \trcu_read_lock();\n+\tcells = READ_ONCE(gcells->cells);\n \tif (unlikely(!(dev->flags & IFF_UP)))\n \t\tgoto drop;\n \n-\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n+\tif (!cells || skb_cloned(skb) || netif_elide_gro(dev) || skb_shared(skb)) {\n \t\tres = netif_rx(skb);\n \t\tgoto unlock;\n \t}\n \n-\tcell = this_cpu_ptr(gcells->cells);\n+\tcell = this_cpu_ptr(cells);\n \n \tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\n drop:\n@@ -89,51 +91,26 @@ int gro_cells_init(struct gro_cells *gcells, struct net_device *dev)\n }\n EXPORT_SYMBOL(gro_cells_init);\n \n-struct percpu_free_defer {\n-\tstruct rcu_head rcu;\n-\tvoid __percpu\t*ptr;\n-};\n-\n-static void percpu_free_defer_callback(struct rcu_head *head)\n-{\n-\tstruct percpu_free_defer *defer;\n-\n-\tdefer = container_of(head, struct percpu_free_defer, rcu);\n-\tfree_percpu(defer->ptr);\n-\tkfree(defer);\n-}\n-\n void gro_cells_destroy(struct gro_cells *gcells)\n {\n-\tstruct percpu_free_defer *defer;\n+\tstruct gro_cell __percpu *cells = gcells->cells;\n \tint i;\n \n-\tif (!gcells->cells)\n+\tif (!cells)\n \t\treturn;\n+\n+\tgcells->cells = NULL;\n+\t/* Wait for gro_cells_receive() to finish using cells */\n+\tsynchronize_rcu();\n+\n \tfor_each_possible_cpu(i) {\n-\t\tstruct gro_cell *cell = per_cpu_ptr(gcells->cells, i);\n+\t\tstruct gro_cell *cell = per_cpu_ptr(cells, i);\n \n \t\tnapi_disable(&cell->napi);\n \t\t__netif_napi_del(&cell->napi);\n \t\t__skb_queue_purge(&cell->napi_skbs);\n \t}\n-\t/* We need to observe an rcu grace period before freeing ->cells,\n-\t * because netpoll could access dev->napi_list under rcu protection.\n-\t * Try hard using call_rcu() instead of synchronize_rcu(),\n-\t * because we might be called from cleanup_net(), and we\n-\t * definitely do not want to block this critical task.\n-\t */\n-\tdefer = kmalloc(sizeof(*defer), GFP_KERNEL | __GFP_NOWARN);\n-\tif (likely(defer)) {\n-\t\tdefer->ptr = gcells->cells;\n-\t\tcall_rcu(&defer->rcu, percpu_free_defer_callback);\n-\t} else {\n-\t\t/* We do not hold RTNL at this point, synchronize_net()\n-\t\t * would not be able to expedite this sync.\n-\t\t */\n-\t\tsynchronize_rcu_expedited();\n-\t\tfree_percpu(gcells->cells);\n-\t}\n-\tgcells->cells = NULL;\n+\n+\tfree_percpu(cells);\n }\n EXPORT_SYMBOL(gro_cells_destroy);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 3,
+      "start_step": 31
+    }
+  ],
+  "success_step": 31
+}

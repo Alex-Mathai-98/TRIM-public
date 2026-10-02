@@ -1,0 +1,29 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index d8f3c4c65e90..afec7fd0a7a0 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1131,10 +1131,24 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		if (first) {
+ 			bne = NULL;
+ 			i = &b->data->keys;
++
++			if (btree_err_on(vstruct_bytes(b->data) > btree_buf_bytes(b),
++					 -BCH_ERR_btree_node_read_err_must_retry,
++					 c, ca, b, i, NULL,
++					 bset_past_end_of_btree_node,
++					 "btree node header too large"))
++				goto fsck_err;
+ 		} else {
+ 			bne = write_block(b);
+ 			i = &bne->keys;
+ 
++			if (btree_err_on(vstruct_bytes(bne) > btree_buf_bytes(b) - (b->written << 9),
++					 -BCH_ERR_btree_node_read_err_must_retry,
++					 c, ca, b, i, NULL,
++					 bset_past_end_of_btree_node,
++					 "btree node bset too large"))
++				goto fsck_err;
++
+ 			if (i->seq != b->data->keys.seq)
+ 				break;
+ 		}

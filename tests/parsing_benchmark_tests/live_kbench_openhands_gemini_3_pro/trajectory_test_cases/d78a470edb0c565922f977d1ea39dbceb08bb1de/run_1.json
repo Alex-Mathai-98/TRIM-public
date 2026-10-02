@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (!strp->copy_mode && force_refresh) {\n\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n\t\t\tWARN_ON(!tcp_sk(strp->sk)->repair);\n\t\t\treturn;\n\t\t}\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}",
+          "before": "\t\tif (!strp->copy_mode && force_refresh) {\n\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n\t\t\treturn;\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/tls/tls_strp.c\n+++ /linux/net/tls/tls_strp.c\n@@ -486 +486,2 @@\n-\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n+\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n+\t\t\tWARN_ON(!tcp_sk(strp->sk)->repair);\n@@ -487,0 +489 @@\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 80",
+          "filename": "net/tls/tls_strp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 80
+        }
+      ],
+      "end_step": 80,
+      "revision_index": 0,
+      "start_step": 80
+    },
+    {
+      "edits": [
+        {
+          "after": "int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);",
+          "before": "void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/tls/tls.h\n+++ /linux/net/tls/tls.h\n@@ -199 +199 @@\n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 92",
+          "filename": "net/tls/tls.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 92
+        },
+        {
+          "after": "\nint tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n{\n\tstruct strp_msg *rxm;\n\tstruct tls_msg *tlm;\n\n\tDEBUG_NET_WARN_ON_ONCE(!strp->msg_ready);\n\tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n\n\tif (!strp->copy_mode && force_refresh) {\n\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n\t\t\tif (tcp_sk(strp->sk)->repair)\n\t\t\t\treturn -EIO;\n\t\t\tWARN_ON(1);\n\t\t\treturn -EIO;\n\t\t}\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}\n\n\trxm = strp_msg(strp->anchor);\n\trxm->full_len\t= strp->stm.full_len;\n\trxm->offset\t= strp->stm.offset;\n\ttlm = tls_msg(strp->anchor);\n\ttlm->control\t= strp->mark;\n\n\treturn 0;\n}\n",
+          "before": "\nvoid tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n{\n\tstruct strp_msg *rxm;\n\tstruct tls_msg *tlm;\n\n\tDEBUG_NET_WARN_ON_ONCE(!strp->msg_ready);\n\tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n\n\tif (!strp->copy_mode && force_refresh) {\n\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n\t\t\tWARN_ON(!tcp_sk(strp->sk)->repair);\n\t\t\treturn;\n\t\t}\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}\n\n\trxm = strp_msg(strp->anchor);\n\trxm->full_len\t= strp->stm.full_len;\n\trxm->offset\t= strp->stm.offset;\n\ttlm = tls_msg(strp->anchor);\n\ttlm->control\t= strp->mark;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/tls/tls_strp.c\n+++ /linux/net/tls/tls_strp.c\n@@ -477 +477 @@\n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n@@ -487,2 +487,4 @@\n-\t\t\tWARN_ON(!tcp_sk(strp->sk)->repair);\n-\t\t\treturn;\n+\t\t\tif (tcp_sk(strp->sk)->repair)\n+\t\t\t\treturn -EIO;\n+\t\t\tWARN_ON(1);\n+\t\t\treturn -EIO;\n@@ -498,0 +501,2 @@\n+\n+\treturn 0;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 94",
+          "filename": "net/tls/tls_strp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 94
+        },
+        {
+          "after": "\n\tret = tls_strp_msg_load(&ctx->strp, released);\n\tif (ret)\n\t\treturn ret;\n\n\treturn 1;\n}\n",
+          "before": "\n\ttls_strp_msg_load(&ctx->strp, released);\n\n\treturn 1;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/tls/tls_sw.c\n+++ /linux/net/tls/tls_sw.c\n@@ -1363 +1363,3 @@\n-\ttls_strp_msg_load(&ctx->strp, released);\n+\tret = tls_strp_msg_load(&ctx->strp, released);\n+\tif (ret)\n+\t\treturn ret;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 98",
+          "filename": "net/tls/tls_sw.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 98
+        }
+      ],
+      "end_step": 98,
+      "revision_index": 1,
+      "start_step": 92
+    }
+  ],
+  "success_step": 98
+}

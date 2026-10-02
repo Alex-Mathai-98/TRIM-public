@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void bpf_raw_tp_link_dealloc(struct bpf_link *link)\n{\n\tstruct bpf_raw_tp_link *raw_tp =\n\t\tcontainer_of(link, struct bpf_raw_tp_link, link);\n\n\t/* trace_sys_enter uses preempt_disable, which is RCU-sched.\n\t * call_rcu (preemptible RCU) might not wait for RCU-sched grace period.\n\t * Ensure we wait for it.\n\t */\n\tsynchronize_rcu();\n\tkfree(raw_tp);\n}",
+          "before": "static void bpf_raw_tp_link_dealloc(struct bpf_link *link)\n{\n\tstruct bpf_raw_tp_link *raw_tp =\n\t\tcontainer_of(link, struct bpf_raw_tp_link, link);\n\n\tkfree(raw_tp);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..989945e2f52a 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -3481,6 +3481,11 @@ static void bpf_raw_tp_link_dealloc(struct bpf_link *link)\n \tstruct bpf_raw_tp_link *raw_tp =\n \t\tcontainer_of(link, struct bpf_raw_tp_link, link);\n \n+\t/* trace_sys_enter uses preempt_disable, which is RCU-sched.\n+\t * call_rcu (preemptible RCU) might not wait for RCU-sched grace period.\n+\t * Ensure we wait for it.\n+\t */\n+\tsynchronize_rcu();\n \tkfree(raw_tp);\n }",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "static const struct bpf_link_ops bpf_raw_tp_link_lops = {\n\t.release = bpf_raw_tp_link_release,\n\t.dealloc = bpf_raw_tp_link_dealloc,\n\t.show_fdinfo = bpf_raw_tp_link_show_fdinfo,\n\t.fill_link_info = bpf_raw_tp_link_fill_link_info,\n};",
+          "before": "static const struct bpf_link_ops bpf_raw_tp_link_lops = {\n\t.release = bpf_raw_tp_link_release,\n\t.dealloc_deferred = bpf_raw_tp_link_dealloc,\n\t.show_fdinfo = bpf_raw_tp_link_show_fdinfo,\n\t.fill_link_info = bpf_raw_tp_link_fill_link_info,\n};",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..da085a2a1337 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -3481,6 +3481,11 @@ static void bpf_raw_tp_link_dealloc(struct bpf_link *link)\n \tstruct bpf_raw_tp_link *raw_tp =\n \t\tcontainer_of(link, struct bpf_raw_tp_link, link);\n \n+\t/* trace_sys_enter uses preempt_disable, which is RCU-sched.\n+\t * call_rcu (preemptible RCU) might not wait for RCU-sched grace period.\n+\t * Ensure we wait for it.\n+\t */\n+\tsynchronize_rcu();\n \tkfree(raw_tp);\n }\n \n@@ -3537,7 +3542,7 @@ static int bpf_raw_tp_link_fill_link_info(const struct bpf_link *link,\n \n static const struct bpf_link_ops bpf_raw_tp_link_lops = {\n \t.release = bpf_raw_tp_link_release,\n-\t.dealloc_deferred = bpf_raw_tp_link_dealloc,\n+\t.dealloc = bpf_raw_tp_link_dealloc,\n \t.show_fdinfo = bpf_raw_tp_link_show_fdinfo,\n \t.fill_link_info = bpf_raw_tp_link_fill_link_info,\n };",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 0,
+      "start_step": 35
+    }
+  ],
+  "success_step": 36
+}

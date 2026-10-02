@@ -1,0 +1,101 @@
+diff --git a/buffer_subbuf_size_write.c b/buffer_subbuf_size_write.c
+new file mode 100644
+index 000000000000..cb73d1ffcfd9
+--- /dev/null
++++ b/buffer_subbuf_size_write.c
+@@ -0,0 +1,71 @@
++buffer_subbuf_size_write(struct file *filp, const char __user *ubuf,
++			 size_t cnt, loff_t *ppos)
++{
++	struct trace_array *tr = filp->private_data;
++	unsigned long val;
++	int old_order;
++	int order;
++	int pages;
++	int ret;
++
++	ret = kstrtoul_from_user(ubuf, cnt, 10, &val);
++	if (ret)
++		return ret;
++
++	val *= 1024; /* value passed in is in KB */
++
++	pages = DIV_ROUND_UP(val, PAGE_SIZE);
++	order = fls(pages - 1);
++
++	/* limit between 1 and 128 system pages */
++	if (order < 0 || order > 7)
++		return -EINVAL;
++
++	/* Do not allow tracing while changing the order of the ring buffer */
++	tracing_stop_tr(tr);
++
++	old_order = ring_buffer_subbuf_order_get(tr->array_buffer.buffer);
++	if (old_order == order)
++		goto out;
++
++	ret = ring_buffer_subbuf_order_set(tr->array_buffer.buffer, order);
++	if (ret)
++		goto out;
++
++#ifdef CONFIG_TRACER_MAX_TRACE
++
++	if (!tr->allocated_snapshot)
++		goto out_max;
++
++	ret = ring_buffer_subbuf_order_set(tr->max_buffer.buffer, order);
++	if (ret) {
++		/* Put back the old order */
++		cnt = ring_buffer_subbuf_order_set(tr->array_buffer.buffer, old_order);
++		if (WARN_ON_ONCE(cnt)) {
++			/*
++			 * AARGH! We are left with different orders!
++			 * The max buffer is our "snapshot" buffer.
++			 * When a tracer needs a snapshot (one of the
++			 * latency tracers), it swaps the max buffer
++			 * with the saved snap shot. We succeeded to
++			 * update the order of the main buffer, but failed to
++			 * update the order of the max buffer. But when we tried
++			 * to reset the main buffer to the original size, we
++			 * failed there too. This is very unlikely to
++			 * happen, but if it does, warn and kill all
++			 * tracing.
++			 */
++			tracing_disabled = 1;
++		}
++		goto out;
++	}
++ out_max:
++#endif
++	(*ppos)++;
++ out:
++	if (ret)
++		cnt = ret;
++	tracing_start_tr(tr);
++	return cnt;
++}
++
+diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
+index c9fbb316dcbd..fd9c73f5f8ec 100644
+--- a/kernel/trace/trace.c
++++ b/kernel/trace/trace.c
+@@ -4842,9 +4842,16 @@ static int tracing_release(struct inode *inode, struct file *file)
+ 	if (iter->trace && iter->trace->close)
+ 		iter->trace->close(iter);
+ 
+-	if (!iter->snapshot && tr->stop_count)
+-		/* reenable tracing if it was previously enabled */
+-		tracing_start_tr(tr);
++	/*
++	 * We must not call tracing_start_tr() as that's an unbalanced
++	 * decrement of stop_count, potentially causing a crash in other
++	 * tracing operations (e.g. buffer_subbuf_size_write) that rely
++	 * on proper stop_count management.
++	 *
++	 * If the tracer stopped tracing, it should restart it in its
++	 * close callback, or we should track if we stopped it.
++	 * Since we didn't stop it in open, we shouldn't start it here.
++	 */
+ 
+ 	__trace_array_put(tr);
+ 

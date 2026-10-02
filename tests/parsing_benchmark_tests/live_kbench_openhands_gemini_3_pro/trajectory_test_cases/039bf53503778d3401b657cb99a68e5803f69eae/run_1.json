@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n\t\tstruct landlock_object *object;\n\t\tbool iput_inode = false;\n\n\t\t/* Only handles referenced inodes. */\n",
+          "before": "\n\tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n\t\tstruct landlock_object *object;\n\n\t\t/* Only handles referenced inodes. */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/landlock/fs.c\n+++ /linux/security/landlock/fs.c\n@@ -1281,0 +1282 @@\n+\t\tbool iput_inode = false;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 33",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        },
+        {
+          "after": "\n\t\t\t/*\n\t\t\t * At this point, we own the ihold() reference that was\n\t\t\t * originally set up by get_inode_object() and the\n\t\t\t * __iget() reference that we just set in this loop\n\t\t\t * walk.  Therefore the following call to iput() will\n\t\t\t * not sleep nor drop the inode because there is now at\n\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tiput_inode = true;\n\t\t} else {\n\t\t\tspin_unlock(&object->lock);\n\t\t\trcu_read_unlock();\n\t\t}\n\n\t\tif (prev_inode || iput_inode) {\n\t\t\t/*\n\t\t\t * At this point, we still own the __iget() reference\n\t\t\t * that we just set in this loop walk.  Therefore we\n\t\t\t * can drop the list lock and know that the inode won't\n\t\t\t * disappear from under us until the next loop walk.\n\t\t\t */\n\t\t\tspin_unlock(&sb->s_inode_list_lock);\n\t\t\t/*\n\t\t\t * We can now actually put the inode reference from the\n\t\t\t * previous loop walk, which is not needed anymore.\n\t\t\t */\n\t\t\tif (prev_inode)\n\t\t\t\tiput(prev_inode);\n\t\t\tif (iput_inode)\n\t\t\t\tiput(inode);\n\t\t\tcond_resched();\n\t\t\tspin_lock(&sb->s_inode_list_lock);\n\t\t}\n",
+          "before": "\n\t\t\t/*\n\t\t\t * At this point, we own the ihold() reference that was\n\t\t\t * originally set up by get_inode_object() and the\n\t\t\t * __iget() reference that we just set in this loop\n\t\t\t * walk.  Therefore the following call to iput() will\n\t\t\t * not sleep nor drop the inode because there is now at\n\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tiput(inode);\n\t\t} else {\n\t\t\tspin_unlock(&object->lock);\n\t\t\trcu_read_unlock();\n\t\t}\n\n\t\tif (prev_inode) {\n\t\t\t/*\n\t\t\t * At this point, we still own the __iget() reference\n\t\t\t * that we just set in this loop walk.  Therefore we\n\t\t\t * can drop the list lock and know that the inode won't\n\t\t\t * disappear from under us until the next loop walk.\n\t\t\t */\n\t\t\tspin_unlock(&sb->s_inode_list_lock);\n\t\t\t/*\n\t\t\t * We can now actually put the inode reference from the\n\t\t\t * previous loop walk, which is not needed anymore.\n\t\t\t */\n\t\t\tiput(prev_inode);\n\t\t\tcond_resched();\n\t\t\tspin_lock(&sb->s_inode_list_lock);\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/landlock/fs.c\n+++ /linux/security/landlock/fs.c\n@@ -1343 +1343 @@\n-\t\t\tiput(inode);\n+\t\t\tiput_inode = true;\n@@ -1349 +1349 @@\n-\t\tif (prev_inode) {\n+\t\tif (prev_inode || iput_inode) {\n@@ -1361 +1361,4 @@\n-\t\t\tiput(prev_inode);\n+\t\t\tif (prev_inode)\n+\t\t\t\tiput(prev_inode);\n+\t\t\tif (iput_inode)\n+\t\t\t\tiput(inode);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 35",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 0,
+      "start_step": 33
+    }
+  ],
+  "success_step": 35
+}

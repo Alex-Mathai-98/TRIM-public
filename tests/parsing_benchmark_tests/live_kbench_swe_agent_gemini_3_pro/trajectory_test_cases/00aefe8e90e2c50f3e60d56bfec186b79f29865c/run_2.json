@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (mmap_read_lock_killable(mm))\n\t\treturn -EINTR;\n\n\tvma = vma_lookup(mm, start);\n\n\tif (!vma || !(vma->vm_flags & VM_SHARED)) {\n\t\tmmap_read_unlock(mm);\n\t\treturn -EINVAL;\n\t}\n\n\tfile = get_file(vma->vm_file);\n\n\tprot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n\tprot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n\tprot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n\n\tflags &= MAP_NONBLOCK;\n\tflags |= MAP_SHARED | MAP_FIXED | MAP_POPULATE;\n\tif (vma->vm_flags & VM_LOCKED)\n\t\tflags |= MAP_LOCKED;\n\n\tmmap_read_unlock(mm);\n\n\tret = security_mmap_file(file, prot, flags);\n\tif (ret) {\n\t\tfput(file);\n\t\treturn ret;\n\t}\n\n\tret = -EINVAL;\n\tif (mmap_write_lock_killable(mm)) {\n\t\tfput(file);\n\t\treturn -EINTR;\n\t}\n\n\tvma = vma_lookup(mm, start);\n\n\tif (!vma || !(vma->vm_flags & VM_SHARED))\n\t\tgoto out;\n\n\tif (vma->vm_file != file)\n\t\tgoto out;\n\n\tif (start + size > vma->vm_end) {\n\t\tVMA_ITERATOR(vmi, mm, vma->vm_end);\n\t\tstruct vm_area_struct *next, *prev = vma;\n\n\t\tfor_each_vma_range(vmi, next, start + size) {\n\t\t\t/* hole between vmas ? */\n\t\t\tif (next->vm_start != prev->vm_end)\n\t\t\t\tgoto out;\n\n\t\t\tif (next->vm_file != vma->vm_file)\n\t\t\t\tgoto out;\n\n\t\t\tif (next->vm_flags != vma->vm_flags)\n\t\t\t\tgoto out;\n\n\t\t\tif (start + size <= next->vm_end)\n\t\t\t\tbreak;\n\n\t\t\tprev = next;\n\t\t}\n\n\t\tif (!next)\n\t\t\tgoto out;\n\t}\n\n\t{\n\t\tunsigned long check_prot = 0;\n\n\t\tcheck_prot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n\t\tcheck_prot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n\t\tcheck_prot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n\n\t\tif (prot != check_prot)\n\t\t\tgoto out;\n\t}\n\n\tif ((flags & MAP_LOCKED) != (vma->vm_flags & VM_LOCKED ? MAP_LOCKED : 0))\n\t\tgoto out;\n\n\tret = do_mmap(file, start, size,\n\t\t\tprot, flags, 0, pgoff, &populate, NULL);\nout:\n\tmmap_write_unlock(mm);\n\tfput(file);\n\tif (populate)\n\t\tmm_populate(ret, populate);\n\tif (!IS_ERR_VALUE(ret))\n\t\tret = 0;\n\treturn ret;",
+          "before": "\tif (mmap_write_lock_killable(mm))\n\t\treturn -EINTR;\n\n\tvma = vma_lookup(mm, start);\n\n\tif (!vma || !(vma->vm_flags & VM_SHARED))\n\t\tgoto out;\n\n\tif (start + size > vma->vm_end) {\n\t\tVMA_ITERATOR(vmi, mm, vma->vm_end);\n\t\tstruct vm_area_struct *next, *prev = vma;\n\n\t\tfor_each_vma_range(vmi, next, start + size) {\n\t\t\t/* hole between vmas ? */\n\t\t\tif (next->vm_start != prev->vm_end)\n\t\t\t\tgoto out;\n\n\t\t\tif (next->vm_file != vma->vm_file)\n\t\t\t\tgoto out;\n\n\t\t\tif (next->vm_flags != vma->vm_flags)\n\t\t\t\tgoto out;\n\n\t\t\tif (start + size <= next->vm_end)\n\t\t\t\tbreak;\n\n\t\t\tprev = next;\n\t\t}\n\n\t\tif (!next)\n\t\t\tgoto out;\n\t}\n\n\tprot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n\tprot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n\tprot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n\n\tflags &= MAP_NONBLOCK;\n\tflags |= MAP_SHARED | MAP_FIXED | MAP_POPULATE;\n\tif (vma->vm_flags & VM_LOCKED)\n\t\tflags |= MAP_LOCKED;\n\n\tfile = get_file(vma->vm_file);\n\tret = security_mmap_file(vma->vm_file, prot, flags);\n\tif (ret)\n\t\tgoto out_fput;\n\tret = do_mmap(vma->vm_file, start, size,\n\t\t\tprot, flags, 0, pgoff, &populate, NULL);\nout_fput:\n\tfput(file);\nout:\n\tmmap_write_unlock(mm);\n\tif (populate)\n\t\tmm_populate(ret, populate);\n\tif (!IS_ERR_VALUE(ret))\n\t\tret = 0;\n\treturn ret;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mmap.c b/mm/mmap.c\nindex 582036922d05..000cf49f14bf 100644\n--- a/mm/mmap.c\n+++ b/mm/mmap.c\n@@ -1658,14 +1658,49 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,\n \tif (pgoff + (size >> PAGE_SHIFT) < pgoff)\n \t\treturn ret;\n \n-\tif (mmap_write_lock_killable(mm))\n+\tif (mmap_read_lock_killable(mm))\n \t\treturn -EINTR;\n \n \tvma = vma_lookup(mm, start);\n \n+\tif (!vma || !(vma->vm_flags & VM_SHARED)) {\n+\t\tmmap_read_unlock(mm);\n+\t\treturn -EINVAL;\n+\t}\n+\n+\tfile = get_file(vma->vm_file);\n+\n+\tprot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n+\tprot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n+\tprot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n+\n+\tflags &= MAP_NONBLOCK;\n+\tflags |= MAP_SHARED | MAP_FIXED | MAP_POPULATE;\n+\tif (vma->vm_flags & VM_LOCKED)\n+\t\tflags |= MAP_LOCKED;\n+\n+\tmmap_read_unlock(mm);\n+\n+\tret = security_mmap_file(file, prot, flags);\n+\tif (ret) {\n+\t\tfput(file);\n+\t\treturn ret;\n+\t}\n+\n+\tret = -EINVAL;\n+\tif (mmap_write_lock_killable(mm)) {\n+\t\tfput(file);\n+\t\treturn -EINTR;\n+\t}\n+\n+\tvma = vma_lookup(mm, start);\n+\n \tif (!vma || !(vma->vm_flags & VM_SHARED))\n \t\tgoto out;\n \n+\tif (vma->vm_file != file)\n+\t\tgoto out;\n+\n \tif (start + size > vma->vm_end) {\n \t\tVMA_ITERATOR(vmi, mm, vma->vm_end);\n \t\tstruct vm_area_struct *next, *prev = vma;\n@@ -1691,25 +1726,25 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,\n \t\t\tgoto out;\n \t}\n \n-\tprot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n-\tprot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n-\tprot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n+\t{\n+\t\tunsigned long check_prot = 0;\n \n-\tflags &= MAP_NONBLOCK;\n-\tflags |= MAP_SHARED | MAP_FIXED | MAP_POPULATE;\n-\tif (vma->vm_flags & VM_LOCKED)\n-\t\tflags |= MAP_LOCKED;\n+\t\tcheck_prot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n+\t\tcheck_prot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n+\t\tcheck_prot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n \n-\tfile = get_file(vma->vm_file);\n-\tret = security_mmap_file(vma->vm_file, prot, flags);\n-\tif (ret)\n-\t\tgoto out_fput;\n-\tret = do_mmap(vma->vm_file, start, size,\n+\t\tif (prot != check_prot)\n+\t\t\tgoto out;\n+\t}\n+\n+\tif ((flags & MAP_LOCKED) != (vma->vm_flags & VM_LOCKED ? MAP_LOCKED : 0))\n+\t\tgoto out;\n+\n+\tret = do_mmap(file, start, size,\n \t\t\tprot, flags, 0, pgoff, &populate, NULL);\n-out_fput:\n-\tfput(file);\n out:\n \tmmap_write_unlock(mm);\n+\tfput(file);\n \tif (populate)\n \t\tmm_populate(ret, populate);\n \tif (!IS_ERR_VALUE(ret))",
+          "explanation": "classic_swe step 7 #1",
+          "filename": "mm/mmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 7
+        }
+      ],
+      "end_step": 7,
+      "revision_index": 0,
+      "start_step": 7
+    }
+  ],
+  "success_step": 7
+}

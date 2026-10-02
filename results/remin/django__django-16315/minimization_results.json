@@ -1,0 +1,267 @@
+{
+  "bug_id": "django__django-16315",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/sqlite3/operations.py",
+        "before": "    def on_conflict_suffix_sql(self, fields, on_conflict, update_fields, unique_fields):\n        if (\n            on_conflict == OnConflict.UPDATE\n            and self.connection.features.supports_update_conflicts_with_target\n        ):\n            return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n                \", \".join(map(self.quote_name, unique_fields)),\n                \", \".join(\n                    [\n                        f\"{field} = EXCLUDED.{field}\"\n                        for field in map(self.quote_name, update_fields)\n                    ]\n                ),\n            )",
+        "after": "    def on_conflict_suffix_sql(self, fields, on_conflict, update_fields, unique_fields):\n        if (\n            on_conflict == OnConflict.UPDATE\n            and self.connection.features.supports_update_conflicts_with_target\n        ):\n            return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n                \", \".join(self.quote_name(field.column) for field in unique_fields),\n                \", \".join(\n                    [\n                        f\"{self.quote_name(field.column)} = EXCLUDED.{self.quote_name(field.column)}\"\n                        for field in update_fields\n                    ]\n                ),\n            )",
+        "explanation": "classic_swe step 49 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "            # Updating primary keys and non-concrete fields is forbidden.\n            update_fields = [self.model._meta.get_field(name) for name in update_fields]\n            if any(not f.concrete or f.many_to_many for f in update_fields):\n                raise ValueError(\n                    \"bulk_create() can only be used with concrete fields in \"\n                    \"update_fields.\"\n                )\n            if any(f.primary_key for f in update_fields):\n                raise ValueError(\n                    \"bulk_create() cannot be used with primary keys in \"\n                    \"update_fields.\"\n                )\n            if unique_fields:\n                unique_fields = [\n                    self.model._meta.get_field(name) for name in unique_fields\n                ]\n                if any(not f.concrete or f.many_to_many for f in unique_fields):\n                    raise ValueError(\n                        \"bulk_create() can only be used with concrete fields \"\n                        \"in unique_fields.\"\n                    )\n            return OnConflict.UPDATE",
+        "after": "            # Updating primary keys and non-concrete fields is forbidden.\n            update_field_objects = [self.model._meta.get_field(name) for name in update_fields]\n            if any(not f.concrete or f.many_to_many for f in update_field_objects):\n                raise ValueError(\n                    \"bulk_create() can only be used with concrete fields in \"\n                    \"update_fields.\"\n                )\n            if any(f.primary_key for f in update_field_objects):\n                raise ValueError(\n                    \"bulk_create() cannot be used with primary keys in \"\n                    \"update_fields.\"\n                )\n            unique_field_objects = []\n            if unique_fields:\n                unique_field_objects = [\n                    self.model._meta.get_field(name) for name in unique_fields\n                ]\n                if any(not f.concrete or f.many_to_many for f in unique_field_objects):\n                    raise ValueError(\n                        \"bulk_create() can only be used with concrete fields \"\n                        \"in unique_fields.\"\n                    )\n            return OnConflict.UPDATE, update_field_objects, unique_field_objects",
+        "explanation": "classic_swe step 60 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "            return OnConflict.IGNORE",
+        "after": "            return OnConflict.IGNORE, [], []",
+        "explanation": "classic_swe step 61 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "            return OnConflict.UPDATE, update_field_objects, unique_field_objects\n        return None",
+        "after": "            return OnConflict.UPDATE, update_field_objects, unique_field_objects\n        return None, [], []",
+        "explanation": "classic_swe step 63 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "        on_conflict = self._check_bulk_create_options(\n            ignore_conflicts,\n            update_conflicts,\n            update_fields,\n            unique_fields,\n        )",
+        "after": "        on_conflict, update_field_objects, unique_field_objects = self._check_bulk_create_options(\n            ignore_conflicts,\n            update_conflicts,\n            update_fields,\n            unique_fields,\n        )",
+        "explanation": "classic_swe step 64 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "                returned_columns = self._batched_insert(\n                    objs_with_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_fields,\n                    unique_fields=unique_fields,\n                )",
+        "after": "                returned_columns = self._batched_insert(\n                    objs_with_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_field_objects,\n                    unique_fields=unique_field_objects,\n                )",
+        "explanation": "classic_swe step 65 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "                returned_columns = self._batched_insert(\n                    objs_without_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_fields,\n                    unique_fields=unique_fields,\n                )",
+        "after": "                returned_columns = self._batched_insert(\n                    objs_without_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_field_objects,\n                    unique_fields=unique_field_objects,\n                )",
+        "explanation": "classic_swe step 66 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/sqlite3/operations.py b/django/db/backends/sqlite3/operations.py\nindex bb84d52071..4787f97c42 100644\n--- a/django/db/backends/sqlite3/operations.py\n+++ b/django/db/backends/sqlite3/operations.py\n@@ -418,11 +418,11 @@ class DatabaseOperations(BaseDatabaseOperations):\n             and self.connection.features.supports_update_conflicts_with_target\n         ):\n             return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n-                \", \".join(map(self.quote_name, unique_fields)),\n+                \", \".join(self.quote_name(field.column) for field in unique_fields),\n                 \", \".join(\n                     [\n-                        f\"{field} = EXCLUDED.{field}\"\n-                        for field in map(self.quote_name, update_fields)\n+                        f\"{self.quote_name(field.column)} = EXCLUDED.{self.quote_name(field.column)}\"\n+                        for field in update_fields\n                     ]\n                 ),\n             )\ndiff --git a/django/db/models/query.py b/django/db/models/query.py\nindex be8580f2c4..b71189be98 100644\n--- a/django/db/models/query.py\n+++ b/django/db/models/query.py\n@@ -698,7 +698,7 @@ class QuerySet(AltersData):\n                 raise NotSupportedError(\n                     \"This database backend does not support ignoring conflicts.\"\n                 )\n-            return OnConflict.IGNORE\n+            return OnConflict.IGNORE, [], []\n         elif update_conflicts:\n             if not db_features.supports_update_conflicts:\n                 raise NotSupportedError(\n@@ -720,28 +720,29 @@ class QuerySet(AltersData):\n                     \"Unique fields that can trigger the upsert must be provided.\"\n                 )\n             # Updating primary keys and non-concrete fields is forbidden.\n-            update_fields = [self.model._meta.get_field(name) for name in update_fields]\n-            if any(not f.concrete or f.many_to_many for f in update_fields):\n+            update_field_objects = [self.model._meta.get_field(name) for name in update_fields]\n+            if any(not f.concrete or f.many_to_many for f in update_field_objects):\n                 raise ValueError(\n                     \"bulk_create() can only be used with concrete fields in \"\n                     \"update_fields.\"\n                 )\n-            if any(f.primary_key for f in update_fields):\n+            if any(f.primary_key for f in update_field_objects):\n                 raise ValueError(\n                     \"bulk_create() cannot be used with primary keys in \"\n                     \"update_fields.\"\n                 )\n+            unique_field_objects = []\n             if unique_fields:\n-                unique_fields = [\n+                unique_field_objects = [\n                     self.model._meta.get_field(name) for name in unique_fields\n                 ]\n-                if any(not f.concrete or f.many_to_many for f in unique_fields):\n+                if any(not f.concrete or f.many_to_many for f in unique_field_objects):\n                     raise ValueError(\n                         \"bulk_create() can only be used with concrete fields \"\n                         \"in unique_fields.\"\n                     )\n-            return OnConflict.UPDATE\n-        return None\n+            return OnConflict.UPDATE, update_field_objects, unique_field_objects\n+        return None, [], []\n \n     def bulk_create(\n         self,\n@@ -788,7 +789,7 @@ class QuerySet(AltersData):\n             unique_fields = [\n                 opts.pk.name if name == \"pk\" else name for name in unique_fields\n             ]\n-        on_conflict = self._check_bulk_create_options(\n+        on_conflict, update_field_objects, unique_field_objects = self._check_bulk_create_options(\n             ignore_conflicts,\n             update_conflicts,\n             update_fields,\n@@ -806,8 +807,8 @@ class QuerySet(AltersData):\n                     fields,\n                     batch_size,\n                     on_conflict=on_conflict,\n-                    update_fields=update_fields,\n-                    unique_fields=unique_fields,\n+                    update_fields=update_field_objects,\n+                    unique_fields=unique_field_objects,\n                 )\n                 for obj_with_pk, results in zip(objs_with_pk, returned_columns):\n                     for result, field in zip(results, opts.db_returning_fields):\n@@ -823,8 +824,8 @@ class QuerySet(AltersData):\n                     fields,\n                     batch_size,\n                     on_conflict=on_conflict,\n-                    update_fields=update_fields,\n-                    unique_fields=unique_fields,\n+                    update_fields=update_field_objects,\n+                    unique_fields=unique_field_objects,\n                 )\n                 connection = connections[self.db]\n                 if (\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 2,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      1,
+      2
+    ],
+    "node_list_after_phase2": [
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "greedy_removal_file_no_crash": 1,
+    "edit_list_after_file_min": [
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 5,
+    "greedy_removal_edit_not_applicable": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 7,
+    "edit_list_after_greedy": [
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "edit_list_after_refinement": [
+      7,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "edits_after_node_min": 8,
+    "edits_after_file_min": 7,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 9,
+  "minimized_edit_count": 7,
+  "reduction": "9_to_7",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/postgresql/operations.py",
+          "before": "    def on_conflict_suffix_sql(self, fields, on_conflict, update_fields, unique_fields):\n        if on_conflict == OnConflict.IGNORE:\n            return \"ON CONFLICT DO NOTHING\"\n        if on_conflict == OnConflict.UPDATE:\n            return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n                \", \".join(map(self.quote_name, unique_fields)),\n                \", \".join(\n                    [\n                        f\"{field} = EXCLUDED.{field}\"\n                        for field in map(self.quote_name, update_fields)\n                    ]\n                ),\n            )",
+          "after": "    def on_conflict_suffix_sql(self, fields, on_conflict, update_fields, unique_fields):\n        if on_conflict == OnConflict.IGNORE:\n            return \"ON CONFLICT DO NOTHING\"\n        if on_conflict == OnConflict.UPDATE:\n            return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n                \", \".join(self.quote_name(field.column) for field in unique_fields),\n                \", \".join(\n                    [\n                        f\"{self.quote_name(field.column)} = EXCLUDED.{self.quote_name(field.column)}\"\n                        for field in update_fields\n                    ]\n                ),\n            )",
+          "explanation": "classic_swe step 41 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/sqlite3/operations.py",
+          "before": "    def on_conflict_suffix_sql(self, fields, on_conflict, update_fields, unique_fields):\n        if (\n            on_conflict == OnConflict.UPDATE\n            and self.connection.features.supports_update_conflicts_with_target\n        ):\n            return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n                \", \".join(map(self.quote_name, unique_fields)),\n                \", \".join(\n                    [\n                        f\"{field} = EXCLUDED.{field}\"\n                        for field in map(self.quote_name, update_fields)\n                    ]\n                ),\n            )",
+          "after": "    def on_conflict_suffix_sql(self, fields, on_conflict, update_fields, unique_fields):\n        if (\n            on_conflict == OnConflict.UPDATE\n            and self.connection.features.supports_update_conflicts_with_target\n        ):\n            return \"ON CONFLICT(%s) DO UPDATE SET %s\" % (\n                \", \".join(self.quote_name(field.column) for field in unique_fields),\n                \", \".join(\n                    [\n                        f\"{self.quote_name(field.column)} = EXCLUDED.{self.quote_name(field.column)}\"\n                        for field in update_fields\n                    ]\n                ),\n            )",
+          "explanation": "classic_swe step 49 #1"
+        },
+        {
+          "filename": "django/db/backends/mysql/operations.py",
+          "before": "            fields = \", \".join(\n                [\n                    field_sql % {\"field\": field}\n                    for field in map(self.quote_name, update_fields)\n                ]\n            )",
+          "after": "            fields = \", \".join(\n                [\n                    field_sql % {\"field\": self.quote_name(field.column)}\n                    for field in update_fields\n                ]\n            )",
+          "explanation": "classic_swe step 54 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/query.py",
+          "before": "            # Updating primary keys and non-concrete fields is forbidden.\n            update_fields = [self.model._meta.get_field(name) for name in update_fields]\n            if any(not f.concrete or f.many_to_many for f in update_fields):\n                raise ValueError(\n                    \"bulk_create() can only be used with concrete fields in \"\n                    \"update_fields.\"\n                )\n            if any(f.primary_key for f in update_fields):\n                raise ValueError(\n                    \"bulk_create() cannot be used with primary keys in \"\n                    \"update_fields.\"\n                )\n            if unique_fields:\n                unique_fields = [\n                    self.model._meta.get_field(name) for name in unique_fields\n                ]\n                if any(not f.concrete or f.many_to_many for f in unique_fields):\n                    raise ValueError(\n                        \"bulk_create() can only be used with concrete fields \"\n                        \"in unique_fields.\"\n                    )\n            return OnConflict.UPDATE",
+          "after": "            # Updating primary keys and non-concrete fields is forbidden.\n            update_field_objects = [self.model._meta.get_field(name) for name in update_fields]\n            if any(not f.concrete or f.many_to_many for f in update_field_objects):\n                raise ValueError(\n                    \"bulk_create() can only be used with concrete fields in \"\n                    \"update_fields.\"\n                )\n            if any(f.primary_key for f in update_field_objects):\n                raise ValueError(\n                    \"bulk_create() cannot be used with primary keys in \"\n                    \"update_fields.\"\n                )\n            unique_field_objects = []\n            if unique_fields:\n                unique_field_objects = [\n                    self.model._meta.get_field(name) for name in unique_fields\n                ]\n                if any(not f.concrete or f.many_to_many for f in unique_field_objects):\n                    raise ValueError(\n                        \"bulk_create() can only be used with concrete fields \"\n                        \"in unique_fields.\"\n                    )\n            return OnConflict.UPDATE, update_field_objects, unique_field_objects",
+          "explanation": "classic_swe step 60 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "            return OnConflict.IGNORE",
+          "after": "            return OnConflict.IGNORE, [], []",
+          "explanation": "classic_swe step 61 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "            return OnConflict.UPDATE, update_field_objects, unique_field_objects\n        return None",
+          "after": "            return OnConflict.UPDATE, update_field_objects, unique_field_objects\n        return None, [], []",
+          "explanation": "classic_swe step 63 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "        on_conflict = self._check_bulk_create_options(\n            ignore_conflicts,\n            update_conflicts,\n            update_fields,\n            unique_fields,\n        )",
+          "after": "        on_conflict, update_field_objects, unique_field_objects = self._check_bulk_create_options(\n            ignore_conflicts,\n            update_conflicts,\n            update_fields,\n            unique_fields,\n        )",
+          "explanation": "classic_swe step 64 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "                returned_columns = self._batched_insert(\n                    objs_with_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_fields,\n                    unique_fields=unique_fields,\n                )",
+          "after": "                returned_columns = self._batched_insert(\n                    objs_with_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_field_objects,\n                    unique_fields=unique_field_objects,\n                )",
+          "explanation": "classic_swe step 65 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "                returned_columns = self._batched_insert(\n                    objs_without_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_fields,\n                    unique_fields=unique_fields,\n                )",
+          "after": "                returned_columns = self._batched_insert(\n                    objs_without_pk,\n                    fields,\n                    batch_size,\n                    on_conflict=on_conflict,\n                    update_fields=update_field_objects,\n                    unique_fields=unique_field_objects,\n                )",
+          "explanation": "classic_swe step 66 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 42,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 42,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/models/query.py"
+    ],
+    "extra_files_in_minimized": [
+      "django/db/backends/sqlite3/operations.py"
+    ],
+    "missing_files_vs_gold": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "minimized_files": [
+      "django/db/backends/sqlite3/operations.py",
+      "django/db/models/query.py"
+    ],
+    "gold_files": [
+      "django/db/models/query.py",
+      "django/db/models/sql/compiler.py"
+    ],
+    "minimized_hunks": 6,
+    "gold_hunks": 4,
+    "minimized_added_lines": 17,
+    "minimized_deleted_lines": 16,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 7
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

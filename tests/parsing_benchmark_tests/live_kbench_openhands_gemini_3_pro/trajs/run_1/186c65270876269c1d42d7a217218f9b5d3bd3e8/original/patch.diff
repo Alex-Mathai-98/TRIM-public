@@ -1,0 +1,26 @@
+diff --git a/block/ioctl.c b/block/ioctl.c
+index 61feed686418..0093360bb680 100644
+--- a/block/ioctl.c
++++ b/block/ioctl.c
+@@ -443,10 +443,10 @@ static int blkdev_pr_read_keys(struct block_device *bdev, blk_mode_t mode,
+ 		return -EFAULT;
+ 
+ 	keys_info_len = struct_size(keys_info, keys, read_keys.num_keys);
+-	if (keys_info_len == SIZE_MAX)
++	if (keys_info_len == SIZE_MAX || keys_info_len > INT_MAX)
+ 		return -EINVAL;
+ 
+-	keys_info = kzalloc(keys_info_len, GFP_KERNEL);
++	keys_info = kvzalloc(keys_info_len, GFP_KERNEL);
+ 	if (!keys_info)
+ 		return -ENOMEM;
+ 
+@@ -473,7 +473,7 @@ static int blkdev_pr_read_keys(struct block_device *bdev, blk_mode_t mode,
+ 	if (copy_to_user(arg, &read_keys, sizeof(read_keys)))
+ 		ret = -EFAULT;
+ out:
+-	kfree(keys_info);
++	kvfree(keys_info);
+ 	return ret;
+ }
+ 

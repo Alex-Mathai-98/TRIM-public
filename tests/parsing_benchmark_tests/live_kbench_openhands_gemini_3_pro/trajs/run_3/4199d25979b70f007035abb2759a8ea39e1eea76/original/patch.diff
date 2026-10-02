@@ -1,0 +1,70 @@
+diff --git a/drivers/block/nbd.c b/drivers/block/nbd.c
+index 6463d0e8d0ce..1a64c03aa43b 100644
+--- a/drivers/block/nbd.c
++++ b/drivers/block/nbd.c
+@@ -29,6 +29,7 @@
+ #include <linux/mutex.h>
+ #include <linux/compiler.h>
+ #include <linux/completion.h>
++#include <linux/sched/mm.h>
+ #include <linux/err.h>
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+@@ -75,6 +76,8 @@ struct recv_thread_args {
+ struct link_dead_args {
+ 	struct work_struct work;
+ 	int index;
++	struct socket *sock;
++	bool notify;
+ };
+ 
+ #define NBD_RT_TIMEDOUT			0
+@@ -305,17 +308,18 @@ static int nbd_disconnected(struct nbd_config *config)
+ static void nbd_mark_nsock_dead(struct nbd_device *nbd, struct nbd_sock *nsock,
+ 				int notify)
+ {
+-	if (!nsock->dead && notify && !nbd_disconnected(nbd->config)) {
++	if (!nsock->dead) {
+ 		struct link_dead_args *args;
++
+ 		args = kmalloc(sizeof(struct link_dead_args), GFP_NOIO);
+ 		if (args) {
++			get_file(nsock->sock->file);
+ 			INIT_WORK(&args->work, nbd_dead_link_work);
+ 			args->index = nbd->index;
++			args->sock = nsock->sock;
++			args->notify = notify && !nbd_disconnected(nbd->config);
+ 			queue_work(system_wq, &args->work);
+ 		}
+-	}
+-	if (!nsock->dead) {
+-		kernel_sock_shutdown(nsock->sock, SHUT_RDWR);
+ 		if (atomic_dec_return(&nbd->config->live_connections) == 0) {
+ 			if (test_and_clear_bit(NBD_RT_DISCONNECT_REQUESTED,
+ 					       &nbd->config->runtime_flags)) {
+@@ -1475,7 +1479,12 @@ static int nbd_start_device(struct nbd_device *nbd)
+ 
+ retry:
+ 	mutex_unlock(&nbd->config_lock);
+-	blk_mq_update_nr_hw_queues(&nbd->tag_set, num_connections);
++	{
++		unsigned int flags = memalloc_noio_save();
++
++		blk_mq_update_nr_hw_queues(&nbd->tag_set, num_connections);
++		memalloc_noio_restore(flags);
++	}
+ 	mutex_lock(&nbd->config_lock);
+ 
+ 	/* if another code path updated nr_hw_queues, retry until succeed */
+@@ -2624,7 +2633,10 @@ static void nbd_dead_link_work(struct work_struct *work)
+ {
+ 	struct link_dead_args *args = container_of(work, struct link_dead_args,
+ 						   work);
+-	nbd_mcast_index(args->index);
++	kernel_sock_shutdown(args->sock, SHUT_RDWR);
++	sockfd_put(args->sock);
++	if (args->notify)
++		nbd_mcast_index(args->index);
+ 	kfree(args);
+ }
+ 

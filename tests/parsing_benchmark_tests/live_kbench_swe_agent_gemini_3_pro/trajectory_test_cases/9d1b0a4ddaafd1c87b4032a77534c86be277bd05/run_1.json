@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tchunknr = map->m_la >> vi->chunkbits;\n\tif ((chunknr << vi->chunkbits) > map->m_la) {\n\t\tpr_err(\"erofs_map_blocks: map->m_la %llu chunkbits %u chunknr %llu res %llu\\n\",\n\t\t       map->m_la, vi->chunkbits, chunknr, chunknr << vi->chunkbits);\n\t}\n\tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n",
+          "before": "\tchunknr = map->m_la >> vi->chunkbits;\n\tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6a329c329f43..54b94d50bc6e 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -115,6 +115,10 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \t\tunit = EROFS_BLOCK_MAP_ENTRY_SIZE;\t/* block map */\n \n \tchunknr = map->m_la >> vi->chunkbits;\n+\tif ((chunknr << vi->chunkbits) > map->m_la) {\n+\t\tpr_err(\"erofs_map_blocks: map->m_la %llu chunkbits %u chunknr %llu res %llu\\n\",\n+\t\t       map->m_la, vi->chunkbits, chunknr, chunknr << vi->chunkbits);\n+\t}\n \tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n \t\t    vi->xattr_isize, unit) + unit * chunknr;",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    },
+    {
+      "edits": [
+        {
+          "after": "\t/* chunkbits validation */\n\tif (vi->chunkbits >= 64) {\n\t\terofs_err(sb, \"invalid chunkbits %u @ nid %llu\",\n\t\t\t  vi->chunkbits, vi->nid);\n\t\tDBG_BUGON(1);\n\t\treturn -EFSCORRUPTED;\n\t}\n\n\tchunknr = map->m_la >> vi->chunkbits;\n\tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n",
+          "before": "\tchunknr = map->m_la >> vi->chunkbits;\n\tif ((chunknr << vi->chunkbits) > map->m_la) {\n\t\tpr_err(\"erofs_map_blocks: map->m_la %llu chunkbits %u chunknr %llu res %llu\\n\",\n\t\t       map->m_la, vi->chunkbits, chunknr, chunknr << vi->chunkbits);\n\t}\n\tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6a329c329f43..b81e38055a03 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -114,6 +114,14 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \telse\n \t\tunit = EROFS_BLOCK_MAP_ENTRY_SIZE;\t/* block map */\n \n+\t/* chunkbits validation */\n+\tif (vi->chunkbits >= 64) {\n+\t\terofs_err(sb, \"invalid chunkbits %u @ nid %llu\",\n+\t\t\t  vi->chunkbits, vi->nid);\n+\t\tDBG_BUGON(1);\n+\t\treturn -EFSCORRUPTED;\n+\t}\n+\n \tchunknr = map->m_la >> vi->chunkbits;\n \tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n \t\t    vi->xattr_isize, unit) + unit * chunknr;",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "\tmap->m_llen = min_t(erofs_off_t, 1ULL << vi->chunkbits,\n\t\t\t    round_up(inode->i_size - map->m_la, blksz));\n",
+          "before": "\tmap->m_llen = min_t(erofs_off_t, 1UL << vi->chunkbits,\n\t\t\t    round_up(inode->i_size - map->m_la, blksz));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6a329c329f43..9014425ec812 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -114,6 +114,14 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \telse\n \t\tunit = EROFS_BLOCK_MAP_ENTRY_SIZE;\t/* block map */\n \n+\t/* chunkbits validation */\n+\tif (vi->chunkbits >= 64) {\n+\t\terofs_err(sb, \"invalid chunkbits %u @ nid %llu\",\n+\t\t\t  vi->chunkbits, vi->nid);\n+\t\tDBG_BUGON(1);\n+\t\treturn -EFSCORRUPTED;\n+\t}\n+\n \tchunknr = map->m_la >> vi->chunkbits;\n \tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n \t\t    vi->xattr_isize, unit) + unit * chunknr;\n@@ -124,7 +132,7 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \t\tgoto out;\n \t}\n \tmap->m_la = chunknr << vi->chunkbits;\n-\tmap->m_llen = min_t(erofs_off_t, 1UL << vi->chunkbits,\n+\tmap->m_llen = min_t(erofs_off_t, 1ULL << vi->chunkbits,\n \t\t\t    round_up(inode->i_size - map->m_la, blksz));\n \tif (vi->chunkformat & EROFS_CHUNK_FORMAT_INDEXES) {\n \t\taddrmask = (vi->chunkformat & EROFS_CHUNK_FORMAT_48BIT) ?",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "\t/* chunkbits validation */\n\tif (vi->chunkbits >= 64) {\n\t\terofs_err(sb, \"invalid chunkbits %u @ nid %llu\",\n\t\t\t  vi->chunkbits, vi->nid);\n\t\treturn -EFSCORRUPTED;\n\t}\n",
+          "before": "\t/* chunkbits validation */\n\tif (vi->chunkbits >= 64) {\n\t\terofs_err(sb, \"invalid chunkbits %u @ nid %llu\",\n\t\t\t  vi->chunkbits, vi->nid);\n\t\tDBG_BUGON(1);\n\t\treturn -EFSCORRUPTED;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6a329c329f43..743211a9d346 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -114,6 +114,13 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \telse\n \t\tunit = EROFS_BLOCK_MAP_ENTRY_SIZE;\t/* block map */\n \n+\t/* chunkbits validation */\n+\tif (vi->chunkbits >= 64) {\n+\t\terofs_err(sb, \"invalid chunkbits %u @ nid %llu\",\n+\t\t\t  vi->chunkbits, vi->nid);\n+\t\treturn -EFSCORRUPTED;\n+\t}\n+\n \tchunknr = map->m_la >> vi->chunkbits;\n \tpos = ALIGN(erofs_iloc(inode) + vi->inode_isize +\n \t\t    vi->xattr_isize, unit) + unit * chunknr;\n@@ -124,7 +131,7 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \t\tgoto out;\n \t}\n \tmap->m_la = chunknr << vi->chunkbits;\n-\tmap->m_llen = min_t(erofs_off_t, 1UL << vi->chunkbits,\n+\tmap->m_llen = min_t(erofs_off_t, 1ULL << vi->chunkbits,\n \t\t\t    round_up(inode->i_size - map->m_la, blksz));\n \tif (vi->chunkformat & EROFS_CHUNK_FORMAT_INDEXES) {\n \t\taddrmask = (vi->chunkformat & EROFS_CHUNK_FORMAT_48BIT) ?",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 1,
+      "start_step": 28
+    }
+  ],
+  "success_step": 34
+}

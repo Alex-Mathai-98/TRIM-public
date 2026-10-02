@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (vrm->remap_type == MREMAP_SHRINK) {\n\t\terr = shrink_vma(vrm, /* drop_lock= */false);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/* Set up for the move now shrink has been executed. */\n\t\tvrm->old_len = vrm->new_len;\n\t}\n\n\tif (vrm->flags & MREMAP_FIXED) {\n\t\t/*\n\t\t * In mremap_to().\n\t\t * VMA is moved to dst address, and munmap dst first.\n\t\t * do_munmap will check if dst is sealed.\n\t\t */\n\t\terr = do_munmap(mm, vrm->new_addr, vrm->new_len,\n\t\t\t\tvrm->uf_unmap_early);\n\t\tvrm->vma = NULL; /* Invalidated. */\n\t\tvrm->vmi_needs_invalidate = true;\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/*\n\t\t * If we remap a portion of a VMA elsewhere in the same VMA,\n\t\t * this can invalidate the old VMA. Reset.\n\t\t */\n\t\tvrm->vma = vma_lookup(mm, vrm->addr);\n\t\tif (!vrm->vma)\n\t\t\treturn -EFAULT;\n\t}\n",
+          "before": "\tif (vrm->flags & MREMAP_FIXED) {\n\t\t/*\n\t\t * In mremap_to().\n\t\t * VMA is moved to dst address, and munmap dst first.\n\t\t * do_munmap will check if dst is sealed.\n\t\t */\n\t\terr = do_munmap(mm, vrm->new_addr, vrm->new_len,\n\t\t\t\tvrm->uf_unmap_early);\n\t\tvrm->vma = NULL; /* Invalidated. */\n\t\tvrm->vmi_needs_invalidate = true;\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/*\n\t\t * If we remap a portion of a VMA elsewhere in the same VMA,\n\t\t * this can invalidate the old VMA. Reset.\n\t\t */\n\t\tvrm->vma = vma_lookup(mm, vrm->addr);\n\t\tif (!vrm->vma)\n\t\t\treturn -EFAULT;\n\t}\n\n\tif (vrm->remap_type == MREMAP_SHRINK) {\n\t\terr = shrink_vma(vrm, /* drop_lock= */false);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/* Set up for the move now shrink has been executed. */\n\t\tvrm->old_len = vrm->new_len;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..ad4a5ffe2d43 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -1363,6 +1363,15 @@ static unsigned long mremap_to(struct vma_remap_struct *vrm)\n \tstruct mm_struct *mm = current->mm;\n \tunsigned long err;\n \n+\tif (vrm->remap_type == MREMAP_SHRINK) {\n+\t\terr = shrink_vma(vrm, /* drop_lock= */false);\n+\t\tif (err)\n+\t\t\treturn err;\n+\n+\t\t/* Set up for the move now shrink has been executed. */\n+\t\tvrm->old_len = vrm->new_len;\n+\t}\n+\n \tif (vrm->flags & MREMAP_FIXED) {\n \t\t/*\n \t\t * In mremap_to().\n@@ -1385,15 +1394,6 @@ static unsigned long mremap_to(struct vma_remap_struct *vrm)\n \t\t\treturn -EFAULT;\n \t}\n \n-\tif (vrm->remap_type == MREMAP_SHRINK) {\n-\t\terr = shrink_vma(vrm, /* drop_lock= */false);\n-\t\tif (err)\n-\t\t\treturn err;\n-\n-\t\t/* Set up for the move now shrink has been executed. */\n-\t\tvrm->old_len = vrm->new_len;\n-\t}\n-\n \t/* MREMAP_DONTUNMAP expands by old_len since old_len == new_len */\n \tif (vrm->flags & MREMAP_DONTUNMAP) {\n \t\tvm_flags_t vm_flags = vrm->vma->vm_flags;",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (vrm->flags & MREMAP_FIXED) {\n\t\t/*\n\t\t * In mremap_to().\n\t\t * VMA is moved to dst address, and munmap dst first.\n\t\t * do_munmap will check if dst is sealed.\n\t\t */\n\t\terr = do_munmap(mm, vrm->new_addr, vrm->new_len,\n\t\t\t\tvrm->uf_unmap_early);\n\t\tvrm->vma = NULL; /* Invalidated. */\n\t\tvrm->vmi_needs_invalidate = true;\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/*\n\t\t * If we remap a portion of a VMA elsewhere in the same VMA,\n\t\t * this can invalidate the old VMA. Reset.\n\t\t */\n\t\tvrm->vma = vma_lookup(mm, vrm->addr);\n\t\tif (!vrm->vma)\n\t\t\treturn -EFAULT;\n\t}\n\n\tif (vrm->remap_type == MREMAP_SHRINK) {\n\t\terr = shrink_vma(vrm, /* drop_lock= */false);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/* Set up for the move now shrink has been executed. */\n\t\tvrm->old_len = vrm->new_len;\n\t}\n",
+          "before": "\tif (vrm->remap_type == MREMAP_SHRINK) {\n\t\terr = shrink_vma(vrm, /* drop_lock= */false);\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/* Set up for the move now shrink has been executed. */\n\t\tvrm->old_len = vrm->new_len;\n\t}\n\n\tif (vrm->flags & MREMAP_FIXED) {\n\t\t/*\n\t\t * In mremap_to().\n\t\t * VMA is moved to dst address, and munmap dst first.\n\t\t * do_munmap will check if dst is sealed.\n\t\t */\n\t\terr = do_munmap(mm, vrm->new_addr, vrm->new_len,\n\t\t\t\tvrm->uf_unmap_early);\n\t\tvrm->vma = NULL; /* Invalidated. */\n\t\tvrm->vmi_needs_invalidate = true;\n\t\tif (err)\n\t\t\treturn err;\n\n\t\t/*\n\t\t * If we remap a portion of a VMA elsewhere in the same VMA,\n\t\t * this can invalidate the old VMA. Reset.\n\t\t */\n\t\tvrm->vma = vma_lookup(mm, vrm->addr);\n\t\tif (!vrm->vma)\n\t\t\treturn -EFAULT;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "\t * One alternative might be to just unmap the target pmd at\n\t * this point, and verify that it really is empty. We'll see.\n\t */\n\t// if (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n\t//\treturn false;\n\n\t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n",
+          "before": "\t * One alternative might be to just unmap the target pmd at\n\t * this point, and verify that it really is empty. We'll see.\n\t */\n\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n\t\treturn false;\n\n\t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..240477acda4e 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,8 +358,8 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n-\t\treturn false;\n+\t// if (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\t//\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n \t * to ensure that the uffd-wp state is cleared from all pgtables. This",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\tif (new_ptl != old_ptl)\n\t\tspin_lock_nested(new_ptl, SINGLE_DEPTH_NESTING);\n\n\tif (unlikely(!pmd_none(*new_pmd))) {\n\t\tif (!pmd_leaf(*new_pmd))\n\t\t\tpte_free(mm, pmd_pgtable(*new_pmd));\n\t\tpmd_clear(new_pmd);\n\t}\n\n\tpmd = *old_pmd;\n",
+          "before": "\tif (new_ptl != old_ptl)\n\t\tspin_lock_nested(new_ptl, SINGLE_DEPTH_NESTING);\n\n\tpmd = *old_pmd;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..cb3f1aa837e9 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,8 +358,8 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n-\t\treturn false;\n+\t// if (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\t//\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n \t * to ensure that the uffd-wp state is cleared from all pgtables. This\n@@ -379,6 +379,12 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \tif (new_ptl != old_ptl)\n \t\tspin_lock_nested(new_ptl, SINGLE_DEPTH_NESTING);\n \n+\tif (unlikely(!pmd_none(*new_pmd))) {\n+\t\tif (!pmd_leaf(*new_pmd))\n+\t\t\tpte_free(mm, pmd_pgtable(*new_pmd));\n+\t\tpmd_clear(new_pmd);\n+\t}\n+\n \tpmd = *old_pmd;\n \n \t/* Racing with collapse? */",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "\tif (unlikely(!pmd_none(*new_pmd))) {\n\t\t/*\n\t\t * If do_munmap() failed to clear the page table, we might have an\n\t\t * orphaned page table here. Clear it to avoid valid-entry warning.\n\t\t * We leak the page table page to avoid races (no tlb here).\n\t\t */\n\t\tpmd_clear(new_pmd);\n\t}\n",
+          "before": "\tif (unlikely(!pmd_none(*new_pmd))) {\n\t\tif (!pmd_leaf(*new_pmd))\n\t\t\tpte_free(mm, pmd_pgtable(*new_pmd));\n\t\tpmd_clear(new_pmd);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..b99a228eca8d 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,8 +358,8 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n-\t\treturn false;\n+\t// if (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\t//\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n \t * to ensure that the uffd-wp state is cleared from all pgtables. This\n@@ -379,6 +379,15 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \tif (new_ptl != old_ptl)\n \t\tspin_lock_nested(new_ptl, SINGLE_DEPTH_NESTING);\n \n+\tif (unlikely(!pmd_none(*new_pmd))) {\n+\t\t/*\n+\t\t * If do_munmap() failed to clear the page table, we might have an\n+\t\t * orphaned page table here. Clear it to avoid valid-entry warning.\n+\t\t * We leak the page table page to avoid races (no tlb here).\n+\t\t */\n+\t\tpmd_clear(new_pmd);\n+\t}\n+\n \tpmd = *old_pmd;\n \n \t/* Racing with collapse? */",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 1,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "\t * One alternative might be to just unmap the target pmd at\n\t * this point, and verify that it really is empty. We'll see.\n\t */\n\n\t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n",
+          "before": "\t * One alternative might be to just unmap the target pmd at\n\t * this point, and verify that it really is empty. We'll see.\n\t */\n\t// if (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n\t//\treturn false;\n\n\t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..5bb4faf5ddec 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,8 +358,6 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n-\t\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need\n \t * to ensure that the uffd-wp state is cleared from all pgtables. This\n@@ -379,6 +377,15 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \tif (new_ptl != old_ptl)\n \t\tspin_lock_nested(new_ptl, SINGLE_DEPTH_NESTING);\n \n+\tif (unlikely(!pmd_none(*new_pmd))) {\n+\t\t/*\n+\t\t * If do_munmap() failed to clear the page table, we might have an\n+\t\t * orphaned page table here. Clear it to avoid valid-entry warning.\n+\t\t * We leak the page table page to avoid races (no tlb here).\n+\t\t */\n+\t\tpmd_clear(new_pmd);\n+\t}\n+\n \tpmd = *old_pmd;\n \n \t/* Racing with collapse? */\ndiff --git a/receipt.json b/receipt.json\nnew file mode 100644\nindex 000000000000..1e1c28e1e264\n--- /dev/null\n+++ b/receipt.json\n@@ -0,0 +1,3 @@\n+{\n+    \"2e389a5a110ab1b51c75694b8f71e89843f3dbe8\": 82979\n+}\n\\ No newline at end of file",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 2,
+      "start_step": 27
+    }
+  ],
+  "success_step": 27
+}

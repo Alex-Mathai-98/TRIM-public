@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\treg->u32_min_value = max_t(u32, reg->u32_min_value, (u32)var32_off.value);\n\treg->u32_max_value = min(reg->u32_max_value,\n\t\t\t\t (u32)(var32_off.value | var32_off.mask));\n\t/* If the intersection of the bounds and the var_off is empty,\n\t * the range is empty.  This can happen because we learned something\n\t * new about the var_off (e.g. from a JEQ) that conflicts with\n\t * the previous bounds.  There is no \"empty set\" for a register,\n\t * so we just clamp the min to the max.\n\t */\n\tif ((s32)reg->s32_min_value > (s32)reg->s32_max_value)\n\t\treg->s32_min_value = reg->s32_max_value;\n\tif (reg->u32_min_value > reg->u32_max_value)\n\t\treg->u32_min_value = reg->u32_max_value;\n}\n",
+          "before": "\treg->u32_min_value = max_t(u32, reg->u32_min_value, (u32)var32_off.value);\n\treg->u32_max_value = min(reg->u32_max_value,\n\t\t\t\t (u32)(var32_off.value | var32_off.mask));\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex 53007182b46b..dafb250f6162 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2334,6 +2334,16 @@ static void __update_reg32_bounds(struct bpf_reg_state *reg)\n \treg->u32_min_value = max_t(u32, reg->u32_min_value, (u32)var32_off.value);\n \treg->u32_max_value = min(reg->u32_max_value,\n \t\t\t\t (u32)(var32_off.value | var32_off.mask));\n+\t/* If the intersection of the bounds and the var_off is empty,\n+\t * the range is empty.  This can happen because we learned something\n+\t * new about the var_off (e.g. from a JEQ) that conflicts with\n+\t * the previous bounds.  There is no \"empty set\" for a register,\n+\t * so we just clamp the min to the max.\n+\t */\n+\tif ((s32)reg->s32_min_value > (s32)reg->s32_max_value)\n+\t\treg->s32_min_value = reg->s32_max_value;\n+\tif (reg->u32_min_value > reg->u32_max_value)\n+\t\treg->u32_min_value = reg->u32_max_value;\n }\n \n static void __update_reg64_bounds(struct bpf_reg_state *reg)",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        },
+        {
+          "after": "\treg->umin_value = max(reg->umin_value, reg->var_off.value);\n\treg->umax_value = min(reg->umax_value,\n\t\t\t      reg->var_off.value | reg->var_off.mask);\n\t/* Same as above for 64-bit bounds. */\n\tif (reg->smin_value > reg->smax_value)\n\t\treg->smin_value = reg->smax_value;\n\tif (reg->umin_value > reg->umax_value)\n\t\treg->umin_value = reg->umax_value;\n}\n",
+          "before": "\treg->umin_value = max(reg->umin_value, reg->var_off.value);\n\treg->umax_value = min(reg->umax_value,\n\t\t\t      reg->var_off.value | reg->var_off.mask);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex 53007182b46b..3649293591a3 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2334,6 +2334,16 @@ static void __update_reg32_bounds(struct bpf_reg_state *reg)\n \treg->u32_min_value = max_t(u32, reg->u32_min_value, (u32)var32_off.value);\n \treg->u32_max_value = min(reg->u32_max_value,\n \t\t\t\t (u32)(var32_off.value | var32_off.mask));\n+\t/* If the intersection of the bounds and the var_off is empty,\n+\t * the range is empty.  This can happen because we learned something\n+\t * new about the var_off (e.g. from a JEQ) that conflicts with\n+\t * the previous bounds.  There is no \"empty set\" for a register,\n+\t * so we just clamp the min to the max.\n+\t */\n+\tif ((s32)reg->s32_min_value > (s32)reg->s32_max_value)\n+\t\treg->s32_min_value = reg->s32_max_value;\n+\tif (reg->u32_min_value > reg->u32_max_value)\n+\t\treg->u32_min_value = reg->u32_max_value;\n }\n \n static void __update_reg64_bounds(struct bpf_reg_state *reg)\n@@ -2347,6 +2357,11 @@ static void __update_reg64_bounds(struct bpf_reg_state *reg)\n \treg->umin_value = max(reg->umin_value, reg->var_off.value);\n \treg->umax_value = min(reg->umax_value,\n \t\t\t      reg->var_off.value | reg->var_off.mask);\n+\t/* Same as above for 64-bit bounds. */\n+\tif (reg->smin_value > reg->smax_value)\n+\t\treg->smin_value = reg->smax_value;\n+\tif (reg->umin_value > reg->umax_value)\n+\t\treg->umin_value = reg->umax_value;\n }\n \n static void __update_reg_bounds(struct bpf_reg_state *reg)",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (reg->s32_min_value > reg->s32_max_value)\n\t\treg->s32_min_value = reg->s32_max_value;\n",
+          "before": "\tif ((s32)reg->s32_min_value > (s32)reg->s32_max_value)\n\t\treg->s32_min_value = reg->s32_max_value;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex 53007182b46b..602b5cdd77f8 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2334,6 +2334,16 @@ static void __update_reg32_bounds(struct bpf_reg_state *reg)\n \treg->u32_min_value = max_t(u32, reg->u32_min_value, (u32)var32_off.value);\n \treg->u32_max_value = min(reg->u32_max_value,\n \t\t\t\t (u32)(var32_off.value | var32_off.mask));\n+\t/* If the intersection of the bounds and the var_off is empty,\n+\t * the range is empty.  This can happen because we learned something\n+\t * new about the var_off (e.g. from a JEQ) that conflicts with\n+\t * the previous bounds.  There is no \"empty set\" for a register,\n+\t * so we just clamp the min to the max.\n+\t */\n+\tif (reg->s32_min_value > reg->s32_max_value)\n+\t\treg->s32_min_value = reg->s32_max_value;\n+\tif (reg->u32_min_value > reg->u32_max_value)\n+\t\treg->u32_min_value = reg->u32_max_value;\n }\n \n static void __update_reg64_bounds(struct bpf_reg_state *reg)\n@@ -2347,6 +2357,11 @@ static void __update_reg64_bounds(struct bpf_reg_state *reg)\n \treg->umin_value = max(reg->umin_value, reg->var_off.value);\n \treg->umax_value = min(reg->umax_value,\n \t\t\t      reg->var_off.value | reg->var_off.mask);\n+\t/* Same as above for 64-bit bounds. */\n+\tif (reg->smin_value > reg->smax_value)\n+\t\treg->smin_value = reg->smax_value;\n+\tif (reg->umin_value > reg->umax_value)\n+\t\treg->umin_value = reg->umax_value;\n }\n \n static void __update_reg_bounds(struct bpf_reg_state *reg)",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 1,
+      "start_step": 19
+    }
+  ],
+  "success_step": 19
+}

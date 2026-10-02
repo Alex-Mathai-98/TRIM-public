@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (unlikely(!hlist_unhashed(&tmr->ignored_list))) {\n\t\thlist_del_init(&tmr->ignored_list);\n\t\tposixtimer_putref(tmr);\n\t}\n",
+          "before": "\t/* This should never happen and leaks a reference count */\n\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n\t\thlist_del_init(&tmr->ignored_list);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/signal.c b/kernel/signal.c\nindex 989b1cc9116a..0927e72999a5 100644\n--- a/kernel/signal.c\n+++ b/kernel/signal.c\n@@ -2046,9 +2046,10 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \t\tgoto out;\n \t}\n \n-\t/* This should never happen and leaks a reference count */\n-\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n+\tif (unlikely(!hlist_unhashed(&tmr->ignored_list))) {\n \t\thlist_del_init(&tmr->ignored_list);\n+\t\tposixtimer_putref(tmr);\n+\t}\n \n \tif (unlikely(!list_empty(&q->list))) {\n \t\t/* This holds a reference count already */",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "kernel/signal.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 22
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (!(t->signal->flags & SIGNAL_GROUP_EXIT)) {\n\t\t\t\tlist_del_init(&q->list);\n\t\t\t\tposixtimer_putref(tmr);\n\t\t\t} else {\n\t\t\t\tgoto out;\n\t\t\t}\n",
+          "before": "\t\t\tWARN_ON_ONCE(!(t->signal->flags & SIGNAL_GROUP_EXIT));\n\t\t\tgoto out;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/signal.c b/kernel/signal.c\nindex 989b1cc9116a..8659a52ba93f 100644\n--- a/kernel/signal.c\n+++ b/kernel/signal.c\n@@ -2011,8 +2011,12 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \t\t\t * wait for __exit_signal() to do its job. Otherwise if\n \t\t\t * ignored, it's not supposed to be queued. Try to survive.\n \t\t\t */\n-\t\t\tWARN_ON_ONCE(!(t->signal->flags & SIGNAL_GROUP_EXIT));\n-\t\t\tgoto out;\n+\t\t\tif (!(t->signal->flags & SIGNAL_GROUP_EXIT)) {\n+\t\t\t\tlist_del_init(&q->list);\n+\t\t\t\tposixtimer_putref(tmr);\n+\t\t\t} else {\n+\t\t\t\tgoto out;\n+\t\t\t}\n \t\t}\n \n \t\t/* Periodic timers with SIG_IGN are queued on the ignored list */\n@@ -2046,9 +2050,10 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \t\tgoto out;\n \t}\n \n-\t/* This should never happen and leaks a reference count */\n-\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n+\tif (unlikely(!hlist_unhashed(&tmr->ignored_list))) {\n \t\thlist_del_init(&tmr->ignored_list);\n+\t\tposixtimer_putref(tmr);\n+\t}\n \n \tif (unlikely(!list_empty(&q->list))) {\n \t\t/* This holds a reference count already */",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "kernel/signal.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 28
+    }
+  ],
+  "success_step": 28
+}

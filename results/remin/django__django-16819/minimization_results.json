@@ -1,0 +1,193 @@
+{
+  "bug_id": "django__django-16819",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/migrations/operations/models.py",
+        "before": "    @property\n    def migration_name_fragment(self):\n        return \"%s_%s\" % (self.model_name_lower, self.index.name.lower())",
+        "after": "    @property\n    def migration_name_fragment(self):\n        return \"%s_%s\" % (self.model_name_lower, self.index.name.lower())\n\n    def reduce(self, operation, app_label):\n        if (\n            isinstance(operation, RemoveIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.index.name == operation.name\n        ):\n            # AddIndex followed by RemoveIndex for the same index can be optimized away\n            return []\n        elif (\n            isinstance(operation, AddIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.index.name == operation.index.name\n        ):\n            # AddIndex followed by AddIndex for the same index, keep the second one\n            return [operation]\n        return super().reduce(operation, app_label)",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/migrations/operations/models.py",
+        "before": "    def describe(self):\n        return \"Remove index %s from %s\" % (self.name, self.model_name)\n\n    @property\n    def migration_name_fragment(self):\n        return \"remove_%s_%s\" % (self.model_name_lower, self.name.lower())",
+        "after": "    def describe(self):\n        return \"Remove index %s from %s\" % (self.name, self.model_name)\n\n    @property\n    def migration_name_fragment(self):\n        return \"remove_%s_%s\" % (self.model_name_lower, self.name.lower())\n\n    def reduce(self, operation, app_label):\n        if (\n            isinstance(operation, AddIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.name == operation.index.name\n        ):\n            # RemoveIndex followed by AddIndex for the same index can be optimized away\n            return []\n        elif (\n            isinstance(operation, RemoveIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.name == operation.name\n        ):\n            # RemoveIndex followed by RemoveIndex for the same index, keep the second one\n            return [operation]\n        return super().reduce(operation, app_label)",
+        "explanation": "classic_swe step 31 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/migrations/operations/models.py",
+        "before": "class IndexOperation(Operation):\n    option_name = \"indexes\"\n\n    @cached_property\n    def model_name_lower(self):\n        return self.model_name.lower()",
+        "after": "class IndexOperation(Operation):\n    option_name = \"indexes\"\n\n    @cached_property\n    def model_name_lower(self):\n        return self.model_name.lower()\n\n    def references_model(self, name, app_label):\n        return name.lower() == self.model_name_lower",
+        "explanation": "classic_swe step 40 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/migrations/operations/models.py",
+        "before": "    def references_model(self, name, app_label):\n        return name.lower() == self.model_name_lower",
+        "after": "    def references_model(self, name, app_label):\n        return name.lower() == self.model_name_lower\n\n    def reduce(self, operation, app_label):\n        # Allow optimization through operations that don't conflict\n        if isinstance(operation, IndexOperation) and self.model_name_lower == operation.model_name_lower:\n            # Same model - check if they're working on different indexes\n            if hasattr(self, 'name') and hasattr(operation, 'name'):\n                # Both are RemoveIndex operations\n                if self.name != operation.name:\n                    return True  # Can optimize through\n            elif hasattr(self, 'index') and hasattr(operation, 'index'):\n                # Both are AddIndex operations\n                if self.index.name != operation.index.name:\n                    return True  # Can optimize through\n            elif hasattr(self, 'name') and hasattr(operation, 'index'):\n                # self is RemoveIndex, operation is AddIndex\n                if self.name != operation.index.name:\n                    return True  # Can optimize through\n            elif hasattr(self, 'index') and hasattr(operation, 'name'):\n                # self is AddIndex, operation is RemoveIndex\n                if self.index.name != operation.name:\n                    return True  # Can optimize through\n        return super().reduce(operation, app_label)",
+        "explanation": "classic_swe step 42 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/migrations/operations/models.py b/django/db/migrations/operations/models.py\nindex 967a91fdc8..63aa09aa9b 100644\n--- a/django/db/migrations/operations/models.py\n+++ b/django/db/migrations/operations/models.py\n@@ -807,6 +807,31 @@ class IndexOperation(Operation):\n     def model_name_lower(self):\n         return self.model_name.lower()\n \n+    def references_model(self, name, app_label):\n+        return name.lower() == self.model_name_lower\n+\n+    def reduce(self, operation, app_label):\n+        # Allow optimization through operations that don't conflict\n+        if isinstance(operation, IndexOperation) and self.model_name_lower == operation.model_name_lower:\n+            # Same model - check if they're working on different indexes\n+            if hasattr(self, 'name') and hasattr(operation, 'name'):\n+                # Both are RemoveIndex operations\n+                if self.name != operation.name:\n+                    return True  # Can optimize through\n+            elif hasattr(self, 'index') and hasattr(operation, 'index'):\n+                # Both are AddIndex operations\n+                if self.index.name != operation.index.name:\n+                    return True  # Can optimize through\n+            elif hasattr(self, 'name') and hasattr(operation, 'index'):\n+                # self is RemoveIndex, operation is AddIndex\n+                if self.name != operation.index.name:\n+                    return True  # Can optimize through\n+            elif hasattr(self, 'index') and hasattr(operation, 'name'):\n+                # self is AddIndex, operation is RemoveIndex\n+                if self.index.name != operation.name:\n+                    return True  # Can optimize through\n+        return super().reduce(operation, app_label)\n+\n \n class AddIndex(IndexOperation):\n     \"\"\"Add an index on a model.\"\"\"\n@@ -861,6 +886,23 @@ class AddIndex(IndexOperation):\n     def migration_name_fragment(self):\n         return \"%s_%s\" % (self.model_name_lower, self.index.name.lower())\n \n+    def reduce(self, operation, app_label):\n+        if (\n+            isinstance(operation, RemoveIndex)\n+            and self.model_name_lower == operation.model_name_lower\n+            and self.index.name == operation.name\n+        ):\n+            # AddIndex followed by RemoveIndex for the same index can be optimized away\n+            return []\n+        elif (\n+            isinstance(operation, AddIndex)\n+            and self.model_name_lower == operation.model_name_lower\n+            and self.index.name == operation.index.name\n+        ):\n+            # AddIndex followed by AddIndex for the same index, keep the second one\n+            return [operation]\n+        return super().reduce(operation, app_label)\n+\n \n class RemoveIndex(IndexOperation):\n     \"\"\"Remove an index from a model.\"\"\"\n@@ -904,6 +946,23 @@ class RemoveIndex(IndexOperation):\n     def migration_name_fragment(self):\n         return \"remove_%s_%s\" % (self.model_name_lower, self.name.lower())\n \n+    def reduce(self, operation, app_label):\n+        if (\n+            isinstance(operation, AddIndex)\n+            and self.model_name_lower == operation.model_name_lower\n+            and self.name == operation.index.name\n+        ):\n+            # RemoveIndex followed by AddIndex for the same index can be optimized away\n+            return []\n+        elif (\n+            isinstance(operation, RemoveIndex)\n+            and self.model_name_lower == operation.model_name_lower\n+            and self.name == operation.name\n+        ):\n+            # RemoveIndex followed by RemoveIndex for the same index, keep the second one\n+            return [operation]\n+        return super().reduce(operation, app_label)\n+\n \n class RenameIndex(IndexOperation):\n     \"\"\"Rename an index.\"\"\"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      5,
+      7,
+      8
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      4,
+      5,
+      7,
+      8
+    ],
+    "edit_list_after_file_min": [
+      4,
+      5,
+      7,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 2,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      4,
+      5,
+      7,
+      8
+    ],
+    "edit_list_after_refinement": [
+      4,
+      5,
+      7,
+      8
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    @property\n    def migration_name_fragment(self):\n        return \"%s_%s\" % (self.model_name_lower, self.index.name.lower())",
+          "after": "    @property\n    def migration_name_fragment(self):\n        return \"%s_%s\" % (self.model_name_lower, self.index.name.lower())\n\n    def reduce(self, operation, app_label):\n        if (\n            isinstance(operation, RemoveIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.index.name == operation.name\n        ):\n            # AddIndex followed by RemoveIndex for the same index can be optimized away\n            return []\n        elif (\n            isinstance(operation, AddIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.index.name == operation.index.name\n        ):\n            # AddIndex followed by AddIndex for the same index, keep the second one\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "explanation": "classic_swe step 27 #1"
+        },
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    def describe(self):\n        return \"Remove index %s from %s\" % (self.name, self.model_name)\n\n    @property\n    def migration_name_fragment(self):\n        return \"remove_%s_%s\" % (self.model_name_lower, self.name.lower())",
+          "after": "    def describe(self):\n        return \"Remove index %s from %s\" % (self.name, self.model_name)\n\n    @property\n    def migration_name_fragment(self):\n        return \"remove_%s_%s\" % (self.model_name_lower, self.name.lower())\n\n    def reduce(self, operation, app_label):\n        if (\n            isinstance(operation, AddIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.name == operation.index.name\n        ):\n            # RemoveIndex followed by AddIndex for the same index can be optimized away\n            return []\n        elif (\n            isinstance(operation, RemoveIndex)\n            and self.model_name_lower == operation.model_name_lower\n            and self.name == operation.name\n        ):\n            # RemoveIndex followed by RemoveIndex for the same index, keep the second one\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "explanation": "classic_swe step 31 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "class IndexOperation(Operation):\n    option_name = \"indexes\"\n\n    @cached_property\n    def model_name_lower(self):\n        return self.model_name.lower()",
+          "after": "class IndexOperation(Operation):\n    option_name = \"indexes\"\n\n    @cached_property\n    def model_name_lower(self):\n        return self.model_name.lower()\n\n    def references_model(self, name, app_label):\n        return name.lower() == self.model_name_lower",
+          "explanation": "classic_swe step 40 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    def references_model(self, name, app_label):\n        return name.lower() == self.model_name_lower",
+          "after": "    def references_model(self, name, app_label):\n        return name.lower() == self.model_name_lower\n\n    def reduce(self, operation, app_label):\n        # Allow optimization through operations that don't conflict\n        if isinstance(operation, IndexOperation) and self.model_name_lower == operation.model_name_lower:\n            # Same model - check if they're working on different indexes\n            if hasattr(self, 'name') and hasattr(operation, 'name'):\n                # Both are RemoveIndex operations\n                if self.name != operation.name:\n                    return True  # Can optimize through\n            elif hasattr(self, 'index') and hasattr(operation, 'index'):\n                # Both are AddIndex operations\n                if self.index.name != operation.index.name:\n                    return True  # Can optimize through\n            elif hasattr(self, 'name') and hasattr(operation, 'index'):\n                # self is RemoveIndex, operation is AddIndex\n                if self.name != operation.index.name:\n                    return True  # Can optimize through\n            elif hasattr(self, 'index') and hasattr(operation, 'name'):\n                # self is AddIndex, operation is RemoveIndex\n                if self.index.name != operation.name:\n                    return True  # Can optimize through\n        return super().reduce(operation, app_label)",
+          "explanation": "classic_swe step 42 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 38,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 38,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "gold_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 1,
+    "minimized_added_lines": 59,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 5,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

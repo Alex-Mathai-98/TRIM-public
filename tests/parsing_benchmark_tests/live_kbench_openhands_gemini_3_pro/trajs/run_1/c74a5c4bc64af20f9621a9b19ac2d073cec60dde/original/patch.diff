@@ -1,0 +1,67 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 9254bca2813d..d9fd58910e7c 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -68,6 +68,7 @@
+ #include <linux/uio.h>
+ #include <linux/skb_array.h>
+ #include <linux/bpf.h>
++#include <linux/filter.h>
+ #include <linux/bpf_trace.h>
+ #include <linux/mutex.h>
+ #include <linux/ieee802154.h>
+@@ -1703,12 +1704,15 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	xdp_prog = rcu_dereference(tun->xdp_prog);
+ 	if (xdp_prog) {
+ 		struct xdp_buff xdp;
++		struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 		u32 act;
+ 
+ 		xdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);
+ 		xdp_prepare_buff(&xdp, buf, pad, len, false);
+ 
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		act = bpf_prog_run_xdp(xdp_prog, &xdp);
++
+ 		if (act == XDP_REDIRECT || act == XDP_TX) {
+ 			get_page(alloc_frag->page);
+ 			alloc_frag->offset += buflen;
+@@ -1717,16 +1721,23 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 		if (err < 0) {
+ 			if (act == XDP_REDIRECT || act == XDP_TX)
+ 				put_page(alloc_frag->page);
++			if (bpf_net_ctx)
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 			goto out;
+ 		}
+ 
+ 		if (err == XDP_REDIRECT)
+ 			xdp_do_flush();
+-		if (err != XDP_PASS)
++		if (err != XDP_PASS) {
++			if (bpf_net_ctx)
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 			goto out;
++		}
+ 
+ 		pad = xdp.data - xdp.data_hard_start;
+ 		len = xdp.data_end - xdp.data;
++		if (bpf_net_ctx)
++			bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	rcu_read_unlock();
+ 	local_bh_enable();
+@@ -1921,7 +1932,13 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 		rcu_read_lock();
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+ 		if (xdp_prog) {
++			struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
++
++			bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 			ret = do_xdp_generic(xdp_prog, &skb);
++			if (bpf_net_ctx)
++				bpf_net_ctx_clear(bpf_net_ctx);
++
+ 			if (ret != XDP_PASS) {
+ 				rcu_read_unlock();
+ 				local_bh_enable();

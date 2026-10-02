@@ -1,0 +1,25 @@
+diff --git a/drivers/usb/gadget/udc/dummy_hcd.c b/drivers/usb/gadget/udc/dummy_hcd.c
+index 21dbfb0b3bac..a9ea86dd5de4 100644
+--- a/drivers/usb/gadget/udc/dummy_hcd.c
++++ b/drivers/usb/gadget/udc/dummy_hcd.c
+@@ -765,8 +765,7 @@ static int dummy_dequeue(struct usb_ep *_ep, struct usb_request *_req)
+ 	if (!dum->driver)
+ 		return -ESHUTDOWN;
+ 
+-	local_irq_save(flags);
+-	spin_lock(&dum->lock);
++	spin_lock_irqsave(&dum->lock, flags);
+ 	list_for_each_entry(iter, &ep->queue, queue) {
+ 		if (&iter->req != _req)
+ 			continue;
+@@ -784,7 +783,9 @@ static int dummy_dequeue(struct usb_ep *_ep, struct usb_request *_req)
+ 				req, _ep->name, _req->length, _req->buf);
+ 		usb_gadget_giveback_request(_ep, _req);
+ 	}
+-	local_irq_restore(flags);
++
++	spin_lock(&dum->lock);
++	spin_unlock_irqrestore(&dum->lock, flags);
+ 	return retval;
+ }
+ 

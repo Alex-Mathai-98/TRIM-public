@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tcase TCF_LAYER_TRANSPORT:\n\t\t\tif (!skb_transport_header_was_set(skb))\n\t\t\t\treturn NULL;\n\t\t\treturn skb_transport_header(skb);\n",
+          "before": "\t\tcase TCF_LAYER_TRANSPORT:\n\t\t\treturn skb_transport_header(skb);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/pkt_cls.h b/include/net/pkt_cls.h\nindex c64fd896b1f9..e3aea836af41 100644\n--- a/include/net/pkt_cls.h\n+++ b/include/net/pkt_cls.h\n@@ -536,6 +536,8 @@ static inline unsigned char * tcf_get_base_ptr(struct sk_buff *skb, int layer)\n \t\tcase TCF_LAYER_NETWORK:\n \t\t\treturn skb_network_header(skb);\n \t\tcase TCF_LAYER_TRANSPORT:\n+\t\t\tif (!skb_transport_header_was_set(skb))\n+\t\t\t\treturn NULL;\n \t\t\treturn skb_transport_header(skb);\n \t}",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "include/net/pkt_cls.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "\tunsigned char *ptr;\n\n\tptr = tcf_get_base_ptr(skb, tm->from_layer);\n\tif (!ptr)\n\t\treturn 0;\n\tfrom = ptr - skb->data;\n\tfrom += tm->from_offset;\n\n\tptr = tcf_get_base_ptr(skb, tm->to_layer);\n\tif (!ptr)\n\t\treturn 0;\n\tto = ptr - skb->data;\n\tto += tm->to_offset;\n",
+          "before": "\tfrom = tcf_get_base_ptr(skb, tm->from_layer) - skb->data;\n\tfrom += tm->from_offset;\n\n\tto = tcf_get_base_ptr(skb, tm->to_layer) - skb->data;\n\tto += tm->to_offset;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/pkt_cls.h b/include/net/pkt_cls.h\nindex c64fd896b1f9..e3aea836af41 100644\n--- a/include/net/pkt_cls.h\n+++ b/include/net/pkt_cls.h\n@@ -536,6 +536,8 @@ static inline unsigned char * tcf_get_base_ptr(struct sk_buff *skb, int layer)\n \t\tcase TCF_LAYER_NETWORK:\n \t\t\treturn skb_network_header(skb);\n \t\tcase TCF_LAYER_TRANSPORT:\n+\t\t\tif (!skb_transport_header_was_set(skb))\n+\t\t\t\treturn NULL;\n \t\t\treturn skb_transport_header(skb);\n \t}\n \ndiff --git a/net/sched/em_text.c b/net/sched/em_text.c\nindex 6b3d0af72c39..592251447f48 100644\n--- a/net/sched/em_text.c\n+++ b/net/sched/em_text.c\n@@ -31,10 +31,18 @@ static int em_text_match(struct sk_buff *skb, struct tcf_ematch *m,\n \tstruct text_match *tm = EM_TEXT_PRIV(m);\n \tint from, to;\n \n-\tfrom = tcf_get_base_ptr(skb, tm->from_layer) - skb->data;\n+\tunsigned char *ptr;\n+\n+\tptr = tcf_get_base_ptr(skb, tm->from_layer);\n+\tif (!ptr)\n+\t\treturn 0;\n+\tfrom = ptr - skb->data;\n \tfrom += tm->from_offset;\n \n-\tto = tcf_get_base_ptr(skb, tm->to_layer) - skb->data;\n+\tptr = tcf_get_base_ptr(skb, tm->to_layer);\n+\tif (!ptr)\n+\t\treturn 0;\n+\tto = ptr - skb->data;\n \tto += tm->to_offset;\n \n \treturn skb_find_text(skb, from, to, tm->config) != UINT_MAX;",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "net/sched/em_text.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 0,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct text_match *tm = EM_TEXT_PRIV(m);\n\tint from, to;\n\tunsigned char *ptr;\n\n\tptr = tcf_get_base_ptr(skb, tm->from_layer);\n",
+          "before": "\tstruct text_match *tm = EM_TEXT_PRIV(m);\n\tint from, to;\n\n\tunsigned char *ptr;\n\n\tptr = tcf_get_base_ptr(skb, tm->from_layer);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/pkt_cls.h b/include/net/pkt_cls.h\nindex c64fd896b1f9..e3aea836af41 100644\n--- a/include/net/pkt_cls.h\n+++ b/include/net/pkt_cls.h\n@@ -536,6 +536,8 @@ static inline unsigned char * tcf_get_base_ptr(struct sk_buff *skb, int layer)\n \t\tcase TCF_LAYER_NETWORK:\n \t\t\treturn skb_network_header(skb);\n \t\tcase TCF_LAYER_TRANSPORT:\n+\t\t\tif (!skb_transport_header_was_set(skb))\n+\t\t\t\treturn NULL;\n \t\t\treturn skb_transport_header(skb);\n \t}\n \ndiff --git a/net/sched/em_text.c b/net/sched/em_text.c\nindex 6b3d0af72c39..7d3da1231c55 100644\n--- a/net/sched/em_text.c\n+++ b/net/sched/em_text.c\n@@ -30,11 +30,18 @@ static int em_text_match(struct sk_buff *skb, struct tcf_ematch *m,\n {\n \tstruct text_match *tm = EM_TEXT_PRIV(m);\n \tint from, to;\n+\tunsigned char *ptr;\n \n-\tfrom = tcf_get_base_ptr(skb, tm->from_layer) - skb->data;\n+\tptr = tcf_get_base_ptr(skb, tm->from_layer);\n+\tif (!ptr)\n+\t\treturn 0;\n+\tfrom = ptr - skb->data;\n \tfrom += tm->from_offset;\n \n-\tto = tcf_get_base_ptr(skb, tm->to_layer) - skb->data;\n+\tptr = tcf_get_base_ptr(skb, tm->to_layer);\n+\tif (!ptr)\n+\t\treturn 0;\n+\tto = ptr - skb->data;\n \tto += tm->to_offset;\n \n \treturn skb_find_text(skb, from, to, tm->config) != UINT_MAX;",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "net/sched/em_text.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 1,
+      "start_step": 32
+    }
+  ],
+  "success_step": 32
+}

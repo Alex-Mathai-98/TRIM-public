@@ -1,0 +1,334 @@
+{
+  "bug_id": "sphinx-doc__sphinx-10673",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "    def parse_content(self, toctree: addnodes.toctree) -> List[Node]:\n        suffixes = self.config.source_suffix\n\n        # glob target documents\n        all_docnames = self.env.found_docs.copy()\n        all_docnames.remove(self.env.docname)  # remove current document",
+        "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False\n\n    def parse_content(self, toctree: addnodes.toctree) -> List[Node]:\n        suffixes = self.config.source_suffix\n\n        # glob target documents\n        all_docnames = self.env.found_docs.copy()\n        all_docnames.remove(self.env.docname)  # remove current document",
+        "explanation": "classic_swe step 33 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "                elif docname not in self.env.found_docs:\n                    if excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n\n                    logger.warning(message, docname, type='toc', subtype=subtype,\n                                   location=toctree)\n                    self.env.note_reread()",
+        "after": "                elif docname not in self.env.found_docs:\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(docname):\n                        # Built-in pages are valid toctree entries, add them without warning\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+        "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            print(f\"DEBUG: Checking docname '{docname}'\")\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                print(f\"DEBUG: std_domain.data['labels'] = {std_domain.data['labels']}\")\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    print(f\"DEBUG: Checking label '{label_name}' -> '{target_docname}' vs '{docname}'\")\n                    if target_docname == docname:\n                        print(f\"DEBUG: Found match for '{docname}'!\")\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        print(f\"DEBUG: Checking domain index '{index_docname}' vs '{docname}'\")\n                        if index_docname == docname:\n                            print(f\"DEBUG: Found domain index match for '{docname}'!\")\n                            return True\n        except Exception as e:\n            # If anything goes wrong, don't treat it as a built-in page\n            print(f\"DEBUG: Exception in _is_builtin_toctree_entry: {e}\")\n            pass\n        \n        print(f\"DEBUG: No match found for '{docname}'\")\n        return False",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "                elif docname not in self.env.found_docs:\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(docname):\n                        # Built-in pages are valid toctree entries, add them without warning\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+        "after": "                elif docname not in self.env.found_docs:\n                    print(f\"DEBUG: docname '{docname}' not in found_docs\")\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    is_builtin = self._is_builtin_toctree_entry(docname)\n                    print(f\"DEBUG: is_builtin = {is_builtin}\")\n                    if is_builtin:\n                        # Built-in pages are valid toctree entries, add them without warning\n                        print(f\"DEBUG: Adding built-in page '{docname}' to toctree\")\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        print(f\"DEBUG: Generating warning for '{docname}'\")\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+        "explanation": "classic_swe step 40 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            print(f\"DEBUG: Checking docname '{docname}'\")\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                print(f\"DEBUG: std_domain.data['labels'] = {std_domain.data['labels']}\")\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    print(f\"DEBUG: Checking label '{label_name}' -> '{target_docname}' vs '{docname}'\")\n                    if target_docname == docname:\n                        print(f\"DEBUG: Found match for '{docname}'!\")\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        print(f\"DEBUG: Checking domain index '{index_docname}' vs '{docname}'\")\n                        if index_docname == docname:\n                            print(f\"DEBUG: Found domain index match for '{docname}'!\")\n                            return True\n        except Exception as e:\n            # If anything goes wrong, don't treat it as a built-in page\n            print(f\"DEBUG: Exception in _is_builtin_toctree_entry: {e}\")\n            pass\n        \n        print(f\"DEBUG: No match found for '{docname}'\")\n        return False",
+        "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+        "explanation": "classic_swe step 48 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "                elif docname not in self.env.found_docs:\n                    print(f\"DEBUG: docname '{docname}' not in found_docs\")\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    is_builtin = self._is_builtin_toctree_entry(docname)\n                    print(f\"DEBUG: is_builtin = {is_builtin}\")\n                    if is_builtin:\n                        # Built-in pages are valid toctree entries, add them without warning\n                        print(f\"DEBUG: Adding built-in page '{docname}' to toctree\")\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        print(f\"DEBUG: Generating warning for '{docname}'\")\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+        "after": "                elif docname not in self.env.found_docs:\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(docname):\n                        # Built-in pages are valid toctree entries, add them without warning\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+        "explanation": "classic_swe step 49 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/other.py",
+        "before": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+        "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a label name (like 'modindex' -> 'py-modindex')\n                if docname in std_domain.data['labels']:\n                    return True\n                # Also check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+        "explanation": "classic_swe step 53 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/environment/adapters/toctree.py",
+        "before": "class TocTree:\n    def __init__(self, env: \"BuildEnvironment\") -> None:\n        self.env = env",
+        "after": "class TocTree:\n    def __init__(self, env: \"BuildEnvironment\") -> None:\n        self.env = env\n\n    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a label name (like 'modindex' -> 'py-modindex')\n                if docname in std_domain.data['labels']:\n                    return True\n                # Also check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+        "explanation": "classic_swe step 71 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/environment/adapters/toctree.py",
+        "before": "                except KeyError:\n                    # this is raised if the included file does not exist\n                    if excluded(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                    elif not included(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to non-included document %r')\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n\n                    logger.warning(message, ref, location=toctreenode)",
+        "after": "                except KeyError:\n                    # this is raised if the included file does not exist\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(ref):\n                        # Built-in pages don't have tocs but should be treated as valid references\n                        # Create a simple reference node for them\n                        if title is None:\n                            # Use a default title based on the page type\n                            if ref == 'genindex':\n                                title = 'Index'\n                            elif ref == 'search':\n                                title = 'Search Page'\n                            elif ref.endswith('-modindex'):\n                                title = 'Module Index'\n                            elif ref == 'modindex':\n                                # Handle the common case where users write 'modindex' instead of 'py-modindex'\n                                title = 'Module Index'\n                            else:\n                                title = ref.title()\n                        \n                        reference = nodes.reference('', '', internal=True,\n                                                   refuri=ref, anchorname='',\n                                                   *[nodes.Text(title)])\n                        para = addnodes.compact_paragraph('', '', reference)\n                        item = nodes.list_item('', para)\n                        toc = nodes.bullet_list('', item)\n                    elif excluded(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        logger.warning(message, ref, location=toctreenode)\n                        continue\n                    elif not included(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to non-included document %r')\n                        logger.warning(message, ref, location=toctreenode)\n                        continue\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        logger.warning(message, ref, location=toctreenode)\n                        continue",
+        "explanation": "classic_swe step 73 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/directives/other.py b/sphinx/directives/other.py\nindex 35e16e623..c8c045039 100644\n--- a/sphinx/directives/other.py\n+++ b/sphinx/directives/other.py\n@@ -76,6 +76,33 @@ class TocTree(SphinxDirective):\n         ret.append(wrappernode)\n         return ret\n \n+    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n+        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n+        # Check standard domain labels for built-in pages\n+        try:\n+            std_domain = self.env.get_domain('std')\n+            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n+                # Check if this docname is a label name (like 'modindex' -> 'py-modindex')\n+                if docname in std_domain.data['labels']:\n+                    return True\n+                # Also check if this docname is a target for any of the standard labels\n+                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n+                    if target_docname == docname:\n+                        return True\n+            \n+            # Also check domain indices (like py-modindex)\n+            for domain in self.env.domains.values():\n+                for index_cls in domain.indices:\n+                    if hasattr(index_cls, 'name') and index_cls.name:\n+                        index_docname = f\"{domain.name}-{index_cls.name}\"\n+                        if index_docname == docname:\n+                            return True\n+        except Exception:\n+            # If anything goes wrong, don't treat it as a built-in page\n+            pass\n+        \n+        return False\n+\n     def parse_content(self, toctree: addnodes.toctree) -> List[Node]:\n         suffixes = self.config.source_suffix\n \n@@ -119,16 +146,22 @@ class TocTree(SphinxDirective):\n                 if url_re.match(ref) or ref == 'self':\n                     toctree['entries'].append((title, ref))\n                 elif docname not in self.env.found_docs:\n-                    if excluded(self.env.doc2path(docname, False)):\n+                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n+                    if self._is_builtin_toctree_entry(docname):\n+                        # Built-in pages are valid toctree entries, add them without warning\n+                        toctree['entries'].append((title, docname))\n+                    elif excluded(self.env.doc2path(docname, False)):\n                         message = __('toctree contains reference to excluded document %r')\n                         subtype = 'excluded'\n+                        logger.warning(message, docname, type='toc', subtype=subtype,\n+                                       location=toctree)\n+                        self.env.note_reread()\n                     else:\n                         message = __('toctree contains reference to nonexisting document %r')\n                         subtype = 'not_readable'\n-\n-                    logger.warning(message, docname, type='toc', subtype=subtype,\n-                                   location=toctree)\n-                    self.env.note_reread()\n+                        logger.warning(message, docname, type='toc', subtype=subtype,\n+                                       location=toctree)\n+                        self.env.note_reread()\n                 else:\n                     if docname in all_docnames:\n                         all_docnames.remove(docname)\ndiff --git a/sphinx/environment/adapters/toctree.py b/sphinx/environment/adapters/toctree.py\nindex 9678e3c7c..238e39209 100644\n--- a/sphinx/environment/adapters/toctree.py\n+++ b/sphinx/environment/adapters/toctree.py\n@@ -23,6 +23,33 @@ class TocTree:\n     def __init__(self, env: \"BuildEnvironment\") -> None:\n         self.env = env\n \n+    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n+        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n+        # Check standard domain labels for built-in pages\n+        try:\n+            std_domain = self.env.get_domain('std')\n+            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n+                # Check if this docname is a label name (like 'modindex' -> 'py-modindex')\n+                if docname in std_domain.data['labels']:\n+                    return True\n+                # Also check if this docname is a target for any of the standard labels\n+                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n+                    if target_docname == docname:\n+                        return True\n+            \n+            # Also check domain indices (like py-modindex)\n+            for domain in self.env.domains.values():\n+                for index_cls in domain.indices:\n+                    if hasattr(index_cls, 'name') and index_cls.name:\n+                        index_docname = f\"{domain.name}-{index_cls.name}\"\n+                        if index_docname == docname:\n+                            return True\n+        except Exception:\n+            # If anything goes wrong, don't treat it as a built-in page\n+            pass\n+        \n+        return False\n+\n     def note(self, docname: str, toctreenode: addnodes.toctree) -> None:\n         \"\"\"Note a TOC tree directive in a document and gather information about\n         file relations from it.\n@@ -165,14 +192,42 @@ class TocTree:\n                                        ref, location=toctreenode)\n                 except KeyError:\n                     # this is raised if the included file does not exist\n-                    if excluded(self.env.doc2path(ref, False)):\n+                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n+                    if self._is_builtin_toctree_entry(ref):\n+                        # Built-in pages don't have tocs but should be treated as valid references\n+                        # Create a simple reference node for them\n+                        if title is None:\n+                            # Use a default title based on the page type\n+                            if ref == 'genindex':\n+                                title = 'Index'\n+                            elif ref == 'search':\n+                                title = 'Search Page'\n+                            elif ref.endswith('-modindex'):\n+                                title = 'Module Index'\n+                            elif ref == 'modindex':\n+                                # Handle the common case where users write 'modindex' instead of 'py-modindex'\n+                                title = 'Module Index'\n+                            else:\n+                                title = ref.title()\n+                        \n+                        reference = nodes.reference('', '', internal=True,\n+                                                   refuri=ref, anchorname='',\n+                                                   *[nodes.Text(title)])\n+                        para = addnodes.compact_paragraph('', '', reference)\n+                        item = nodes.list_item('', para)\n+                        toc = nodes.bullet_list('', item)\n+                    elif excluded(self.env.doc2path(ref, False)):\n                         message = __('toctree contains reference to excluded document %r')\n+                        logger.warning(message, ref, location=toctreenode)\n+                        continue\n                     elif not included(self.env.doc2path(ref, False)):\n                         message = __('toctree contains reference to non-included document %r')\n+                        logger.warning(message, ref, location=toctreenode)\n+                        continue\n                     else:\n                         message = __('toctree contains reference to nonexisting document %r')\n-\n-                    logger.warning(message, ref, location=toctreenode)\n+                        logger.warning(message, ref, location=toctreenode)\n+                        continue\n                 else:\n                     # if titles_only is given, only keep the main title and\n                     # sub-toctrees\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "nodes_original_count": 6,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 4,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "find_minimum_subsequence_node_not_applicable": 3,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "greedy_removal_node_not_applicable": 4,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "edit_list_after_node_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 3,
+    "greedy_removal_edit_no_crash": 2,
+    "greedy_removal_edit_still_crashes": 3,
+    "greedy_removal_edit_not_applicable": 10,
+    "edit_list_after_greedy": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "edits_after_node_min": 10,
+    "edits_after_file_min": 10,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 10,
+  "minimized_edit_count": 9,
+  "reduction": "10_to_9",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "    def parse_content(self, toctree: addnodes.toctree) -> List[Node]:\n        suffixes = self.config.source_suffix\n\n        # glob target documents\n        all_docnames = self.env.found_docs.copy()\n        all_docnames.remove(self.env.docname)  # remove current document",
+          "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False\n\n    def parse_content(self, toctree: addnodes.toctree) -> List[Node]:\n        suffixes = self.config.source_suffix\n\n        # glob target documents\n        all_docnames = self.env.found_docs.copy()\n        all_docnames.remove(self.env.docname)  # remove current document",
+          "explanation": "classic_swe step 33 #1"
+        },
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "                elif docname not in self.env.found_docs:\n                    if excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n\n                    logger.warning(message, docname, type='toc', subtype=subtype,\n                                   location=toctree)\n                    self.env.note_reread()",
+          "after": "                elif docname not in self.env.found_docs:\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(docname):\n                        # Built-in pages are valid toctree entries, add them without warning\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+          "explanation": "classic_swe step 35 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+          "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            print(f\"DEBUG: Checking docname '{docname}'\")\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                print(f\"DEBUG: std_domain.data['labels'] = {std_domain.data['labels']}\")\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    print(f\"DEBUG: Checking label '{label_name}' -> '{target_docname}' vs '{docname}'\")\n                    if target_docname == docname:\n                        print(f\"DEBUG: Found match for '{docname}'!\")\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        print(f\"DEBUG: Checking domain index '{index_docname}' vs '{docname}'\")\n                        if index_docname == docname:\n                            print(f\"DEBUG: Found domain index match for '{docname}'!\")\n                            return True\n        except Exception as e:\n            # If anything goes wrong, don't treat it as a built-in page\n            print(f\"DEBUG: Exception in _is_builtin_toctree_entry: {e}\")\n            pass\n        \n        print(f\"DEBUG: No match found for '{docname}'\")\n        return False",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "                elif docname not in self.env.found_docs:\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(docname):\n                        # Built-in pages are valid toctree entries, add them without warning\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+          "after": "                elif docname not in self.env.found_docs:\n                    print(f\"DEBUG: docname '{docname}' not in found_docs\")\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    is_builtin = self._is_builtin_toctree_entry(docname)\n                    print(f\"DEBUG: is_builtin = {is_builtin}\")\n                    if is_builtin:\n                        # Built-in pages are valid toctree entries, add them without warning\n                        print(f\"DEBUG: Adding built-in page '{docname}' to toctree\")\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        print(f\"DEBUG: Generating warning for '{docname}'\")\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+          "explanation": "classic_swe step 40 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            print(f\"DEBUG: Checking docname '{docname}'\")\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                print(f\"DEBUG: std_domain.data['labels'] = {std_domain.data['labels']}\")\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    print(f\"DEBUG: Checking label '{label_name}' -> '{target_docname}' vs '{docname}'\")\n                    if target_docname == docname:\n                        print(f\"DEBUG: Found match for '{docname}'!\")\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        print(f\"DEBUG: Checking domain index '{index_docname}' vs '{docname}'\")\n                        if index_docname == docname:\n                            print(f\"DEBUG: Found domain index match for '{docname}'!\")\n                            return True\n        except Exception as e:\n            # If anything goes wrong, don't treat it as a built-in page\n            print(f\"DEBUG: Exception in _is_builtin_toctree_entry: {e}\")\n            pass\n        \n        print(f\"DEBUG: No match found for '{docname}'\")\n        return False",
+          "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+          "explanation": "classic_swe step 48 #1"
+        },
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "                elif docname not in self.env.found_docs:\n                    print(f\"DEBUG: docname '{docname}' not in found_docs\")\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    is_builtin = self._is_builtin_toctree_entry(docname)\n                    print(f\"DEBUG: is_builtin = {is_builtin}\")\n                    if is_builtin:\n                        # Built-in pages are valid toctree entries, add them without warning\n                        print(f\"DEBUG: Adding built-in page '{docname}' to toctree\")\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        print(f\"DEBUG: Generating warning for '{docname}'\")\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+          "after": "                elif docname not in self.env.found_docs:\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(docname):\n                        # Built-in pages are valid toctree entries, add them without warning\n                        toctree['entries'].append((title, docname))\n                    elif excluded(self.env.doc2path(docname, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        subtype = 'excluded'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        subtype = 'not_readable'\n                        logger.warning(message, docname, type='toc', subtype=subtype,\n                                       location=toctree)\n                        self.env.note_reread()",
+          "explanation": "classic_swe step 49 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/other.py",
+          "before": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+          "after": "    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a label name (like 'modindex' -> 'py-modindex')\n                if docname in std_domain.data['labels']:\n                    return True\n                # Also check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+          "explanation": "classic_swe step 53 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/environment/adapters/toctree.py",
+          "before": "class TocTree:\n    def __init__(self, env: \"BuildEnvironment\") -> None:\n        self.env = env",
+          "after": "class TocTree:\n    def __init__(self, env: \"BuildEnvironment\") -> None:\n        self.env = env\n\n    def _is_builtin_toctree_entry(self, docname: str) -> bool:\n        \"\"\"Check if docname refers to a built-in special page like genindex, modindex, search.\"\"\"\n        # Check standard domain labels for built-in pages\n        try:\n            std_domain = self.env.get_domain('std')\n            if hasattr(std_domain, 'data') and 'labels' in std_domain.data:\n                # Check if this docname is a label name (like 'modindex' -> 'py-modindex')\n                if docname in std_domain.data['labels']:\n                    return True\n                # Also check if this docname is a target for any of the standard labels\n                for label_name, (target_docname, labelid, sectionname) in std_domain.data['labels'].items():\n                    if target_docname == docname:\n                        return True\n            \n            # Also check domain indices (like py-modindex)\n            for domain in self.env.domains.values():\n                for index_cls in domain.indices:\n                    if hasattr(index_cls, 'name') and index_cls.name:\n                        index_docname = f\"{domain.name}-{index_cls.name}\"\n                        if index_docname == docname:\n                            return True\n        except Exception:\n            # If anything goes wrong, don't treat it as a built-in page\n            pass\n        \n        return False",
+          "explanation": "classic_swe step 71 #1"
+        },
+        {
+          "filename": "sphinx/environment/adapters/toctree.py",
+          "before": "                except KeyError:\n                    # this is raised if the included file does not exist\n                    if excluded(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                    elif not included(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to non-included document %r')\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n\n                    logger.warning(message, ref, location=toctreenode)",
+          "after": "                except KeyError:\n                    # this is raised if the included file does not exist\n                    # Check if this is a built-in special page (genindex, modindex, search, etc.)\n                    if self._is_builtin_toctree_entry(ref):\n                        # Built-in pages don't have tocs but should be treated as valid references\n                        # Create a simple reference node for them\n                        if title is None:\n                            # Use a default title based on the page type\n                            if ref == 'genindex':\n                                title = 'Index'\n                            elif ref == 'search':\n                                title = 'Search Page'\n                            elif ref.endswith('-modindex'):\n                                title = 'Module Index'\n                            elif ref == 'modindex':\n                                # Handle the common case where users write 'modindex' instead of 'py-modindex'\n                                title = 'Module Index'\n                            else:\n                                title = ref.title()\n                        \n                        reference = nodes.reference('', '', internal=True,\n                                                   refuri=ref, anchorname='',\n                                                   *[nodes.Text(title)])\n                        para = addnodes.compact_paragraph('', '', reference)\n                        item = nodes.list_item('', para)\n                        toc = nodes.bullet_list('', item)\n                    elif excluded(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to excluded document %r')\n                        logger.warning(message, ref, location=toctreenode)\n                        continue\n                    elif not included(self.env.doc2path(ref, False)):\n                        message = __('toctree contains reference to non-included document %r')\n                        logger.warning(message, ref, location=toctreenode)\n                        continue\n                    else:\n                        message = __('toctree contains reference to nonexisting document %r')\n                        logger.warning(message, ref, location=toctreenode)\n                        continue",
+          "explanation": "classic_swe step 73 #1"
+        },
+        {
+          "filename": "sphinx/environment/adapters/toctree.py",
+          "before": "                        continue\n                else:\n                    # if titles_only is given, only keep the main title and\n                    # sub-toctrees\n                    if titles_only:\n                        # children of toc are:\n                        # - list_item + compact_paragraph + (reference and subtoc)\n                        # - only + subtoc\n                        # - toctree\n                        children = cast(Iterable[nodes.Element], toc)\n\n                        # delete everything but the toplevel title(s)\n                        # and toctrees\n                        for toplevel in children:\n                            # nodes with length 1 don't have any children anyway\n                            if len(toplevel) > 1:\n                                subtrees = list(toplevel.findall(addnodes.toctree))\n                                if subtrees:\n                                    toplevel[1][:] = subtrees  # type: ignore\n                                else:\n                                    toplevel.pop(1)\n                    # resolve all sub-toctrees\n                    for subtocnode in list(toc.findall(addnodes.toctree)):\n                        if not (subtocnode.get('hidden', False) and\n                                not includehidden):\n                            i = subtocnode.parent.index(subtocnode) + 1\n                            for entry in _entries_from_toctree(\n                                    subtocnode, [refdoc] + parents,\n                                    subtree=True):\n                                subtocnode.parent.insert(i, entry)\n                                i += 1\n                            subtocnode.parent.remove(subtocnode)\n                    if separate:\n                        entries.append(toc)\n                    else:\n                        children = cast(Iterable[nodes.Element], toc)\n                        entries.extend(children)",
+          "after": "                        continue\n                \n                # Process the toc (either from normal document or built-in page)\n                if 'toc' in locals():\n                    # if titles_only is given, only keep the main title and\n                    # sub-toctrees\n                    if titles_only:\n                        # children of toc are:\n                        # - list_item + compact_paragraph + (reference and subtoc)\n                        # - only + subtoc\n                        # - toctree\n                        children = cast(Iterable[nodes.Element], toc)\n\n                        # delete everything but the toplevel title(s)\n                        # and toctrees\n                        for toplevel in children:\n                            # nodes with length 1 don't have any children anyway\n                            if len(toplevel) > 1:\n                                subtrees = list(toplevel.findall(addnodes.toctree))\n                                if subtrees:\n                                    toplevel[1][:] = subtrees  # type: ignore\n                                else:\n                                    toplevel.pop(1)\n                    # resolve all sub-toctrees\n                    for subtocnode in list(toc.findall(addnodes.toctree)):\n                        if not (subtocnode.get('hidden', False) and\n                                not includehidden):\n                            i = subtocnode.parent.index(subtocnode) + 1\n                            for entry in _entries_from_toctree(\n                                    subtocnode, [refdoc] + parents,\n                                    subtree=True):\n                                subtocnode.parent.insert(i, entry)\n                                i += 1\n                            subtocnode.parent.remove(subtocnode)\n                    if separate:\n                        entries.append(toc)\n                    else:\n                        children = cast(Iterable[nodes.Element], toc)\n                        entries.extend(children)",
+          "explanation": "classic_swe step 75 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 9,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 9,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sphinx/directives/other.py",
+      "sphinx/environment/adapters/toctree.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [
+      "sphinx/environment/collectors/toctree.py"
+    ],
+    "minimized_files": [
+      "sphinx/directives/other.py",
+      "sphinx/environment/adapters/toctree.py"
+    ],
+    "gold_files": [
+      "sphinx/directives/other.py",
+      "sphinx/environment/adapters/toctree.py",
+      "sphinx/environment/collectors/toctree.py"
+    ],
+    "minimized_hunks": 4,
+    "gold_hunks": 9,
+    "minimized_added_lines": 96,
+    "minimized_deleted_lines": 8,
+    "gold_added_lines": 23,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "subset_of_gold"
+}

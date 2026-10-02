@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstatic void release_mdev(struct device *dev)\n{\n\tstruct most_dev *mdev = to_mdev_from_dev(dev);\n\n\tkfree(mdev->busy_urbs);\n\tkfree(mdev->cap);\n\tkfree(mdev->conf);\n\tkfree(mdev->ep_address);\n\tkfree(mdev);\n}\n",
+          "before": "\nstatic void release_mdev(struct device *dev)\n{\n\tstruct most_dev *mdev = to_mdev_from_dev(dev);\n\n\tkfree(mdev);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/most/most_usb.c\n+++ /linux/drivers/most/most_usb.c\n@@ -931,0 +932,4 @@\n+\tkfree(mdev->busy_urbs);\n+\tkfree(mdev->cap);\n+\tkfree(mdev->conf);\n+\tkfree(mdev->ep_address);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 33",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        },
+        {
+          "after": "\n\tif (mdev->dci)\n\t\tdevice_unregister(&mdev->dci->dev);\n\tmost_deregister_interface(&mdev->iface);\n}\n",
+          "before": "\n\tif (mdev->dci)\n\t\tdevice_unregister(&mdev->dci->dev);\n\tmost_deregister_interface(&mdev->iface);\n\n\tkfree(mdev->busy_urbs);\n\tkfree(mdev->cap);\n\tkfree(mdev->conf);\n\tkfree(mdev->ep_address);\n\tput_device(&mdev->dci->dev);\n\tput_device(&mdev->dev);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/most/most_usb.c\n+++ /linux/drivers/most/most_usb.c\n@@ -1128,7 +1127,0 @@\n-\n-\tkfree(mdev->busy_urbs);\n-\tkfree(mdev->cap);\n-\tkfree(mdev->conf);\n-\tkfree(mdev->ep_address);\n-\tput_device(&mdev->dci->dev);\n-\tput_device(&mdev->dev);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 35",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "\n\tret = most_register_interface(&mdev->iface);\n\tif (ret)\n\t\treturn ret;\n\n\tmutex_lock(&mdev->io_mutex);\n\tif (le16_to_cpu(usb_dev->descriptor.idProduct) == USB_DEV_ID_OS81118 ||\n\t    le16_to_cpu(usb_dev->descriptor.idProduct) == USB_DEV_ID_OS81119 ||\n\t    le16_to_cpu(usb_dev->descriptor.idProduct) == USB_DEV_ID_OS81210) {\n\t\tmdev->dci = kzalloc(sizeof(*mdev->dci), GFP_KERNEL);\n\t\tif (!mdev->dci) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\treturn -ENOMEM;\n\t\t}\n\n\t\tmdev->dci->dev.init_name = \"dci\";\n\t\tmdev->dci->dev.parent = get_device(mdev->iface.dev);\n\t\tmdev->dci->dev.groups = dci_groups;\n\t\tmdev->dci->dev.release = release_dci;\n\t\tif (device_register(&mdev->dci->dev)) {\n\t\t\tput_device(&mdev->dci->dev);\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\treturn -ENOMEM;\n\t\t}\n\t\tmdev->dci->usb_device = mdev->usb_device;\n\t}\n\tmutex_unlock(&mdev->io_mutex);\n\treturn 0;\n\nerr_free_busy_urbs:\n\tkfree(mdev->busy_urbs);\nerr_free_ep_address:\n\tkfree(mdev->ep_address);\nerr_free_cap:\n\tkfree(mdev->cap);\nerr_free_conf:\n\tkfree(mdev->conf);\nerr_free_mdev:\n\tkfree(mdev);\n\treturn ret;\n",
+          "before": "\n\tret = most_register_interface(&mdev->iface);\n\tif (ret)\n\t\tgoto err_free_busy_urbs;\n\n\tmutex_lock(&mdev->io_mutex);\n\tif (le16_to_cpu(usb_dev->descriptor.idProduct) == USB_DEV_ID_OS81118 ||\n\t    le16_to_cpu(usb_dev->descriptor.idProduct) == USB_DEV_ID_OS81119 ||\n\t    le16_to_cpu(usb_dev->descriptor.idProduct) == USB_DEV_ID_OS81210) {\n\t\tmdev->dci = kzalloc(sizeof(*mdev->dci), GFP_KERNEL);\n\t\tif (!mdev->dci) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\tret = -ENOMEM;\n\t\t\tgoto err_free_busy_urbs;\n\t\t}\n\n\t\tmdev->dci->dev.init_name = \"dci\";\n\t\tmdev->dci->dev.parent = get_device(mdev->iface.dev);\n\t\tmdev->dci->dev.groups = dci_groups;\n\t\tmdev->dci->dev.release = release_dci;\n\t\tif (device_register(&mdev->dci->dev)) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\tret = -ENOMEM;\n\t\t\tgoto err_free_dci;\n\t\t}\n\t\tmdev->dci->usb_device = mdev->usb_device;\n\t}\n\tmutex_unlock(&mdev->io_mutex);\n\treturn 0;\nerr_free_dci:\n\tput_device(&mdev->dci->dev);\nerr_free_busy_urbs:\n\tkfree(mdev->busy_urbs);\nerr_free_ep_address:\n\tkfree(mdev->ep_address);\nerr_free_cap:\n\tkfree(mdev->cap);\nerr_free_conf:\n\tkfree(mdev->conf);\nerr_free_mdev:\n\tput_device(&mdev->dev);\n\treturn ret;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/most/most_usb.c\n+++ /linux/drivers/most/most_usb.c\n@@ -1061 +1061 @@\n-\t\tgoto err_free_busy_urbs;\n+\t\treturn ret;\n@@ -1071,2 +1071 @@\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_busy_urbs;\n+\t\t\treturn -ENOMEM;\n@@ -1079,0 +1079 @@\n+\t\t\tput_device(&mdev->dci->dev);\n@@ -1082,2 +1082 @@\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_dci;\n+\t\t\treturn -ENOMEM;\n@@ -1089,2 +1088 @@\n-err_free_dci:\n-\tput_device(&mdev->dci->dev);\n+\n@@ -1100 +1098 @@\n-\tput_device(&mdev->dev);\n+\tkfree(mdev);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 0,
+      "start_step": 33
+    }
+  ],
+  "success_step": 41
+}

@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tsize_t value_size = le32_to_cpu(entry->e_value_size);\n\tstruct ext4_xattr_info i = {\n\t\t.value = NULL,\n\t\t.value_len = 0,\n\t\t.name_index = entry->e_name_index,\n\t\t.in_inode = !!entry->e_value_inum && value_size,\n\t};\n",
+          "before": "\tsize_t value_size = le32_to_cpu(entry->e_value_size);\n\tstruct ext4_xattr_info i = {\n\t\t.value = NULL,\n\t\t.value_len = 0,\n\t\t.name_index = entry->e_name_index,\n\t\t.in_inode = !!entry->e_value_inum,\n\t};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 5b680deb1c9b..3ef01277aeb6 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -2603,7 +2603,7 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,\n \t\t.value = NULL,\n \t\t.value_len = 0,\n \t\t.name_index = entry->e_name_index,\n-\t\t.in_inode = !!entry->e_value_inum,\n+\t\t.in_inode = !!entry->e_value_inum && value_size,\n \t};\n \tstruct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);\n \tint needs_kvfree = 0;",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "\tsize_t value_size = le32_to_cpu(entry->e_value_size);\n\tstruct ext4_xattr_info i = {\n\t\t.value = NULL,\n\t\t.value_len = 0,\n\t\t.name_index = entry->e_name_index,\n\t\t.in_inode = !!entry->e_value_inum,\n\t};\n\tstruct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);\n\tint needs_kvfree = 0;\n\tint error;\n\n\tif (value_size == 0 && entry->e_value_inum)\n\t\treturn -EFSCORRUPTED;\n",
+          "before": "\tsize_t value_size = le32_to_cpu(entry->e_value_size);\n\tstruct ext4_xattr_info i = {\n\t\t.value = NULL,\n\t\t.value_len = 0,\n\t\t.name_index = entry->e_name_index,\n\t\t.in_inode = !!entry->e_value_inum && value_size,\n\t};\n\tstruct ext4_xattr_ibody_header *header = IHDR(inode, raw_inode);\n\tint needs_kvfree = 0;\n\tint error;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 5b680deb1c9b..52a15b049799 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -2609,6 +2609,9 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,\n \tint needs_kvfree = 0;\n \tint error;\n \n+\tif (value_size == 0 && entry->e_value_inum)\n+\t\treturn -EFSCORRUPTED;\n+\n \tis = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_NOFS);\n \tbs = kzalloc(sizeof(struct ext4_xattr_block_find), GFP_NOFS);\n \tb_entry_name = kmalloc(entry->e_name_len + 1, GFP_NOFS);",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 1,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "\nlines = []\nwith open(\"/linux/fs/ext4/xattr.c\", \"r\") as f:\n    lines = f.readlines()\n\n# indices are 0-based. Line 1052 is index 1051.\n# range 1052-1054 means indices 1051, 1052, 1053.\nstart_idx = 1051\nend_idx = 1054 # exclusive in slice? 1051:1054 covers 1051, 1052, 1053.\n\n# Verify content\nexpected_start = \"WARN_ONCE(ea_inode->i_nlink != 1,\"\nif expected_start not in lines[start_idx]:\n    print(f\"Error: Line {start_idx+1} does not match expected content.\")\n    print(f\"Content: {lines[start_idx]}\")\n    exit(1)\n\nnew_code = [\n    \"\\t\\t\\tif (ea_inode->i_nlink != 1) {\\n\",\n    \"\\t\\t\\t\\text4_warning_inode(ea_inode,\\n\",\n    \"\\t\\t\\t\\t\\t\\\"EA inode %lu i_nlink=%u\\\",\\n\",\n    \"\\t\\t\\t\\t\\tea_inode->i_ino, ea_inode->i_nlink);\\n\",\n    \"\\t\\t\\t\\tret = -EFSCORRUPTED;\\n\",\n    \"\\t\\t\\t\\tgoto out;\\n\",\n    \"\\t\\t\\t}\\n\"\n]\n\nlines[start_idx:end_idx] = new_code\n\nwith open(\"/linux/fs/ext4/xattr.c\", \"w\") as f:\n    f.writelines(lines)\n\nprint(\"Success\")\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 5b680deb1c9b..52a15b049799 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -2609,6 +2609,9 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,\n \tint needs_kvfree = 0;\n \tint error;\n \n+\tif (value_size == 0 && entry->e_value_inum)\n+\t\treturn -EFSCORRUPTED;\n+\n \tis = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_NOFS);\n \tbs = kzalloc(sizeof(struct ext4_xattr_block_find), GFP_NOFS);\n \tb_entry_name = kmalloc(entry->e_name_len + 1, GFP_NOFS);",
+          "explanation": "classic_swe step 40 create #1",
+          "filename": "patch_xattr.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 2,
+      "start_step": 40
+    }
+  ],
+  "success_step": 40
+}

@@ -1,0 +1,36 @@
+diff --git a/drivers/gpu/drm/drm_client_modeset.c b/drivers/gpu/drm/drm_client_modeset.c
+index fc4caf7da5fc..34dcbdbcba94 100644
+--- a/drivers/gpu/drm/drm_client_modeset.c
++++ b/drivers/gpu/drm/drm_client_modeset.c
+@@ -24,6 +24,7 @@
+ #include <drm/drm_edid.h>
+ #include <drm/drm_encoder.h>
+ #include <drm/drm_print.h>
++#include <drm/drm_vblank.h>
+ 
+ #include "drm_crtc_internal.h"
+ #include "drm_internal.h"
+@@ -1308,7 +1309,9 @@ EXPORT_SYMBOL(drm_client_modeset_dpms);
+ int drm_client_modeset_wait_for_vblank(struct drm_client_dev *client, unsigned int crtc_index)
+ {
+ 	struct drm_device *dev = client->dev;
++	struct drm_vblank_crtc *vblank;
+ 	struct drm_crtc *crtc;
++	u64 last;
+ 	int ret;
+ 
+ 	/*
+@@ -1327,7 +1330,12 @@ int drm_client_modeset_wait_for_vblank(struct drm_client_dev *client, unsigned i
+ 	 */
+ 	ret = drm_crtc_vblank_get(crtc);
+ 	if (!ret) {
+-		drm_crtc_wait_one_vblank(crtc);
++		vblank = drm_crtc_vblank_crtc(crtc);
++		last = drm_crtc_vblank_count(crtc);
++
++		wait_event_timeout(vblank->queue,
++				   last != drm_crtc_vblank_count(crtc),
++				   msecs_to_jiffies(100));
+ 		drm_crtc_vblank_put(crtc);
+ 	}
+ 

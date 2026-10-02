@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\tfat_fs_error_ratelimit(sb, \"clusters badly computed (%d != %llu)\",\n\t\t\t     new_fclus,\n\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n\t\tfat_cache_inval_inode(inode);\n\t}\n",
+          "before": "\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\tfat_fs_error(sb, \"clusters badly computed (%d != %llu)\",\n\t\t\t     new_fclus,\n\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n\t\tfat_cache_inval_inode(inode);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/fat/misc.c b/fs/fat/misc.c\nindex c7a2d27120ba..2e3e1e2dbc76 100644\n--- a/fs/fat/misc.c\n+++ b/fs/fat/misc.c\n@@ -158,7 +158,7 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)\n \t\t\tmark_inode_dirty(inode);\n \t}\n \tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n-\t\tfat_fs_error(sb, \"clusters badly computed (%d != %llu)\",\n+\t\tfat_fs_error_ratelimit(sb, \"clusters badly computed (%d != %llu)\",\n \t\t\t     new_fclus,\n \t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n \t\tfat_cache_inval_inode(inode);",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/fat/misc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)\n{\n\tstruct super_block *sb = inode->i_sb;\n\tstruct msdos_sb_info *sbi = MSDOS_SB(sb);\n\tint ret, new_fclus, last;\n\n\t/*\n\t * We must locate the last cluster of the file to add this new\n\t * one (new_dclus) to the end of the link list (the FAT).\n\t */\n\tlast = new_fclus = 0;\n\tif (MSDOS_I(inode)->i_start) {\n\t\tint fclus, dclus;\n\n\t\tret = fat_get_cluster(inode, FAT_ENT_EOF, &fclus, &dclus);\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t\tnew_fclus = fclus + 1;\n\t\tlast = dclus;\n\t}\n\n\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\tfat_fs_error_ratelimit(sb, \"clusters badly computed (%d != %llu)\",\n\t\t\t     new_fclus,\n\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n\t\tfat_cache_inval_inode(inode);\n\t\treturn -EIO;\n\t}\n\n\t/* add new one to the last of the cluster chain */\n\tif (last) {\n\t\tstruct fat_entry fatent;\n\n\t\tfatent_init(&fatent);\n\t\tret = fat_ent_read(inode, &fatent, last);\n\t\tif (ret >= 0) {\n\t\t\tint wait = inode_needs_sync(inode);\n\t\t\tret = fat_ent_write(inode, &fatent, new_dclus, wait);\n\t\t\tfatent_brelse(&fatent);\n\t\t}\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t\t/*\n\t\t * FIXME:Although we can add this cache, fat_cache_add() is\n\t\t * assuming to be called after linear search with fat_cache_id.\n\t\t */\n//\t\tfat_cache_add(inode, new_fclus, new_dclus);\n\t} else {\n\t\tMSDOS_I(inode)->i_start = new_dclus;\n\t\tMSDOS_I(inode)->i_logstart = new_dclus;\n\t\t/*\n\t\t * Since generic_write_sync() synchronizes regular files later,\n\t\t * we sync here only directories.\n\t\t */\n\t\tif (S_ISDIR(inode->i_mode) && IS_DIRSYNC(inode)) {\n\t\t\tret = fat_sync_inode(inode);\n\t\t\tif (ret)\n\t\t\t\treturn ret;\n\t\t} else\n\t\t\tmark_inode_dirty(inode);\n\t}\n\n\tinode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);\n\n\treturn 0;\n}",
+          "before": "int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)\n{\n\tstruct super_block *sb = inode->i_sb;\n\tstruct msdos_sb_info *sbi = MSDOS_SB(sb);\n\tint ret, new_fclus, last;\n\n\t/*\n\t * We must locate the last cluster of the file to add this new\n\t * one (new_dclus) to the end of the link list (the FAT).\n\t */\n\tlast = new_fclus = 0;\n\tif (MSDOS_I(inode)->i_start) {\n\t\tint fclus, dclus;\n\n\t\tret = fat_get_cluster(inode, FAT_ENT_EOF, &fclus, &dclus);\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t\tnew_fclus = fclus + 1;\n\t\tlast = dclus;\n\t}\n\n\t/* add new one to the last of the cluster chain */\n\tif (last) {\n\t\tstruct fat_entry fatent;\n\n\t\tfatent_init(&fatent);\n\t\tret = fat_ent_read(inode, &fatent, last);\n\t\tif (ret >= 0) {\n\t\t\tint wait = inode_needs_sync(inode);\n\t\t\tret = fat_ent_write(inode, &fatent, new_dclus, wait);\n\t\t\tfatent_brelse(&fatent);\n\t\t}\n\t\tif (ret < 0)\n\t\t\treturn ret;\n\t\t/*\n\t\t * FIXME:Although we can add this cache, fat_cache_add() is\n\t\t * assuming to be called after linear search with fat_cache_id.\n\t\t */\n//\t\tfat_cache_add(inode, new_fclus, new_dclus);\n\t} else {\n\t\tMSDOS_I(inode)->i_start = new_dclus;\n\t\tMSDOS_I(inode)->i_logstart = new_dclus;\n\t\t/*\n\t\t * Since generic_write_sync() synchronizes regular files later,\n\t\t * we sync here only directories.\n\t\t */\n\t\tif (S_ISDIR(inode->i_mode) && IS_DIRSYNC(inode)) {\n\t\t\tret = fat_sync_inode(inode);\n\t\t\tif (ret)\n\t\t\t\treturn ret;\n\t\t} else\n\t\t\tmark_inode_dirty(inode);\n\t}\n\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\tfat_fs_error_ratelimit(sb, \"clusters badly computed (%d != %llu)\",\n\t\t\t     new_fclus,\n\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n\t\tfat_cache_inval_inode(inode);\n\t}\n\tinode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);\n\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/fat/misc.c b/fs/fat/misc.c\nindex c7a2d27120ba..285373e56271 100644\n--- a/fs/fat/misc.c\n+++ b/fs/fat/misc.c\n@@ -125,6 +125,14 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)\n \t\tlast = dclus;\n \t}\n \n+\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n+\t\tfat_fs_error_ratelimit(sb, \"clusters badly computed (%d != %llu)\",\n+\t\t\t     new_fclus,\n+\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n+\t\tfat_cache_inval_inode(inode);\n+\t\treturn -EIO;\n+\t}\n+\n \t/* add new one to the last of the cluster chain */\n \tif (last) {\n \t\tstruct fat_entry fatent;\n@@ -157,12 +165,7 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)\n \t\t} else\n \t\t\tmark_inode_dirty(inode);\n \t}\n-\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n-\t\tfat_fs_error(sb, \"clusters badly computed (%d != %llu)\",\n-\t\t\t     new_fclus,\n-\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n-\t\tfat_cache_inval_inode(inode);\n-\t}\n+\n \tinode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);\n \n \treturn 0;",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "fs/fat/misc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 1,
+      "start_step": 21
+    }
+  ],
+  "success_step": 21
+}

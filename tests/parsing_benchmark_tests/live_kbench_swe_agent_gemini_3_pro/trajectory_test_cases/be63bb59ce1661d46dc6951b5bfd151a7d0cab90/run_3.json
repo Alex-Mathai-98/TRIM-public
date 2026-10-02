@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t      int flags);\nint __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg,\n\t\t\t\tsize_t len, int flags);",
+          "before": "int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t      int flags);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h\nindex 535701efc1e5..67b5a490ec95 100644\n--- a/include/net/af_vsock.h\n+++ b/include/net/af_vsock.h\n@@ -232,6 +232,8 @@ int vsock_remove_tap(struct vsock_tap *vt);\n void vsock_deliver_tap(struct sk_buff *build_skb(void *opaque), void *opaque);\n int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\t\t      int flags);\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg,\n+\t\t\t\tsize_t len, int flags);\n int vsock_dgram_recvmsg(struct socket *sock, struct msghdr *msg,\n \t\t\tsize_t len, int flags);",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "include/net/af_vsock.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        },
+        {
+          "after": "int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t\tint flags)\n{\n\tstruct sock *sk;\n\tstruct vsock_sock *vsk;\n\tconst struct vsock_transport *transport;\n\tint err;\n\n\tsk = sock->sk;\n\tvsk = vsock_sk(sk);\n\terr = 0;\n\n\tif (unlikely(flags & MSG_ERRQUEUE)) {\n\t\trelease_sock(sk);\n\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n\t}\n\n\ttransport = vsk->transport;\n\n\tif (!transport || sk->sk_state != TCP_ESTABLISHED) {\n\t\t/* Recvmsg is supposed to return 0 if a peer performs an\n\t\t * orderly shutdown. Differentiate between that case and when a\n\t\t * peer has not connected or a local shutdown occurred with the\n\t\t * SOCK_DONE flag.\n\t\t */\n\t\tif (sock_flag(sk, SOCK_DONE))\n\t\t\terr = 0;\n\t\telse\n\t\t\terr = -ENOTCONN;\n\n\t\tgoto out;\n\t}\n\n\tif (flags & MSG_OOB) {\n\t\terr = -EOPNOTSUPP;\n\t\tgoto out;\n\t}\n\n\t/* We don't check peer_shutdown flag here since peer may actually shut\n\t * down, but there can be data in the queue that a local socket can\n\t * receive.\n\t */\n\tif (sk->sk_shutdown & RCV_SHUTDOWN) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n\t/* It is valid on Linux to pass in a zero-length receive buffer.  This\n\t * is not an error.  We may as well bail out now.\n\t */\n\tif (!len) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n\tif (sk->sk_type == SOCK_STREAM)\n\t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n\telse\n\t\terr = __vsock_seqpacket_recvmsg(sk, msg, len, flags);\n\nout:\n\trelease_sock(sk);\n\treturn err;\n}\nEXPORT_SYMBOL_GPL(__vsock_connectible_recvmsg);\n\nint vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t      int flags)\n{\n\tstruct sock *sk;\n#ifdef CONFIG_BPF_SYSCALL\n\tconst struct proto *prot;\n#endif\n\n\tsk = sock->sk;\n\n\tlock_sock(sk);\n\n#ifdef CONFIG_BPF_SYSCALL\n\tprot = READ_ONCE(sk->sk_prot);\n\tif (prot != &vsock_proto) {\n\t\trelease_sock(sk);\n\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n\t}\n#endif\n\n\treturn __vsock_connectible_recvmsg(sock, msg, len, flags);\n}",
+          "before": "vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t  int flags)\n{\n\tstruct sock *sk;\n\tstruct vsock_sock *vsk;\n\tconst struct vsock_transport *transport;\n#ifdef CONFIG_BPF_SYSCALL\n\tconst struct proto *prot;\n#endif\n\tint err;\n\n\tsk = sock->sk;\n\n\tif (unlikely(flags & MSG_ERRQUEUE))\n\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n\n\tvsk = vsock_sk(sk);\n\terr = 0;\n\n\tlock_sock(sk);\n\n\ttransport = vsk->transport;\n\n\tif (!transport || sk->sk_state != TCP_ESTABLISHED) {\n\t\t/* Recvmsg is supposed to return 0 if a peer performs an\n\t\t * orderly shutdown. Differentiate between that case and when a\n\t\t * peer has not connected or a local shutdown occurred with the\n\t\t * SOCK_DONE flag.\n\t\t */\n\t\tif (sock_flag(sk, SOCK_DONE))\n\t\t\terr = 0;\n\t\telse\n\t\t\terr = -ENOTCONN;\n\n\t\tgoto out;\n\t}\n\n\tif (flags & MSG_OOB) {\n\t\terr = -EOPNOTSUPP;\n\t\tgoto out;\n\t}\n\n\t/* We don't check peer_shutdown flag here since peer may actually shut\n\t * down, but there can be data in the queue that a local socket can\n\t * receive.\n\t */\n\tif (sk->sk_shutdown & RCV_SHUTDOWN) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n\t/* It is valid on Linux to pass in a zero-length receive buffer.  This\n\t * is not an error.  We may as well bail out now.\n\t */\n\tif (!len) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n#ifdef CONFIG_BPF_SYSCALL\n\tprot = READ_ONCE(sk->sk_prot);\n\tif (prot != &vsock_proto) {\n\t\trelease_sock(sk);\n\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n\t}\n#endif\n\n\tif (sk->sk_type == SOCK_STREAM)\n\t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n\telse\n\t\terr = __vsock_seqpacket_recvmsg(sk, msg, len, flags);\n\nout:\n\trelease_sock(sk);\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h\nindex 535701efc1e5..67b5a490ec95 100644\n--- a/include/net/af_vsock.h\n+++ b/include/net/af_vsock.h\n@@ -232,6 +232,8 @@ int vsock_remove_tap(struct vsock_tap *vt);\n void vsock_deliver_tap(struct sk_buff *build_skb(void *opaque), void *opaque);\n int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\t\t      int flags);\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg,\n+\t\t\t\tsize_t len, int flags);\n int vsock_dgram_recvmsg(struct socket *sock, struct msghdr *msg,\n \t\t\tsize_t len, int flags);\n \ndiff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c\nindex 4b040285aa78..c57852161680 100644\n--- a/net/vmw_vsock/af_vsock.c\n+++ b/net/vmw_vsock/af_vsock.c\n@@ -2174,26 +2174,22 @@ static int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,\n }\n \n int\n-vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n-\t\t\t  int flags)\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t\tint flags)\n {\n \tstruct sock *sk;\n \tstruct vsock_sock *vsk;\n \tconst struct vsock_transport *transport;\n-#ifdef CONFIG_BPF_SYSCALL\n-\tconst struct proto *prot;\n-#endif\n \tint err;\n \n \tsk = sock->sk;\n-\n-\tif (unlikely(flags & MSG_ERRQUEUE))\n-\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n-\n \tvsk = vsock_sk(sk);\n \terr = 0;\n \n-\tlock_sock(sk);\n+\tif (unlikely(flags & MSG_ERRQUEUE)) {\n+\t\trelease_sock(sk);\n+\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n+\t}\n \n \ttransport = vsk->transport;\n \n@@ -2233,14 +2229,6 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\tgoto out;\n \t}\n \n-#ifdef CONFIG_BPF_SYSCALL\n-\tprot = READ_ONCE(sk->sk_prot);\n-\tif (prot != &vsock_proto) {\n-\t\trelease_sock(sk);\n-\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n-\t}\n-#endif\n-\n \tif (sk->sk_type == SOCK_STREAM)\n \t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n \telse\n@@ -2250,6 +2238,30 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \trelease_sock(sk);\n \treturn err;\n }\n+EXPORT_SYMBOL_GPL(__vsock_connectible_recvmsg);\n+\n+int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t      int flags)\n+{\n+\tstruct sock *sk;\n+#ifdef CONFIG_BPF_SYSCALL\n+\tconst struct proto *prot;\n+#endif\n+\n+\tsk = sock->sk;\n+\n+\tlock_sock(sk);\n+\n+#ifdef CONFIG_BPF_SYSCALL\n+\tprot = READ_ONCE(sk->sk_prot);\n+\tif (prot != &vsock_proto) {\n+\t\trelease_sock(sk);\n+\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n+\t}\n+#endif\n+\n+\treturn __vsock_connectible_recvmsg(sock, msg, len, flags);\n+}\n EXPORT_SYMBOL_GPL(vsock_connectible_recvmsg);\n \n static int vsock_set_rcvlowat(struct sock *sk, int val)",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "net/vmw_vsock/af_vsock.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "int __vsock_connectible_recvmsg",
+          "before": "int\nint __vsock_connectible_recvmsg",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h\nindex 535701efc1e5..67b5a490ec95 100644\n--- a/include/net/af_vsock.h\n+++ b/include/net/af_vsock.h\n@@ -232,6 +232,8 @@ int vsock_remove_tap(struct vsock_tap *vt);\n void vsock_deliver_tap(struct sk_buff *build_skb(void *opaque), void *opaque);\n int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\t\t      int flags);\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg,\n+\t\t\t\tsize_t len, int flags);\n int vsock_dgram_recvmsg(struct socket *sock, struct msghdr *msg,\n \t\t\tsize_t len, int flags);\n \ndiff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c\nindex 4b040285aa78..9870a23bb27b 100644\n--- a/net/vmw_vsock/af_vsock.c\n+++ b/net/vmw_vsock/af_vsock.c\n@@ -2173,27 +2173,22 @@ static int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,\n \treturn err;\n }\n \n-int\n-vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n-\t\t\t  int flags)\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t\tint flags)\n {\n \tstruct sock *sk;\n \tstruct vsock_sock *vsk;\n \tconst struct vsock_transport *transport;\n-#ifdef CONFIG_BPF_SYSCALL\n-\tconst struct proto *prot;\n-#endif\n \tint err;\n \n \tsk = sock->sk;\n-\n-\tif (unlikely(flags & MSG_ERRQUEUE))\n-\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n-\n \tvsk = vsock_sk(sk);\n \terr = 0;\n \n-\tlock_sock(sk);\n+\tif (unlikely(flags & MSG_ERRQUEUE)) {\n+\t\trelease_sock(sk);\n+\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n+\t}\n \n \ttransport = vsk->transport;\n \n@@ -2233,14 +2228,6 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\tgoto out;\n \t}\n \n-#ifdef CONFIG_BPF_SYSCALL\n-\tprot = READ_ONCE(sk->sk_prot);\n-\tif (prot != &vsock_proto) {\n-\t\trelease_sock(sk);\n-\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n-\t}\n-#endif\n-\n \tif (sk->sk_type == SOCK_STREAM)\n \t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n \telse\n@@ -2250,6 +2237,30 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \trelease_sock(sk);\n \treturn err;\n }\n+EXPORT_SYMBOL_GPL(__vsock_connectible_recvmsg);\n+\n+int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t      int flags)\n+{\n+\tstruct sock *sk;\n+#ifdef CONFIG_BPF_SYSCALL\n+\tconst struct proto *prot;\n+#endif\n+\n+\tsk = sock->sk;\n+\n+\tlock_sock(sk);\n+\n+#ifdef CONFIG_BPF_SYSCALL\n+\tprot = READ_ONCE(sk->sk_prot);\n+\tif (prot != &vsock_proto) {\n+\t\trelease_sock(sk);\n+\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n+\t}\n+#endif\n+\n+\treturn __vsock_connectible_recvmsg(sock, msg, len, flags);\n+}\n EXPORT_SYMBOL_GPL(vsock_connectible_recvmsg);\n \n static int vsock_set_rcvlowat(struct sock *sk, int val)",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "net/vmw_vsock/af_vsock.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "static int __vsock_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int flags)\n{\n\tstruct socket *sock = sk->sk_socket;\n\tint err;\n\n\tif (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET) {\n\t\tlock_sock(sk);\n\t\terr = __vsock_connectible_recvmsg(sock, msg, len, flags);\n\t} else if (sk->sk_type == SOCK_DGRAM) {\n\t\terr = vsock_dgram_recvmsg(sock, msg, len, flags);\n\t} else {\n\t\terr = -EPROTOTYPE;\n\t}\n\n\treturn err;\n}",
+          "before": "static int __vsock_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int flags)\n{\n\tstruct socket *sock = sk->sk_socket;\n\tint err;\n\n\tif (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET)\n\t\terr = vsock_connectible_recvmsg(sock, msg, len, flags);\n\telse if (sk->sk_type == SOCK_DGRAM)\n\t\terr = vsock_dgram_recvmsg(sock, msg, len, flags);\n\telse\n\t\terr = -EPROTOTYPE;\n\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h\nindex 535701efc1e5..67b5a490ec95 100644\n--- a/include/net/af_vsock.h\n+++ b/include/net/af_vsock.h\n@@ -232,6 +232,8 @@ int vsock_remove_tap(struct vsock_tap *vt);\n void vsock_deliver_tap(struct sk_buff *build_skb(void *opaque), void *opaque);\n int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\t\t      int flags);\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg,\n+\t\t\t\tsize_t len, int flags);\n int vsock_dgram_recvmsg(struct socket *sock, struct msghdr *msg,\n \t\t\tsize_t len, int flags);\n \ndiff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c\nindex 4b040285aa78..9870a23bb27b 100644\n--- a/net/vmw_vsock/af_vsock.c\n+++ b/net/vmw_vsock/af_vsock.c\n@@ -2173,27 +2173,22 @@ static int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,\n \treturn err;\n }\n \n-int\n-vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n-\t\t\t  int flags)\n+int __vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t\tint flags)\n {\n \tstruct sock *sk;\n \tstruct vsock_sock *vsk;\n \tconst struct vsock_transport *transport;\n-#ifdef CONFIG_BPF_SYSCALL\n-\tconst struct proto *prot;\n-#endif\n \tint err;\n \n \tsk = sock->sk;\n-\n-\tif (unlikely(flags & MSG_ERRQUEUE))\n-\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n-\n \tvsk = vsock_sk(sk);\n \terr = 0;\n \n-\tlock_sock(sk);\n+\tif (unlikely(flags & MSG_ERRQUEUE)) {\n+\t\trelease_sock(sk);\n+\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n+\t}\n \n \ttransport = vsk->transport;\n \n@@ -2233,14 +2228,6 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \t\tgoto out;\n \t}\n \n-#ifdef CONFIG_BPF_SYSCALL\n-\tprot = READ_ONCE(sk->sk_prot);\n-\tif (prot != &vsock_proto) {\n-\t\trelease_sock(sk);\n-\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n-\t}\n-#endif\n-\n \tif (sk->sk_type == SOCK_STREAM)\n \t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n \telse\n@@ -2250,6 +2237,30 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n \trelease_sock(sk);\n \treturn err;\n }\n+EXPORT_SYMBOL_GPL(__vsock_connectible_recvmsg);\n+\n+int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t      int flags)\n+{\n+\tstruct sock *sk;\n+#ifdef CONFIG_BPF_SYSCALL\n+\tconst struct proto *prot;\n+#endif\n+\n+\tsk = sock->sk;\n+\n+\tlock_sock(sk);\n+\n+#ifdef CONFIG_BPF_SYSCALL\n+\tprot = READ_ONCE(sk->sk_prot);\n+\tif (prot != &vsock_proto) {\n+\t\trelease_sock(sk);\n+\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n+\t}\n+#endif\n+\n+\treturn __vsock_connectible_recvmsg(sock, msg, len, flags);\n+}\n EXPORT_SYMBOL_GPL(vsock_connectible_recvmsg);\n \n static int vsock_set_rcvlowat(struct sock *sk, int val)\ndiff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c\nindex a3c97546ab84..defabb99d902 100644\n--- a/net/vmw_vsock/vsock_bpf.c\n+++ b/net/vmw_vsock/vsock_bpf.c\n@@ -63,12 +63,14 @@ static int __vsock_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int\n \tstruct socket *sock = sk->sk_socket;\n \tint err;\n \n-\tif (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET)\n-\t\terr = vsock_connectible_recvmsg(sock, msg, len, flags);\n-\telse if (sk->sk_type == SOCK_DGRAM)\n+\tif (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET) {\n+\t\tlock_sock(sk);\n+\t\terr = __vsock_connectible_recvmsg(sock, msg, len, flags);\n+\t} else if (sk->sk_type == SOCK_DGRAM) {\n \t\terr = vsock_dgram_recvmsg(sock, msg, len, flags);\n-\telse\n+\t} else {\n \t\terr = -EPROTOTYPE;\n+\t}\n \n \treturn err;\n }",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "net/vmw_vsock/vsock_bpf.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 20
+    }
+  ],
+  "success_step": 29
+}

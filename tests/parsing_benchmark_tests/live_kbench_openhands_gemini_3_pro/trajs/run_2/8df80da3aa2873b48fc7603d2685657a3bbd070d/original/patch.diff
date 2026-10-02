@@ -1,0 +1,51 @@
+diff --git a/net/kcm/kcmsock.c b/net/kcm/kcmsock.c
+index a4971e6fa943..9e4a100921b4 100644
+--- a/net/kcm/kcmsock.c
++++ b/net/kcm/kcmsock.c
+@@ -1430,7 +1430,8 @@ static void kcm_unattach(struct kcm_psock *psock)
+ 		smp_mb();
+ 
+ 		/* Queue tx work to make sure psock->done is handled */
+-		queue_work(kcm_wq, &psock->tx_kcm->tx_work);
++		if (!psock->tx_kcm->tx_stopped)
++			queue_work(kcm_wq, &psock->tx_kcm->tx_work);
+ 		spin_unlock_bh(&mux->lock);
+ 	} else {
+ no_reserved:
+@@ -1693,12 +1694,6 @@ static int kcm_release(struct socket *sock)
+ 	 */
+ 	__skb_queue_purge(&sk->sk_write_queue);
+ 
+-	/* Set tx_stopped. This is checked when psock is bound to a kcm and we
+-	 * get a writespace callback. This prevents further work being queued
+-	 * from the callback (unbinding the psock occurs after canceling work.
+-	 */
+-	kcm->tx_stopped = 1;
+-
+ 	release_sock(sk);
+ 
+ 	spin_lock_bh(&mux->lock);
+@@ -1709,6 +1704,13 @@ static int kcm_release(struct socket *sock)
+ 		list_del(&kcm->wait_psock_list);
+ 		kcm->tx_wait = false;
+ 	}
++
++	/* Set tx_stopped. This is checked when psock is bound to a kcm and we
++	 * get a writespace callback. This prevents further work being queued
++	 * from the callback (unbinding the psock occurs after canceling work.
++	 */
++	kcm->tx_stopped = 1;
++
+ 	spin_unlock_bh(&mux->lock);
+ 
+ 	/* Cancel work. After this point there should be no outside references
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..00f2832ad19c
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "8df80da3aa2873b48fc7603d2685657a3bbd070d": 93107
++}
+\ No newline at end of file

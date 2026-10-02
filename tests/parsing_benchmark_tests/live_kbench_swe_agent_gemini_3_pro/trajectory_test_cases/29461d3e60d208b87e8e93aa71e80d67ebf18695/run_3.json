@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\toob_skb = u->oob_skb;\n\n\tspin_unlock(&sk->sk_receive_queue.lock);\n\tunix_state_unlock(sk);\n\n\tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n\n\tif (!(state->flags & MSG_PEEK)) {\n\t\tUNIXCB(oob_skb).consumed += 1;\n\t\tspin_lock(&sk->sk_receive_queue.lock);\n\t\tWRITE_ONCE(u->oob_skb, NULL);\n\t\tspin_unlock(&sk->sk_receive_queue.lock);\n\t}\n\n\tmutex_unlock(&u->iolock);\n",
+          "before": "\toob_skb = u->oob_skb;\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tWRITE_ONCE(u->oob_skb, NULL);\n\n\tspin_unlock(&sk->sk_receive_queue.lock);\n\tunix_state_unlock(sk);\n\n\tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tUNIXCB(oob_skb).consumed += 1;\n\n\tmutex_unlock(&u->iolock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..73114dbc9dca 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2631,16 +2631,17 @@ static int unix_stream_recv_urg(struct unix_stream_read_state *state)\n \n \toob_skb = u->oob_skb;\n \n-\tif (!(state->flags & MSG_PEEK))\n-\t\tWRITE_ONCE(u->oob_skb, NULL);\n-\n \tspin_unlock(&sk->sk_receive_queue.lock);\n \tunix_state_unlock(sk);\n \n \tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n \n-\tif (!(state->flags & MSG_PEEK))\n+\tif (!(state->flags & MSG_PEEK)) {\n \t\tUNIXCB(oob_skb).consumed += 1;\n+\t\tspin_lock(&sk->sk_receive_queue.lock);\n+\t\tWRITE_ONCE(u->oob_skb, NULL);\n+\t\tspin_unlock(&sk->sk_receive_queue.lock);\n+\t}\n \n \tmutex_unlock(&u->iolock);",
+          "explanation": "classic_swe step 8 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 8
+        }
+      ],
+      "end_step": 8,
+      "revision_index": 0,
+      "start_step": 8
+    }
+  ],
+  "success_step": 8
+}

@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\thci_dev_lock(hdev);\n\t\tmgmt_index_removed(hdev);\n\t\thci_dev_unlock(hdev);\n\n\t\terr = hci_dev_open(hdev->id);",
+          "before": "\t\tmgmt_index_removed(hdev);\n\n\t\terr = hci_dev_open(hdev->id);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c\nindex 428ee5c7de7e..043936783f74 100644\n--- a/net/bluetooth/hci_sock.c\n+++ b/net/bluetooth/hci_sock.c\n@@ -1311,7 +1311,9 @@ static int hci_sock_bind(struct socket *sock, struct sockaddr *addr,\n \t\t\tgoto done;\n \t\t}\n \n+\t\thci_dev_lock(hdev);\n \t\tmgmt_index_removed(hdev);\n+\t\thci_dev_unlock(hdev);\n \n \t\terr = hci_dev_open(hdev->id);\n \t\tif (err) {",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "net/bluetooth/hci_sock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        },
+        {
+          "after": "\thci_dev_lock(hdev);\n\n\tif (status == -ECANCELED ||\n\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n\t\thci_dev_unlock(hdev);\n\t\treturn;\n\t}",
+          "before": "\tif (status == -ECANCELED ||\n\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n\t\treturn;\n\n\thci_dev_lock(hdev);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c\nindex 428ee5c7de7e..043936783f74 100644\n--- a/net/bluetooth/hci_sock.c\n+++ b/net/bluetooth/hci_sock.c\n@@ -1311,7 +1311,9 @@ static int hci_sock_bind(struct socket *sock, struct sockaddr *addr,\n \t\t\tgoto done;\n \t\t}\n \n+\t\thci_dev_lock(hdev);\n \t\tmgmt_index_removed(hdev);\n+\t\thci_dev_unlock(hdev);\n \n \t\terr = hci_dev_open(hdev->id);\n \t\tif (err) {\ndiff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c\nindex 14a9462fced5..75ae9519585c 100644\n--- a/net/bluetooth/mgmt.c\n+++ b/net/bluetooth/mgmt.c\n@@ -5398,11 +5398,13 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,\n \tstruct mgmt_pending_cmd *cmd = data;\n \tstruct mgmt_cp_remove_adv_monitor *cp;\n \n+\thci_dev_lock(hdev);\n+\n \tif (status == -ECANCELED ||\n-\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n+\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n+\t\thci_dev_unlock(hdev);\n \t\treturn;\n-\n-\thci_dev_lock(hdev);\n+\t}\n \n \tcp = cmd->param;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "net/bluetooth/mgmt.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "static int mgmt_remove_adv_monitor_sync(struct hci_dev *hdev, void *data)\n{\n\tstruct mgmt_pending_cmd *cmd = data;\n\tstruct mgmt_cp_remove_adv_monitor *cp;\n\tu16 handle;\n\tint err;\n\n\thci_dev_lock(hdev);\n\n\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n\t\thci_dev_unlock(hdev);\n\t\treturn -ECANCELED;\n\t}\n\n\tcp = cmd->param;\n\thandle = __le16_to_cpu(cp->monitor_handle);\n\n\tif (!handle)\n\t\terr = hci_remove_all_adv_monitor(hdev);\n\telse\n\t\terr = hci_remove_single_adv_monitor(hdev, handle);\n\n\thci_dev_unlock(hdev);\n\n\treturn err;\n}",
+          "before": "static int mgmt_remove_adv_monitor_sync(struct hci_dev *hdev, void *data)\n{\n\tstruct mgmt_pending_cmd *cmd = data;\n\n\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n\t\treturn -ECANCELED;\n\n\tstruct mgmt_cp_remove_adv_monitor *cp = cmd->param;\n\tu16 handle = __le16_to_cpu(cp->monitor_handle);\n\n\tif (!handle)\n\t\treturn hci_remove_all_adv_monitor(hdev);\n\n\treturn hci_remove_single_adv_monitor(hdev, handle);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c\nindex 428ee5c7de7e..043936783f74 100644\n--- a/net/bluetooth/hci_sock.c\n+++ b/net/bluetooth/hci_sock.c\n@@ -1311,7 +1311,9 @@ static int hci_sock_bind(struct socket *sock, struct sockaddr *addr,\n \t\t\tgoto done;\n \t\t}\n \n+\t\thci_dev_lock(hdev);\n \t\tmgmt_index_removed(hdev);\n+\t\thci_dev_unlock(hdev);\n \n \t\terr = hci_dev_open(hdev->id);\n \t\tif (err) {\ndiff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c\nindex 14a9462fced5..02808dcf800d 100644\n--- a/net/bluetooth/mgmt.c\n+++ b/net/bluetooth/mgmt.c\n@@ -5398,11 +5398,13 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,\n \tstruct mgmt_pending_cmd *cmd = data;\n \tstruct mgmt_cp_remove_adv_monitor *cp;\n \n+\thci_dev_lock(hdev);\n+\n \tif (status == -ECANCELED ||\n-\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n+\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n+\t\thci_dev_unlock(hdev);\n \t\treturn;\n-\n-\thci_dev_lock(hdev);\n+\t}\n \n \tcp = cmd->param;\n \n@@ -5423,17 +5425,28 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,\n static int mgmt_remove_adv_monitor_sync(struct hci_dev *hdev, void *data)\n {\n \tstruct mgmt_pending_cmd *cmd = data;\n+\tstruct mgmt_cp_remove_adv_monitor *cp;\n+\tu16 handle;\n+\tint err;\n \n-\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n+\thci_dev_lock(hdev);\n+\n+\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n+\t\thci_dev_unlock(hdev);\n \t\treturn -ECANCELED;\n+\t}\n \n-\tstruct mgmt_cp_remove_adv_monitor *cp = cmd->param;\n-\tu16 handle = __le16_to_cpu(cp->monitor_handle);\n+\tcp = cmd->param;\n+\thandle = __le16_to_cpu(cp->monitor_handle);\n \n \tif (!handle)\n-\t\treturn hci_remove_all_adv_monitor(hdev);\n+\t\terr = hci_remove_all_adv_monitor(hdev);\n+\telse\n+\t\terr = hci_remove_single_adv_monitor(hdev, handle);\n+\n+\thci_dev_unlock(hdev);\n \n-\treturn hci_remove_single_adv_monitor(hdev, handle);\n+\treturn err;\n }\n \n static int remove_adv_monitor(struct sock *sk, struct hci_dev *hdev,",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "net/bluetooth/mgmt.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "\tif (status == -ECANCELED)\n\t\treturn;\n\n\thci_dev_lock(hdev);\n\n\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n\t\thci_dev_unlock(hdev);\n\t\treturn;\n\t}",
+          "before": "\thci_dev_lock(hdev);\n\n\tif (status == -ECANCELED ||\n\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n\t\thci_dev_unlock(hdev);\n\t\treturn;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c\nindex 428ee5c7de7e..043936783f74 100644\n--- a/net/bluetooth/hci_sock.c\n+++ b/net/bluetooth/hci_sock.c\n@@ -1311,7 +1311,9 @@ static int hci_sock_bind(struct socket *sock, struct sockaddr *addr,\n \t\t\tgoto done;\n \t\t}\n \n+\t\thci_dev_lock(hdev);\n \t\tmgmt_index_removed(hdev);\n+\t\thci_dev_unlock(hdev);\n \n \t\terr = hci_dev_open(hdev->id);\n \t\tif (err) {\ndiff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c\nindex 14a9462fced5..c6ac8521d26a 100644\n--- a/net/bluetooth/mgmt.c\n+++ b/net/bluetooth/mgmt.c\n@@ -5398,12 +5398,16 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,\n \tstruct mgmt_pending_cmd *cmd = data;\n \tstruct mgmt_cp_remove_adv_monitor *cp;\n \n-\tif (status == -ECANCELED ||\n-\t    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n+\tif (status == -ECANCELED)\n \t\treturn;\n \n \thci_dev_lock(hdev);\n \n+\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n+\t\thci_dev_unlock(hdev);\n+\t\treturn;\n+\t}\n+\n \tcp = cmd->param;\n \n \trp.monitor_handle = cp->monitor_handle;\n@@ -5423,17 +5427,28 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,\n static int mgmt_remove_adv_monitor_sync(struct hci_dev *hdev, void *data)\n {\n \tstruct mgmt_pending_cmd *cmd = data;\n+\tstruct mgmt_cp_remove_adv_monitor *cp;\n+\tu16 handle;\n+\tint err;\n+\n+\thci_dev_lock(hdev);\n \n-\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))\n+\tif (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {\n+\t\thci_dev_unlock(hdev);\n \t\treturn -ECANCELED;\n+\t}\n \n-\tstruct mgmt_cp_remove_adv_monitor *cp = cmd->param;\n-\tu16 handle = __le16_to_cpu(cp->monitor_handle);\n+\tcp = cmd->param;\n+\thandle = __le16_to_cpu(cp->monitor_handle);\n \n \tif (!handle)\n-\t\treturn hci_remove_all_adv_monitor(hdev);\n+\t\terr = hci_remove_all_adv_monitor(hdev);\n+\telse\n+\t\terr = hci_remove_single_adv_monitor(hdev, handle);\n \n-\treturn hci_remove_single_adv_monitor(hdev, handle);\n+\thci_dev_unlock(hdev);\n+\n+\treturn err;\n }\n \n static int remove_adv_monitor(struct sock *sk, struct hci_dev *hdev,",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "net/bluetooth/mgmt.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        }
+      ],
+      "end_step": 45,
+      "revision_index": 0,
+      "start_step": 33
+    }
+  ],
+  "success_step": 45
+}

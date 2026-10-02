@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static u32 ila_hashfn(const void *data, u32 len, u32 seed)\n{\n\treturn jhash2(data, len / sizeof(u32), seed);\n}\n\nstatic const struct rhashtable_params rht_params = {\n\t.nelem_hint = 1024,\n\t.head_offset = offsetof(struct ila_map, node),\n\t.key_offset = offsetof(struct ila_map, xp.ip.locator_match),\n\t.key_len = sizeof(u64), /* identifier */\n\t.hashfn = ila_hashfn,\n\t.max_size = 1048576,\n",
+          "before": "static const struct rhashtable_params rht_params = {\n\t.nelem_hint = 1024,\n\t.head_offset = offsetof(struct ila_map, node),\n\t.key_offset = offsetof(struct ila_map, xp.ip.locator_match),\n\t.key_len = sizeof(u64), /* identifier */\n\t.max_size = 1048576,\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv6/ila/ila_xlat.c b/net/ipv6/ila/ila_xlat.c\nindex 7646e401c630..23f006f316ee 100644\n--- a/net/ipv6/ila/ila_xlat.c\n+++ b/net/ipv6/ila/ila_xlat.c\n@@ -81,11 +81,17 @@ static inline int ila_order(struct ila_map *ila)\n \treturn score;\n }\n \n+static u32 ila_hashfn(const void *data, u32 len, u32 seed)\n+{\n+\treturn jhash2(data, len / sizeof(u32), seed);\n+}\n+\n static const struct rhashtable_params rht_params = {\n \t.nelem_hint = 1024,\n \t.head_offset = offsetof(struct ila_map, node),\n \t.key_offset = offsetof(struct ila_map, xp.ip.locator_match),\n \t.key_len = sizeof(u64), /* identifier */\n+\t.hashfn = ila_hashfn,\n \t.max_size = 1048576,\n \t.min_size = 256,\n \t.automatic_shrinking = true,",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "net/ipv6/ila/ila_xlat.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)\n{\n\tstruct ila_map *ila;\n\tstruct ipv6hdr *ip6h;\n\tstruct ipv6hdr _ip6h;\n\tstruct net *net = dev_net(skb->dev);\n\tstruct ila_net *ilan = net_generic(net, ila_net_id);\n\tstruct ila_addr *iaddr;\n\n\tip6h = skb_header_pointer(skb, 0, sizeof(_ip6h), &_ip6h);\n\tif (!ip6h)\n\t\treturn 0;\n\n\tiaddr = ila_a2i(&ip6h->daddr);\n\n\t/* Assumes skb contains a valid IPv6 header that is pulled */\n",
+          "before": "static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)\n{\n\tstruct ila_map *ila;\n\tstruct ipv6hdr *ip6h = ipv6_hdr(skb);\n\tstruct net *net = dev_net(skb->dev);\n\tstruct ila_net *ilan = net_generic(net, ila_net_id);\n\tstruct ila_addr *iaddr = ila_a2i(&ip6h->daddr);\n\n\t/* Assumes skb contains a valid IPv6 header that is pulled */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv6/ila/ila_xlat.c b/net/ipv6/ila/ila_xlat.c\nindex 7646e401c630..99f2be62361f 100644\n--- a/net/ipv6/ila/ila_xlat.c\n+++ b/net/ipv6/ila/ila_xlat.c\n@@ -81,11 +81,17 @@ static inline int ila_order(struct ila_map *ila)\n \treturn score;\n }\n \n+static u32 ila_hashfn(const void *data, u32 len, u32 seed)\n+{\n+\treturn jhash2(data, len / sizeof(u32), seed);\n+}\n+\n static const struct rhashtable_params rht_params = {\n \t.nelem_hint = 1024,\n \t.head_offset = offsetof(struct ila_map, node),\n \t.key_offset = offsetof(struct ila_map, xp.ip.locator_match),\n \t.key_len = sizeof(u64), /* identifier */\n+\t.hashfn = ila_hashfn,\n \t.max_size = 1048576,\n \t.min_size = 256,\n \t.automatic_shrinking = true,\n@@ -635,10 +641,17 @@ void ila_xlat_exit_net(struct net *net)\n static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)\n {\n \tstruct ila_map *ila;\n-\tstruct ipv6hdr *ip6h = ipv6_hdr(skb);\n+\tstruct ipv6hdr *ip6h;\n+\tstruct ipv6hdr _ip6h;\n \tstruct net *net = dev_net(skb->dev);\n \tstruct ila_net *ilan = net_generic(net, ila_net_id);\n-\tstruct ila_addr *iaddr = ila_a2i(&ip6h->daddr);\n+\tstruct ila_addr *iaddr;\n+\n+\tip6h = skb_header_pointer(skb, 0, sizeof(_ip6h), &_ip6h);\n+\tif (!ip6h)\n+\t\treturn 0;\n+\n+\tiaddr = ila_a2i(&ip6h->daddr);\n \n \t/* Assumes skb contains a valid IPv6 header that is pulled */",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "net/ipv6/ila/ila_xlat.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 14
+    },
+    {
+      "edits": [
+        {
+          "after": "static const struct rhashtable_params rht_params = {\n\t.nelem_hint = 1024,\n\t.head_offset = offsetof(struct ila_map, node),\n\t.key_offset = offsetof(struct ila_map, xp.ip.locator_match),\n\t.key_len = sizeof(u64), /* identifier */\n\t.max_size = 1048576,\n",
+          "before": "static u32 ila_hashfn(const void *data, u32 len, u32 seed)\n{\n\treturn jhash2(data, len / sizeof(u32), seed);\n}\n\nstatic const struct rhashtable_params rht_params = {\n\t.nelem_hint = 1024,\n\t.head_offset = offsetof(struct ila_map, node),\n\t.key_offset = offsetof(struct ila_map, xp.ip.locator_match),\n\t.key_len = sizeof(u64), /* identifier */\n\t.hashfn = ila_hashfn,\n\t.max_size = 1048576,\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv6/ila/ila_xlat.c b/net/ipv6/ila/ila_xlat.c\nindex 7646e401c630..b125a82ab755 100644\n--- a/net/ipv6/ila/ila_xlat.c\n+++ b/net/ipv6/ila/ila_xlat.c\n@@ -635,10 +635,17 @@ void ila_xlat_exit_net(struct net *net)\n static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)\n {\n \tstruct ila_map *ila;\n-\tstruct ipv6hdr *ip6h = ipv6_hdr(skb);\n+\tstruct ipv6hdr *ip6h;\n+\tstruct ipv6hdr _ip6h;\n \tstruct net *net = dev_net(skb->dev);\n \tstruct ila_net *ilan = net_generic(net, ila_net_id);\n-\tstruct ila_addr *iaddr = ila_a2i(&ip6h->daddr);\n+\tstruct ila_addr *iaddr;\n+\n+\tip6h = skb_header_pointer(skb, 0, sizeof(_ip6h), &_ip6h);\n+\tif (!ip6h)\n+\t\treturn 0;\n+\n+\tiaddr = ila_a2i(&ip6h->daddr);\n \n \t/* Assumes skb contains a valid IPv6 header that is pulled */",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "net/ipv6/ila/ila_xlat.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 1,
+      "start_step": 22
+    }
+  ],
+  "success_step": 22
+}

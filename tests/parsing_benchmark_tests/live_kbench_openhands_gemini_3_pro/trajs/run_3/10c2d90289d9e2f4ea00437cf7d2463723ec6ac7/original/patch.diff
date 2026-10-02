@@ -1,0 +1,30 @@
+diff --git a/mm/userfaultfd.c b/mm/userfaultfd.c
+index fbf2cf62ab9f..1751e4642ce6 100644
+--- a/mm/userfaultfd.c
++++ b/mm/userfaultfd.c
+@@ -2000,7 +2000,7 @@ void userfaultfd_release_new(struct userfaultfd_ctx *ctx)
+ void userfaultfd_release_all(struct mm_struct *mm,
+ 			     struct userfaultfd_ctx *ctx)
+ {
+-	struct vm_area_struct *vma, *prev;
++	struct vm_area_struct *vma, *prev, *new_vma;
+ 	VMA_ITERATOR(vmi, mm, 0);
+ 
+ 	if (!mmget_not_zero(mm))
+@@ -2025,9 +2025,14 @@ void userfaultfd_release_all(struct mm_struct *mm,
+ 			continue;
+ 		}
+ 
+-		vma = userfaultfd_clear_vma(&vmi, prev, vma,
++		new_vma = userfaultfd_clear_vma(&vmi, prev, vma,
+ 					    vma->vm_start, vma->vm_end);
+-		prev = vma;
++		if (IS_ERR(new_vma)) {
++			prev = vma;
++			vma_iter_set(&vmi, vma->vm_end);
++		} else {
++			prev = new_vma;
++		}
+ 	}
+ 	mmap_write_unlock(mm);
+ 	mmput(mm);

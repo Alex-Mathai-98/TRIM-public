@@ -1,0 +1,86 @@
+diff --git a/drivers/net/hamradio/bpqether.c b/drivers/net/hamradio/bpqether.c
+index bac1bb69d63a..6035de5d5e5a 100644
+--- a/drivers/net/hamradio/bpqether.c
++++ b/drivers/net/hamradio/bpqether.c
+@@ -114,6 +114,7 @@ static LIST_HEAD(bpq_devices);
+  */
+ static struct lock_class_key bpq_netdev_xmit_lock_key;
+ static struct lock_class_key bpq_netdev_addr_lock_key;
++static struct lock_class_key bpq_netdev_lock_key;
+ 
+ static void bpq_set_lockdep_class_one(struct net_device *dev,
+ 				      struct netdev_queue *txq,
+@@ -124,6 +125,7 @@ static void bpq_set_lockdep_class_one(struct net_device *dev,
+ 
+ static void bpq_set_lockdep_class(struct net_device *dev)
+ {
++	lockdep_set_class(&dev->lock, &bpq_netdev_lock_key);
+ 	lockdep_set_class(&dev->addr_list_lock, &bpq_netdev_addr_lock_key);
+ 	netdev_for_each_tx_queue(dev, bpq_set_lockdep_class_one, NULL);
+ }
+@@ -496,10 +498,11 @@ static int bpq_new_device(struct net_device *edev)
+ 	eth_broadcast_addr(bpq->dest_addr);
+ 	eth_broadcast_addr(bpq->acpt_addr);
+ 
++	bpq_set_lockdep_class(ndev);
++
+ 	err = register_netdevice(ndev);
+ 	if (err)
+ 		goto error;
+-	bpq_set_lockdep_class(ndev);
+ 
+ 	/* List protected by RTNL */
+ 	list_add_rcu(&bpq->bpq_list, &bpq_devices);
+diff --git a/drivers/net/wan/lapbether.c b/drivers/net/wan/lapbether.c
+index 56326f38fe8a..8e31dfaf6851 100644
+--- a/drivers/net/wan/lapbether.c
++++ b/drivers/net/wan/lapbether.c
+@@ -58,6 +58,24 @@ struct lapbethdev {
+ 	struct napi_struct	napi;
+ };
+ 
++static struct lock_class_key lapbeth_netdev_xmit_lock_key;
++static struct lock_class_key lapbeth_netdev_addr_lock_key;
++static struct lock_class_key lapbeth_netdev_lock_key;
++
++static void lapbeth_set_lockdep_class_one(struct net_device *dev,
++					  struct netdev_queue *txq,
++					  void *_unused)
++{
++	lockdep_set_class(&txq->_xmit_lock, &lapbeth_netdev_xmit_lock_key);
++}
++
++static void lapbeth_set_lockdep_class(struct net_device *dev)
++{
++	lockdep_set_class(&dev->lock, &lapbeth_netdev_lock_key);
++	lockdep_set_class(&dev->addr_list_lock, &lapbeth_netdev_addr_lock_key);
++	netdev_for_each_tx_queue(dev, lapbeth_set_lockdep_class_one, NULL);
++}
++
+ static LIST_HEAD(lapbeth_devices);
+ 
+ static void lapbeth_connected(struct net_device *dev, int reason);
+@@ -412,6 +430,7 @@ static int lapbeth_new_device(struct net_device *dev)
+ 	spin_lock_init(&lapbeth->up_lock);
+ 
+ 	skb_queue_head_init(&lapbeth->rx_queue);
++	lapbeth_set_lockdep_class(ndev);
+ 	netif_napi_add_weight(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);
+ 
+ 	rc = -EIO;
+diff --git a/net/ethtool/netlink.c b/net/ethtool/netlink.c
+index 239b5252ed2a..70834947f474 100644
+--- a/net/ethtool/netlink.c
++++ b/net/ethtool/netlink.c
+@@ -554,9 +554,9 @@ static int ethnl_default_dump_one(struct sk_buff *skb, struct net_device *dev,
+ 
+ 	ethnl_init_reply_data(ctx->reply_data, ctx->ops, dev);
+ 	rtnl_lock();
+-	netdev_lock_ops(ctx->req_info->dev);
++	netdev_lock_ops(dev);
+ 	ret = ctx->ops->prepare_data(ctx->req_info, ctx->reply_data, info);
+-	netdev_unlock_ops(ctx->req_info->dev);
++	netdev_unlock_ops(dev);
+ 	rtnl_unlock();
+ 	if (ret < 0)
+ 		goto out;

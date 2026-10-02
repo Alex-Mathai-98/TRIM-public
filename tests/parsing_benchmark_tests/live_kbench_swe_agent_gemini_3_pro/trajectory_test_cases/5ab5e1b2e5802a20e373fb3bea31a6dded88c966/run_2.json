@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\terror = ext4_get_inode_loc(inode, &is.iloc);\n\tif (error)\n\t\treturn error;\n\n\terror = ext4_xattr_ibody_find(inode, &i, &is);\n\tif (error)\n\t\tgoto out;\n\n\tif (is.s.not_found) {\n\t\tEXT4_ERROR_INODE(inode, \"missing inline data xattr\");\n\t\terror = -EFSCORRUPTED;\n\t\tgoto out;\n\t}\n\n\tif (len <= EXT4_MIN_INLINE_DATA_SIZE +\n\t    le32_to_cpu(is.s.here->e_value_size)) {\n\t\terror = 0;\n\t\tgoto out;\n\t}\n\n\tlen -= EXT4_MIN_INLINE_DATA_SIZE;\n",
+          "before": "\t/* If the old space is ok, write the data directly. */\n\tif (len <= EXT4_I(inode)->i_inline_size)\n\t\treturn 0;\n\n\terror = ext4_get_inode_loc(inode, &is.iloc);\n\tif (error)\n\t\treturn error;\n\n\terror = ext4_xattr_ibody_find(inode, &i, &is);\n\tif (error)\n\t\tgoto out;\n\n\tif (is.s.not_found) {\n\t\tEXT4_ERROR_INODE(inode, \"missing inline data xattr\");\n\t\terror = -EFSCORRUPTED;\n\t\tgoto out;\n\t}\n\n\tlen -= EXT4_MIN_INLINE_DATA_SIZE;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c\nindex 1b094a4f3866..85785e9586dc 100644\n--- a/fs/ext4/inline.c\n+++ b/fs/ext4/inline.c\n@@ -346,10 +346,6 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,\n \t\t.name = EXT4_XATTR_SYSTEM_DATA,\n \t};\n \n-\t/* If the old space is ok, write the data directly. */\n-\tif (len <= EXT4_I(inode)->i_inline_size)\n-\t\treturn 0;\n-\n \terror = ext4_get_inode_loc(inode, &is.iloc);\n \tif (error)\n \t\treturn error;\n@@ -364,6 +360,12 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,\n \t\tgoto out;\n \t}\n \n+\tif (len <= EXT4_MIN_INLINE_DATA_SIZE +\n+\t    le32_to_cpu(is.s.here->e_value_size)) {\n+\t\terror = 0;\n+\t\tgoto out;\n+\t}\n+\n \tlen -= EXT4_MIN_INLINE_DATA_SIZE;\n \tvalue = kzalloc(len, GFP_NOFS);\n \tif (!value) {",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "fs/ext4/inline.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 0,
+      "start_step": 42
+    },
+    {
+      "edits": [
+        {
+          "after": "\tint err;\n\tint rc;\n\n\tif (!handle)\n\t\treturn 0;\n\n\tif (!ext4_handle_valid(handle)) {\n\t\text4_put_nojournal(handle);\n\t\treturn 0;\n\t}\n",
+          "before": "\tint err;\n\tint rc;\n\n\tif (!ext4_handle_valid(handle)) {\n\t\text4_put_nojournal(handle);\n\t\treturn 0;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/ext4_jbd2.c b/fs/ext4/ext4_jbd2.c\nindex a0e66bc10093..2503acca78b4 100644\n--- a/fs/ext4/ext4_jbd2.c\n+++ b/fs/ext4/ext4_jbd2.c\n@@ -122,6 +122,9 @@ int __ext4_journal_stop(const char *where, unsigned int line, handle_t *handle)\n \tint err;\n \tint rc;\n \n+\tif (!handle)\n+\t\treturn 0;\n+\n \tif (!ext4_handle_valid(handle)) {\n \t\text4_put_nojournal(handle);\n \t\treturn 0;\ndiff --git a/fs/ext4/inline.c b/fs/ext4/inline.c\nindex 1b094a4f3866..85785e9586dc 100644\n--- a/fs/ext4/inline.c\n+++ b/fs/ext4/inline.c\n@@ -346,10 +346,6 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,\n \t\t.name = EXT4_XATTR_SYSTEM_DATA,\n \t};\n \n-\t/* If the old space is ok, write the data directly. */\n-\tif (len <= EXT4_I(inode)->i_inline_size)\n-\t\treturn 0;\n-\n \terror = ext4_get_inode_loc(inode, &is.iloc);\n \tif (error)\n \t\treturn error;\n@@ -364,6 +360,12 @@ static int ext4_update_inline_data(handle_t *handle, struct inode *inode,\n \t\tgoto out;\n \t}\n \n+\tif (len <= EXT4_MIN_INLINE_DATA_SIZE +\n+\t    le32_to_cpu(is.s.here->e_value_size)) {\n+\t\terror = 0;\n+\t\tgoto out;\n+\t}\n+\n \tlen -= EXT4_MIN_INLINE_DATA_SIZE;\n \tvalue = kzalloc(len, GFP_NOFS);\n \tif (!value) {",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "fs/ext4/ext4_jbd2.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 1,
+      "start_step": 48
+    }
+  ],
+  "success_step": 48
+}

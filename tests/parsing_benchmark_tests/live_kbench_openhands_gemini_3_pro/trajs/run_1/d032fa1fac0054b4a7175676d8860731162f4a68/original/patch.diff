@@ -1,0 +1,22 @@
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index f8d136684109..f929b1d6a57a 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -1251,7 +1251,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 	if (size_changed) {
+ 		loff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,
+ 					   lo->lo_backing_file);
+-		loop_set_size(lo, new_size);
++		set_capacity(lo->lo_disk, new_size);
+ 	}
+ 
+ 	/* update the direct I/O flag if lo_offset changed */
+@@ -1259,6 +1259,8 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 
+ out_unfreeze:
+ 	blk_mq_unfreeze_queue(lo->lo_queue, memflags);
++	if (!err && size_changed)
++		kobject_uevent(&disk_to_dev(lo->lo_disk)->kobj, KOBJ_CHANGE);
+ 	if (partscan)
+ 		clear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);
+ out_unlock:

@@ -1,0 +1,38 @@
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index f26286e3713e..df3367e5db7c 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -45,6 +45,7 @@
+ #include <linux/fdtable.h>
+ #include <linux/file.h>
+ #include <linux/freezer.h>
++#include <linux/err.h>
+ #include <linux/fs.h>
+ #include <linux/list.h>
+ #include <linux/miscdevice.h>
+@@ -1169,8 +1170,10 @@ static struct binder_ref *binder_get_ref_for_node_olocked(
+ 			p = &(*p)->rb_left;
+ 		else if (new_ref->data.desc > ref->data.desc)
+ 			p = &(*p)->rb_right;
+-		else
+-			BUG();
++		else {
++			rb_erase(&new_ref->rb_node_node, &proc->refs_by_node);
++			return ERR_PTR(-EINVAL);
++		}
+ 	}
+ 	rb_link_node(&new_ref->rb_node_desc, parent, p);
+ 	rb_insert_color(&new_ref->rb_node_desc, &proc->refs_by_desc);
+@@ -1475,6 +1478,12 @@ static int binder_inc_ref_for_node(struct binder_proc *proc,
+ 		binder_proc_lock(proc);
+ 		ref = binder_get_ref_for_node_olocked(proc, node, new_ref);
+ 	}
++	if (IS_ERR(ref)) {
++		ret = PTR_ERR(ref);
++		binder_proc_unlock(proc);
++		kfree(new_ref);
++		return ret;
++	}
+ 	ret = binder_inc_ref_olocked(ref, strong, target_list);
+ 	*rdata = ref->data;
+ 	if (ret && ref == new_ref) {

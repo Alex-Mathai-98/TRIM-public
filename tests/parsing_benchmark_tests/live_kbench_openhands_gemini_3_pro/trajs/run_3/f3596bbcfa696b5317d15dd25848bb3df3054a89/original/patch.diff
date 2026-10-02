@@ -1,0 +1,32 @@
+diff --git a/net/bluetooth/sco.c b/net/bluetooth/sco.c
+index 1b8e468d24cf..f68e44f805ad 100644
+--- a/net/bluetooth/sco.c
++++ b/net/bluetooth/sco.c
+@@ -192,7 +192,6 @@ static struct sco_conn *sco_conn_add(struct hci_conn *hcon)
+ 			conn->hcon = hcon;
+ 			sco_conn_unlock(conn);
+ 		}
+-		sco_conn_put(conn);
+ 		return conn;
+ 	}
+ 
+@@ -345,6 +344,7 @@ static int sco_connect(struct sock *sk)
+ 	err = sco_chan_add(conn, sk, NULL);
+ 	if (err) {
+ 		release_sock(sk);
++		sco_conn_put(conn);
+ 		goto unlock;
+ 	}
+ 
+@@ -1407,8 +1407,10 @@ static void sco_connect_cfm(struct hci_conn *hcon, __u8 status)
+ 		struct sco_conn *conn;
+ 
+ 		conn = sco_conn_add(hcon);
+-		if (conn)
++		if (conn) {
+ 			sco_conn_ready(conn);
++			sco_conn_put(conn);
++		}
+ 	} else
+ 		sco_conn_del(hcon, bt_to_errno(status));
+ }

@@ -1,0 +1,35 @@
+diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c
+index 14e8d82f8629..e7b418c6f23b 100644
+--- a/fs/nilfs2/dir.c
++++ b/fs/nilfs2/dir.c
+@@ -298,6 +298,7 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,
+ 	int namelen = qstr->len;
+ 	unsigned int reclen = NILFS_DIR_REC_LEN(namelen);
+ 	unsigned long start, n;
++	unsigned int limit;
+ 	unsigned long npages = dir_pages(dir);
+ 	struct nilfs_inode_info *ei = NILFS_I(dir);
+ 	struct nilfs_dir_entry *de;
+@@ -316,7 +317,13 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,
+ 			return ERR_CAST(kaddr);
+ 
+ 		de = (struct nilfs_dir_entry *)kaddr;
+-		kaddr += nilfs_last_byte(dir, n) - reclen;
++		limit = nilfs_last_byte(dir, n);
++		if (limit < reclen) {
++			folio_release_kmap(*foliop, kaddr);
++			goto next;
++		}
++
++		kaddr += limit - reclen;
+ 		while ((char *)de <= kaddr) {
+ 			if (de->rec_len == 0) {
+ 				nilfs_error(dir->i_sb,
+@@ -330,6 +337,7 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,
+ 		}
+ 		folio_release_kmap(*foliop, kaddr);
+ 
++next:
+ 		if (++n >= npages)
+ 			n = 0;
+ 		/* next folio is past the blocks we've got */

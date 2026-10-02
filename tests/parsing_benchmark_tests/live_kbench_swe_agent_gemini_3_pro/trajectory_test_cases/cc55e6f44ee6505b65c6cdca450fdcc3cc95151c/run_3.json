@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int mptcp_set_scheduler(struct mptcp_pernet *pernet, const char *name)\n{\n\tstruct mptcp_sched_ops *sched;\n\tint ret = 0;\n\n\trcu_read_lock();\n\tsched = mptcp_sched_find(name);\n\tif (sched)\n\t\tstrscpy(pernet->scheduler, name, MPTCP_SCHED_NAME_MAX);\n\telse\n\t\tret = -ENOENT;\n\trcu_read_unlock();\n\n\treturn ret;\n}\n\nstatic int proc_scheduler(const struct ctl_table *ctl, int write,\n\t\t\t  void *buffer, size_t *lenp, loff_t *ppos)\n{\n\tstruct mptcp_pernet *pernet = container_of(ctl->data, struct mptcp_pernet, scheduler);\n\tchar val[MPTCP_SCHED_NAME_MAX];\n\tstruct ctl_table tbl = {\n\t\t.data = val,\n\t\t.maxlen = MPTCP_SCHED_NAME_MAX,\n\t};\n\tint ret;\n\n\tstrscpy(val, pernet->scheduler, MPTCP_SCHED_NAME_MAX);\n\n\tret = proc_dostring(&tbl, write, buffer, lenp, ppos);\n\tif (write && ret == 0)\n\t\tret = mptcp_set_scheduler(pernet, val);\n\n\treturn ret;\n}",
+          "before": "static int mptcp_set_scheduler(const struct net *net, const char *name)\n{\n\tstruct mptcp_pernet *pernet = mptcp_get_pernet(net);\n\tstruct mptcp_sched_ops *sched;\n\tint ret = 0;\n\n\trcu_read_lock();\n\tsched = mptcp_sched_find(name);\n\tif (sched)\n\t\tstrscpy(pernet->scheduler, name, MPTCP_SCHED_NAME_MAX);\n\telse\n\t\tret = -ENOENT;\n\trcu_read_unlock();\n\n\treturn ret;\n}\n\nstatic int proc_scheduler(const struct ctl_table *ctl, int write,\n\t\t\t  void *buffer, size_t *lenp, loff_t *ppos)\n{\n\tconst struct net *net = current->nsproxy->net_ns;\n\tchar val[MPTCP_SCHED_NAME_MAX];\n\tstruct ctl_table tbl = {\n\t\t.data = val,\n\t\t.maxlen = MPTCP_SCHED_NAME_MAX,\n\t};\n\tint ret;\n\n\tstrscpy(val, mptcp_get_scheduler(net), MPTCP_SCHED_NAME_MAX);\n\n\tret = proc_dostring(&tbl, write, buffer, lenp, ppos);\n\tif (write && ret == 0)\n\t\tret = mptcp_set_scheduler(net, val);\n\n\treturn ret;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/mptcp/ctrl.c b/net/mptcp/ctrl.c\nindex d9b57fab2a13..c99a4b1e8344 100644\n--- a/net/mptcp/ctrl.c\n+++ b/net/mptcp/ctrl.c\n@@ -102,9 +102,8 @@ static void mptcp_pernet_set_defaults(struct mptcp_pernet *pernet)\n }\n \n #ifdef CONFIG_SYSCTL\n-static int mptcp_set_scheduler(const struct net *net, const char *name)\n+static int mptcp_set_scheduler(struct mptcp_pernet *pernet, const char *name)\n {\n-\tstruct mptcp_pernet *pernet = mptcp_get_pernet(net);\n \tstruct mptcp_sched_ops *sched;\n \tint ret = 0;\n \n@@ -122,7 +121,7 @@ static int mptcp_set_scheduler(const struct net *net, const char *name)\n static int proc_scheduler(const struct ctl_table *ctl, int write,\n \t\t\t  void *buffer, size_t *lenp, loff_t *ppos)\n {\n-\tconst struct net *net = current->nsproxy->net_ns;\n+\tstruct mptcp_pernet *pernet = container_of(ctl->data, struct mptcp_pernet, scheduler);\n \tchar val[MPTCP_SCHED_NAME_MAX];\n \tstruct ctl_table tbl = {\n \t\t.data = val,\n@@ -130,11 +129,11 @@ static int proc_scheduler(const struct ctl_table *ctl, int write,\n \t};\n \tint ret;\n \n-\tstrscpy(val, mptcp_get_scheduler(net), MPTCP_SCHED_NAME_MAX);\n+\tstrscpy(val, pernet->scheduler, MPTCP_SCHED_NAME_MAX);\n \n \tret = proc_dostring(&tbl, write, buffer, lenp, ppos);\n \tif (write && ret == 0)\n-\t\tret = mptcp_set_scheduler(net, val);\n+\t\tret = mptcp_set_scheduler(pernet, val);\n \n \treturn ret;\n }",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "net/mptcp/ctrl.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "static int proc_blackhole_detect_timeout(const struct ctl_table *table,\n\t\t\t\t\t int write, void *buffer, size_t *lenp,\n\t\t\t\t\t loff_t *ppos)\n{\n\tstruct mptcp_pernet *pernet = container_of(table->data, struct mptcp_pernet, blackhole_timeout);\n\tint ret;\n\n\tret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);\n\tif (write && ret == 0)\n\t\tatomic_set(&pernet->active_disable_times, 0);\n\n\treturn ret;\n}",
+          "before": "static int proc_blackhole_detect_timeout(const struct ctl_table *table,\n\t\t\t\t\t int write, void *buffer, size_t *lenp,\n\t\t\t\t\t loff_t *ppos)\n{\n\tstruct mptcp_pernet *pernet = mptcp_get_pernet(current->nsproxy->net_ns);\n\tint ret;\n\n\tret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);\n\tif (write && ret == 0)\n\t\tatomic_set(&pernet->active_disable_times, 0);\n\n\treturn ret;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/mptcp/ctrl.c b/net/mptcp/ctrl.c\nindex d9b57fab2a13..8b46c13405da 100644\n--- a/net/mptcp/ctrl.c\n+++ b/net/mptcp/ctrl.c\n@@ -102,9 +102,8 @@ static void mptcp_pernet_set_defaults(struct mptcp_pernet *pernet)\n }\n \n #ifdef CONFIG_SYSCTL\n-static int mptcp_set_scheduler(const struct net *net, const char *name)\n+static int mptcp_set_scheduler(struct mptcp_pernet *pernet, const char *name)\n {\n-\tstruct mptcp_pernet *pernet = mptcp_get_pernet(net);\n \tstruct mptcp_sched_ops *sched;\n \tint ret = 0;\n \n@@ -122,7 +121,7 @@ static int mptcp_set_scheduler(const struct net *net, const char *name)\n static int proc_scheduler(const struct ctl_table *ctl, int write,\n \t\t\t  void *buffer, size_t *lenp, loff_t *ppos)\n {\n-\tconst struct net *net = current->nsproxy->net_ns;\n+\tstruct mptcp_pernet *pernet = container_of(ctl->data, struct mptcp_pernet, scheduler);\n \tchar val[MPTCP_SCHED_NAME_MAX];\n \tstruct ctl_table tbl = {\n \t\t.data = val,\n@@ -130,11 +129,11 @@ static int proc_scheduler(const struct ctl_table *ctl, int write,\n \t};\n \tint ret;\n \n-\tstrscpy(val, mptcp_get_scheduler(net), MPTCP_SCHED_NAME_MAX);\n+\tstrscpy(val, pernet->scheduler, MPTCP_SCHED_NAME_MAX);\n \n \tret = proc_dostring(&tbl, write, buffer, lenp, ppos);\n \tif (write && ret == 0)\n-\t\tret = mptcp_set_scheduler(net, val);\n+\t\tret = mptcp_set_scheduler(pernet, val);\n \n \treturn ret;\n }\n@@ -161,7 +160,7 @@ static int proc_blackhole_detect_timeout(const struct ctl_table *table,\n \t\t\t\t\t int write, void *buffer, size_t *lenp,\n \t\t\t\t\t loff_t *ppos)\n {\n-\tstruct mptcp_pernet *pernet = mptcp_get_pernet(current->nsproxy->net_ns);\n+\tstruct mptcp_pernet *pernet = container_of(table->data, struct mptcp_pernet, blackhole_timeout);\n \tint ret;\n \n \tret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "net/mptcp/ctrl.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 18
+}

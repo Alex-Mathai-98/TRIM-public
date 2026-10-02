@@ -1,0 +1,43 @@
+diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c
+index 6e4afb2b5441..bb4dd4b8effe 100644
+--- a/fs/bcachefs/btree_cache.c
++++ b/fs/bcachefs/btree_cache.c
+@@ -195,7 +195,7 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)
+ 
+ 	u64 mask = bc->pinned_nodes_mask[!!b->c.level];
+ 
+-	return ((mask & BIT_ULL(b->c.btree_id)) &&
++	return (b->c.btree_id < 64 && (mask & BIT_ULL(b->c.btree_id)) &&
+ 		bbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&
+ 		bbpos_cmp(bc->pinned_nodes_end, pos) >= 0);
+ }
+@@ -1375,10 +1375,12 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)
+ 
+ void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)
+ {
+-	prt_printf(out, "%s level %u/%u\n  ",
++	prt_printf(out, "%s level %u",
+ 	       bch2_btree_id_str(b->c.btree_id),
+-	       b->c.level,
+-	       bch2_btree_id_root(c, b->c.btree_id)->level);
++	       b->c.level);
++	if (b->c.btree_id < btree_id_nr_alive(c))
++		prt_printf(out, "/%u", bch2_btree_id_root(c, b->c.btree_id)->level);
++	prt_printf(out, "\n  ");
+ 	bch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));
+ }
+ 
+diff --git a/fs/bcachefs/btree_node_scan.c b/fs/bcachefs/btree_node_scan.c
+index 1e694fedc5da..a7aedb134e9f 100644
+--- a/fs/bcachefs/btree_node_scan.c
++++ b/fs/bcachefs/btree_node_scan.c
+@@ -171,6 +171,9 @@ static void try_read_btree_node(struct find_btree_nodes *f, struct bch_dev *ca,
+ 	if (BTREE_NODE_LEVEL(bn) >= BTREE_MAX_DEPTH)
+ 		return;
+ 
++	if (BTREE_NODE_ID(bn) >= BTREE_ID_NR_MAX)
++		return;
++
+ 	rcu_read_lock();
+ 	struct found_btree_node n = {
+ 		.btree_id	= BTREE_NODE_ID(bn),

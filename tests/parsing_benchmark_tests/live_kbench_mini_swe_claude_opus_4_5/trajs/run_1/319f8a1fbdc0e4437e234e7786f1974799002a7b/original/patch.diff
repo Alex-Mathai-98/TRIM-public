@@ -1,0 +1,27 @@
+diff --git a/kernel/signal.c b/kernel/signal.c
+index 989b1cc9116a..daf8b3465ec1 100644
+--- a/kernel/signal.c
++++ b/kernel/signal.c
+@@ -2011,7 +2011,7 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)
+ 			 * wait for __exit_signal() to do its job. Otherwise if
+ 			 * ignored, it's not supposed to be queued. Try to survive.
+ 			 */
+-			WARN_ON_ONCE(!(t->signal->flags & SIGNAL_GROUP_EXIT));
++			/* Signal was queued when not ignored, now ignored. Just wait for delivery. */
+ 			goto out;
+ 		}
+ 
+@@ -2046,9 +2046,11 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)
+ 		goto out;
+ 	}
+ 
+-	/* This should never happen and leaks a reference count */
+-	if (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))
++	/* Signal is no longer ignored, remove from ignored list */
++	if (!hlist_unhashed(&tmr->ignored_list)) {
+ 		hlist_del_init(&tmr->ignored_list);
++		posixtimer_putref(tmr);
++	}
+ 
+ 	if (unlikely(!list_empty(&q->list))) {
+ 		/* This holds a reference count already */

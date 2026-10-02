@@ -1,0 +1,126 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "import sys\n\nfile_path = '/linux/drivers/net/tun.c'\nwith open(file_path, 'r') as f:\n    content = f.read()\n\nold_block = \"\"\"\\tif (xdp_prog) {\n\\t\\tstruct xdp_buff xdp;\n\\t\\tu32 act;\n\n\\t\\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n\\t\\txdp_prepare_buff(&xdp, buf, pad, len, false);\n\n\\t\\tact = bpf_prog_run_xdp(xdp_prog, &xdp);\n\\t\\tif (act == XDP_REDIRECT || act == XDP_TX) {\n\\t\\t\\tget_page(alloc_frag->page);\n\\t\\t\\talloc_frag->offset += buflen;\n\\t\\t}\n\\t\\terr = tun_xdp_act(tun, xdp_prog, &xdp, act);\n\\t\\tif (err < 0) {\n\\t\\t\\tif (act == XDP_REDIRECT || act == XDP_TX)\n\\t\\t\\t\\tput_page(alloc_frag->page);\n\\t\\t\\tgoto out;\n\\t\\t}\n\n\\t\\tif (err == XDP_REDIRECT)\n\\t\\t\\txdp_do_flush();\n\\t\\tif (err != XDP_PASS)\n\\t\\t\\tgoto out;\n\n\\t\\tpad = xdp.data - xdp.data_hard_start;\n\\t\\tlen = xdp.data_end - xdp.data;\n\\t}\"\"\"\n\nnew_block = \"\"\"\\tif (xdp_prog) {\n\\t\\tstruct xdp_buff xdp;\n\\t\\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\\t\\tu32 act;\n\n\\t\\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n\\t\\txdp_prepare_buff(&xdp, buf, pad, len, false);\n\n\\t\\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\\t\\tact = bpf_prog_run_xdp(xdp_prog, &xdp);\n\\t\\tif (act == XDP_REDIRECT || act == XDP_TX) {\n\\t\\t\\tget_page(alloc_frag->page);\n\\t\\t\\talloc_frag->offset += buflen;\n\\t\\t}\n\\t\\terr = tun_xdp_act(tun, xdp_prog, &xdp, act);\n\\t\\tif (err < 0) {\n\\t\\t\\tif (act == XDP_REDIRECT || act == XDP_TX)\n\\t\\t\\t\\tput_page(alloc_frag->page);\n\\t\\t\\tbpf_net_ctx_clear(bpf_net_ctx);\n\\t\\t\\tgoto out;\n\\t\\t}\n\n\\t\\tif (err == XDP_REDIRECT)\n\\t\\t\\txdp_do_flush();\n\\t\\tif (err != XDP_PASS) {\n\\t\\t\\tbpf_net_ctx_clear(bpf_net_ctx);\n\\t\\t\\tgoto out;\n\\t\\t}\n\n\\t\\tbpf_net_ctx_clear(bpf_net_ctx);\n\\t\\tpad = xdp.data - xdp.data_hard_start;\n\\t\\tlen = xdp.data_end - xdp.data;\n\\t}\"\"\"\n\nif old_block in content:\n    new_content = content.replace(old_block, new_block)\n    with open(file_path, 'w') as f:\n        f.write(new_content)\n    print(\"Successfully patched\")\nelse:\n    print(\"Could not find block to replace\")\n    # debug print a subsequence to see where it fails\n    sub = old_block[:50]\n    if sub in content:\n        print(\"Start found\")\n    else:\n        print(\"Start NOT found\")\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 27 create #1",
+          "filename": "patch_tun.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 0,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "import sys\n\nfile_path = '/linux/drivers/net/tun.c'\nwith open(file_path, 'r') as f:\n    content = f.read()\n\nold_block = \"\"\"\\tif (skb_xdp) {\n\\t\\tstruct bpf_prog *xdp_prog;\n\\t\\tint ret;\n\n\\t\\tlocal_bh_disable();\n\\t\\trcu_read_lock();\n\\t\\txdp_prog = rcu_dereference(tun->xdp_prog);\n\\t\\tif (xdp_prog) {\n\\t\\t\\tret = do_xdp_generic(xdp_prog, &skb);\n\\t\\t\\tif (ret != XDP_PASS) {\n\\t\\t\\t\\trcu_read_unlock();\n\\t\\t\\t\\tlocal_bh_enable();\n\\t\\t\\t\\tgoto unlock_frags;\n\\t\\t\\t}\n\\t\\t}\n\\t\\trcu_read_unlock();\n\\t\\tlocal_bh_enable();\n\\t}\"\"\"\n\nnew_block = \"\"\"\\tif (skb_xdp) {\n\\t\\tstruct bpf_prog *xdp_prog;\n\\t\\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\\t\\tint ret;\n\n\\t\\tlocal_bh_disable();\n\\t\\trcu_read_lock();\n\\t\\txdp_prog = rcu_dereference(tun->xdp_prog);\n\\t\\tif (xdp_prog) {\n\\t\\t\\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\\t\\t\\tret = do_xdp_generic(xdp_prog, &skb);\n\\t\\t\\tbpf_net_ctx_clear(bpf_net_ctx);\n\\t\\t\\tif (ret != XDP_PASS) {\n\\t\\t\\t\\trcu_read_unlock();\n\\t\\t\\t\\tlocal_bh_enable();\n\\t\\t\\t\\tgoto unlock_frags;\n\\t\\t\\t}\n\\t\\t}\n\\t\\trcu_read_unlock();\n\\t\\tlocal_bh_enable();\n\\t}\"\"\"\n\nif old_block in content:\n    new_content = content.replace(old_block, new_block)\n    # Check if we should only replace one occurrence? \n    # Tun uses skb_xdp check only in tun_get_user presumably. \n    # I should check if there are multiple occurrences.\n    count = content.count(old_block)\n    if count > 1:\n        print(f\"Warning: Found {count} occurrences, replacing all\")\n    \n    with open(file_path, 'w') as f:\n        f.write(new_content)\n    print(\"Successfully patched second location\")\nelse:\n    print(\"Could not find second block to replace\")\n    sub = old_block[:50]\n    if sub in content:\n        print(\"Start found\")\n    else:\n        print(\"Start NOT found\")\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..3ebe894aaabc 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1703,11 +1703,13 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n \t\tstruct xdp_buff xdp;\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tu32 act;\n \n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\tact = bpf_prog_run_xdp(xdp_prog, &xdp);\n \t\tif (act == XDP_REDIRECT || act == XDP_TX) {\n \t\t\tget_page(alloc_frag->page);\n@@ -1717,14 +1719,18 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n+\t\t}\n \n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n \t}",
+          "explanation": "classic_swe step 37 create #1",
+          "filename": "patch_tun_2.py",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 1,
+      "start_step": 37
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 41 rm #1",
+          "filename": "patch_tun.py",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 9254bca2813d..5260ae32f2af 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1703,11 +1703,13 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \txdp_prog = rcu_dereference(tun->xdp_prog);\n \tif (xdp_prog) {\n \t\tstruct xdp_buff xdp;\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tu32 act;\n \n \t\txdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);\n \t\txdp_prepare_buff(&xdp, buf, pad, len, false);\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\tact = bpf_prog_run_xdp(xdp_prog, &xdp);\n \t\tif (act == XDP_REDIRECT || act == XDP_TX) {\n \t\t\tget_page(alloc_frag->page);\n@@ -1717,14 +1719,18 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tgoto out;\n+\t\t}\n \n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n \t}\n@@ -1915,13 +1921,16 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,\n \n \tif (skb_xdp) {\n \t\tstruct bpf_prog *xdp_prog;\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tint ret;\n \n \t\tlocal_bh_disable();\n \t\trcu_read_lock();\n \t\txdp_prog = rcu_dereference(tun->xdp_prog);\n \t\tif (xdp_prog) {\n+\t\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\t\tret = do_xdp_generic(xdp_prog, &skb);\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\tif (ret != XDP_PASS) {\n \t\t\t\trcu_read_unlock();\n \t\t\t\tlocal_bh_enable();",
+          "explanation": "classic_swe step 41 rm #2",
+          "filename": "patch_tun_2.py",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 2,
+      "start_step": 41
+    }
+  ],
+  "success_step": 41
+}

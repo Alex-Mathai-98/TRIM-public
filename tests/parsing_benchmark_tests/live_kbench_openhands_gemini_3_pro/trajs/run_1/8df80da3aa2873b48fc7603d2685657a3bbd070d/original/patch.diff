@@ -1,0 +1,29 @@
+diff --git a/include/net/kcm.h b/include/net/kcm.h
+index 441e993be634..d31692cb95ce 100644
+--- a/include/net/kcm.h
++++ b/include/net/kcm.h
+@@ -71,9 +71,9 @@ struct kcm_sock {
+ 	struct list_head wait_psock_list;
+ 	struct sk_buff *seq_skb;
+ 	struct mutex tx_mutex;
+-	u32 tx_stopped : 1;
+ 
+ 	/* Don't use bit fields here, these are set under different locks */
++	bool tx_stopped;
+ 	bool tx_wait;
+ 	bool tx_wait_more;
+ 
+diff --git a/net/kcm/kcmsock.c b/net/kcm/kcmsock.c
+index a4971e6fa943..bf8053d0b6c1 100644
+--- a/net/kcm/kcmsock.c
++++ b/net/kcm/kcmsock.c
+@@ -1430,7 +1430,8 @@ static void kcm_unattach(struct kcm_psock *psock)
+ 		smp_mb();
+ 
+ 		/* Queue tx work to make sure psock->done is handled */
+-		queue_work(kcm_wq, &psock->tx_kcm->tx_work);
++		if (!psock->tx_kcm->tx_stopped)
++			queue_work(kcm_wq, &psock->tx_kcm->tx_work);
+ 		spin_unlock_bh(&mux->lock);
+ 	} else {
+ no_reserved:

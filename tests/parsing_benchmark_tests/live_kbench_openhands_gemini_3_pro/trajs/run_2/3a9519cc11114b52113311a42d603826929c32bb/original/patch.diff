@@ -1,0 +1,80 @@
+diff --git a/include/linux/filter.h b/include/linux/filter.h
+index b6672ff61407..143d09fec6fa 100644
+--- a/include/linux/filter.h
++++ b/include/linux/filter.h
+@@ -765,6 +765,9 @@ static inline struct bpf_net_context *bpf_net_ctx_set(struct bpf_net_context *bp
+ 	if (tsk->bpf_net_context != NULL)
+ 		return NULL;
+ 	bpf_net_ctx->ri.kern_flags = 0;
++	INIT_LIST_HEAD(&bpf_net_ctx->cpu_map_flush_list);
++	INIT_LIST_HEAD(&bpf_net_ctx->dev_map_flush_list);
++	INIT_LIST_HEAD(&bpf_net_ctx->xskmap_map_flush_list);
+ 
+ 	tsk->bpf_net_context = bpf_net_ctx;
+ 	return bpf_net_ctx;
+diff --git a/kernel/bpf/cpumap.c b/kernel/bpf/cpumap.c
+index fbdf5a1aabfe..e3d325abbb2c 100644
+--- a/kernel/bpf/cpumap.c
++++ b/kernel/bpf/cpumap.c
+@@ -745,6 +745,11 @@ int cpu_map_generic_redirect(struct bpf_cpu_map_entry *rcpu,
+ {
+ 	int ret;
+ 
++	struct xdp_bulk_queue *bq = this_cpu_ptr(rcpu->bulkq);
++
++	if (unlikely(bq->flush_node.prev))
++		__list_del_clearprev(&bq->flush_node);
++
+ 	__skb_pull(skb, skb->mac_len);
+ 	skb_set_redirected(skb, false);
+ 	__ptr_set_bit(0, &skb);
+@@ -765,6 +770,7 @@ void __cpu_map_flush(struct list_head *flush_list)
+ 
+ 	list_for_each_entry_safe(bq, tmp, flush_list, flush_node) {
+ 		bq_flush_to_queue(bq);
++		__list_del_clearprev(&bq->flush_node);
+ 
+ 		/* If already running, costs spin_lock_irqsave + smb_mb */
+ 		wake_up_process(bq->obj->kthread);
+diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
+index 9e0e3b0a18e4..988650e68f15 100644
+--- a/kernel/bpf/devmap.c
++++ b/kernel/bpf/devmap.c
+@@ -679,6 +679,11 @@ int dev_map_generic_redirect(struct bpf_dtab_netdev *dst, struct sk_buff *skb,
+ {
+ 	int err;
+ 
++	struct xdp_dev_bulk_queue *bq = this_cpu_ptr(dst->dev->xdp_bulkq);
++
++	if (unlikely(bq->flush_node.prev))
++		__list_del_clearprev(&bq->flush_node);
++
+ 	err = xdp_ok_fwd_dev(dst->dev, skb->len);
+ 	if (unlikely(err))
+ 		return err;
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 6ea1d20676fb..751d9b70e6ad 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -5150,6 +5150,7 @@ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
+ 			bpf_net_ctx_clear(bpf_net_ctx);
+ 			return XDP_DROP;
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	return XDP_PASS;
+ out_redir:
+diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c
+index 7e16336044b2..3f27747048b9 100644
+--- a/net/xdp/xsk.c
++++ b/net/xdp/xsk.c
+@@ -338,6 +338,9 @@ int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)
+ 	u32 len = xdp_get_buff_len(xdp);
+ 	int err;
+ 
++	if (xs->flush_node.prev)
++		__list_del_clearprev(&xs->flush_node);
++
+ 	spin_lock_bh(&xs->rx_lock);
+ 	err = xsk_rcv_check(xs, xdp, len);
+ 	if (!err) {

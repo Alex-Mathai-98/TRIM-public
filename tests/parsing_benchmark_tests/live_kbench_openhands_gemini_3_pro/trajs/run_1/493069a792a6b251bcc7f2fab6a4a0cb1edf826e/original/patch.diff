@@ -1,0 +1,34 @@
+diff --git a/mm/mmap_lock.c b/mm/mmap_lock.c
+index 1854850b4b89..542feb660a64 100644
+--- a/mm/mmap_lock.c
++++ b/mm/mmap_lock.c
+@@ -11,6 +11,7 @@
+ #include <linux/rcupdate.h>
+ #include <linux/smp.h>
+ #include <linux/trace_events.h>
++#include <linux/string.h>
+ #include <linux/local_lock.h>
+ 
+ EXPORT_TRACEPOINT_SYMBOL(mmap_lock_start_locking);
+@@ -156,14 +157,17 @@ static inline void put_memcg_path_buf(void)
+ #define TRACE_MMAP_LOCK_EVENT(type, mm, ...)                                   \
+ 	do {                                                                   \
+ 		const char *memcg_path;                                        \
++		char local_buf[MEMCG_PATH_BUF_SIZE];                           \
+ 		local_lock(&memcg_paths.lock);                                 \
+ 		memcg_path = get_mm_memcg_path(mm);                            \
+-		trace_mmap_lock_##type(mm,                                     \
+-				       memcg_path != NULL ? memcg_path : "",   \
+-				       ##__VA_ARGS__);                         \
+-		if (likely(memcg_path != NULL))                                \
++		if (memcg_path != NULL) {                                      \
++			strscpy(local_buf, memcg_path, MEMCG_PATH_BUF_SIZE);   \
+ 			put_memcg_path_buf();                                  \
++		}                                                              \
+ 		local_unlock(&memcg_paths.lock);                               \
++		trace_mmap_lock_##type(mm,                                     \
++				       memcg_path != NULL ? local_buf : "",    \
++				       ##__VA_ARGS__);                         \
+ 	} while (0)
+ 
+ #else /* !CONFIG_MEMCG */

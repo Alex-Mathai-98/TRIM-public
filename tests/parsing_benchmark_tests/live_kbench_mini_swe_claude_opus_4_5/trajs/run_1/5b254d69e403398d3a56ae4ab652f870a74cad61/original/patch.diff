@@ -1,0 +1,30 @@
+diff --git a/fs/bcachefs/alloc_foreground.c b/fs/bcachefs/alloc_foreground.c
+index 4d1ff7f1f302..48653cfc1b4f 100644
+--- a/fs/bcachefs/alloc_foreground.c
++++ b/fs/bcachefs/alloc_foreground.c
+@@ -1218,7 +1218,15 @@ static struct write_point *writepoint_find(struct btree_trans *trans,
+ 
+ 	if (!(write_point & 1UL)) {
+ 		wp = (struct write_point *) write_point;
+-		bch2_trans_mutex_lock_norelock(trans, &wp->lock);
++		/*
++		 * If we can't trylock, we're being called recursively
++		 * from btree node allocation during bucket allocation.
++		 * Return an error to restart the transaction.
++		 */
++		if (!mutex_trylock(&wp->lock)) {
++			bch2_trans_unlock(trans);
++			return ERR_PTR(btree_trans_restart(trans, BCH_ERR_transaction_restart_would_deadlock));
++		}
+ 		return wp;
+ 	}
+ 
+@@ -1325,6 +1333,8 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,
+ 	have_cache	= false;
+ 
+ 	*wp_ret = wp = writepoint_find(trans, write_point.v);
++	if (IS_ERR(wp))
++		return PTR_ERR(wp);
+ 
+ 	ret = bch2_trans_relock(trans);
+ 	if (ret)

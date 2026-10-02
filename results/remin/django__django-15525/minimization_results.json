@@ -1,0 +1,141 @@
+{
+  "bug_id": "django__django-15525",
+  "short_path": [
+    [
+      {
+        "filename": "django/core/serializers/base.py",
+        "before": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        natural_key = Model(**data).natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    return Model(**data)",
+        "after": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        instance = Model(**data)\n        # Set the database state so that foreign key lookups in natural_key()\n        # use the correct database.\n        instance._state.db = db\n        natural_key = instance.natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    return Model(**data)",
+        "explanation": "classic_swe step 46 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/serializers/base.py",
+        "before": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        instance = Model(**data)\n        # Set the database state so that foreign key lookups in natural_key()\n        # use the correct database.\n        instance._state.db = db\n        natural_key = instance.natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    return Model(**data)",
+        "after": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        instance = Model(**data)\n        # Set the database state so that foreign key lookups in natural_key()\n        # use the correct database.\n        instance._state.db = db\n        natural_key = instance.natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    instance = Model(**data)\n    # Set the database state on the final instance as well\n    instance._state.db = db\n    return instance",
+        "explanation": "classic_swe step 52 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/core/serializers/base.py b/django/core/serializers/base.py\nindex da85cb4b92..6e7f9a8fc2 100644\n--- a/django/core/serializers/base.py\n+++ b/django/core/serializers/base.py\n@@ -336,14 +336,21 @@ def build_instance(Model, data, db):\n         and hasattr(default_manager, \"get_by_natural_key\")\n         and hasattr(Model, \"natural_key\")\n     ):\n-        natural_key = Model(**data).natural_key()\n+        instance = Model(**data)\n+        # Set the database state so that foreign key lookups in natural_key()\n+        # use the correct database.\n+        instance._state.db = db\n+        natural_key = instance.natural_key()\n         try:\n             data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                 default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n             )\n         except Model.DoesNotExist:\n             pass\n-    return Model(**data)\n+    instance = Model(**data)\n+    # Set the database state on the final instance as well\n+    instance._state.db = db\n+    return instance\n \n \n def deserialize_m2m_values(field, field_value, using, handle_forward_references):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      7,
+      10
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      7,
+      10
+    ],
+    "edit_list_after_file_min": [
+      7,
+      10
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      7,
+      10
+    ],
+    "edit_list_after_refinement": [
+      7,
+      10
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/core/serializers/base.py",
+          "before": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        natural_key = Model(**data).natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    return Model(**data)",
+          "after": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        instance = Model(**data)\n        # Set the database state so that foreign key lookups in natural_key()\n        # use the correct database.\n        instance._state.db = db\n        natural_key = instance.natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    return Model(**data)",
+          "explanation": "classic_swe step 46 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/core/serializers/base.py",
+          "before": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        instance = Model(**data)\n        # Set the database state so that foreign key lookups in natural_key()\n        # use the correct database.\n        instance._state.db = db\n        natural_key = instance.natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    return Model(**data)",
+          "after": "def build_instance(Model, data, db):\n    \"\"\"\n    Build a model instance.\n\n    If the model instance doesn't have a primary key and the model supports\n    natural keys, try to retrieve it from the database.\n    \"\"\"\n    default_manager = Model._meta.default_manager\n    pk = data.get(Model._meta.pk.attname)\n    if (\n        pk is None\n        and hasattr(default_manager, \"get_by_natural_key\")\n        and hasattr(Model, \"natural_key\")\n    ):\n        instance = Model(**data)\n        # Set the database state so that foreign key lookups in natural_key()\n        # use the correct database.\n        instance._state.db = db\n        natural_key = instance.natural_key()\n        try:\n            data[Model._meta.pk.attname] = Model._meta.pk.to_python(\n                default_manager.db_manager(db).get_by_natural_key(*natural_key).pk\n            )\n        except Model.DoesNotExist:\n            pass\n    instance = Model(**data)\n    # Set the database state on the final instance as well\n    instance._state.db = db\n    return instance",
+          "explanation": "classic_swe step 52 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 53,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 53,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/core/serializers/base.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/core/serializers/base.py"
+    ],
+    "gold_files": [
+      "django/core/serializers/base.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 9,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

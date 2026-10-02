@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\trelease_sock(sk);\n\n\tspin_lock_bh(&mux->lock);\n\tif (kcm->tx_wait) {\n\t\t/* Take of tx_wait list, after this point there should be no way\n\t\t * that a psock will be assigned to this kcm.\n\t\t */\n\t\tlist_del(&kcm->wait_psock_list);\n\t\tkcm->tx_wait = false;\n\t}\n\n\t/* Set tx_stopped. This is checked when psock is bound to a kcm and we\n\t * get a writespace callback. This prevents further work being queued\n\t * from the callback (unbinding the psock occurs after canceling work.\n\t */\n\tkcm->tx_stopped = 1;\n\n\tspin_unlock_bh(&mux->lock);",
+          "before": "\t/* Set tx_stopped. This is checked when psock is bound to a kcm and we\n\t * get a writespace callback. This prevents further work being queued\n\t * from the callback (unbinding the psock occurs after canceling work.\n\t */\n\tkcm->tx_stopped = 1;\n\n\trelease_sock(sk);\n\n\tspin_lock_bh(&mux->lock);\n\tif (kcm->tx_wait) {\n\t\t/* Take of tx_wait list, after this point there should be no way\n\t\t * that a psock will be assigned to this kcm.\n\t\t */\n\t\tlist_del(&kcm->wait_psock_list);\n\t\tkcm->tx_wait = false;\n\t}\n\tspin_unlock_bh(&mux->lock);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/kcm/kcmsock.c\n+++ /linux/net/kcm/kcmsock.c\n@@ -1696,6 +1695,0 @@\n-\t/* Set tx_stopped. This is checked when psock is bound to a kcm and we\n-\t * get a writespace callback. This prevents further work being queued\n-\t * from the callback (unbinding the psock occurs after canceling work.\n-\t */\n-\tkcm->tx_stopped = 1;\n-\n@@ -1711,0 +1706,7 @@\n+\n+\t/* Set tx_stopped. This is checked when psock is bound to a kcm and we\n+\t * get a writespace callback. This prevents further work being queued\n+\t * from the callback (unbinding the psock occurs after canceling work.\n+\t */\n+\tkcm->tx_stopped = 1;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 47",
+          "filename": "net/kcm/kcmsock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 0,
+      "start_step": 47
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\t/* Queue tx work to make sure psock->done is handled */\n\t\tif (!psock->tx_kcm->tx_stopped)\n\t\t\tqueue_work(kcm_wq, &psock->tx_kcm->tx_work);\n\t\tspin_unlock_bh(&mux->lock);\n",
+          "before": "\n\t\t/* Queue tx work to make sure psock->done is handled */\n\t\tqueue_work(kcm_wq, &psock->tx_kcm->tx_work);\n\t\tspin_unlock_bh(&mux->lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/kcm/kcmsock.c\n+++ /linux/net/kcm/kcmsock.c\n@@ -1433 +1433,2 @@\n-\t\tqueue_work(kcm_wq, &psock->tx_kcm->tx_work);\n+\t\tif (!psock->tx_kcm->tx_stopped)\n+\t\t\tqueue_work(kcm_wq, &psock->tx_kcm->tx_work);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 61",
+          "filename": "net/kcm/kcmsock.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        }
+      ],
+      "end_step": 61,
+      "revision_index": 1,
+      "start_step": 61
+    }
+  ],
+  "success_step": 61
+}

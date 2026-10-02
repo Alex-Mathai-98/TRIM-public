@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (iph->ihl > 5 && ip_rcv_options(skb, dev)) {\n\t\tdrop_reason = SKB_DROP_REASON_IP_INHDR;\n\t\tgoto drop;\n\t}",
+          "before": "\tif (iph->ihl > 5 && ip_rcv_options(skb, dev))\n\t\tgoto drop;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/ip_input.c b/net/ipv4/ip_input.c\nindex f0a4dda246ab..2d20b7b8dcfd 100644\n--- a/net/ipv4/ip_input.c\n+++ b/net/ipv4/ip_input.c\n@@ -384,8 +384,10 @@ static int ip_rcv_finish_core(struct net *net, struct sock *sk,\n \t}\n #endif\n \n-\tif (iph->ihl > 5 && ip_rcv_options(skb, dev))\n+\tif (iph->ihl > 5 && ip_rcv_options(skb, dev)) {\n+\t\tdrop_reason = SKB_DROP_REASON_IP_INHDR;\n \t\tgoto drop;\n+\t}\n \n \trt = skb_rtable(skb);\n \tif (rt->rt_type == RTN_MULTICAST) {",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "net/ipv4/ip_input.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (iph->ihl > 5 && ip_rcv_options(skb, dev))\n\t\tgoto drop;",
+          "before": "\tif (iph->ihl > 5 && ip_rcv_options(skb, dev)) {\n\t\tdrop_reason = SKB_DROP_REASON_IP_INHDR;\n\t\tgoto drop;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "net/ipv4/ip_input.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        },
+        {
+          "after": "drop:\n\tif (unlikely(drop_reason == SKB_NOT_DROPPED_YET))\n\t\tdrop_reason = SKB_DROP_REASON_NOT_SPECIFIED;\n\tkfree_skb_reason(skb, drop_reason);\n\treturn NET_RX_DROP;",
+          "before": "drop:\n\tkfree_skb_reason(skb, drop_reason);\n\treturn NET_RX_DROP;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/ip_input.c b/net/ipv4/ip_input.c\nindex f0a4dda246ab..f81a07c73464 100644\n--- a/net/ipv4/ip_input.c\n+++ b/net/ipv4/ip_input.c\n@@ -421,6 +421,8 @@ static int ip_rcv_finish_core(struct net *net, struct sock *sk,\n \treturn NET_RX_SUCCESS;\n \n drop:\n+\tif (unlikely(drop_reason == SKB_NOT_DROPPED_YET))\n+\t\tdrop_reason = SKB_DROP_REASON_NOT_SPECIFIED;\n \tkfree_skb_reason(skb, drop_reason);\n \treturn NET_RX_DROP;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "net/ipv4/ip_input.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 1,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": "#include <net/dropreason.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/ip_input.c b/net/ipv4/ip_input.c\nindex f0a4dda246ab..acfdcf8369fa 100644\n--- a/net/ipv4/ip_input.c\n+++ b/net/ipv4/ip_input.c\n@@ -138,6 +138,7 @@\n #include <net/inet_ecn.h>\n #include <linux/netfilter_ipv4.h>\n #include <net/xfrm.h>\n+#include <net/dropreason.h>\n #include <linux/mroute.h>\n #include <linux/netlink.h>\n #include <net/dst_metadata.h>\n@@ -421,6 +422,8 @@ static int ip_rcv_finish_core(struct net *net, struct sock *sk,\n \treturn NET_RX_SUCCESS;\n \n drop:\n+\tif (unlikely(drop_reason == SKB_NOT_DROPPED_YET))\n+\t\tdrop_reason = SKB_DROP_REASON_NOT_SPECIFIED;\n \tkfree_skb_reason(skb, drop_reason);\n \treturn NET_RX_DROP;",
+          "explanation": "classic_swe step 49 insert #1",
+          "filename": "net/ipv4/ip_input.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 141,
+          "step_index": 49
+        },
+        {
+          "after": "drop:\n\tif (unlikely(drop_reason == SKB_NOT_DROPPED_YET ||\n\t\t     (u32)drop_reason >> SKB_DROP_REASON_SUBSYS_SHIFT >=\n\t\t     SKB_DROP_REASON_SUBSYS_NUM))\n\t\tdrop_reason = SKB_DROP_REASON_NOT_SPECIFIED;\n\tkfree_skb_reason(skb, drop_reason);\n\treturn NET_RX_DROP;",
+          "before": "drop:\n\tif (unlikely(drop_reason == SKB_NOT_DROPPED_YET))\n\t\tdrop_reason = SKB_DROP_REASON_NOT_SPECIFIED;\n\tkfree_skb_reason(skb, drop_reason);\n\treturn NET_RX_DROP;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/ip_input.c b/net/ipv4/ip_input.c\nindex f0a4dda246ab..9eac850b6de6 100644\n--- a/net/ipv4/ip_input.c\n+++ b/net/ipv4/ip_input.c\n@@ -138,6 +138,7 @@\n #include <net/inet_ecn.h>\n #include <linux/netfilter_ipv4.h>\n #include <net/xfrm.h>\n+#include <net/dropreason.h>\n #include <linux/mroute.h>\n #include <linux/netlink.h>\n #include <net/dst_metadata.h>\n@@ -421,6 +422,10 @@ static int ip_rcv_finish_core(struct net *net, struct sock *sk,\n \treturn NET_RX_SUCCESS;\n \n drop:\n+\tif (unlikely(drop_reason == SKB_NOT_DROPPED_YET ||\n+\t\t     (u32)drop_reason >> SKB_DROP_REASON_SUBSYS_SHIFT >=\n+\t\t     SKB_DROP_REASON_SUBSYS_NUM))\n+\t\tdrop_reason = SKB_DROP_REASON_NOT_SPECIFIED;\n \tkfree_skb_reason(skb, drop_reason);\n \treturn NET_RX_DROP;",
+          "explanation": "classic_swe step 50 #1",
+          "filename": "net/ipv4/ip_input.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "revision_index": 2,
+      "start_step": 49
+    }
+  ],
+  "success_step": 50
+}

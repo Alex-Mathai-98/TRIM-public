@@ -1,0 +1,147 @@
+{
+  "bug_id": "django__django-11149",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/admin/options.py",
+        "before": "    def has_add_permission(self, request, obj):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the view permission for the related model in order to\n            # be able to do anything with the intermediate model.\n            return self.has_view_permission(request, obj)\n        return super().has_add_permission(request)",
+        "after": "    def has_add_permission(self, request, obj):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the change permission for the related model in order to\n            # be able to add to the intermediate model.\n            opts = self.opts\n            # The model was auto-created as intermediary for a many-to-many\n            # relationship; find the target model.\n            for field in opts.fields:\n                if field.remote_field and field.remote_field.model != self.parent_model:\n                    opts = field.remote_field.model._meta\n                    break\n            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n        return super().has_add_permission(request)",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/admin/options.py",
+        "before": "    def has_change_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the view permission for the related model in order to\n            # be able to do anything with the intermediate model.\n            return self.has_view_permission(request, obj)\n        return super().has_change_permission(request)",
+        "after": "    def has_change_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the change permission for the related model in order to\n            # be able to change the intermediate model.\n            opts = self.opts\n            # The model was auto-created as intermediary for a many-to-many\n            # relationship; find the target model.\n            for field in opts.fields:\n                if field.remote_field and field.remote_field.model != self.parent_model:\n                    opts = field.remote_field.model._meta\n                    break\n            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n        return super().has_change_permission(request)",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/admin/options.py",
+        "before": "    def has_delete_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the view permission for the related model in order to\n            # be able to do anything with the intermediate model.\n            return self.has_view_permission(request, obj)\n        return super().has_delete_permission(request, obj)",
+        "after": "    def has_delete_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the change permission for the related model in order to\n            # be able to delete from the intermediate model.\n            opts = self.opts\n            # The model was auto-created as intermediary for a many-to-many\n            # relationship; find the target model.\n            for field in opts.fields:\n                if field.remote_field and field.remote_field.model != self.parent_model:\n                    opts = field.remote_field.model._meta\n                    break\n            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n        return super().has_delete_permission(request, obj)",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/admin/options.py b/django/contrib/admin/options.py\nindex 880a2cc17b..9ed469d9f9 100644\n--- a/django/contrib/admin/options.py\n+++ b/django/contrib/admin/options.py\n@@ -2115,27 +2115,48 @@ class InlineModelAdmin(BaseModelAdmin):\n         if self.opts.auto_created:\n             # We're checking the rights to an auto-created intermediate model,\n             # which doesn't have its own individual permissions. The user needs\n-            # to have the view permission for the related model in order to\n-            # be able to do anything with the intermediate model.\n-            return self.has_view_permission(request, obj)\n+            # to have the change permission for the related model in order to\n+            # be able to add to the intermediate model.\n+            opts = self.opts\n+            # The model was auto-created as intermediary for a many-to-many\n+            # relationship; find the target model.\n+            for field in opts.fields:\n+                if field.remote_field and field.remote_field.model != self.parent_model:\n+                    opts = field.remote_field.model._meta\n+                    break\n+            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n         return super().has_add_permission(request)\n \n     def has_change_permission(self, request, obj=None):\n         if self.opts.auto_created:\n             # We're checking the rights to an auto-created intermediate model,\n             # which doesn't have its own individual permissions. The user needs\n-            # to have the view permission for the related model in order to\n-            # be able to do anything with the intermediate model.\n-            return self.has_view_permission(request, obj)\n+            # to have the change permission for the related model in order to\n+            # be able to change the intermediate model.\n+            opts = self.opts\n+            # The model was auto-created as intermediary for a many-to-many\n+            # relationship; find the target model.\n+            for field in opts.fields:\n+                if field.remote_field and field.remote_field.model != self.parent_model:\n+                    opts = field.remote_field.model._meta\n+                    break\n+            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n         return super().has_change_permission(request)\n \n     def has_delete_permission(self, request, obj=None):\n         if self.opts.auto_created:\n             # We're checking the rights to an auto-created intermediate model,\n             # which doesn't have its own individual permissions. The user needs\n-            # to have the view permission for the related model in order to\n-            # be able to do anything with the intermediate model.\n-            return self.has_view_permission(request, obj)\n+            # to have the change permission for the related model in order to\n+            # be able to delete from the intermediate model.\n+            opts = self.opts\n+            # The model was auto-created as intermediary for a many-to-many\n+            # relationship; find the target model.\n+            for field in opts.fields:\n+                if field.remote_field and field.remote_field.model != self.parent_model:\n+                    opts = field.remote_field.model._meta\n+                    break\n+            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n         return super().has_delete_permission(request, obj)\n \n     def has_view_permission(self, request, obj=None):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3,
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2,
+      3,
+      4
+    ],
+    "edit_list_after_file_min": [
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 3,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      2,
+      3,
+      4
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/admin/options.py",
+          "before": "    def has_add_permission(self, request, obj):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the view permission for the related model in order to\n            # be able to do anything with the intermediate model.\n            return self.has_view_permission(request, obj)\n        return super().has_add_permission(request)",
+          "after": "    def has_add_permission(self, request, obj):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the change permission for the related model in order to\n            # be able to add to the intermediate model.\n            opts = self.opts\n            # The model was auto-created as intermediary for a many-to-many\n            # relationship; find the target model.\n            for field in opts.fields:\n                if field.remote_field and field.remote_field.model != self.parent_model:\n                    opts = field.remote_field.model._meta\n                    break\n            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n        return super().has_add_permission(request)",
+          "explanation": "classic_swe step 18 #1"
+        },
+        {
+          "filename": "django/contrib/admin/options.py",
+          "before": "    def has_change_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the view permission for the related model in order to\n            # be able to do anything with the intermediate model.\n            return self.has_view_permission(request, obj)\n        return super().has_change_permission(request)",
+          "after": "    def has_change_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the change permission for the related model in order to\n            # be able to change the intermediate model.\n            opts = self.opts\n            # The model was auto-created as intermediary for a many-to-many\n            # relationship; find the target model.\n            for field in opts.fields:\n                if field.remote_field and field.remote_field.model != self.parent_model:\n                    opts = field.remote_field.model._meta\n                    break\n            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n        return super().has_change_permission(request)",
+          "explanation": "classic_swe step 19 #1"
+        },
+        {
+          "filename": "django/contrib/admin/options.py",
+          "before": "    def has_delete_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the view permission for the related model in order to\n            # be able to do anything with the intermediate model.\n            return self.has_view_permission(request, obj)\n        return super().has_delete_permission(request, obj)",
+          "after": "    def has_delete_permission(self, request, obj=None):\n        if self.opts.auto_created:\n            # We're checking the rights to an auto-created intermediate model,\n            # which doesn't have its own individual permissions. The user needs\n            # to have the change permission for the related model in order to\n            # be able to delete from the intermediate model.\n            opts = self.opts\n            # The model was auto-created as intermediary for a many-to-many\n            # relationship; find the target model.\n            for field in opts.fields:\n                if field.remote_field and field.remote_field.model != self.parent_model:\n                    opts = field.remote_field.model._meta\n                    break\n            return request.user.has_perm('%s.%s' % (opts.app_label, get_permission_codename('change', opts)))\n        return super().has_delete_permission(request, obj)",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 46,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 46,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "gold_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 30,
+    "minimized_deleted_lines": 9,
+    "gold_added_lines": 30,
+    "gold_deleted_lines": 26
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

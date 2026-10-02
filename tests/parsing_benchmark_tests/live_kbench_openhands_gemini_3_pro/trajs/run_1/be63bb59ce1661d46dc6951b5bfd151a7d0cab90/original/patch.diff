@@ -1,0 +1,81 @@
+diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h
+index 535701efc1e5..88ad831769b7 100644
+--- a/include/net/af_vsock.h
++++ b/include/net/af_vsock.h
+@@ -213,6 +213,10 @@ void vsock_remove_connected(struct vsock_sock *vsk);
+ struct sock *vsock_find_bound_socket(struct sockaddr_vm *addr);
+ struct sock *vsock_find_connected_socket(struct sockaddr_vm *src,
+ 					 struct sockaddr_vm *dst);
++int __vsock_stream_recvmsg(struct sock *sk, struct msghdr *msg, size_t len,
++			   int flags);
++int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,
++			      size_t len, int flags);
+ void vsock_remove_sock(struct vsock_sock *vsk);
+ void vsock_for_each_connected_socket(struct vsock_transport *transport,
+ 				     void (*fn)(struct sock *sk));
+diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
+index 4b040285aa78..a67c8b4803ea 100644
+--- a/net/vmw_vsock/af_vsock.c
++++ b/net/vmw_vsock/af_vsock.c
+@@ -2044,8 +2044,8 @@ static int vsock_connectible_wait_data(struct sock *sk,
+ 	return data;
+ }
+ 
+-static int __vsock_stream_recvmsg(struct sock *sk, struct msghdr *msg,
+-				  size_t len, int flags)
++int __vsock_stream_recvmsg(struct sock *sk, struct msghdr *msg,
++			   size_t len, int flags)
+ {
+ 	struct vsock_transport_recv_notify_data recv_data;
+ 	const struct vsock_transport *transport;
+@@ -2122,9 +2122,10 @@ static int __vsock_stream_recvmsg(struct sock *sk, struct msghdr *msg,
+ out:
+ 	return err;
+ }
++EXPORT_SYMBOL_GPL(__vsock_stream_recvmsg);
+ 
+-static int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,
+-				     size_t len, int flags)
++int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,
++			      size_t len, int flags)
+ {
+ 	const struct vsock_transport *transport;
+ 	struct vsock_sock *vsk;
+@@ -2172,6 +2173,7 @@ static int __vsock_seqpacket_recvmsg(struct sock *sk, struct msghdr *msg,
+ out:
+ 	return err;
+ }
++EXPORT_SYMBOL_GPL(__vsock_seqpacket_recvmsg);
+ 
+ int
+ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
+diff --git a/net/vmw_vsock/vsock_bpf.c b/net/vmw_vsock/vsock_bpf.c
+index a3c97546ab84..d9a82e4ad5e0 100644
+--- a/net/vmw_vsock/vsock_bpf.c
++++ b/net/vmw_vsock/vsock_bpf.c
+@@ -60,15 +60,19 @@ static bool vsock_msg_wait_data(struct sock *sk, struct sk_psock *psock, long ti
+ 
+ static int __vsock_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int flags)
+ {
+-	struct socket *sock = sk->sk_socket;
++	struct vsock_sock *vsk;
+ 	int err;
+ 
+-	if (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET)
+-		err = vsock_connectible_recvmsg(sock, msg, len, flags);
+-	else if (sk->sk_type == SOCK_DGRAM)
+-		err = vsock_dgram_recvmsg(sock, msg, len, flags);
+-	else
++	if (sk->sk_type == SOCK_STREAM) {
++		err = __vsock_stream_recvmsg(sk, msg, len, flags);
++	} else if (sk->sk_type == SOCK_SEQPACKET) {
++		err = __vsock_seqpacket_recvmsg(sk, msg, len, flags);
++	} else if (sk->sk_type == SOCK_DGRAM) {
++		vsk = vsock_sk(sk);
++		err = vsk->transport->dgram_dequeue(vsk, msg, len, flags);
++	} else {
+ 		err = -EPROTOTYPE;
++	}
+ 
+ 	return err;
+ }

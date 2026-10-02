@@ -1,0 +1,19 @@
+diff --git a/mm/userfaultfd.c b/mm/userfaultfd.c
+index cbed91b09640..797bed5e5628 100644
+--- a/mm/userfaultfd.c
++++ b/mm/userfaultfd.c
+@@ -1818,6 +1818,14 @@ ssize_t move_pages(struct userfaultfd_ctx *ctx, unsigned long dst_start,
+ 
+ 		ptl = pmd_trans_huge_lock(src_pmd, src_vma);
+ 		if (ptl) {
++			if (!pmd_trans_huge(*src_pmd)) {
++				spin_unlock(ptl);
++				if (is_pmd_migration_entry(*src_pmd)) {
++					pmd_migration_entry_wait(mm, src_pmd);
++					err = -EAGAIN;
++				}
++				continue;
++			}
+ 			/* Check if we can move the pmd without splitting it. */
+ 			if (move_splits_huge_pmd(dst_addr, src_addr, src_start + len) ||
+ 			    !pmd_none(dst_pmdval)) {

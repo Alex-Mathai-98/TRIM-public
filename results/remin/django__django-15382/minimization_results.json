@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-15382",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/expressions.py",
+        "before": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        query = self.query.exists(using=connection.alias)\n        sql, params = super().as_sql(\n            compiler,\n            connection,\n            template=template,\n            query=query,\n            **extra_context,\n        )\n        if self.negated:\n            sql = 'NOT {}'.format(sql)\n        return sql, params",
+        "after": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        query = self.query.exists(using=connection.alias)\n        try:\n            sql, params = super().as_sql(\n                compiler,\n                connection,\n                template=template,\n                query=query,\n                **extra_context,\n            )\n        except EmptyResultSet:\n            # When the subquery is empty, EXISTS should evaluate to False\n            # (or True if negated)\n            if self.negated:\n                sql, params = '1 = 1', ()\n            else:\n                sql, params = '1 = 0', ()\n        else:\n            if self.negated:\n                sql = 'NOT {}'.format(sql)\n        return sql, params",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/expressions.py b/django/db/models/expressions.py\nindex 81f8f79c71..6ef5192d61 100644\n--- a/django/db/models/expressions.py\n+++ b/django/db/models/expressions.py\n@@ -1211,15 +1211,24 @@ class Exists(Subquery):\n \n     def as_sql(self, compiler, connection, template=None, **extra_context):\n         query = self.query.exists(using=connection.alias)\n-        sql, params = super().as_sql(\n-            compiler,\n-            connection,\n-            template=template,\n-            query=query,\n-            **extra_context,\n-        )\n-        if self.negated:\n-            sql = 'NOT {}'.format(sql)\n+        try:\n+            sql, params = super().as_sql(\n+                compiler,\n+                connection,\n+                template=template,\n+                query=query,\n+                **extra_context,\n+            )\n+        except EmptyResultSet:\n+            # When the subquery is empty, EXISTS should evaluate to False\n+            # (or True if negated)\n+            if self.negated:\n+                sql, params = '1 = 1', ()\n+            else:\n+                sql, params = '1 = 0', ()\n+        else:\n+            if self.negated:\n+                sql = 'NOT {}'.format(sql)\n         return sql, params\n \n     def select_format(self, compiler, sql, params):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/expressions.py",
+          "before": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        query = self.query.exists(using=connection.alias)\n        sql, params = super().as_sql(\n            compiler,\n            connection,\n            template=template,\n            query=query,\n            **extra_context,\n        )\n        if self.negated:\n            sql = 'NOT {}'.format(sql)\n        return sql, params",
+          "after": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        query = self.query.exists(using=connection.alias)\n        try:\n            sql, params = super().as_sql(\n                compiler,\n                connection,\n                template=template,\n                query=query,\n                **extra_context,\n            )\n        except EmptyResultSet:\n            # When the subquery is empty, EXISTS should evaluate to False\n            # (or True if negated)\n            if self.negated:\n                sql, params = '1 = 1', ()\n            else:\n                sql, params = '1 = 0', ()\n        else:\n            if self.negated:\n                sql = 'NOT {}'.format(sql)\n        return sql, params",
+          "explanation": "classic_swe step 27 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 161,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 161,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/expressions.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/expressions.py"
+    ],
+    "gold_files": [
+      "django/db/models/expressions.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 18,
+    "minimized_deleted_lines": 9,
+    "gold_added_lines": 12,
+    "gold_deleted_lines": 7
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

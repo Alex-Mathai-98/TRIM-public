@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": " *\tOn failure an ERR pointer is returned.\n *\n *\tThis function uses GFP_KERNEL internally.\n */\n\nstruct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)\n{\n\tstruct file *file;\n\n\tif (!dname)\n\t\tdname = sock->sk ? sock->sk->sk_prot_creator->name : \"\";\n\n\tfile = alloc_file_pseudo(SOCK_INODE(sock), sock_mnt, dname,\n\t\t\t\tO_RDWR | (flags & O_NONBLOCK),\n\t\t\t\t&socket_file_ops);\n\tif (IS_ERR(file))\n\t\treturn file;\n\n\tfile->f_mode |= FMODE_NOWAIT;",
+          "before": " *\tOn failure @sock is released, and an ERR pointer is returned.\n *\n *\tThis function uses GFP_KERNEL internally.\n */\n\nstruct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)\n{\n\tstruct file *file;\n\n\tif (!dname)\n\t\tdname = sock->sk ? sock->sk->sk_prot_creator->name : \"\";\n\n\tfile = alloc_file_pseudo(SOCK_INODE(sock), sock_mnt, dname,\n\t\t\t\tO_RDWR | (flags & O_NONBLOCK),\n\t\t\t\t&socket_file_ops);\n\tif (IS_ERR(file)) {\n\t\tsock_release(sock);\n\t\treturn file;\n\t}\n\n\tfile->f_mode |= FMODE_NOWAIT;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/socket.c\n+++ /linux/net/socket.c\n@@ -471 +471 @@\n- *\tOn failure @sock is released, and an ERR pointer is returned.\n+ *\tOn failure an ERR pointer is returned.\n@@ -486,2 +486 @@\n-\tif (IS_ERR(file)) {\n-\t\tsock_release(sock);\n+\tif (IS_ERR(file))\n@@ -489 +487,0 @@\n-\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 126",
+          "filename": "net/socket.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 126
+        },
+        {
+          "after": "\n\tsock_file = sock_alloc_file(queue->sock, O_CLOEXEC, NULL);\n\tif (IS_ERR(sock_file)) {\n\t\tret = PTR_ERR(sock_file);\n\t\tsock_release(queue->sock);\n\t\tgoto err_destroy_mutex;\n\t}\n",
+          "before": "\n\tsock_file = sock_alloc_file(queue->sock, O_CLOEXEC, NULL);\n\tif (IS_ERR(sock_file)) {\n\t\tret = PTR_ERR(sock_file);\n\t\tgoto err_destroy_mutex;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/nvme/host/tcp.c\n+++ /linux/drivers/nvme/host/tcp.c\n@@ -1796,0 +1797 @@\n+\t\tsock_release(queue->sock);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 130",
+          "filename": "drivers/nvme/host/tcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 130
+        },
+        {
+          "after": "\nout_release:\n\tpr_err(\"failed to allocate queue, error %d\\n\", ret);\n\tif (!sock_file || IS_ERR(sock_file))\n\t\tsock_release(newsock);\n}\n",
+          "before": "\nout_release:\n\tpr_err(\"failed to allocate queue, error %d\\n\", ret);\n\tif (!sock_file)\n\t\tsock_release(newsock);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/nvme/target/tcp.c\n+++ /linux/drivers/nvme/target/tcp.c\n@@ -1967 +1967 @@\n-\tif (!sock_file)\n+\tif (!sock_file || IS_ERR(sock_file))",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 142",
+          "filename": "drivers/nvme/target/tcp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 142
+        },
+        {
+          "after": "\n\tfile = sock_alloc_file(socket, 0, NULL);\n\tif (IS_ERR(file)) {\n\t\tsock_release(socket);\n\t\treturn false;\n\t}\n",
+          "before": "\n\tfile = sock_alloc_file(socket, 0, NULL);\n\tif (IS_ERR(file))\n\t\treturn false;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/coredump.c\n+++ /linux/fs/coredump.c\n@@ -692,2 +692,4 @@\n-\tif (IS_ERR(file))\n-\t\treturn false;\n+\tif (IS_ERR(file)) {\n+\t\tsock_release(socket);\n+\t\treturn false;\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 148",
+          "filename": "fs/coredump.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 148
+        }
+      ],
+      "end_step": 148,
+      "revision_index": 0,
+      "start_step": 126
+    }
+  ],
+  "success_step": 148
+}

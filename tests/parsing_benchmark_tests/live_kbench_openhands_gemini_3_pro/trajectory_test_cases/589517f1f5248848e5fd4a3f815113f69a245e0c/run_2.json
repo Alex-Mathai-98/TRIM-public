@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int steam_input_open(struct input_dev *dev)\n{\n\tstruct steam_device *steam = input_get_drvdata(dev);\n\tunsigned long flags;\n\tbool set_lizard_mode;\n\n\tif (!steam)\n\t\treturn -ENODEV;\n\n\t/*\n\t * Disabling lizard mode automatically is only done on the Steam\n\t * Controller. On the Steam Deck, this is toggled manually by holding\n\t * the options button instead, handled by steam_mode_switch_cb.\n\t */\n\tif (!(steam->quirks & STEAM_QUIRK_DECK)) {\n\t\tspin_lock_irqsave(&steam->lock, flags);\n\t\tset_lizard_mode = !steam->client_opened && lizard_mode;\n\t\tspin_unlock_irqrestore(&steam->lock, flags);\n\t\tif (set_lizard_mode)\n\t\t\tsteam_set_lizard_mode(steam, false);\n\t}\n\n\treturn 0;\n}\n\nstatic void steam_input_close(struct input_dev *dev)\n{\n\tstruct steam_device *steam = input_get_drvdata(dev);\n\tunsigned long flags;\n\tbool set_lizard_mode;\n\n\tif (!steam)\n\t\treturn;\n\n\tif (!(steam->quirks & STEAM_QUIRK_DECK)) {\n\t\tspin_lock_irqsave(&steam->lock, flags);\n\t\tset_lizard_mode = !steam->client_opened && lizard_mode;\n\t\tspin_unlock_irqrestore(&steam->lock, flags);\n\t\tif (set_lizard_mode)\n\t\t\tsteam_set_lizard_mode(steam, true);\n\t}\n}",
+          "before": "static int steam_input_open(struct input_dev *dev)\n{\n\tstruct steam_device *steam = input_get_drvdata(dev);\n\tunsigned long flags;\n\tbool set_lizard_mode;\n\n\t/*\n\t * Disabling lizard mode automatically is only done on the Steam\n\t * Controller. On the Steam Deck, this is toggled manually by holding\n\t * the options button instead, handled by steam_mode_switch_cb.\n\t */\n\tif (!(steam->quirks & STEAM_QUIRK_DECK)) {\n\t\tspin_lock_irqsave(&steam->lock, flags);\n\t\tset_lizard_mode = !steam->client_opened && lizard_mode;\n\t\tspin_unlock_irqrestore(&steam->lock, flags);\n\t\tif (set_lizard_mode)\n\t\t\tsteam_set_lizard_mode(steam, false);\n\t}\n\n\treturn 0;\n}\n\nstatic void steam_input_close(struct input_dev *dev)\n{\n\tstruct steam_device *steam = input_get_drvdata(dev);\n\tunsigned long flags;\n\tbool set_lizard_mode;\n\n\tif (!(steam->quirks & STEAM_QUIRK_DECK)) {\n\t\tspin_lock_irqsave(&steam->lock, flags);\n\t\tset_lizard_mode = !steam->client_opened && lizard_mode;\n\t\tspin_unlock_irqrestore(&steam->lock, flags);\n\t\tif (set_lizard_mode)\n\t\t\tsteam_set_lizard_mode(steam, true);\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/hid/hid-steam.c\n+++ /linux/drivers/hid/hid-steam.c\n@@ -598,0 +599,3 @@\n+\tif (!steam)\n+\t\treturn -ENODEV;\n+\n@@ -619,0 +623,3 @@\n+\n+\tif (!steam)\n+\t\treturn;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 57",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        },
+        {
+          "after": "\nstatic int steam_play_effect(struct input_dev *dev, void *data,\n\t\t\t\tstruct ff_effect *effect)\n{\n\tstruct steam_device *steam = input_get_drvdata(dev);\n\n\tif (!steam)\n\t\treturn -ENODEV;\n\n\tsteam->rumble_left = effect->u.rumble.strong_magnitude;\n\tsteam->rumble_right = effect->u.rumble.weak_magnitude;\n\n\treturn schedule_work(&steam->rumble_work);\n}\n",
+          "before": "\nstatic int steam_play_effect(struct input_dev *dev, void *data,\n\t\t\t\tstruct ff_effect *effect)\n{\n\tstruct steam_device *steam = input_get_drvdata(dev);\n\n\tsteam->rumble_left = effect->u.rumble.strong_magnitude;\n\tsteam->rumble_right = effect->u.rumble.weak_magnitude;\n\n\treturn schedule_work(&steam->rumble_work);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/hid/hid-steam.c\n+++ /linux/drivers/hid/hid-steam.c\n@@ -548,0 +549,3 @@\n+\n+\tif (!steam)\n+\t\treturn -ENODEV;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        },
+        {
+          "after": "\nstatic void steam_input_unregister(struct steam_device *steam)\n{\n\tstruct input_dev *input;\n\trcu_read_lock();\n\tinput = rcu_dereference(steam->input);\n\trcu_read_unlock();\n\tif (!input)\n\t\treturn;\n\tRCU_INIT_POINTER(steam->input, NULL);\n\tsynchronize_rcu();\n\tmutex_lock(&input->mutex);\n\tinput_set_drvdata(input, NULL);\n\tmutex_unlock(&input->mutex);\n\tinput_unregister_device(input);\n}\n",
+          "before": "\nstatic void steam_input_unregister(struct steam_device *steam)\n{\n\tstruct input_dev *input;\n\trcu_read_lock();\n\tinput = rcu_dereference(steam->input);\n\trcu_read_unlock();\n\tif (!input)\n\t\treturn;\n\tRCU_INIT_POINTER(steam->input, NULL);\n\tsynchronize_rcu();\n\tinput_unregister_device(input);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/hid/hid-steam.c\n+++ /linux/drivers/hid/hid-steam.c\n@@ -926,0 +927,3 @@\n+\tmutex_lock(&input->mutex);\n+\tinput_set_drvdata(input, NULL);\n+\tmutex_unlock(&input->mutex);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 61",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        }
+      ],
+      "end_step": 61,
+      "revision_index": 0,
+      "start_step": 57
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tcancel_delayed_work_sync(&steam->mode_switch);\n\tcancel_work_sync(&steam->work_connect);\n\tcancel_work_sync(&steam->rumble_work);\n\thid_destroy_device(steam->client_hdev);\n\tcancel_work_sync(&steam->unregister_work);\n\tsteam->client_hdev = NULL;\n\tsteam->client_opened = 0;\n",
+          "before": "\n\tcancel_delayed_work_sync(&steam->mode_switch);\n\tcancel_work_sync(&steam->work_connect);\n\tcancel_work_sync(&steam->rumble_work);\n\tcancel_work_sync(&steam->unregister_work);\n\thid_destroy_device(steam->client_hdev);\n\tsteam->client_hdev = NULL;\n\tsteam->client_opened = 0;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/hid/hid-steam.c\n+++ /linux/drivers/hid/hid-steam.c\n@@ -1344,0 +1345 @@\n+\thid_destroy_device(steam->client_hdev);\n@@ -1346 +1346,0 @@\n-\thid_destroy_device(steam->client_hdev);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 91",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 91
+        }
+      ],
+      "end_step": 91,
+      "revision_index": 1,
+      "start_step": 91
+    }
+  ],
+  "success_step": 91
+}

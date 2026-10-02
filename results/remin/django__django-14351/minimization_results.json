@@ -1,0 +1,106 @@
+{
+  "bug_id": "django__django-14351",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        return (\n            connections[DEFAULT_DB_ALIAS].features.interprets_empty_strings_as_nulls and\n            field.empty_strings_allowed\n        ) or field.null",
+        "after": "        return (\n            connections[DEFAULT_DB_ALIAS].features.interprets_empty_strings_as_nulls and\n            field.empty_strings_allowed\n        ) or field.null\n\n    def get_group_by_cols(self, alias=None):\n        \"\"\"\n        Return the columns that should be used for GROUP BY when this Query\n        is used as an expression.\n        \n        If this Query has explicit select fields, use those. Otherwise, if\n        this Query is being used as a subquery (e.g., in an IN lookup), try\n        to optimize by selecting only the primary key field.\n        \"\"\"\n        if self.has_select_fields:\n            # If the query has explicit select fields, use the default behavior\n            return super().get_group_by_cols(alias)\n        \n        # If this query doesn't have explicit select fields and is being used\n        # as a subquery, try to optimize by selecting only the primary key\n        if self.subquery and self.model:\n            # Create a clone and optimize it to select only the primary key\n            clone = self.clone()\n            clone.clear_select_clause()\n            pk_field = self.model._meta.pk\n            clone.add_fields([pk_field.name], True)\n            return clone.get_group_by_cols(alias)\n        \n        # Fall back to the default behavior\n        return super().get_group_by_cols(alias)",
+        "explanation": "classic_swe step 80 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py\nindex 6629a1fd51..e26e5eec4d 100644\n--- a/django/db/models/sql/query.py\n+++ b/django/db/models/sql/query.py\n@@ -2328,6 +2328,32 @@ class Query(BaseExpression):\n             field.empty_strings_allowed\n         ) or field.null\n \n+    def get_group_by_cols(self, alias=None):\n+        \"\"\"\n+        Return the columns that should be used for GROUP BY when this Query\n+        is used as an expression.\n+        \n+        If this Query has explicit select fields, use those. Otherwise, if\n+        this Query is being used as a subquery (e.g., in an IN lookup), try\n+        to optimize by selecting only the primary key field.\n+        \"\"\"\n+        if self.has_select_fields:\n+            # If the query has explicit select fields, use the default behavior\n+            return super().get_group_by_cols(alias)\n+        \n+        # If this query doesn't have explicit select fields and is being used\n+        # as a subquery, try to optimize by selecting only the primary key\n+        if self.subquery and self.model:\n+            # Create a clone and optimize it to select only the primary key\n+            clone = self.clone()\n+            clone.clear_select_clause()\n+            pk_field = self.model._meta.pk\n+            clone.add_fields([pk_field.name], True)\n+            return clone.get_group_by_cols(alias)\n+        \n+        # Fall back to the default behavior\n+        return super().get_group_by_cols(alias)\n+\n \n def get_order_dir(field, default='ASC'):\n     \"\"\"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      14
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      14
+    ],
+    "edit_list_after_file_min": [
+      14
+    ],
+    "edit_list_after_greedy": [
+      14
+    ],
+    "edit_list_after_refinement": [
+      14
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        return (\n            connections[DEFAULT_DB_ALIAS].features.interprets_empty_strings_as_nulls and\n            field.empty_strings_allowed\n        ) or field.null",
+          "after": "        return (\n            connections[DEFAULT_DB_ALIAS].features.interprets_empty_strings_as_nulls and\n            field.empty_strings_allowed\n        ) or field.null\n\n    def get_group_by_cols(self, alias=None):\n        \"\"\"\n        Return the columns that should be used for GROUP BY when this Query\n        is used as an expression.\n        \n        If this Query has explicit select fields, use those. Otherwise, if\n        this Query is being used as a subquery (e.g., in an IN lookup), try\n        to optimize by selecting only the primary key field.\n        \"\"\"\n        if self.has_select_fields:\n            # If the query has explicit select fields, use the default behavior\n            return super().get_group_by_cols(alias)\n        \n        # If this query doesn't have explicit select fields and is being used\n        # as a subquery, try to optimize by selecting only the primary key\n        if self.subquery and self.model:\n            # Create a clone and optimize it to select only the primary key\n            clone = self.clone()\n            clone.clear_select_clause()\n            pk_field = self.model._meta.pk\n            clone.add_fields([pk_field.name], True)\n            return clone.get_group_by_cols(alias)\n        \n        # Fall back to the default behavior\n        return super().get_group_by_cols(alias)",
+          "explanation": "classic_swe step 80 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 58,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 58,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [],
+    "extra_files_in_minimized": [
+      "django/db/models/sql/query.py"
+    ],
+    "missing_files_vs_gold": [
+      "django/db/models/lookups.py"
+    ],
+    "minimized_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "gold_files": [
+      "django/db/models/lookups.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 26,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 9,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "no_overlap"
+}

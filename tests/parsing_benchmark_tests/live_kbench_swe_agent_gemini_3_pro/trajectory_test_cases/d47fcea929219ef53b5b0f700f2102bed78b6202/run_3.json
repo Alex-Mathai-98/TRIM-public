@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (key) {\n\t\tstruct key_user *user;\n\t\tunsigned int quotalen;\n\t\tbool in_quota;\n\n\t\tkey_check(key);\n\n\t\t/*\n\t\t * We must cache the values required for quota cleanup before\n\t\t * decrementing the usage count and making the key vulnerable to\n\t\t * the GC, which could free the key immediately.\n\t\t */\n\t\tuser = key->user;\n\t\tquotalen = key->quotalen;\n\t\tin_quota = test_bit(KEY_FLAG_IN_QUOTA, &key->flags);\n\n\t\t/* Pin user so it doesn't disappear if key is freed */\n\t\trefcount_inc(&user->usage);\n\n\t\tif (refcount_dec_and_test(&key->usage)) {\n\t\t\tunsigned long flags;\n\n\t\t\t/* deal with the user's key tracking and quota */\n\t\t\tif (in_quota) {\n\t\t\t\tspin_lock_irqsave(&user->lock, flags);\n\t\t\t\tuser->qnkeys--;\n\t\t\t\tuser->qnbytes -= quotalen;\n\t\t\t\tspin_unlock_irqrestore(&user->lock, flags);\n\t\t\t}\n\t\t\tschedule_work(&key_gc_work);\n\t\t}\n\n\t\tkey_user_put(user);\n\t}",
+          "before": "\tif (key) {\n\t\tkey_check(key);\n\n\t\tif (refcount_dec_and_test(&key->usage)) {\n\t\t\tunsigned long flags;\n\n\t\t\t/* deal with the user's key tracking and quota */\n\t\t\tif (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {\n\t\t\t\tspin_lock_irqsave(&key->user->lock, flags);\n\t\t\t\tkey->user->qnkeys--;\n\t\t\t\tkey->user->qnbytes -= key->quotalen;\n\t\t\t\tspin_unlock_irqrestore(&key->user->lock, flags);\n\t\t\t}\n\t\t\tschedule_work(&key_gc_work);\n\t\t}\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/keys/key.c b/security/keys/key.c\nindex 3d7d185019d3..5a808f5c5219 100644\n--- a/security/keys/key.c\n+++ b/security/keys/key.c\n@@ -646,20 +646,38 @@ EXPORT_SYMBOL(key_reject_and_link);\n void key_put(struct key *key)\n {\n \tif (key) {\n+\t\tstruct key_user *user;\n+\t\tunsigned int quotalen;\n+\t\tbool in_quota;\n+\n \t\tkey_check(key);\n \n+\t\t/*\n+\t\t * We must cache the values required for quota cleanup before\n+\t\t * decrementing the usage count and making the key vulnerable to\n+\t\t * the GC, which could free the key immediately.\n+\t\t */\n+\t\tuser = key->user;\n+\t\tquotalen = key->quotalen;\n+\t\tin_quota = test_bit(KEY_FLAG_IN_QUOTA, &key->flags);\n+\n+\t\t/* Pin user so it doesn't disappear if key is freed */\n+\t\trefcount_inc(&user->usage);\n+\n \t\tif (refcount_dec_and_test(&key->usage)) {\n \t\t\tunsigned long flags;\n \n \t\t\t/* deal with the user's key tracking and quota */\n-\t\t\tif (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {\n-\t\t\t\tspin_lock_irqsave(&key->user->lock, flags);\n-\t\t\t\tkey->user->qnkeys--;\n-\t\t\t\tkey->user->qnbytes -= key->quotalen;\n-\t\t\t\tspin_unlock_irqrestore(&key->user->lock, flags);\n+\t\t\tif (in_quota) {\n+\t\t\t\tspin_lock_irqsave(&user->lock, flags);\n+\t\t\t\tuser->qnkeys--;\n+\t\t\t\tuser->qnbytes -= quotalen;\n+\t\t\t\tspin_unlock_irqrestore(&user->lock, flags);\n \t\t\t}\n \t\t\tschedule_work(&key_gc_work);\n \t\t}\n+\n+\t\tkey_user_put(user);\n \t}\n }\n EXPORT_SYMBOL(key_put);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "security/keys/key.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 0,
+      "start_step": 31
+    }
+  ],
+  "success_step": 31
+}

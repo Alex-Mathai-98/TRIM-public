@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tif (!css->rstat_cpu)\n\t\treturn;\n\n\tlockdep_assert_preemption_disabled();",
+          "before": "\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tlockdep_assert_preemption_disabled();",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/cgroup/rstat.c b/kernel/cgroup/rstat.c\nindex 981e2f77ad4e..0d64371cd9a6 100644\n--- a/kernel/cgroup/rstat.c\n+++ b/kernel/cgroup/rstat.c\n@@ -81,6 +81,9 @@ __bpf_kfunc void css_rstat_updated(struct cgroup_subsys_state *css, int cpu)\n \tif (!css_uses_rstat(css))\n \t\treturn;\n \n+\tif (!css->rstat_cpu)\n+\t\treturn;\n+\n \tlockdep_assert_preemption_disabled();\n \n \t/*",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tif (!css->rstat_cpu)\n\t\treturn;\n\n\tmight_sleep();",
+          "before": "\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tmight_sleep();",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/cgroup/rstat.c b/kernel/cgroup/rstat.c\nindex 981e2f77ad4e..c259a4f7cea1 100644\n--- a/kernel/cgroup/rstat.c\n+++ b/kernel/cgroup/rstat.c\n@@ -81,6 +81,9 @@ __bpf_kfunc void css_rstat_updated(struct cgroup_subsys_state *css, int cpu)\n \tif (!css_uses_rstat(css))\n \t\treturn;\n \n+\tif (!css->rstat_cpu)\n+\t\treturn;\n+\n \tlockdep_assert_preemption_disabled();\n \n \t/*\n@@ -406,6 +409,9 @@ __bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)\n \tif (!css_uses_rstat(css))\n \t\treturn;\n \n+\tif (!css->rstat_cpu)\n+\t\treturn;\n+\n \tmight_sleep();\n \tfor_each_possible_cpu(cpu) {\n \t\tstruct cgroup_subsys_state *pos;",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "void css_rstat_exit(struct cgroup_subsys_state *css)\n{\n\tstruct css_rstat_cpu __percpu *rstat_cpu;\n\tint cpu;\n\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tcss_rstat_flush(css);\n\n\trstat_cpu = css->rstat_cpu;\n\tcss->rstat_cpu = NULL;\n\tsynchronize_rcu();\n\n\t/* sanity check */\n\tfor_each_possible_cpu(cpu) {\n\t\tstruct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);\n\n\t\tif (WARN_ON_ONCE(rstatc->updated_children != css) ||\n\t\t    WARN_ON_ONCE(rstatc->updated_next))\n\t\t\treturn;\n\t}\n\n\tif (css_is_self(css)) {\n\t\tstruct cgroup *cgrp = css->cgroup;\n\n\t\tfree_percpu(cgrp->rstat_base_cpu);\n\t\tcgrp->rstat_base_cpu = NULL;\n\t}\n\n\tfree_percpu(rstat_cpu);\n}",
+          "before": "void css_rstat_exit(struct cgroup_subsys_state *css)\n{\n\tint cpu;\n\n\tif (!css_uses_rstat(css))\n\t\treturn;\n\n\tcss_rstat_flush(css);\n\n\t/* sanity check */\n\tfor_each_possible_cpu(cpu) {\n\t\tstruct css_rstat_cpu *rstatc = css_rstat_cpu(css, cpu);\n\n\t\tif (WARN_ON_ONCE(rstatc->updated_children != css) ||\n\t\t    WARN_ON_ONCE(rstatc->updated_next))\n\t\t\treturn;\n\t}\n\n\tif (css_is_self(css)) {\n\t\tstruct cgroup *cgrp = css->cgroup;\n\n\t\tfree_percpu(cgrp->rstat_base_cpu);\n\t\tcgrp->rstat_base_cpu = NULL;\n\t}\n\n\tfree_percpu(css->rstat_cpu);\n\tcss->rstat_cpu = NULL;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/cgroup/rstat.c b/kernel/cgroup/rstat.c\nindex 981e2f77ad4e..047b81d51fdc 100644\n--- a/kernel/cgroup/rstat.c\n+++ b/kernel/cgroup/rstat.c\n@@ -81,6 +81,9 @@ __bpf_kfunc void css_rstat_updated(struct cgroup_subsys_state *css, int cpu)\n \tif (!css_uses_rstat(css))\n \t\treturn;\n \n+\tif (!css->rstat_cpu)\n+\t\treturn;\n+\n \tlockdep_assert_preemption_disabled();\n \n \t/*\n@@ -406,6 +409,9 @@ __bpf_kfunc void css_rstat_flush(struct cgroup_subsys_state *css)\n \tif (!css_uses_rstat(css))\n \t\treturn;\n \n+\tif (!css->rstat_cpu)\n+\t\treturn;\n+\n \tmight_sleep();\n \tfor_each_possible_cpu(cpu) {\n \t\tstruct cgroup_subsys_state *pos;\n@@ -474,6 +480,7 @@ int css_rstat_init(struct cgroup_subsys_state *css)\n \n void css_rstat_exit(struct cgroup_subsys_state *css)\n {\n+\tstruct css_rstat_cpu __percpu *rstat_cpu;\n \tint cpu;\n \n \tif (!css_uses_rstat(css))\n@@ -481,9 +488,13 @@ void css_rstat_exit(struct cgroup_subsys_state *css)\n \n \tcss_rstat_flush(css);\n \n+\trstat_cpu = css->rstat_cpu;\n+\tcss->rstat_cpu = NULL;\n+\tsynchronize_rcu();\n+\n \t/* sanity check */\n \tfor_each_possible_cpu(cpu) {\n-\t\tstruct css_rstat_cpu *rstatc = css_rstat_cpu(css, cpu);\n+\t\tstruct css_rstat_cpu *rstatc = per_cpu_ptr(rstat_cpu, cpu);\n \n \t\tif (WARN_ON_ONCE(rstatc->updated_children != css) ||\n \t\t    WARN_ON_ONCE(rstatc->updated_next))\n@@ -497,8 +508,7 @@ void css_rstat_exit(struct cgroup_subsys_state *css)\n \t\tcgrp->rstat_base_cpu = NULL;\n \t}\n \n-\tfree_percpu(css->rstat_cpu);\n-\tcss->rstat_cpu = NULL;\n+\tfree_percpu(rstat_cpu);\n }\n \n /**",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "kernel/cgroup/rstat.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 24
+    }
+  ],
+  "success_step": 26
+}

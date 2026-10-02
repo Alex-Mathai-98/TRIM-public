@@ -1,0 +1,201 @@
+{
+  "bug_id": "django__django-15563",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/subqueries.py",
+        "before": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+        "after": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                # For multiple inheritance, we need to use the correct foreign key\n                # values that point to the parent model, not the child model's PKs\n                link_field = self.get_meta().get_ancestor_link(model)\n                if link_field:\n                    # Create a subquery to get the correct foreign key values\n                    # that point to the parent model\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    subquery.add_fields([link_field.attname])\n                    subquery.add_filter(\"pk__in\", self.related_ids)\n                    query.add_filter(\"pk__in\", subquery)\n                else:\n                    # Fallback to the original behavior if no link field is found\n                    query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+        "explanation": "classic_swe step 29 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/subqueries.py",
+        "before": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                # For multiple inheritance, we need to use the correct foreign key\n                # values that point to the parent model, not the child model's PKs\n                link_field = self.get_meta().get_ancestor_link(model)\n                if link_field:\n                    # Create a subquery to get the correct foreign key values\n                    # that point to the parent model\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    subquery.add_fields([link_field.attname])\n                    subquery.add_filter(\"pk__in\", self.related_ids)\n                    query.add_filter(\"pk__in\", subquery)\n                else:\n                    # Fallback to the original behavior if no link field is found\n                    query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+        "after": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                # For multiple inheritance, we need to use the correct foreign key\n                # values that point to the parent model, not the child model's PKs\n                if model in self.get_meta().parents:\n                    # Direct parent - use the link field directly\n                    link_field = self.get_meta().parents[model]\n                    if link_field:\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        subquery.add_fields([link_field.attname])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        query.add_filter(\"pk__in\", self.related_ids)\n                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Create a subquery that joins through the inheritance hierarchy\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    \n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Follow the path to get the final foreign key\n                        current_field = path[-1].target_fields[0].attname\n                        subquery.add_fields([current_field])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+        "explanation": "classic_swe step 40 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/subqueries.py",
+        "before": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Create a subquery that joins through the inheritance hierarchy\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    \n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Follow the path to get the final foreign key\n                        current_field = path[-1].target_fields[0].attname\n                        subquery.add_fields([current_field])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+        "after": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Create a subquery that follows the inheritance path\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        \n                        # For indirect inheritance, we need to join through the path\n                        # The last path element contains the join field we need\n                        last_path = path[-1]\n                        join_field = last_path.join_field\n                        \n                        # Add the join field to the subquery\n                        subquery.add_fields([join_field.attname])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        \n                        # Add the necessary joins for the path\n                        for path_info in path[:-1]:\n                            # Add join to the subquery\n                            subquery.setup_joins(\n                                [path_info.join_field.name], \n                                self.get_meta(), \n                                subquery.get_initial_alias()\n                            )\n                        \n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/subqueries.py",
+        "before": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Create a subquery that follows the inheritance path\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        \n                        # For indirect inheritance, we need to join through the path\n                        # The last path element contains the join field we need\n                        last_path = path[-1]\n                        join_field = last_path.join_field\n                        \n                        # Add the join field to the subquery\n                        subquery.add_fields([join_field.attname])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        \n                        # Add the necessary joins for the path\n                        for path_info in path[:-1]:\n                            # Add join to the subquery\n                            subquery.setup_joins(\n                                [path_info.join_field.name], \n                                self.get_meta(), \n                                subquery.get_initial_alias()\n                            )\n                        \n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+        "after": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Create a subquery that follows the inheritance path\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        \n                        # Build the field path to the target foreign key\n                        field_path = []\n                        for path_info in path:\n                            field_path.append(path_info.join_field.name)\n                        \n                        # The last field in the path is what we want to select\n                        target_field = '__'.join(field_path)\n                        subquery.add_fields([target_field])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        \n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+        "explanation": "classic_swe step 47 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/subqueries.py b/django/db/models/sql/subqueries.py\nindex 04063f73bc..e1c4981bf4 100644\n--- a/django/db/models/sql/subqueries.py\n+++ b/django/db/models/sql/subqueries.py\n@@ -134,7 +134,42 @@ class UpdateQuery(Query):\n             query = UpdateQuery(model)\n             query.values = values\n             if self.related_ids is not None:\n-                query.add_filter(\"pk__in\", self.related_ids)\n+                # For multiple inheritance, we need to use the correct foreign key\n+                # values that point to the parent model, not the child model's PKs\n+                if model in self.get_meta().parents:\n+                    # Direct parent - use the link field directly\n+                    link_field = self.get_meta().parents[model]\n+                    if link_field:\n+                        subquery = self.chain(klass=Query)\n+                        subquery.clear_select_clause()\n+                        subquery.add_fields([link_field.attname])\n+                        subquery.add_filter(\"pk__in\", self.related_ids)\n+                        query.add_filter(\"pk__in\", subquery)\n+                    else:\n+                        query.add_filter(\"pk__in\", self.related_ids)\n+                else:\n+                    # Indirect parent - need to follow the inheritance chain\n+                    # Get the path to the ancestor model\n+                    path = self.get_meta().get_path_to_parent(model)\n+                    if path:\n+                        # Create a subquery that follows the inheritance path\n+                        subquery = self.chain(klass=Query)\n+                        subquery.clear_select_clause()\n+                        \n+                        # Build the field path to the target foreign key\n+                        field_path = []\n+                        for path_info in path:\n+                            field_path.append(path_info.join_field.name)\n+                        \n+                        # The last field in the path is what we want to select\n+                        target_field = '__'.join(field_path)\n+                        subquery.add_fields([target_field])\n+                        subquery.add_filter(\"pk__in\", self.related_ids)\n+                        \n+                        query.add_filter(\"pk__in\", subquery)\n+                    else:\n+                        # Fallback to the original behavior\n+                        query.add_filter(\"pk__in\", self.related_ids)\n             result.append(query)\n         return result\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      7,
+      9,
+      11
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 3,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 2,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_not_applicable": 3,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      2,
+      7,
+      9,
+      11
+    ],
+    "edit_list_after_file_min": [
+      2,
+      7,
+      9,
+      11
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 6,
+    "edit_list_after_greedy": [
+      2,
+      7,
+      9,
+      11
+    ],
+    "edit_list_after_refinement": [
+      2,
+      7,
+      9,
+      11
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/subqueries.py",
+          "before": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+          "after": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                # For multiple inheritance, we need to use the correct foreign key\n                # values that point to the parent model, not the child model's PKs\n                link_field = self.get_meta().get_ancestor_link(model)\n                if link_field:\n                    # Create a subquery to get the correct foreign key values\n                    # that point to the parent model\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    subquery.add_fields([link_field.attname])\n                    subquery.add_filter(\"pk__in\", self.related_ids)\n                    query.add_filter(\"pk__in\", subquery)\n                else:\n                    # Fallback to the original behavior if no link field is found\n                    query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+          "explanation": "classic_swe step 29 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/subqueries.py",
+          "before": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                # For multiple inheritance, we need to use the correct foreign key\n                # values that point to the parent model, not the child model's PKs\n                link_field = self.get_meta().get_ancestor_link(model)\n                if link_field:\n                    # Create a subquery to get the correct foreign key values\n                    # that point to the parent model\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    subquery.add_fields([link_field.attname])\n                    subquery.add_filter(\"pk__in\", self.related_ids)\n                    query.add_filter(\"pk__in\", subquery)\n                else:\n                    # Fallback to the original behavior if no link field is found\n                    query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+          "after": "    def get_related_updates(self):\n        \"\"\"\n        Return a list of query objects: one for each update required to an\n        ancestor model. Each query will have the same filtering conditions as\n        the current query but will only update a single table.\n        \"\"\"\n        if not self.related_updates:\n            return []\n        result = []\n        for model, values in self.related_updates.items():\n            query = UpdateQuery(model)\n            query.values = values\n            if self.related_ids is not None:\n                # For multiple inheritance, we need to use the correct foreign key\n                # values that point to the parent model, not the child model's PKs\n                if model in self.get_meta().parents:\n                    # Direct parent - use the link field directly\n                    link_field = self.get_meta().parents[model]\n                    if link_field:\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        subquery.add_fields([link_field.attname])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        query.add_filter(\"pk__in\", self.related_ids)\n                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Create a subquery that joins through the inheritance hierarchy\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    \n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Follow the path to get the final foreign key\n                        current_field = path[-1].target_fields[0].attname\n                        subquery.add_fields([current_field])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)\n            result.append(query)\n        return result",
+          "explanation": "classic_swe step 40 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/subqueries.py",
+          "before": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Create a subquery that joins through the inheritance hierarchy\n                    subquery = self.chain(klass=Query)\n                    subquery.clear_select_clause()\n                    \n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Follow the path to get the final foreign key\n                        current_field = path[-1].target_fields[0].attname\n                        subquery.add_fields([current_field])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+          "after": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Create a subquery that follows the inheritance path\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        \n                        # For indirect inheritance, we need to join through the path\n                        # The last path element contains the join field we need\n                        last_path = path[-1]\n                        join_field = last_path.join_field\n                        \n                        # Add the join field to the subquery\n                        subquery.add_fields([join_field.attname])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        \n                        # Add the necessary joins for the path\n                        for path_info in path[:-1]:\n                            # Add join to the subquery\n                            subquery.setup_joins(\n                                [path_info.join_field.name], \n                                self.get_meta(), \n                                subquery.get_initial_alias()\n                            )\n                        \n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/subqueries.py",
+          "before": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Create a subquery that follows the inheritance path\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        \n                        # For indirect inheritance, we need to join through the path\n                        # The last path element contains the join field we need\n                        last_path = path[-1]\n                        join_field = last_path.join_field\n                        \n                        # Add the join field to the subquery\n                        subquery.add_fields([join_field.attname])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        \n                        # Add the necessary joins for the path\n                        for path_info in path[:-1]:\n                            # Add join to the subquery\n                            subquery.setup_joins(\n                                [path_info.join_field.name], \n                                self.get_meta(), \n                                subquery.get_initial_alias()\n                            )\n                        \n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+          "after": "                else:\n                    # Indirect parent - need to follow the inheritance chain\n                    # Get the path to the ancestor model\n                    path = self.get_meta().get_path_to_parent(model)\n                    if path:\n                        # Create a subquery that follows the inheritance path\n                        subquery = self.chain(klass=Query)\n                        subquery.clear_select_clause()\n                        \n                        # Build the field path to the target foreign key\n                        field_path = []\n                        for path_info in path:\n                            field_path.append(path_info.join_field.name)\n                        \n                        # The last field in the path is what we want to select\n                        target_field = '__'.join(field_path)\n                        subquery.add_fields([target_field])\n                        subquery.add_filter(\"pk__in\", self.related_ids)\n                        \n                        query.add_filter(\"pk__in\", subquery)\n                    else:\n                        # Fallback to the original behavior\n                        query.add_filter(\"pk__in\", self.related_ids)",
+          "explanation": "classic_swe step 47 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 29,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 29,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/sql/subqueries.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "minimized_files": [
+      "django/db/models/sql/subqueries.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/compiler.py",
+      "django/db/models/sql/subqueries.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 3,
+    "minimized_added_lines": 36,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 22,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "subset_of_gold"
+}

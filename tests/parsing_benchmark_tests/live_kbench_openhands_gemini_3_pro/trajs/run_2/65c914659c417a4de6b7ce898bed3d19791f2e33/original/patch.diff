@@ -1,0 +1,40 @@
+diff --git a/net/sched/sch_skbprio.c b/net/sched/sch_skbprio.c
+index 20ff7386b74b..64be365e49f0 100644
+--- a/net/sched/sch_skbprio.c
++++ b/net/sched/sch_skbprio.c
+@@ -41,7 +41,7 @@ static u16 calc_new_high_prio(const struct skbprio_sched_data *q)
+ {
+ 	int prio;
+ 
+-	for (prio = q->highest_prio - 1; prio >= q->lowest_prio; prio--) {
++	for (prio = q->highest_prio - 1; prio >= 0; prio--) {
+ 		if (!skb_queue_empty(&q->qdiscs[prio]))
+ 			return prio;
+ 	}
+@@ -54,7 +54,7 @@ static u16 calc_new_low_prio(const struct skbprio_sched_data *q)
+ {
+ 	int prio;
+ 
+-	for (prio = q->lowest_prio + 1; prio <= q->highest_prio; prio++) {
++	for (prio = q->lowest_prio + 1; prio < SKBPRIO_MAX_PRIORITY; prio++) {
+ 		if (!skb_queue_empty(&q->qdiscs[prio]))
+ 			return prio;
+ 	}
+@@ -122,13 +122,15 @@ static int skbprio_enqueue(struct sk_buff *skb, struct Qdisc *sch,
+ 
+ 	/* Check to update highest and lowest priorities. */
+ 	if (skb_queue_empty(lp_qdisc)) {
+-		if (q->lowest_prio == q->highest_prio) {
++		if (q->lowest_prio == q->highest_prio &&
++		    sch->q.qlen == 1) {
+ 			/* The incoming packet is the only packet in queue. */
+-			BUG_ON(sch->q.qlen != 1);
+ 			q->lowest_prio = prio;
+ 			q->highest_prio = prio;
+ 		} else {
+ 			q->lowest_prio = calc_new_low_prio(q);
++			if (q->lowest_prio > q->highest_prio)
++				q->highest_prio = q->lowest_prio;
+ 		}
+ 	}
+ 

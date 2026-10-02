@@ -1,0 +1,65 @@
+diff --git a/net/ipv6/ila/ila.h b/net/ipv6/ila/ila.h
+index 85b92917849b..76ba723f8f82 100644
+--- a/net/ipv6/ila/ila.h
++++ b/net/ipv6/ila/ila.h
+@@ -13,6 +13,7 @@
+ #include <linux/socket.h>
+ #include <linux/skbuff.h>
+ #include <linux/types.h>
++#include <linux/mutex.h>
+ #include <net/checksum.h>
+ #include <net/genetlink.h>
+ #include <net/ip.h>
+@@ -101,6 +102,7 @@ struct ila_net {
+ 		spinlock_t *locks; /* Bucket locks for entry manipulation */
+ 		unsigned int locks_mask;
+ 		bool hooks_registered;
++		struct mutex hooks_lock;
+ 	} xlat;
+ };
+ 
+diff --git a/net/ipv6/ila/ila_xlat.c b/net/ipv6/ila/ila_xlat.c
+index 7646e401c630..551a5773cc11 100644
+--- a/net/ipv6/ila/ila_xlat.c
++++ b/net/ipv6/ila/ila_xlat.c
+@@ -202,17 +202,21 @@ static int ila_add_mapping(struct net *net, struct ila_xlat_params *xp)
+ 	spinlock_t *lock = ila_get_lock(ilan, xp->ip.locator_match);
+ 	int err = 0, order;
+ 
++	mutex_lock(&ilan->xlat.hooks_lock);
+ 	if (!ilan->xlat.hooks_registered) {
+ 		/* We defer registering net hooks in the namespace until the
+ 		 * first mapping is added.
+ 		 */
+ 		err = nf_register_net_hooks(net, ila_nf_hook_ops,
+ 					    ARRAY_SIZE(ila_nf_hook_ops));
+-		if (err)
++		if (err) {
++			mutex_unlock(&ilan->xlat.hooks_lock);
+ 			return err;
++		}
+ 
+ 		ilan->xlat.hooks_registered = true;
+ 	}
++	mutex_unlock(&ilan->xlat.hooks_lock);
+ 
+ 	ila = kzalloc(sizeof(*ila), GFP_KERNEL);
+ 	if (!ila)
+@@ -601,6 +605,8 @@ int ila_xlat_init_net(struct net *net)
+ 	struct ila_net *ilan = net_generic(net, ila_net_id);
+ 	int err;
+ 
++	mutex_init(&ilan->xlat.hooks_lock);
++
+ 	err = alloc_ila_locks(ilan);
+ 	if (err)
+ 		return err;
+@@ -630,6 +636,8 @@ void ila_xlat_exit_net(struct net *net)
+ 	rhashtable_free_and_destroy(&ilan->xlat.rhash_table, ila_free_cb, NULL);
+ 
+ 	free_bucket_spinlocks(ilan->xlat.locks);
++
++	mutex_destroy(&ilan->xlat.hooks_lock);
+ }
+ 
+ static int ila_xlat_addr(struct sk_buff *skb, bool sir2ila)

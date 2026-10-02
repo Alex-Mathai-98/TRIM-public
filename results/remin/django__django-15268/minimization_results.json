@@ -1,0 +1,154 @@
+{
+  "bug_id": "django__django-15268",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/migrations/operations/models.py",
+        "before": "class AlterTogetherOptionOperation(ModelOptionOperation):\n    option_name = None\n\n    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)\n\n    @cached_property\n    def option_value(self):\n        return getattr(self, self.option_name)",
+        "after": "class AlterTogetherOptionOperation(ModelOptionOperation):\n    option_name = None\n\n    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)\n\n    @cached_property\n    def option_value(self):\n        return getattr(self, self.option_name)\n\n    def reduce(self, operation, app_label):\n        if (isinstance(operation, AlterTogetherOptionOperation) and\n                self.name_lower == operation.name_lower):\n            # If it's the same operation type, use the parent's reduce method\n            if isinstance(operation, self.__class__):\n                return [operation]\n            # If it's a different AlterTogetherOptionOperation on the same model,\n            # allow optimization through it\n            return True\n        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n            return [operation]\n        return super().reduce(operation, app_label)",
+        "explanation": "classic_swe step 25 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/migrations/operations/models.py b/django/db/migrations/operations/models.py\nindex c120f5d32d..0ca5bb4cc5 100644\n--- a/django/db/migrations/operations/models.py\n+++ b/django/db/migrations/operations/models.py\n@@ -480,6 +480,19 @@ class AlterTogetherOptionOperation(ModelOptionOperation):\n     def option_value(self):\n         return getattr(self, self.option_name)\n \n+    def reduce(self, operation, app_label):\n+        if (isinstance(operation, AlterTogetherOptionOperation) and\n+                self.name_lower == operation.name_lower):\n+            # If it's the same operation type, use the parent's reduce method\n+            if isinstance(operation, self.__class__):\n+                return [operation]\n+            # If it's a different AlterTogetherOptionOperation on the same model,\n+            # allow optimization through it\n+            return True\n+        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n+            return [operation]\n+        return super().reduce(operation, app_label)\n+\n     def deconstruct(self):\n         kwargs = {\n             'name': self.name,\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      8,
+      10,
+      11,
+      12
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 2,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 1,
+  "reduction": "5_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "class AlterTogetherOptionOperation(ModelOptionOperation):\n    option_name = None\n\n    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)\n\n    @cached_property\n    def option_value(self):\n        return getattr(self, self.option_name)",
+          "after": "class AlterTogetherOptionOperation(ModelOptionOperation):\n    option_name = None\n\n    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)\n\n    @cached_property\n    def option_value(self):\n        return getattr(self, self.option_name)\n\n    def reduce(self, operation, app_label):\n        if (isinstance(operation, AlterTogetherOptionOperation) and\n                self.name_lower == operation.name_lower):\n            # If it's the same operation type, use the parent's reduce method\n            if isinstance(operation, self.__class__):\n                return [operation]\n            # If it's a different AlterTogetherOptionOperation on the same model,\n            # allow optimization through it\n            return True\n        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "explanation": "classic_swe step 25 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    def reduce(self, operation, app_label):\n        if (isinstance(operation, AlterTogetherOptionOperation) and\n                self.name_lower == operation.name_lower):\n            # If it's the same operation type, use the parent's reduce method\n            if isinstance(operation, self.__class__):\n                return [operation]\n            # If it's a different AlterTogetherOptionOperation on the same model,\n            # allow optimization through it\n            return True\n        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "after": "    def reduce(self, operation, app_label):\n        if (isinstance(operation, AlterTogetherOptionOperation) and\n                self.name_lower == operation.name_lower):\n            # If it's the same operation type, check if we can optimize\n            if isinstance(operation, self.__class__):\n                # If both operations have the same value, they cancel out\n                if self.option_value == operation.option_value:\n                    return []\n                # Otherwise, keep the second operation\n                return [operation]\n            # If it's a different AlterTogetherOptionOperation on the same model,\n            # allow optimization through it\n            return True\n        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "explanation": "classic_swe step 47 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)",
+          "after": "    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        else:\n            # Convert None or empty values to empty set for consistency\n            option_value = set()\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)",
+          "explanation": "classic_swe step 54 #1"
+        },
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        else:\n            # Convert None or empty values to empty set for consistency\n            option_value = set()\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)",
+          "after": "    def __init__(self, name, option_value):\n        if option_value:\n            option_value = set(normalize_together(option_value))\n        setattr(self, self.option_name, option_value)\n        super().__init__(name)",
+          "explanation": "classic_swe step 55 #1"
+        },
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "    def reduce(self, operation, app_label):\n        if (isinstance(operation, AlterTogetherOptionOperation) and\n                self.name_lower == operation.name_lower):\n            # If it's the same operation type, check if we can optimize\n            if isinstance(operation, self.__class__):\n                # If both operations have the same value, they cancel out\n                if self.option_value == operation.option_value:\n                    return []\n                # Otherwise, keep the second operation\n                return [operation]\n            # If it's a different AlterTogetherOptionOperation on the same model,\n            # allow optimization through it\n            return True\n        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "after": "    def reduce(self, operation, app_label):\n        if (isinstance(operation, AlterTogetherOptionOperation) and\n                self.name_lower == operation.name_lower):\n            # If it's the same operation type, check if we can optimize\n            if isinstance(operation, self.__class__):\n                # Normalize values for comparison (None and empty set are equivalent)\n                self_value = self.option_value or set()\n                other_value = operation.option_value or set()\n                # If both operations have the same value, they cancel out\n                if self_value == other_value:\n                    return []\n                # Otherwise, keep the second operation\n                return [operation]\n            # If it's a different AlterTogetherOptionOperation on the same model,\n            # allow optimization through it\n            return True\n        elif isinstance(operation, DeleteModel) and self.name_lower == operation.name_lower:\n            return [operation]\n        return super().reduce(operation, app_label)",
+          "explanation": "classic_swe step 56 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 3,
+    "f2p_fail": 0,
+    "p2p_pass": 130,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 3,
+    "f2p_fail": 0,
+    "p2p_pass": 130,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "gold_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 13,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 12,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,54 @@
+diff --git a/fs/ntfs3/namei.c b/fs/ntfs3/namei.c
+index fc720ad9c57a..2cf914118612 100644
+--- a/fs/ntfs3/namei.c
++++ b/fs/ntfs3/namei.c
+@@ -395,30 +395,30 @@ static int ntfs_d_hash(const struct dentry *dentry, struct qstr *name)
+ 	/*
+ 	 * Try slow way with current upcase table
+ 	 */
+-	uni = __getname();
+-	if (!uni)
+-		return -ENOMEM;
++	{
++		struct {
++			u8 len;
++			u8 unused;
++			u16 name[NTFS_NAME_LEN];
++		} uni_buf;
+ 
+-	sbi = dentry->d_sb->s_fs_info;
++		uni = (struct cpu_str *)&uni_buf;
+ 
+-	err = ntfs_nls_to_utf16(sbi, name->name, name->len, uni, NTFS_NAME_LEN,
+-				UTF16_HOST_ENDIAN);
+-	if (err < 0)
+-		goto out;
++		sbi = dentry->d_sb->s_fs_info;
+ 
+-	if (!err) {
+-		err = -EINVAL;
+-		goto out;
+-	}
++		err = ntfs_nls_to_utf16(sbi, name->name, name->len, uni,
++					NTFS_NAME_LEN, UTF16_HOST_ENDIAN);
++		if (err < 0)
++			return err;
+ 
+-	hash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,
+-			       init_name_hash(dentry));
+-	name->hash = end_name_hash(hash);
+-	err = 0;
++		if (!err)
++			return -EINVAL;
+ 
+-out:
+-	__putname(uni);
+-	return err;
++		hash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,
++				       init_name_hash(dentry));
++		name->hash = end_name_hash(hash);
++		return 0;
++	}
+ }
+ 
+ /*

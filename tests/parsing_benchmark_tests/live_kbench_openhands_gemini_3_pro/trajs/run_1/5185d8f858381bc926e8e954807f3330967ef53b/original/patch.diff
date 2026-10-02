@@ -1,0 +1,39 @@
+diff --git a/fs/minix/namei.c b/fs/minix/namei.c
+index 68d2dd75b97f..1285b2ef1ff8 100644
+--- a/fs/minix/namei.c
++++ b/fs/minix/namei.c
+@@ -148,6 +148,11 @@ static int minix_unlink(struct inode * dir, struct dentry *dentry)
+ 	de = minix_find_entry(dentry, &folio);
+ 	if (!de)
+ 		return -ENOENT;
++	if (inode->i_nlink == 0) {
++		folio_release_kmap(folio, de);
++		minix_error_inode(inode, "inode has corrupted nlink");
++		return -EFSCORRUPTED;
++	}
+ 	err = minix_delete_entry(de, folio);
+ 	folio_release_kmap(folio, de);
+ 
+@@ -167,6 +172,10 @@ static int minix_rmdir(struct inode * dir, struct dentry *dentry)
+ 		minix_error_inode(dir, "inode has corrupted nlink");
+ 		goto out;
+ 	}
++	if (inode->i_nlink < 2) {
++		minix_error_inode(inode, "inode has corrupted nlink");
++		goto out;
++	}
+ 
+ 	err = -ENOTEMPTY;
+ 	if (!minix_empty_dir(inode))
+@@ -216,6 +225,11 @@ static int minix_rename(struct mnt_idmap *idmap,
+ 		err = -ENOTEMPTY;
+ 		if (dir_de && !minix_empty_dir(new_inode))
+ 			goto out_dir;
++		if ((dir_de && new_inode->i_nlink < 2) || new_inode->i_nlink == 0) {
++			err = -EFSCORRUPTED;
++			minix_error_inode(new_inode, "inode has corrupted nlink");
++			goto out_dir;
++		}
+ 
+ 		err = -ENOENT;
+ 		new_de = minix_find_entry(new_dentry, &new_folio);

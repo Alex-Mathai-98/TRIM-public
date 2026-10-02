@@ -1,0 +1,28 @@
+diff --git a/security/keys/key.c b/security/keys/key.c
+index 3d7d185019d3..c8850bdc7dd2 100644
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -14,6 +14,7 @@
+ #include <linux/workqueue.h>
+ #include <linux/random.h>
+ #include <linux/err.h>
++#include <linux/rcupdate.h>
+ #include "internal.h"
+ 
+ struct kmem_cache *key_jar;
+@@ -648,6 +649,7 @@ void key_put(struct key *key)
+ 	if (key) {
+ 		key_check(key);
+ 
++		rcu_read_lock();
+ 		if (refcount_dec_and_test(&key->usage)) {
+ 			unsigned long flags;
+ 
+@@ -660,6 +662,7 @@ void key_put(struct key *key)
+ 			}
+ 			schedule_work(&key_gc_work);
+ 		}
++		rcu_read_unlock();
+ 	}
+ }
+ EXPORT_SYMBOL(key_put);

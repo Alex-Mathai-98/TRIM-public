@@ -1,0 +1,18 @@
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 7b98b1bf1dc9..986eda42ff6b 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -1695,6 +1695,13 @@ struct buffer_head *ext4_find_inline_entry(struct inode *dir,
+ 	inline_start = ext4_get_inline_xattr_pos(dir, &iloc);
+ 	inline_size = ext4_get_inline_size(dir) - EXT4_MIN_INLINE_DATA_SIZE;
+ 
++	if ((void *)inline_start < (void *)iloc.bh->b_data ||
++	    (void *)inline_start + inline_size >
++	    (void *)iloc.bh->b_data + iloc.bh->b_size) {
++		ret = -EFSCORRUPTED;
++		goto out;
++	}
++
+ 	ret = ext4_search_dir(iloc.bh, inline_start, inline_size,
+ 			      dir, fname, 0, res_dir);
+ 	if (ret == 1)

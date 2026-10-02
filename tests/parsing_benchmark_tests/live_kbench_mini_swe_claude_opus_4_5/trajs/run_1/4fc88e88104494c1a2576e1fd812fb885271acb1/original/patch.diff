@@ -1,0 +1,34 @@
+diff --git a/fs/bcachefs/bkey.h b/fs/bcachefs/bkey.h
+index 41df24a53d97..83ff4b52a014 100644
+--- a/fs/bcachefs/bkey.h
++++ b/fs/bcachefs/bkey.h
+@@ -605,6 +605,15 @@ static inline bool bch2_bkey_format_field_overflows(struct bkey_format *f, unsig
+ 	return false;
+ }
+ 
++static inline bool bch2_bkey_format_has_too_big_fields(const struct bkey_format *f)
++{
++	for (unsigned i = 0; i < BKEY_NR_FIELDS; i++)
++		if (bch2_bkey_format_field_overflows((struct bkey_format *) f, i))
++			return true;
++
++	return false;
++}
++
+ int bch2_bkey_format_invalid(struct bch_fs *, struct bkey_format *,
+ 			     enum bch_validate_flags, struct printbuf *);
+ void bch2_bkey_format_to_text(struct printbuf *, const struct bkey_format *);
+diff --git a/fs/bcachefs/bkey_cmp.h b/fs/bcachefs/bkey_cmp.h
+index 5f42a6e69360..e0dfb55388ee 100644
+--- a/fs/bcachefs/bkey_cmp.h
++++ b/fs/bcachefs/bkey_cmp.h
+@@ -100,7 +100,8 @@ int __bch2_bkey_cmp_packed_format_checked_inlined(const struct bkey_packed *l,
+ 			      high_word(f, r),
+ 			      b->nr_key_bits);
+ 
+-	EBUG_ON(ret != bpos_cmp(bkey_unpack_pos(b, l),
++	EBUG_ON(!bch2_bkey_format_has_too_big_fields(f) &&
++		ret != bpos_cmp(bkey_unpack_pos(b, l),
+ 				bkey_unpack_pos(b, r)));
+ 	return ret;
+ }

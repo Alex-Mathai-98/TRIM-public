@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\txa_lock(&ictx->objects);\n\tobj = xas_load(&xas);\n\tif (to_destroy) {\n\t\t/*\n\t\t * If the caller is holding a ref on obj we put it here under\n\t\t * the spinlock.\n\t\t */\n\t\trefcount_dec(&obj->users);\n\n\t\tif (WARN_ON(obj != to_destroy)) {\n\t\t\tret = -ENOENT;\n\t\t\tgoto err_xa;\n\t\t}\n\n\t\tif (flags & REMOVE_WAIT_SHORTTERM) {\n\t\t\txas_store(&xas, NULL);\n\t\t\tif (ictx->vfio_ioas == container_of(obj, struct iommufd_ioas, obj))\n\t\t\t\tictx->vfio_ioas = NULL;\n\t\t\txa_unlock(&ictx->objects);\n\n\t\t\tret = iommufd_object_dec_wait_shortterm(ictx, to_destroy);\n\t\t\tif (ret) {\n\t\t\t\txa_lock(&ictx->objects);\n\t\t\t\txas_store(&xas, obj);\n\t\t\t\tgoto err_xa;\n\t\t\t}\n\t\t\tzerod_shortterm = true;\n\t\t\txa_lock(&ictx->objects);\n\t\t}\n\t} else if (xa_is_zero(obj) || !obj) {\n\t\tret = -ENOENT;\n\t\tgoto err_xa;\n\t}\n\n\tif (!refcount_dec_if_one(&obj->users)) {\n\t\tif (zerod_shortterm)\n\t\t\txas_store(&xas, obj);\n\t\tret = -EBUSY;\n\t\tgoto err_xa;\n\t}",
+          "before": "\tif (flags & REMOVE_WAIT_SHORTTERM) {\n\t\tret = iommufd_object_dec_wait_shortterm(ictx, to_destroy);\n\t\tif (ret) {\n\t\t\t/*\n\t\t\t * We have a bug. Put back the callers reference and\n\t\t\t * defer cleaning this object until close.\n\t\t\t */\n\t\t\trefcount_dec(&to_destroy->users);\n\t\t\treturn ret;\n\t\t}\n\t\tzerod_shortterm = true;\n\t}\n\n\txa_lock(&ictx->objects);\n\tobj = xas_load(&xas);\n\tif (to_destroy) {\n\t\t/*\n\t\t * If the caller is holding a ref on obj we put it here under\n\t\t * the spinlock.\n\t\t */\n\t\trefcount_dec(&obj->users);\n\n\t\tif (WARN_ON(obj != to_destroy)) {\n\t\t\tret = -ENOENT;\n\t\t\tgoto err_xa;\n\t\t}\n\t} else if (xa_is_zero(obj) || !obj) {\n\t\tret = -ENOENT;\n\t\tgoto err_xa;\n\t}\n\n\tif (!refcount_dec_if_one(&obj->users)) {\n\t\tret = -EBUSY;\n\t\tgoto err_xa;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/main.c b/drivers/iommu/iommufd/main.c\nindex 97c5e3567d33..033335df2066 100644\n--- a/drivers/iommu/iommufd/main.c\n+++ b/drivers/iommu/iommufd/main.c\n@@ -131,19 +131,6 @@ int iommufd_object_remove(struct iommufd_ctx *ictx,\n \t * function. Any temporary increment of the refcount must increment\n \t * shortterm_users, such as during ioctl execution.\n \t */\n-\tif (flags & REMOVE_WAIT_SHORTTERM) {\n-\t\tret = iommufd_object_dec_wait_shortterm(ictx, to_destroy);\n-\t\tif (ret) {\n-\t\t\t/*\n-\t\t\t * We have a bug. Put back the callers reference and\n-\t\t\t * defer cleaning this object until close.\n-\t\t\t */\n-\t\t\trefcount_dec(&to_destroy->users);\n-\t\t\treturn ret;\n-\t\t}\n-\t\tzerod_shortterm = true;\n-\t}\n-\n \txa_lock(&ictx->objects);\n \tobj = xas_load(&xas);\n \tif (to_destroy) {\n@@ -157,12 +144,30 @@ int iommufd_object_remove(struct iommufd_ctx *ictx,\n \t\t\tret = -ENOENT;\n \t\t\tgoto err_xa;\n \t\t}\n+\n+\t\tif (flags & REMOVE_WAIT_SHORTTERM) {\n+\t\t\txas_store(&xas, NULL);\n+\t\t\tif (ictx->vfio_ioas == container_of(obj, struct iommufd_ioas, obj))\n+\t\t\t\tictx->vfio_ioas = NULL;\n+\t\t\txa_unlock(&ictx->objects);\n+\n+\t\t\tret = iommufd_object_dec_wait_shortterm(ictx, to_destroy);\n+\t\t\tif (ret) {\n+\t\t\t\txa_lock(&ictx->objects);\n+\t\t\t\txas_store(&xas, obj);\n+\t\t\t\tgoto err_xa;\n+\t\t\t}\n+\t\t\tzerod_shortterm = true;\n+\t\t\txa_lock(&ictx->objects);\n+\t\t}\n \t} else if (xa_is_zero(obj) || !obj) {\n \t\tret = -ENOENT;\n \t\tgoto err_xa;\n \t}\n \n \tif (!refcount_dec_if_one(&obj->users)) {\n+\t\tif (zerod_shortterm)\n+\t\t\txas_store(&xas, obj);\n \t\tret = -EBUSY;\n \t\tgoto err_xa;\n \t}",
+          "explanation": "classic_swe step 74 #1",
+          "filename": "drivers/iommu/iommufd/main.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 74
+        }
+      ],
+      "end_step": 74,
+      "revision_index": 0,
+      "start_step": 74
+    }
+  ],
+  "success_step": 74
+}

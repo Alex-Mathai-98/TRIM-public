@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void tipc_net_stop(struct net *net)\n{\n\trtnl_lock();\n\ttipc_bearer_stop(net);\n\ttipc_node_stop(net);\n\trtnl_unlock();\n\n\tif (tipc_own_id(net))\n\t\tpr_info(\"Left network mode\\n\");\n}\n",
+          "before": "void tipc_net_stop(struct net *net)\n{\n\tif (!tipc_own_id(net))\n\t\treturn;\n\n\trtnl_lock();\n\ttipc_bearer_stop(net);\n\ttipc_node_stop(net);\n\trtnl_unlock();\n\n\tpr_info(\"Left network mode\\n\");\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tipc/net.c b/net/tipc/net.c\nindex 0e95572e56b4..2dfe16f0f1fa 100644\n--- a/net/tipc/net.c\n+++ b/net/tipc/net.c\n@@ -150,15 +150,13 @@ void tipc_net_finalize_work(struct work_struct *work)\n \n void tipc_net_stop(struct net *net)\n {\n-\tif (!tipc_own_id(net))\n-\t\treturn;\n-\n \trtnl_lock();\n \ttipc_bearer_stop(net);\n \ttipc_node_stop(net);\n \trtnl_unlock();\n \n-\tpr_info(\"Left network mode\\n\");\n+\tif (tipc_own_id(net))\n+\t\tpr_info(\"Left network mode\\n\");\n }\n \n static int __tipc_nl_add_net(struct net *net, struct tipc_nl_msg *msg)",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "net/tipc/net.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 0,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "\t/* Get net to avoid freed tipc_crypto when delete namespace */\n\tif (unlikely(!maybe_get_net(aead->crypto->net))) {\n\t\ttipc_bearer_put(b);\n\t\trc = -ENODEV;\n\t\tgoto exit;\n\t}",
+          "before": "\t/* Get net to avoid freed tipc_crypto when delete namespace */\n\tget_net(aead->crypto->net);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tipc/crypto.c b/net/tipc/crypto.c\nindex f4cfe88670f5..432664331ce8 100644\n--- a/net/tipc/crypto.c\n+++ b/net/tipc/crypto.c\n@@ -818,7 +818,11 @@ static int tipc_aead_encrypt(struct tipc_aead *aead, struct sk_buff *skb,\n \t}\n \n \t/* Get net to avoid freed tipc_crypto when delete namespace */\n-\tget_net(aead->crypto->net);\n+\tif (unlikely(!maybe_get_net(aead->crypto->net))) {\n+\t\ttipc_bearer_put(b);\n+\t\trc = -ENODEV;\n+\t\tgoto exit;\n+\t}\n \n \t/* Now, do encrypt */\n \trc = crypto_aead_encrypt(req);\ndiff --git a/net/tipc/net.c b/net/tipc/net.c\nindex 0e95572e56b4..2dfe16f0f1fa 100644\n--- a/net/tipc/net.c\n+++ b/net/tipc/net.c\n@@ -150,15 +150,13 @@ void tipc_net_finalize_work(struct work_struct *work)\n \n void tipc_net_stop(struct net *net)\n {\n-\tif (!tipc_own_id(net))\n-\t\treturn;\n-\n \trtnl_lock();\n \ttipc_bearer_stop(net);\n \ttipc_node_stop(net);\n \trtnl_unlock();\n \n-\tpr_info(\"Left network mode\\n\");\n+\tif (tipc_own_id(net))\n+\t\tpr_info(\"Left network mode\\n\");\n }\n \n static int __tipc_nl_add_net(struct net *net, struct tipc_nl_msg *msg)",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "net/tipc/crypto.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 1,
+      "start_step": 40
+    }
+  ],
+  "success_step": 40
+}

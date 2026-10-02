@@ -1,0 +1,17 @@
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index fbc1c84b555c..55c33e3093c9 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -689,7 +689,11 @@ int ext4_generic_write_inline_data(struct address_space *mapping,
+ 		goto out_release_bh;
+ 	}
+ 
+-	ret = ext4_prepare_inline_data(handle, inode, pos + len);
++	/* Inline data cannot handle writes at positions beyond max inline size */
++	if (pos + len > ext4_get_max_inline_size(inode))
++		ret = -ENOSPC;
++	else
++		ret = ext4_prepare_inline_data(handle, inode, pos + len);
+ 	if (ret && ret != -ENOSPC)
+ 		goto out_stop_journal;
+ 

@@ -1,0 +1,54 @@
+diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c
+index c9e65e9088b3..f8aed3e7b097 100644
+--- a/drivers/hid/hid-steam.c
++++ b/drivers/hid/hid-steam.c
+@@ -547,6 +547,9 @@ static int steam_play_effect(struct input_dev *dev, void *data,
+ {
+ 	struct steam_device *steam = input_get_drvdata(dev);
+ 
++	if (!steam)
++		return -ENODEV;
++
+ 	steam->rumble_left = effect->u.rumble.strong_magnitude;
+ 	steam->rumble_right = effect->u.rumble.weak_magnitude;
+ 
+@@ -596,6 +599,9 @@ static int steam_input_open(struct input_dev *dev)
+ 	unsigned long flags;
+ 	bool set_lizard_mode;
+ 
++	if (!steam)
++		return -ENODEV;
++
+ 	/*
+ 	 * Disabling lizard mode automatically is only done on the Steam
+ 	 * Controller. On the Steam Deck, this is toggled manually by holding
+@@ -618,6 +624,9 @@ static void steam_input_close(struct input_dev *dev)
+ 	unsigned long flags;
+ 	bool set_lizard_mode;
+ 
++	if (!steam)
++		return;
++
+ 	if (!(steam->quirks & STEAM_QUIRK_DECK)) {
+ 		spin_lock_irqsave(&steam->lock, flags);
+ 		set_lizard_mode = !steam->client_opened && lizard_mode;
+@@ -915,6 +924,9 @@ static void steam_input_unregister(struct steam_device *steam)
+ 		return;
+ 	RCU_INIT_POINTER(steam->input, NULL);
+ 	synchronize_rcu();
++	mutex_lock(&input->mutex);
++	input_set_drvdata(input, NULL);
++	mutex_unlock(&input->mutex);
+ 	input_unregister_device(input);
+ }
+ 
+@@ -1330,8 +1342,8 @@ static void steam_remove(struct hid_device *hdev)
+ 	cancel_delayed_work_sync(&steam->mode_switch);
+ 	cancel_work_sync(&steam->work_connect);
+ 	cancel_work_sync(&steam->rumble_work);
+-	cancel_work_sync(&steam->unregister_work);
+ 	hid_destroy_device(steam->client_hdev);
++	cancel_work_sync(&steam->unregister_work);
+ 	steam->client_hdev = NULL;
+ 	steam->client_opened = 0;
+ 	if (steam->quirks & STEAM_QUIRK_WIRELESS) {

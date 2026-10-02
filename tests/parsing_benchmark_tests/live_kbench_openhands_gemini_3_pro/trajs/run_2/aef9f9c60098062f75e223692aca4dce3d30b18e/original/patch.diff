@@ -1,0 +1,62 @@
+diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c
+index eeae160c898d..b04df535c59b 100644
+--- a/drivers/atm/atmtcp.c
++++ b/drivers/atm/atmtcp.c
+@@ -86,9 +86,35 @@ static int atmtcp_send_control(struct atm_vcc *vcc,int type,
+ }
+ 
+ 
+-static int atmtcp_recv_control(const struct atmtcp_control *msg)
++static int atmtcp_recv_control(const struct atmtcp_control *msg,
++			       struct atm_dev *dev)
+ {
+ 	struct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;
++	struct atm_vcc *walk_vcc;
++	struct hlist_head *head;
++	struct sock *s;
++	int i;
++	int matches = 0;
++
++	read_lock(&vcc_sklist_lock);
++	for(i = 0; i < VCC_HTABLE_SIZE; ++i) {
++		head = &vcc_hash[i];
++		sk_for_each(s, head) {
++			walk_vcc = atm_sk(s);
++			if (walk_vcc->dev != dev)
++				continue;
++			if (walk_vcc == vcc) {
++				sock_hold(s);
++				matches = 1;
++				break;
++			}
++		}
++		if (matches)
++			break;
++	}
++	read_unlock(&vcc_sklist_lock);
++	if (!matches)
++		return -EUNATCH;
+ 
+ 	vcc->vpi = msg->addr.sap_addr.vpi;
+ 	vcc->vci = msg->addr.sap_addr.vci;
+@@ -104,9 +130,11 @@ static int atmtcp_recv_control(const struct atmtcp_control *msg)
+ 	    default:
+ 		printk(KERN_ERR "atmtcp_recv_control: unknown type %d\n",
+ 		    msg->type);
++		sock_put(sk_atm(vcc));
+ 		return -EINVAL;
+ 	}
+ 	wake_up(sk_sleep(sk_atm(vcc)));
++	sock_put(sk_atm(vcc));
+ 	return 0;
+ }
+ 
+@@ -295,7 +323,7 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)
+ 	hdr = (struct atmtcp_hdr *) skb->data;
+ 	if (hdr->length == ATMTCP_HDR_MAGIC) {
+ 		result = atmtcp_recv_control(
+-		    (struct atmtcp_control *) skb->data);
++		    (struct atmtcp_control *) skb->data, dev);
+ 		goto done;
+ 	}
+ 	read_lock(&vcc_sklist_lock);

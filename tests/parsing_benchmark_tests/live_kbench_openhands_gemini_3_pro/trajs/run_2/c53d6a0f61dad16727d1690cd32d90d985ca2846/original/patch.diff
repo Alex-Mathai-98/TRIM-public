@@ -1,0 +1,21 @@
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index f5a08f94e094..8919c2749a14 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -5757,9 +5757,13 @@ static unsigned int selinux_ip_output(void *priv, struct sk_buff *skb,
+ 			 * best we can do. */
+ 			return NF_ACCEPT;
+ 
+-		/* standard practice, label using the parent socket */
+-		sksec = selinux_sock(sk);
+-		sid = sksec->sid;
++		if (sk->sk_state == TCP_TIME_WAIT) {
++			sid = SECINITSID_KERNEL;
++		} else {
++			/* standard practice, label using the parent socket */
++			sksec = selinux_sock(sk);
++			sid = sksec->sid;
++		}
+ 	} else
+ 		sid = SECINITSID_KERNEL;
+ 	if (selinux_netlbl_skbuff_setsid(skb, state->pf, sid) != 0)

@@ -1,0 +1,25 @@
+diff --git a/io_uring/io_uring.h b/io_uring/io_uring.h
+index 12abee607e4a..492cbbf2c23b 100644
+--- a/io_uring/io_uring.h
++++ b/io_uring/io_uring.h
+@@ -125,6 +125,9 @@ static inline void io_lockdep_assert_cq_locked(struct io_ring_ctx *ctx)
+ #if defined(CONFIG_PROVE_LOCKING)
+ 	lockdep_assert(in_task());
+ 
++	if (ctx->flags & IORING_SETUP_DEFER_TASKRUN)
++		lockdep_assert_held(&ctx->uring_lock);
++
+ 	if (ctx->flags & IORING_SETUP_IOPOLL) {
+ 		lockdep_assert_held(&ctx->uring_lock);
+ 	} else if (!ctx->task_complete) {
+@@ -136,9 +139,7 @@ static inline void io_lockdep_assert_cq_locked(struct io_ring_ctx *ctx)
+ 		 * Not from an SQE, as those cannot be submitted, but via
+ 		 * updating tagged resources.
+ 		 */
+-		if (percpu_ref_is_dying(&ctx->refs))
+-			lockdep_assert(current_work());
+-		else
++		if (!percpu_ref_is_dying(&ctx->refs))
+ 			lockdep_assert(current == ctx->submitter_task);
+ 	}
+ #endif

@@ -1,0 +1,48 @@
+diff --git a/mm/internal.h b/mm/internal.h
+index 45b725c3dc03..ac6902db267c 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -53,6 +53,7 @@ struct pagetable_move_control {
+ 
+ 	bool need_rmap_locks; /* Do rmap locks need to be taken? */
+ 	bool for_stack; /* Is this an early temp stack being moved? */
++	bool is_revert; /* Is this a revert of a partial move? */
+ };
+ 
+ #define PAGETABLE_MOVE(name, old_, new_, old_addr_, new_addr_, len_)	\
+diff --git a/mm/mremap.c b/mm/mremap.c
+index 33b642076205..e4876d971147 100644
+--- a/mm/mremap.c
++++ b/mm/mremap.c
+@@ -358,7 +358,10 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,
+ 	 * One alternative might be to just unmap the target pmd at
+ 	 * this point, and verify that it really is empty. We'll see.
+ 	 */
+-	if (WARN_ON_ONCE(!pmd_none(*new_pmd)))
++	if (WARN_ON_ONCE(!pmc->is_revert && !pmd_none(*new_pmd)))
++		return false;
++
++	if (pmc->is_revert && !pmd_none(*new_pmd))
+ 		return false;
+ 
+ 	/* If this pmd belongs to a uffd vma with remap events disabled, we need
+@@ -422,7 +425,10 @@ static bool move_normal_pud(struct pagetable_move_control *pmc,
+ 	 * The destination pud shouldn't be established, free_pgtables()
+ 	 * should have released it.
+ 	 */
+-	if (WARN_ON_ONCE(!pud_none(*new_pud)))
++	if (WARN_ON_ONCE(!pmc->is_revert && !pud_none(*new_pud)))
++		return false;
++
++	if (pmc->is_revert && !pud_none(*new_pud))
+ 		return false;
+ 
+ 	/* If this pud belongs to a uffd vma with remap events disabled, we need
+@@ -1216,6 +1222,7 @@ static int copy_vma_and_data(struct vma_remap_struct *vrm,
+ 		 * and then proceed to unmap new area instead of old.
+ 		 */
+ 		pmc_revert.need_rmap_locks = true;
++		pmc_revert.is_revert = true;
+ 		move_page_tables(&pmc_revert);
+ 
+ 		vrm->vma = new_vma;

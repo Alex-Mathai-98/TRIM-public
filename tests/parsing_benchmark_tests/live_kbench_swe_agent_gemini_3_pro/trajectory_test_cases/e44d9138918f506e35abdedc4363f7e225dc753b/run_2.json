@@ -1,0 +1,195 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5,
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n\t\tresult = -EINVAL;\n\t\tgoto done;\n\t}\n\tdev = vcc->dev_data;\n\thdr = (struct atmtcp_hdr *) skb->data;\n\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n\t\t\tresult = -EINVAL;\n\t\t\tgoto done;\n\t\t}\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}",
+          "before": "\tif (!skb->len) return 0;\n\tdev = vcc->dev_data;\n\thdr = (struct atmtcp_hdr *) skb->data;\n\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..179b38aaa76c 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -288,10 +288,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "#include <linux/mutex.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..3f3c257890a4 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,7 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -288,10 +289,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;",
+          "explanation": "classic_swe step 22 insert #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 16,
+          "step_index": 22
+        },
+        {
+          "after": "static DEFINE_MUTEX(atmtcp_dev_lock);",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..972c1b38c28d 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,7 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -288,10 +289,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;\n@@ -448,6 +456,7 @@ static int atmtcp_remove_persistent(int itf)\n \treturn 0;\n }\n \n+static DEFINE_MUTEX(atmtcp_dev_lock);\n static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)\n {\n \tint err = 0;",
+          "explanation": "classic_swe step 24 insert #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 459,
+          "step_index": 24
+        },
+        {
+          "after": "\tmutex_lock(&atmtcp_dev_lock);\n\tswitch (cmd) {\n\t\tcase SIOCSIFATMTCP:\n\t\t\terr = atmtcp_attach(vcc, (int) arg);\n\t\t\tif (err >= 0) {\n\t\t\t\tsock->state = SS_CONNECTED;\n\t\t\t\t__module_get(THIS_MODULE);\n\t\t\t}\n\t\t\tbreak;\n\t\tcase ATMTCP_CREATE:\n\t\t\terr = atmtcp_create_persistent((int) arg);\n\t\t\tbreak;\n\t\tcase ATMTCP_REMOVE:\n\t\t\terr = atmtcp_remove_persistent((int) arg);\n\t\t\tbreak;\n\t}\n\tmutex_unlock(&atmtcp_dev_lock);\n\treturn err;",
+          "before": "\tswitch (cmd) {\n\t\tcase SIOCSIFATMTCP:\n\t\t\terr = atmtcp_attach(vcc, (int) arg);\n\t\t\tif (err >= 0) {\n\t\t\t\tsock->state = SS_CONNECTED;\n\t\t\t\t__module_get(THIS_MODULE);\n\t\t\t}\n\t\t\tbreak;\n\t\tcase ATMTCP_CREATE:\n\t\t\terr = atmtcp_create_persistent((int) arg);\n\t\t\tbreak;\n\t\tcase ATMTCP_REMOVE:\n\t\t\terr = atmtcp_remove_persistent((int) arg);\n\t\t\tbreak;\n\t}\n\treturn err;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..3d372c206c5d 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,7 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -288,10 +289,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;\n@@ -448,6 +456,7 @@ static int atmtcp_remove_persistent(int itf)\n \treturn 0;\n }\n \n+static DEFINE_MUTEX(atmtcp_dev_lock);\n static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)\n {\n \tint err = 0;\n@@ -459,6 +468,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \tif (!capable(CAP_NET_ADMIN))\n \t\treturn -EPERM;\n \n+\tmutex_lock(&atmtcp_dev_lock);\n \tswitch (cmd) {\n \t\tcase SIOCSIFATMTCP:\n \t\t\terr = atmtcp_attach(vcc, (int) arg);\n@@ -474,6 +484,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \t\t\terr = atmtcp_remove_persistent((int) arg);\n \t\t\tbreak;\n \t}\n+\tmutex_unlock(&atmtcp_dev_lock);\n \treturn err;\n }",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 1,
+      "start_step": 22
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "static DEFINE_MUTEX(atmtcp_dev_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..28571df5b8eb 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,7 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -288,10 +289,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;\n@@ -459,6 +467,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \tif (!capable(CAP_NET_ADMIN))\n \t\treturn -EPERM;\n \n+\tmutex_lock(&atmtcp_dev_lock);\n \tswitch (cmd) {\n \t\tcase SIOCSIFATMTCP:\n \t\t\terr = atmtcp_attach(vcc, (int) arg);\n@@ -474,6 +483,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \t\t\terr = atmtcp_remove_persistent((int) arg);\n \t\t\tbreak;\n \t}\n+\tmutex_unlock(&atmtcp_dev_lock);\n \treturn err;\n }",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "static DEFINE_MUTEX(atmtcp_dev_lock);",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..dcfa944d5f65 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,7 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -243,6 +244,7 @@ static int atmtcp_v_proc(struct atm_dev *dev,loff_t *pos,char *page)\n }\n \n \n+static DEFINE_MUTEX(atmtcp_dev_lock);\n static void atmtcp_c_close(struct atm_vcc *vcc)\n {\n \tstruct atm_dev *atmtcp_dev;\n@@ -288,10 +290,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;\n@@ -459,6 +468,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \tif (!capable(CAP_NET_ADMIN))\n \t\treturn -EPERM;\n \n+\tmutex_lock(&atmtcp_dev_lock);\n \tswitch (cmd) {\n \t\tcase SIOCSIFATMTCP:\n \t\t\terr = atmtcp_attach(vcc, (int) arg);\n@@ -474,6 +484,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \t\t\terr = atmtcp_remove_persistent((int) arg);\n \t\t\tbreak;\n \t}\n+\tmutex_unlock(&atmtcp_dev_lock);\n \treturn err;\n }",
+          "explanation": "classic_swe step 32 insert #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 247,
+          "step_index": 32
+        },
+        {
+          "after": "\tif (dev_data->persist) return;\n\tmutex_lock(&atmtcp_dev_lock);\n\tatmtcp_dev->dev_data = NULL;\n\tkfree(dev_data);\n\tatm_dev_deregister(atmtcp_dev);\n\tmutex_unlock(&atmtcp_dev_lock);\n\tvcc->dev_data = NULL;",
+          "before": "\tif (dev_data->persist) return;\n\tatmtcp_dev->dev_data = NULL;\n\tkfree(dev_data);\n\tatm_dev_deregister(atmtcp_dev);\n\tvcc->dev_data = NULL;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex d4aa0f353b6c..8e8552a37d06 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,7 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -243,6 +244,7 @@ static int atmtcp_v_proc(struct atm_dev *dev,loff_t *pos,char *page)\n }\n \n \n+static DEFINE_MUTEX(atmtcp_dev_lock);\n static void atmtcp_c_close(struct atm_vcc *vcc)\n {\n \tstruct atm_dev *atmtcp_dev;\n@@ -252,9 +254,11 @@ static void atmtcp_c_close(struct atm_vcc *vcc)\n \tdev_data = PRIV(atmtcp_dev);\n \tdev_data->vcc = NULL;\n \tif (dev_data->persist) return;\n+\tmutex_lock(&atmtcp_dev_lock);\n \tatmtcp_dev->dev_data = NULL;\n \tkfree(dev_data);\n \tatm_dev_deregister(atmtcp_dev);\n+\tmutex_unlock(&atmtcp_dev_lock);\n \tvcc->dev_data = NULL;\n \tmodule_put(THIS_MODULE);\n }\n@@ -288,10 +292,17 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \tstruct sk_buff *new_skb;\n \tint result = 0;\n \n-\tif (!skb->len) return 0;\n+\tif (skb->len < sizeof(struct atmtcp_hdr)) {\n+\t\tresult = -EINVAL;\n+\t\tgoto done;\n+\t}\n \tdev = vcc->dev_data;\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n+\t\tif (skb->len < sizeof(struct atmtcp_control)) {\n+\t\t\tresult = -EINVAL;\n+\t\t\tgoto done;\n+\t\t}\n \t\tresult = atmtcp_recv_control(\n \t\t    (struct atmtcp_control *) skb->data);\n \t\tgoto done;\n@@ -459,6 +470,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \tif (!capable(CAP_NET_ADMIN))\n \t\treturn -EPERM;\n \n+\tmutex_lock(&atmtcp_dev_lock);\n \tswitch (cmd) {\n \t\tcase SIOCSIFATMTCP:\n \t\t\terr = atmtcp_attach(vcc, (int) arg);\n@@ -474,6 +486,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \t\t\terr = atmtcp_remove_persistent((int) arg);\n \t\t\tbreak;\n \t}\n+\tmutex_unlock(&atmtcp_dev_lock);\n \treturn err;\n }",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 2,
+      "start_step": 30
+    }
+  ],
+  "success_step": 34
+}

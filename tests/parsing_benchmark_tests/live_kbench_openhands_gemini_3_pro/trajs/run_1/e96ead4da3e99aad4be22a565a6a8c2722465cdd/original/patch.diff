@@ -1,0 +1,31 @@
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index 08a72242428c..d6d481094fca 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -1818,13 +1818,11 @@ static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 	int ret = 0;
+ 	long timeo;
+ 
+-	/* silently ignore everything else */
+-	msg->msg_flags &= MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL | MSG_FASTOPEN;
+-
+ 	lock_sock(sk);
+ 
+ 	if (unlikely(inet_test_bit(DEFER_CONNECT, sk) ||
+-		     msg->msg_flags & MSG_FASTOPEN)) {
++		     (msg->msg_flags & MSG_FASTOPEN &&
++		      !(msg->msg_flags & MSG_BATCH)))) {
+ 		int copied_syn = 0;
+ 
+ 		ret = mptcp_sendmsg_fastopen(sk, msg, len, &copied_syn);
+@@ -1837,6 +1835,10 @@ static int mptcp_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
+ 
+ 	timeo = sock_sndtimeo(sk, msg->msg_flags & MSG_DONTWAIT);
+ 
++
++	/* silently ignore everything else */
++	msg->msg_flags &= MSG_MORE | MSG_DONTWAIT | MSG_NOSIGNAL | MSG_FASTOPEN;
++
+ 	if ((1 << sk->sk_state) & ~(TCPF_ESTABLISHED | TCPF_CLOSE_WAIT)) {
+ 		ret = sk_stream_wait_connect(sk, &timeo);
+ 		if (ret)

@@ -1,0 +1,123 @@
+{
+  "bug_id": "astropy__astropy-13579",
+  "short_path": [
+    [
+      {
+        "filename": "astropy/wcs/wcsapi/wrappers/sliced_wcs.py",
+        "before": "    def world_to_pixel_values(self, *world_arrays):\n        world_arrays = tuple(map(np.asanyarray, world_arrays))\n        world_arrays_new = []\n        iworld_curr = -1\n        for iworld in range(self._wcs.world_n_dim):\n            if iworld in self._world_keep:\n                iworld_curr += 1\n                world_arrays_new.append(world_arrays[iworld_curr])\n            else:\n                world_arrays_new.append(1.)\n\n        world_arrays_new = np.broadcast_arrays(*world_arrays_new)\n        pixel_arrays = list(self._wcs.world_to_pixel_values(*world_arrays_new))",
+        "after": "    def world_to_pixel_values(self, *world_arrays):\n        world_arrays = tuple(map(np.asanyarray, world_arrays))\n        world_arrays_new = []\n        iworld_curr = -1\n        for iworld in range(self._wcs.world_n_dim):\n            if iworld in self._world_keep:\n                iworld_curr += 1\n                world_arrays_new.append(world_arrays[iworld_curr])\n            else:\n                # For dropped world dimensions, we need to calculate the correct\n                # world coordinate value based on the slice indices\n                # We'll use a representative pixel coordinate to get the world value\n                representative_pixel = []\n                for ipix in range(self._wcs.pixel_n_dim):\n                    if isinstance(self._slices_pixel[ipix], numbers.Integral):\n                        representative_pixel.append(self._slices_pixel[ipix])\n                    else:\n                        # Use 0 for non-sliced dimensions as a representative value\n                        representative_pixel.append(0)\n                \n                # Get world coordinates for this representative pixel\n                representative_world = self._wcs.pixel_to_world_values(*representative_pixel)\n                world_arrays_new.append(representative_world[iworld])\n\n        world_arrays_new = np.broadcast_arrays(*world_arrays_new)\n        pixel_arrays = list(self._wcs.world_to_pixel_values(*world_arrays_new))",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/astropy/wcs/wcsapi/wrappers/sliced_wcs.py b/astropy/wcs/wcsapi/wrappers/sliced_wcs.py\nindex d7605b078c..eb05c9446e 100644\n--- a/astropy/wcs/wcsapi/wrappers/sliced_wcs.py\n+++ b/astropy/wcs/wcsapi/wrappers/sliced_wcs.py\n@@ -251,7 +251,20 @@ class SlicedLowLevelWCS(BaseWCSWrapper):\n                 iworld_curr += 1\n                 world_arrays_new.append(world_arrays[iworld_curr])\n             else:\n-                world_arrays_new.append(1.)\n+                # For dropped world dimensions, we need to calculate the correct\n+                # world coordinate value based on the slice indices\n+                # We'll use a representative pixel coordinate to get the world value\n+                representative_pixel = []\n+                for ipix in range(self._wcs.pixel_n_dim):\n+                    if isinstance(self._slices_pixel[ipix], numbers.Integral):\n+                        representative_pixel.append(self._slices_pixel[ipix])\n+                    else:\n+                        # Use 0 for non-sliced dimensions as a representative value\n+                        representative_pixel.append(0)\n+                \n+                # Get world coordinates for this representative pixel\n+                representative_world = self._wcs.pixel_to_world_values(*representative_pixel)\n+                world_arrays_new.append(representative_world[iworld])\n \n         world_arrays_new = np.broadcast_arrays(*world_arrays_new)\n         pixel_arrays = list(self._wcs.world_to_pixel_values(*world_arrays_new))\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      6,
+      22
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      6
+    ],
+    "edit_list_after_file_min": [
+      6
+    ],
+    "edit_list_after_greedy": [
+      6
+    ],
+    "edit_list_after_refinement": [
+      6
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 1,
+  "reduction": "2_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "astropy/wcs/wcsapi/wrappers/sliced_wcs.py",
+          "before": "    def world_to_pixel_values(self, *world_arrays):\n        world_arrays = tuple(map(np.asanyarray, world_arrays))\n        world_arrays_new = []\n        iworld_curr = -1\n        for iworld in range(self._wcs.world_n_dim):\n            if iworld in self._world_keep:\n                iworld_curr += 1\n                world_arrays_new.append(world_arrays[iworld_curr])\n            else:\n                world_arrays_new.append(1.)\n\n        world_arrays_new = np.broadcast_arrays(*world_arrays_new)\n        pixel_arrays = list(self._wcs.world_to_pixel_values(*world_arrays_new))",
+          "after": "    def world_to_pixel_values(self, *world_arrays):\n        world_arrays = tuple(map(np.asanyarray, world_arrays))\n        world_arrays_new = []\n        iworld_curr = -1\n        for iworld in range(self._wcs.world_n_dim):\n            if iworld in self._world_keep:\n                iworld_curr += 1\n                world_arrays_new.append(world_arrays[iworld_curr])\n            else:\n                # For dropped world dimensions, we need to calculate the correct\n                # world coordinate value based on the slice indices\n                # We'll use a representative pixel coordinate to get the world value\n                representative_pixel = []\n                for ipix in range(self._wcs.pixel_n_dim):\n                    if isinstance(self._slices_pixel[ipix], numbers.Integral):\n                        representative_pixel.append(self._slices_pixel[ipix])\n                    else:\n                        # Use 0 for non-sliced dimensions as a representative value\n                        representative_pixel.append(0)\n                \n                # Get world coordinates for this representative pixel\n                representative_world = self._wcs.pixel_to_world_values(*representative_pixel)\n                world_arrays_new.append(representative_world[iworld])\n\n        world_arrays_new = np.broadcast_arrays(*world_arrays_new)\n        pixel_arrays = list(self._wcs.world_to_pixel_values(*world_arrays_new))",
+          "explanation": "classic_swe step 21 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "astropy/wcs/wcsapi/wrappers/sliced_wcs.py",
+          "before": "            else:\n                # For dropped world dimensions, we need to calculate the correct\n                # world coordinate value based on the slice indices\n                # We'll use a representative pixel coordinate to get the world value\n                representative_pixel = []\n                for ipix in range(self._wcs.pixel_n_dim):\n                    if isinstance(self._slices_pixel[ipix], numbers.Integral):\n                        representative_pixel.append(self._slices_pixel[ipix])\n                    else:\n                        # Use 0 for non-sliced dimensions as a representative value\n                        representative_pixel.append(0)\n                \n                # Get world coordinates for this representative pixel\n                representative_world = self._wcs.pixel_to_world_values(*representative_pixel)\n                world_arrays_new.append(representative_world[iworld])",
+          "after": "            else:\n                # For dropped world dimensions, we need to calculate the correct\n                # world coordinate value based on the slice indices\n                # We'll use a representative pixel coordinate to get the world value\n                representative_pixel = []\n                for ipix in range(self._wcs.pixel_n_dim):\n                    if isinstance(self._slices_pixel[ipix], numbers.Integral):\n                        representative_pixel.append(self._slices_pixel[ipix])\n                    else:\n                        # Use the center pixel for non-sliced dimensions as a representative value\n                        # This is more stable for coordinate transformations\n                        if self._wcs.pixel_shape is not None:\n                            center = (self._wcs.pixel_shape[ipix] - 1) / 2\n                        else:\n                            center = 0\n                        representative_pixel.append(center)\n                \n                # Get world coordinates for this representative pixel\n                representative_world = self._wcs.pixel_to_world_values(*representative_pixel)\n                world_arrays_new.append(representative_world[iworld])",
+          "explanation": "classic_swe step 61 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 40,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 40,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "astropy/wcs/wcsapi/wrappers/sliced_wcs.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "astropy/wcs/wcsapi/wrappers/sliced_wcs.py"
+    ],
+    "gold_files": [
+      "astropy/wcs/wcsapi/wrappers/sliced_wcs.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 14,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

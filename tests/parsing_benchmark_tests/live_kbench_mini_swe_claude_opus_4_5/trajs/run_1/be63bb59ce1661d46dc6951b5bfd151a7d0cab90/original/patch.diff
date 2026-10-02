@@ -1,0 +1,51 @@
+diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
+index 4b040285aa78..dabedc034322 100644
+--- a/net/vmw_vsock/af_vsock.c
++++ b/net/vmw_vsock/af_vsock.c
+@@ -1273,21 +1273,12 @@ static int vsock_dgram_connect(struct socket *sock,
+ int vsock_dgram_recvmsg(struct socket *sock, struct msghdr *msg,
+ 			size_t len, int flags)
+ {
+-#ifdef CONFIG_BPF_SYSCALL
+-	const struct proto *prot;
+-#endif
+ 	struct vsock_sock *vsk;
+ 	struct sock *sk;
+ 
+ 	sk = sock->sk;
+ 	vsk = vsock_sk(sk);
+ 
+-#ifdef CONFIG_BPF_SYSCALL
+-	prot = READ_ONCE(sk->sk_prot);
+-	if (prot != &vsock_proto)
+-		return prot->recvmsg(sk, msg, len, flags, NULL);
+-#endif
+-
+ 	return vsk->transport->dgram_dequeue(vsk, msg, len, flags);
+ }
+ EXPORT_SYMBOL_GPL(vsock_dgram_recvmsg);
+@@ -2180,9 +2171,6 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
+ 	struct sock *sk;
+ 	struct vsock_sock *vsk;
+ 	const struct vsock_transport *transport;
+-#ifdef CONFIG_BPF_SYSCALL
+-	const struct proto *prot;
+-#endif
+ 	int err;
+ 
+ 	sk = sock->sk;
+@@ -2233,14 +2221,6 @@ vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,
+ 		goto out;
+ 	}
+ 
+-#ifdef CONFIG_BPF_SYSCALL
+-	prot = READ_ONCE(sk->sk_prot);
+-	if (prot != &vsock_proto) {
+-		release_sock(sk);
+-		return prot->recvmsg(sk, msg, len, flags, NULL);
+-	}
+-#endif
+-
+ 	if (sk->sk_type == SOCK_STREAM)
+ 		err = __vsock_stream_recvmsg(sk, msg, len, flags);
+ 	else

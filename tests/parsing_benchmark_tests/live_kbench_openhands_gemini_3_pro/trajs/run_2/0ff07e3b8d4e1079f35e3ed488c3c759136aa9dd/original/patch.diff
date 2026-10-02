@@ -1,0 +1,31 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 89a42ee81e5c..68921238f6d7 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1728,6 +1728,10 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,
+ 	struct btree *b;
+ 	int ret;
+ 
++
++	if (unlikely(!bkey_is_btree_ptr(&k->k)))
++		return -BCH_ERR_btree_node_read_error;
++
+ 	closure_init_stack(&cl);
+ 
+ 	do {
+@@ -1741,7 +1745,14 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,
+ 	BUG_ON(IS_ERR(b));
+ 
+ 	bkey_copy(&b->key, k);
+-	BUG_ON(bch2_btree_node_hash_insert(&c->btree_cache, b, level, id));
++	ret = bch2_btree_node_hash_insert(&c->btree_cache, b, level, id);
++	if (ret) {
++		b->hash_val = 0;
++		six_unlock_write(&b->c.lock);
++		six_unlock_intent(&b->c.lock);
++		bch2_btree_node_to_freelist(c, b);
++		return ret;
++	}
+ 
+ 	set_btree_node_read_in_flight(b);
+ 

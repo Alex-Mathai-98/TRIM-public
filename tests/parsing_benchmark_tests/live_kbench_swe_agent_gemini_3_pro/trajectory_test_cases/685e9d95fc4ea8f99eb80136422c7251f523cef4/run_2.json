@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int __ethtool_get_ts_info(struct net_device *dev,\n\t\t\t  struct kernel_ethtool_ts_info *info)\n{\n\tstruct hwtstamp_provider *hwprov;\n\tstruct hwtstamp_provider_desc hwprov_desc;\n\tbool has_hwprov = false;\n\n\trcu_read_lock();\n\thwprov = rcu_dereference_rtnl(dev->hwprov);\n\tif (hwprov) {\n\t\thwprov_desc = hwprov->desc;\n\t\thas_hwprov = true;\n\t}\n\trcu_read_unlock();\n\n\t/* No provider specified, use default behavior */\n\tif (!has_hwprov) {",
+          "before": "int __ethtool_get_ts_info(struct net_device *dev,\n\t\t\t  struct kernel_ethtool_ts_info *info)\n{\n\tstruct hwtstamp_provider *hwprov;\n\n\thwprov = rtnl_dereference(dev->hwprov);\n\t/* No provider specified, use default behavior */\n\tif (!hwprov) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ethtool/common.c b/net/ethtool/common.c\nindex 02f941f667dd..e9622767f018 100644\n--- a/net/ethtool/common.c\n+++ b/net/ethtool/common.c\n@@ -869,10 +869,19 @@ int __ethtool_get_ts_info(struct net_device *dev,\n \t\t\t  struct kernel_ethtool_ts_info *info)\n {\n \tstruct hwtstamp_provider *hwprov;\n+\tstruct hwtstamp_provider_desc hwprov_desc;\n+\tbool has_hwprov = false;\n+\n+\trcu_read_lock();\n+\thwprov = rcu_dereference_rtnl(dev->hwprov);\n+\tif (hwprov) {\n+\t\thwprov_desc = hwprov->desc;\n+\t\thas_hwprov = true;\n+\t}\n+\trcu_read_unlock();\n \n-\thwprov = rtnl_dereference(dev->hwprov);\n \t/* No provider specified, use default behavior */\n-\tif (!hwprov) {\n+\tif (!has_hwprov) {\n \t\tconst struct ethtool_ops *ops = dev->ethtool_ops;\n \t\tstruct phy_device *phydev = dev->phydev;\n \t\tint err = 0;",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "net/ethtool/common.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "\treturn ethtool_get_ts_info_by_phc(dev, info, &hwprov_desc);",
+          "before": "\treturn ethtool_get_ts_info_by_phc(dev, info, &hwprov->desc);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ethtool/common.c b/net/ethtool/common.c\nindex 02f941f667dd..35eb94cbaf2f 100644\n--- a/net/ethtool/common.c\n+++ b/net/ethtool/common.c\n@@ -869,10 +869,19 @@ int __ethtool_get_ts_info(struct net_device *dev,\n \t\t\t  struct kernel_ethtool_ts_info *info)\n {\n \tstruct hwtstamp_provider *hwprov;\n+\tstruct hwtstamp_provider_desc hwprov_desc;\n+\tbool has_hwprov = false;\n+\n+\trcu_read_lock();\n+\thwprov = rcu_dereference_rtnl(dev->hwprov);\n+\tif (hwprov) {\n+\t\thwprov_desc = hwprov->desc;\n+\t\thas_hwprov = true;\n+\t}\n+\trcu_read_unlock();\n \n-\thwprov = rtnl_dereference(dev->hwprov);\n \t/* No provider specified, use default behavior */\n-\tif (!hwprov) {\n+\tif (!has_hwprov) {\n \t\tconst struct ethtool_ops *ops = dev->ethtool_ops;\n \t\tstruct phy_device *phydev = dev->phydev;\n \t\tint err = 0;\n@@ -890,7 +899,7 @@ int __ethtool_get_ts_info(struct net_device *dev,\n \t\treturn err;\n \t}\n \n-\treturn ethtool_get_ts_info_by_phc(dev, info, &hwprov->desc);\n+\treturn ethtool_get_ts_info_by_phc(dev, info, &hwprov_desc);\n }\n \n bool net_support_hwtstamp_qualifier(struct net_device *dev,",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "net/ethtool/common.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 30
+    }
+  ],
+  "success_step": 32
+}

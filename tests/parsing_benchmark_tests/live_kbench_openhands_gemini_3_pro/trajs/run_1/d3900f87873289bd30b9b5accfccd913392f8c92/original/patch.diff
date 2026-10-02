@@ -1,0 +1,56 @@
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 1fc9a50def0b..f82b7fbfce41 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2409,6 +2409,12 @@ int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+ 					set_buffer_uptodate(bh);
+ 				continue;
+ 			}
++			if (buffer_delay(bh)) {
++				folio_zero_range(folio, i * blocksize,
++						blocksize);
++				set_buffer_uptodate(bh);
++				continue;
++			}
+ 			/*
+ 			 * get_block() might have updated the buffer
+ 			 * synchronously
+diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c
+index fe5b1a30c509..f78cb58657ca 100644
+--- a/fs/nilfs2/dir.c
++++ b/fs/nilfs2/dir.c
+@@ -82,8 +82,33 @@ static int nilfs_prepare_chunk(struct folio *folio, unsigned int from,
+ 			       unsigned int to)
+ {
+ 	loff_t pos = folio_pos(folio) + from;
++	int err;
+ 
+-	return __block_write_begin(folio, pos, to - from, nilfs_get_block);
++	err = __block_write_begin(folio, pos, to - from, nilfs_get_block);
++	if (err) {
++		struct buffer_head *bh, *head = folio_buffers(folio);
++
++		if (head) {
++			bh = head;
++			do {
++				if (buffer_delay(bh) && !buffer_uptodate(bh))
++					clear_buffer_delay(bh);
++				bh = bh->b_this_page;
++			} while (bh != head);
++		}
++	} else {
++		struct buffer_head *bh, *head = folio_buffers(folio);
++
++		if (head) {
++			bh = head;
++			do {
++				if (buffer_delay(bh) && !buffer_uptodate(bh))
++					set_buffer_uptodate(bh);
++				bh = bh->b_this_page;
++			} while (bh != head);
++		}
++	}
++	return err;
+ }
+ 
+ static void nilfs_commit_chunk(struct folio *folio,

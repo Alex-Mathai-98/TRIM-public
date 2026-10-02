@@ -1,0 +1,104 @@
+{
+  "bug_id": "sympy__sympy-21847",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/polys/monomials.py",
+        "before": "    if total_degree:\n        if min_degree > max_degree:\n            return\n        if not variables or max_degree == 0:\n            yield S.One\n            return\n        # Force to list in case of passed tuple or other incompatible collection\n        variables = list(variables) + [S.One]\n        if all(variable.is_commutative for variable in variables):\n            monomials_list_comm = []\n            for item in combinations_with_replacement(variables, max_degree):\n                powers = dict()\n                for variable in variables:\n                    powers[variable] = 0\n                for variable in item:\n                    if variable != 1:\n                        powers[variable] += 1\n                if max(powers.values()) >= min_degree:\n                    monomials_list_comm.append(Mul(*item))\n            yield from set(monomials_list_comm)\n        else:\n            monomials_list_non_comm = []\n            for item in product(variables, repeat=max_degree):\n                powers = dict()\n                for variable in variables:\n                    powers[variable] = 0\n                for variable in item:\n                    if variable != 1:\n                        powers[variable] += 1\n                if max(powers.values()) >= min_degree:\n                    monomials_list_non_comm.append(Mul(*item))\n            yield from set(monomials_list_non_comm)",
+        "after": "    if total_degree:\n        if min_degree > max_degree:\n            return\n        if not variables or max_degree == 0:\n            if min_degree <= 0:\n                yield S.One\n            return\n        # Force to list in case of passed tuple or other incompatible collection\n        variables = list(variables) + [S.One]\n        if all(variable.is_commutative for variable in variables):\n            monomials_list_comm = []\n            for degree in range(min_degree, max_degree + 1):\n                for item in combinations_with_replacement(variables, degree):\n                    powers = dict()\n                    for variable in variables:\n                        powers[variable] = 0\n                    for variable in item:\n                        if variable != 1:\n                            powers[variable] += 1\n                    total_deg = sum(powers.values())\n                    if min_degree <= total_deg <= max_degree:\n                        monomials_list_comm.append(Mul(*item))\n            yield from set(monomials_list_comm)\n        else:\n            monomials_list_non_comm = []\n            for degree in range(min_degree, max_degree + 1):\n                for item in product(variables, repeat=degree):\n                    powers = dict()\n                    for variable in variables:\n                        powers[variable] = 0\n                    for variable in item:\n                        if variable != 1:\n                            powers[variable] += 1\n                    total_deg = sum(powers.values())\n                    if min_degree <= total_deg <= max_degree:\n                        monomials_list_non_comm.append(Mul(*item))\n            yield from set(monomials_list_non_comm)",
+        "explanation": "classic_swe step 7 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/polys/monomials.py b/sympy/polys/monomials.py\nindex 0e84403307..6b5fe62a35 100644\n--- a/sympy/polys/monomials.py\n+++ b/sympy/polys/monomials.py\n@@ -114,33 +114,38 @@ def itermonomials(variables, max_degrees, min_degrees=None):\n         if min_degree > max_degree:\n             return\n         if not variables or max_degree == 0:\n-            yield S.One\n+            if min_degree <= 0:\n+                yield S.One\n             return\n         # Force to list in case of passed tuple or other incompatible collection\n         variables = list(variables) + [S.One]\n         if all(variable.is_commutative for variable in variables):\n             monomials_list_comm = []\n-            for item in combinations_with_replacement(variables, max_degree):\n-                powers = dict()\n-                for variable in variables:\n-                    powers[variable] = 0\n-                for variable in item:\n-                    if variable != 1:\n-                        powers[variable] += 1\n-                if max(powers.values()) >= min_degree:\n-                    monomials_list_comm.append(Mul(*item))\n+            for degree in range(min_degree, max_degree + 1):\n+                for item in combinations_with_replacement(variables, degree):\n+                    powers = dict()\n+                    for variable in variables:\n+                        powers[variable] = 0\n+                    for variable in item:\n+                        if variable != 1:\n+                            powers[variable] += 1\n+                    total_deg = sum(powers.values())\n+                    if min_degree <= total_deg <= max_degree:\n+                        monomials_list_comm.append(Mul(*item))\n             yield from set(monomials_list_comm)\n         else:\n             monomials_list_non_comm = []\n-            for item in product(variables, repeat=max_degree):\n-                powers = dict()\n-                for variable in variables:\n-                    powers[variable] = 0\n-                for variable in item:\n-                    if variable != 1:\n-                        powers[variable] += 1\n-                if max(powers.values()) >= min_degree:\n-                    monomials_list_non_comm.append(Mul(*item))\n+            for degree in range(min_degree, max_degree + 1):\n+                for item in product(variables, repeat=degree):\n+                    powers = dict()\n+                    for variable in variables:\n+                        powers[variable] = 0\n+                    for variable in item:\n+                        if variable != 1:\n+                            powers[variable] += 1\n+                    total_deg = sum(powers.values())\n+                    if min_degree <= total_deg <= max_degree:\n+                        monomials_list_non_comm.append(Mul(*item))\n             yield from set(monomials_list_non_comm)\n     else:\n         if any(min_degrees[i] > max_degrees[i] for i in range(n)):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/polys/monomials.py",
+          "before": "    if total_degree:\n        if min_degree > max_degree:\n            return\n        if not variables or max_degree == 0:\n            yield S.One\n            return\n        # Force to list in case of passed tuple or other incompatible collection\n        variables = list(variables) + [S.One]\n        if all(variable.is_commutative for variable in variables):\n            monomials_list_comm = []\n            for item in combinations_with_replacement(variables, max_degree):\n                powers = dict()\n                for variable in variables:\n                    powers[variable] = 0\n                for variable in item:\n                    if variable != 1:\n                        powers[variable] += 1\n                if max(powers.values()) >= min_degree:\n                    monomials_list_comm.append(Mul(*item))\n            yield from set(monomials_list_comm)\n        else:\n            monomials_list_non_comm = []\n            for item in product(variables, repeat=max_degree):\n                powers = dict()\n                for variable in variables:\n                    powers[variable] = 0\n                for variable in item:\n                    if variable != 1:\n                        powers[variable] += 1\n                if max(powers.values()) >= min_degree:\n                    monomials_list_non_comm.append(Mul(*item))\n            yield from set(monomials_list_non_comm)",
+          "after": "    if total_degree:\n        if min_degree > max_degree:\n            return\n        if not variables or max_degree == 0:\n            if min_degree <= 0:\n                yield S.One\n            return\n        # Force to list in case of passed tuple or other incompatible collection\n        variables = list(variables) + [S.One]\n        if all(variable.is_commutative for variable in variables):\n            monomials_list_comm = []\n            for degree in range(min_degree, max_degree + 1):\n                for item in combinations_with_replacement(variables, degree):\n                    powers = dict()\n                    for variable in variables:\n                        powers[variable] = 0\n                    for variable in item:\n                        if variable != 1:\n                            powers[variable] += 1\n                    total_deg = sum(powers.values())\n                    if min_degree <= total_deg <= max_degree:\n                        monomials_list_comm.append(Mul(*item))\n            yield from set(monomials_list_comm)\n        else:\n            monomials_list_non_comm = []\n            for degree in range(min_degree, max_degree + 1):\n                for item in product(variables, repeat=degree):\n                    powers = dict()\n                    for variable in variables:\n                        powers[variable] = 0\n                    for variable in item:\n                        if variable != 1:\n                            powers[variable] += 1\n                    total_deg = sum(powers.values())\n                    if min_degree <= total_deg <= max_degree:\n                        monomials_list_non_comm.append(Mul(*item))\n            yield from set(monomials_list_non_comm)",
+          "explanation": "classic_swe step 7 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 9,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 9,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/polys/monomials.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/polys/monomials.py"
+    ],
+    "gold_files": [
+      "sympy/polys/monomials.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 24,
+    "minimized_deleted_lines": 19,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

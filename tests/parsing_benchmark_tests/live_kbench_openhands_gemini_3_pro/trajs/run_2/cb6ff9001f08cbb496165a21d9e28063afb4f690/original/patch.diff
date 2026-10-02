@@ -1,0 +1,62 @@
+diff --git a/fs/kernfs/mount.c b/fs/kernfs/mount.c
+index d1f512b7bf86..bb71ab641a92 100644
+--- a/fs/kernfs/mount.c
++++ b/fs/kernfs/mount.c
+@@ -209,7 +209,6 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,
+ {
+ 	struct dentry *dentry;
+ 	struct kernfs_node *knparent;
+-	struct kernfs_root *root;
+ 
+ 	BUG_ON(sb->s_op != &kernfs_sops);
+ 
+@@ -219,10 +218,7 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,
+ 	if (!rcu_access_pointer(kn->__parent))
+ 		return dentry;
+ 
+-	root = kernfs_root(kn);
+-	guard(rwsem_read)(&root->kernfs_rwsem);
+-
+-	knparent = find_next_ancestor(kn, NULL);
++	knparent = kernfs_dentry_node(dentry);
+ 	if (WARN_ON(!knparent)) {
+ 		dput(dentry);
+ 		return ERR_PTR(-EINVAL);
+@@ -232,20 +228,33 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,
+ 		struct dentry *dtmp;
+ 		struct kernfs_node *kntmp;
+ 		const char *name;
++		char *name_copy;
+ 
+ 		if (kn == knparent)
+ 			return dentry;
++
++		rcu_read_lock();
+ 		kntmp = find_next_ancestor(kn, knparent);
+-		if (WARN_ON(!kntmp)) {
++		if (!kntmp) {
++			rcu_read_unlock();
+ 			dput(dentry);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+-		name = rcu_dereference(kntmp->name);
+-		dtmp = lookup_positive_unlocked(name, dentry, strlen(name));
++		name = kernfs_rcu_name(kntmp);
++		name_copy = kstrdup(name, GFP_ATOMIC);
++		rcu_read_unlock();
++
++		if (!name_copy) {
++			dput(dentry);
++			return ERR_PTR(-ENOMEM);
++		}
++
++		dtmp = lookup_positive_unlocked(name_copy, dentry, strlen(name_copy));
++		kfree(name_copy);
+ 		dput(dentry);
+ 		if (IS_ERR(dtmp))
+ 			return dtmp;
+-		knparent = kntmp;
++		knparent = kernfs_dentry_node(dtmp);
+ 		dentry = dtmp;
+ 	} while (true);
+ }

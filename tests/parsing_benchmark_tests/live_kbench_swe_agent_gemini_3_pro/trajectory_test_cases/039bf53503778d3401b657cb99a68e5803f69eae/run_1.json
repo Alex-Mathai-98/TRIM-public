@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void hook_sb_delete(struct super_block *const sb)\n{\n\tstruct inode *inode, *prev_inode = NULL;\n\tbool prev_detached = false;\n\n\tif (!landlock_initialized)\n\t\treturn;\n\n\tspin_lock(&sb->s_inode_list_lock);\n\tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n\t\tstruct landlock_object *object;\n\t\tbool detached = false;\n\n\t\t/* Only handles referenced inodes. */\n\t\tif (!icount_read(inode))\n\t\t\tcontinue;\n\n\t\t/*\n\t\t * Protects against concurrent modification of inode (e.g.\n\t\t * from get_inode_object()).\n\t\t */\n\t\tspin_lock(&inode->i_lock);\n\t\t/*\n\t\t * Checks I_FREEING and I_WILL_FREE  to protect against a race\n\t\t * condition when release_inode() just called iput(), which\n\t\t * could lead to a NULL dereference of inode->security or a\n\t\t * second call to iput() for the same Landlock object.  Also\n\t\t * checks I_NEW because such inode cannot be tied to an object.\n\t\t */\n\t\tif (inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) {\n\t\t\tspin_unlock(&inode->i_lock);\n\t\t\tcontinue;\n\t\t}\n\n\t\trcu_read_lock();\n\t\tobject = rcu_dereference(landlock_inode(inode)->object);\n\t\tif (!object) {\n\t\t\trcu_read_unlock();\n\t\t\tspin_unlock(&inode->i_lock);\n\t\t\tcontinue;\n\t\t}\n\t\t/* Keeps a reference to this inode until the next loop walk. */\n\t\t__iget(inode);\n\t\tspin_unlock(&inode->i_lock);\n\n\t\t/*\n\t\t * If there is no concurrent release_inode() ongoing, then we\n\t\t * are in charge of calling iput() on this inode, otherwise we\n\t\t * will just wait for it to finish.\n\t\t */\n\t\tspin_lock(&object->lock);\n\t\tif (object->underobj == inode) {\n\t\t\tobject->underobj = NULL;\n\t\t\tspin_unlock(&object->lock);\n\t\t\trcu_read_unlock();\n\n\t\t\t/*\n\t\t\t * Because object->underobj was not NULL,\n\t\t\t * release_inode() and get_inode_object() guarantee\n\t\t\t * that it is safe to reset\n\t\t\t * landlock_inode(inode)->object while it is not NULL.\n\t\t\t * It is therefore not necessary to lock inode->i_lock.\n\t\t\t */\n\t\t\trcu_assign_pointer(landlock_inode(inode)->object, NULL);\n\t\t\t/*\n\t\t\t * At this point, we own the ihold() reference that was\n\t\t\t * originally set up by get_inode_object() and the\n\t\t\t * __iget() reference that we just set in this loop\n\t\t\t * walk.  Therefore the following call to iput() will\n\t\t\t * not sleep nor drop the inode because there is now at\n\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tdetached = true;\n\t\t} else {\n\t\t\tspin_unlock(&object->lock);\n\t\t\trcu_read_unlock();\n\t\t}\n\n\t\tif (prev_inode) {\n\t\t\t/*\n\t\t\t * At this point, we still own the __iget() reference\n\t\t\t * that we just set in this loop walk.  Therefore we\n\t\t\t * can drop the list lock and know that the inode won't\n\t\t\t * disappear from under us until the next loop walk.\n\t\t\t */\n\t\t\tspin_unlock(&sb->s_inode_list_lock);\n\t\t\t/*\n\t\t\t * We can now actually put the inode reference from the\n\t\t\t * previous loop walk, which is not needed anymore.\n\t\t\t */\n\t\t\tiput(prev_inode);\n\t\t\tif (prev_detached)\n\t\t\t\tiput(prev_inode);\n\t\t\tcond_resched();\n\t\t\tspin_lock(&sb->s_inode_list_lock);\n\t\t}\n\t\tprev_inode = inode;\n\t\tprev_detached = detached;\n\t}\n\tspin_unlock(&sb->s_inode_list_lock);\n\n\t/* Puts the inode reference from the last loop walk, if any. */\n\tif (prev_inode) {\n\t\tiput(prev_inode);\n\t\tif (prev_detached)\n\t\t\tiput(prev_inode);\n\t}",
+          "before": "static void hook_sb_delete(struct super_block *const sb)\n{\n\tstruct inode *inode, *prev_inode = NULL;\n\n\tif (!landlock_initialized)\n\t\treturn;\n\n\tspin_lock(&sb->s_inode_list_lock);\n\tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n\t\tstruct landlock_object *object;\n\n\t\t/* Only handles referenced inodes. */\n\t\tif (!icount_read(inode))\n\t\t\tcontinue;\n\n\t\t/*\n\t\t * Protects against concurrent modification of inode (e.g.\n\t\t * from get_inode_object()).\n\t\t */\n\t\tspin_lock(&inode->i_lock);\n\t\t/*\n\t\t * Checks I_FREEING and I_WILL_FREE  to protect against a race\n\t\t * condition when release_inode() just called iput(), which\n\t\t * could lead to a NULL dereference of inode->security or a\n\t\t * second call to iput() for the same Landlock object.  Also\n\t\t * checks I_NEW because such inode cannot be tied to an object.\n\t\t */\n\t\tif (inode->i_state & (I_FREEING | I_WILL_FREE | I_NEW)) {\n\t\t\tspin_unlock(&inode->i_lock);\n\t\t\tcontinue;\n\t\t}\n\n\t\trcu_read_lock();\n\t\tobject = rcu_dereference(landlock_inode(inode)->object);\n\t\tif (!object) {\n\t\t\trcu_read_unlock();\n\t\t\tspin_unlock(&inode->i_lock);\n\t\t\tcontinue;\n\t\t}\n\t\t/* Keeps a reference to this inode until the next loop walk. */\n\t\t__iget(inode);\n\t\tspin_unlock(&inode->i_lock);\n\n\t\t/*\n\t\t * If there is no concurrent release_inode() ongoing, then we\n\t\t * are in charge of calling iput() on this inode, otherwise we\n\t\t * will just wait for it to finish.\n\t\t */\n\t\tspin_lock(&object->lock);\n\t\tif (object->underobj == inode) {\n\t\t\tobject->underobj = NULL;\n\t\t\tspin_unlock(&object->lock);\n\t\t\trcu_read_unlock();\n\n\t\t\t/*\n\t\t\t * Because object->underobj was not NULL,\n\t\t\t * release_inode() and get_inode_object() guarantee\n\t\t\t * that it is safe to reset\n\t\t\t * landlock_inode(inode)->object while it is not NULL.\n\t\t\t * It is therefore not necessary to lock inode->i_lock.\n\t\t\t */\n\t\t\trcu_assign_pointer(landlock_inode(inode)->object, NULL);\n\t\t\t/*\n\t\t\t * At this point, we own the ihold() reference that was\n\t\t\t * originally set up by get_inode_object() and the\n\t\t\t * __iget() reference that we just set in this loop\n\t\t\t * walk.  Therefore the following call to iput() will\n\t\t\t * not sleep nor drop the inode because there is now at\n\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tiput(inode);\n\t\t} else {\n\t\t\tspin_unlock(&object->lock);\n\t\t\trcu_read_unlock();\n\t\t}\n\n\t\tif (prev_inode) {\n\t\t\t/*\n\t\t\t * At this point, we still own the __iget() reference\n\t\t\t * that we just set in this loop walk.  Therefore we\n\t\t\t * can drop the list lock and know that the inode won't\n\t\t\t * disappear from under us until the next loop walk.\n\t\t\t */\n\t\t\tspin_unlock(&sb->s_inode_list_lock);\n\t\t\t/*\n\t\t\t * We can now actually put the inode reference from the\n\t\t\t * previous loop walk, which is not needed anymore.\n\t\t\t */\n\t\t\tiput(prev_inode);\n\t\t\tcond_resched();\n\t\t\tspin_lock(&sb->s_inode_list_lock);\n\t\t}\n\t\tprev_inode = inode;\n\t}\n\tspin_unlock(&sb->s_inode_list_lock);\n\n\t/* Puts the inode reference from the last loop walk, if any. */\n\tif (prev_inode)\n\t\tiput(prev_inode);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..205c940a4e57 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_detached = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool detached = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))\n@@ -1302,7 +1304,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t}\n \n \t\trcu_read_lock();\n-\t\tobject = rcu_dereference(landlock_inode(inode)->object);\n+object = rcu_dereference(landlock_inode(inode)->object);\n \t\tif (!object) {\n \t\t\trcu_read_unlock();\n \t\t\tspin_unlock(&inode->i_lock);\n@@ -1334,12 +1336,12 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t/*\n \t\t\t * At this point, we own the ihold() reference that was\n \t\t\t * originally set up by get_inode_object() and the\n-\t\t\t * __iget() reference that we just set in this loop\n-\t\t\t * walk.  Therefore the following call to iput() will\n+\t\t * __iget() reference that we just set in this loop\n+\t\t * walk.  Therefore the following call to iput() will\n \t\t\t * not sleep nor drop the inode because there is now at\n \t\t\t * least two references to it.\n \t\t\t */\n-\t\t\tiput(inode);\n+\t\t\tdetached = true;\n \t\t} else {\n \t\t\tspin_unlock(&object->lock);\n \t\t\trcu_read_unlock();\n@@ -1358,16 +1360,22 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * previous loop walk, which is not needed anymore.\n \t\t\t */\n \t\t\tiput(prev_inode);\n+\t\t\tif (prev_detached)\n+\t\t\t\tiput(prev_inode);\n \t\t\tcond_resched();\n \t\t\tspin_lock(&sb->s_inode_list_lock);\n \t\t}\n \t\tprev_inode = inode;\n+\t\tprev_detached = detached;\n \t}\n \tspin_unlock(&sb->s_inode_list_lock);\n \n \t/* Puts the inode reference from the last loop walk, if any. */\n-\tif (prev_inode)\n-\t\tiput(prev_inode);\n+\tif (prev_inode) {\n+\tiput(prev_inode);\n+\t\tif (prev_detached)\n+\t\t\tiput(prev_inode);\n+\t}\n \t/* Waits for pending iput() in release_inode(). */\n \twait_var_event(&landlock_superblock(sb)->inode_refs,\n \t\t       !atomic_long_read(&landlock_superblock(sb)->inode_refs));",
+          "explanation": "classic_swe step 7 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 7
+        },
+        {
+          "after": "\t\trcu_read_lock();\n\t\tobject = rcu_dereference(landlock_inode(inode)->object);\n\t\tif (!object) {",
+          "before": "\t\trcu_read_lock();\nobject = rcu_dereference(landlock_inode(inode)->object);\n\t\tif (!object) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..fc93c4d38674 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_detached = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool detached = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))\n@@ -1334,12 +1336,12 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t/*\n \t\t\t * At this point, we own the ihold() reference that was\n \t\t\t * originally set up by get_inode_object() and the\n-\t\t\t * __iget() reference that we just set in this loop\n-\t\t\t * walk.  Therefore the following call to iput() will\n+\t\t * __iget() reference that we just set in this loop\n+\t\t * walk.  Therefore the following call to iput() will\n \t\t\t * not sleep nor drop the inode because there is now at\n \t\t\t * least two references to it.\n \t\t\t */\n-\t\t\tiput(inode);\n+\t\t\tdetached = true;\n \t\t} else {\n \t\t\tspin_unlock(&object->lock);\n \t\t\trcu_read_unlock();\n@@ -1358,16 +1360,22 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * previous loop walk, which is not needed anymore.\n \t\t\t */\n \t\t\tiput(prev_inode);\n+\t\t\tif (prev_detached)\n+\t\t\t\tiput(prev_inode);\n \t\t\tcond_resched();\n \t\t\tspin_lock(&sb->s_inode_list_lock);\n \t\t}\n \t\tprev_inode = inode;\n+\t\tprev_detached = detached;\n \t}\n \tspin_unlock(&sb->s_inode_list_lock);\n \n \t/* Puts the inode reference from the last loop walk, if any. */\n-\tif (prev_inode)\n-\t\tiput(prev_inode);\n+\tif (prev_inode) {\n+\tiput(prev_inode);\n+\t\tif (prev_detached)\n+\t\t\tiput(prev_inode);\n+\t}\n \t/* Waits for pending iput() in release_inode(). */\n \twait_var_event(&landlock_superblock(sb)->inode_refs,\n \t\t       !atomic_long_read(&landlock_superblock(sb)->inode_refs));",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        },
+        {
+          "after": "\t/* Puts the inode reference from the last loop walk, if any. */\n\tif (prev_inode) {\n\t\tiput(prev_inode);\n\t\tif (prev_detached)\n\t\t\tiput(prev_inode);\n\t}",
+          "before": "\t/* Puts the inode reference from the last loop walk, if any. */\n\tif (prev_inode) {\n\tiput(prev_inode);\n\t\tif (prev_detached)\n\t\t\tiput(prev_inode);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..06284e1d3672 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_detached = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool detached = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))\n@@ -1334,12 +1336,12 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t/*\n \t\t\t * At this point, we own the ihold() reference that was\n \t\t\t * originally set up by get_inode_object() and the\n-\t\t\t * __iget() reference that we just set in this loop\n-\t\t\t * walk.  Therefore the following call to iput() will\n+\t\t * __iget() reference that we just set in this loop\n+\t\t * walk.  Therefore the following call to iput() will\n \t\t\t * not sleep nor drop the inode because there is now at\n \t\t\t * least two references to it.\n \t\t\t */\n-\t\t\tiput(inode);\n+\t\t\tdetached = true;\n \t\t} else {\n \t\t\tspin_unlock(&object->lock);\n \t\t\trcu_read_unlock();\n@@ -1358,16 +1360,22 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * previous loop walk, which is not needed anymore.\n \t\t\t */\n \t\t\tiput(prev_inode);\n+\t\t\tif (prev_detached)\n+\t\t\t\tiput(prev_inode);\n \t\t\tcond_resched();\n \t\t\tspin_lock(&sb->s_inode_list_lock);\n \t\t}\n \t\tprev_inode = inode;\n+\t\tprev_detached = detached;\n \t}\n \tspin_unlock(&sb->s_inode_list_lock);\n \n \t/* Puts the inode reference from the last loop walk, if any. */\n-\tif (prev_inode)\n+\tif (prev_inode) {\n \t\tiput(prev_inode);\n+\t\tif (prev_detached)\n+\t\t\tiput(prev_inode);\n+\t}\n \t/* Waits for pending iput() in release_inode(). */\n \twait_var_event(&landlock_superblock(sb)->inode_refs,\n \t\t       !atomic_long_read(&landlock_superblock(sb)->inode_refs));",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 7
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\t/*\n\t\t\t * At this point, we own the ihold() reference that was\n\t\t\t * originally set up by get_inode_object() and the\n\t\t\t * __iget() reference that we just set in this loop\n\t\t\t * walk.\n\t\t\t */\n\t\t\tdetached = true;",
+          "before": "\t\t\t/*\n\t\t\t * At this point, we own the ihold() reference that was\n\t\t\t * originally set up by get_inode_object() and the\n\t\t * __iget() reference that we just set in this loop\n\t\t * walk.  Therefore the following call to iput() will\n\t\t\t * not sleep nor drop the inode because there is now at\n\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tdetached = true;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..5337b9a6ae98 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_detached = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool detached = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))\n@@ -1335,11 +1337,9 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * At this point, we own the ihold() reference that was\n \t\t\t * originally set up by get_inode_object() and the\n \t\t\t * __iget() reference that we just set in this loop\n-\t\t\t * walk.  Therefore the following call to iput() will\n-\t\t\t * not sleep nor drop the inode because there is now at\n-\t\t\t * least two references to it.\n+\t\t\t * walk.\n \t\t\t */\n-\t\t\tiput(inode);\n+\t\t\tdetached = true;\n \t\t} else {\n \t\t\tspin_unlock(&object->lock);\n \t\t\trcu_read_unlock();\n@@ -1358,16 +1358,22 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * previous loop walk, which is not needed anymore.\n \t\t\t */\n \t\t\tiput(prev_inode);\n+\t\t\tif (prev_detached)\n+\t\t\t\tiput(prev_inode);\n \t\t\tcond_resched();\n \t\t\tspin_lock(&sb->s_inode_list_lock);\n \t\t}\n \t\tprev_inode = inode;\n+\t\tprev_detached = detached;\n \t}\n \tspin_unlock(&sb->s_inode_list_lock);\n \n \t/* Puts the inode reference from the last loop walk, if any. */\n-\tif (prev_inode)\n+\tif (prev_inode) {\n \t\tiput(prev_inode);\n+\t\tif (prev_detached)\n+\t\t\tiput(prev_inode);\n+\t}\n \t/* Waits for pending iput() in release_inode(). */\n \twait_var_event(&landlock_superblock(sb)->inode_refs,\n \t\t       !atomic_long_read(&landlock_superblock(sb)->inode_refs));",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 1,
+      "start_step": 15
+    }
+  ],
+  "success_step": 15
+}

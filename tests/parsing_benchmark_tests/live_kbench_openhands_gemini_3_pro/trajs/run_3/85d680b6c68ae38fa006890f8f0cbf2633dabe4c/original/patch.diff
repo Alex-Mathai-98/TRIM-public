@@ -1,0 +1,40 @@
+diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
+index 257333c88710..8c51641d573f 100644
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -862,7 +862,11 @@ static int bond_check_dev_link(struct bonding *bond,
+ 	/* Try to get link status using Ethtool first. */
+ 	if (slave_dev->ethtool_ops->get_link) {
+ 		netdev_lock_ops(slave_dev);
+-		ret = slave_dev->ethtool_ops->get_link(slave_dev);
++		if (slave_dev->ethtool_ops->get_link == ethtool_op_get_link &&
++		    !netdev_need_ops_lock(slave_dev))
++			ret = netif_carrier_ok(slave_dev) ? 1 : 0;
++		else
++			ret = slave_dev->ethtool_ops->get_link(slave_dev);
+ 		netdev_unlock_ops(slave_dev);
+ 
+ 		return ret ? BMSR_LSTATUS : 0;
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 0b2a4d0573b3..a8bc95ef67d6 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -60,7 +60,17 @@ static struct devlink *netdev_to_devlink_get(struct net_device *dev)
+ u32 ethtool_op_get_link(struct net_device *dev)
+ {
+ 	/* Synchronize carrier state with link watch, see also rtnl_getlink() */
+-	__linkwatch_sync_dev(dev);
++	bool locked = rtnl_is_locked();
++	bool need = netdev_need_ops_lock(dev);
++	if (locked || need) {
++		if (!locked && need) {
++             /* Check if need is consistent */
++             bool recheck = netdev_need_ops_lock(dev);
++             if (!recheck)
++                 printk(KERN_ERR "netdev_need_ops_lock inconsistent! first=%d second=%d\n", need, recheck);
++        }
++		__linkwatch_sync_dev(dev);
++	}
+ 
+ 	return netif_carrier_ok(dev) ? 1 : 0;
+ }

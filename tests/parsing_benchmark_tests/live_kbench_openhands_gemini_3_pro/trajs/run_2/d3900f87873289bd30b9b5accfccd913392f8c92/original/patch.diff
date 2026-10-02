@@ -1,0 +1,16 @@
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 1fc9a50def0b..6507ed774af2 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2447,7 +2447,10 @@ int block_read_full_folio(struct folio *folio, get_block_t *get_block)
+ 		bh = arr[i];
+ 		if (buffer_uptodate(bh))
+ 			end_buffer_async_read(bh, 1);
+-		else
++		else if (buffer_delay(bh) || buffer_unwritten(bh)) {
++			folio_zero_range(folio, i * blocksize, blocksize);
++			end_buffer_async_read(bh, 1);
++		} else
+ 			submit_bh(REQ_OP_READ, bh);
+ 	}
+ 	return 0;

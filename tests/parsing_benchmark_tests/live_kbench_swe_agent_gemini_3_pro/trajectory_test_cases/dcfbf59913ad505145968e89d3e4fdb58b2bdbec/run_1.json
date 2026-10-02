@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\tlimit = kaddr + nilfs_last_byte(dir, n) - reclen;\n\t\twhile ((char *)de <= limit) {\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t    \"zero-length directory entry\");\n\t\t\t\tfolio_release_kmap(*foliop, kaddr);\n\t\t\t\tgoto out;\n\t\t\t}\n\t\t\tif (nilfs_match(namelen, name, de))\n\t\t\t\tgoto found;\n\t\t\tde = nilfs_next_entry(de);\n\t\t}\n\t\tfolio_release_kmap(*foliop, kaddr);\n",
+          "before": "\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\tkaddr += nilfs_last_byte(dir, n) - reclen;\n\t\twhile ((char *)de <= kaddr) {\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t    \"zero-length directory entry\");\n\t\t\t\tfolio_release_kmap(*foliop, kaddr);\n\t\t\t\tgoto out;\n\t\t\t}\n\t\t\tif (nilfs_match(namelen, name, de))\n\t\t\t\tgoto found;\n\t\t\tde = nilfs_next_entry(de);\n\t\t}\n\t\tfolio_release_kmap(*foliop, kaddr);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c\nindex 14e8d82f8629..ee3f2494f64c 100644\n--- a/fs/nilfs2/dir.c\n+++ b/fs/nilfs2/dir.c\n@@ -316,8 +316,8 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,\n \t\t\treturn ERR_CAST(kaddr);\n \n \t\tde = (struct nilfs_dir_entry *)kaddr;\n-\t\tkaddr += nilfs_last_byte(dir, n) - reclen;\n-\t\twhile ((char *)de <= kaddr) {\n+\t\tlimit = kaddr + nilfs_last_byte(dir, n) - reclen;\n+\t\twhile ((char *)de <= limit) {\n \t\t\tif (de->rec_len == 0) {\n \t\t\t\tnilfs_error(dir->i_sb,\n \t\t\t\t\t    \"zero-length directory entry\");",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "\t\tchar *limit;\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c\nindex 14e8d82f8629..2979227d79ef 100644\n--- a/fs/nilfs2/dir.c\n+++ b/fs/nilfs2/dir.c\n@@ -311,13 +311,15 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,\n \tn = start;\n \tdo {\n \t\tchar *kaddr = nilfs_get_folio(dir, n, foliop);\n+\t\tchar *limit;\n+\n \n \t\tif (IS_ERR(kaddr))\n \t\t\treturn ERR_CAST(kaddr);\n \n \t\tde = (struct nilfs_dir_entry *)kaddr;\n-\t\tkaddr += nilfs_last_byte(dir, n) - reclen;\n-\t\twhile ((char *)de <= kaddr) {\n+\t\tlimit = kaddr + nilfs_last_byte(dir, n) - reclen;\n+\t\twhile ((char *)de <= limit) {\n \t\t\tif (de->rec_len == 0) {\n \t\t\t\tnilfs_error(dir->i_sb,\n \t\t\t\t\t    \"zero-length directory entry\");",
+          "explanation": "classic_swe step 18 insert #1",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 314,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 0,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tchar *kaddr = nilfs_get_folio(dir, n, foliop);\n\t\tchar *limit;\n\n\t\tif (IS_ERR(kaddr))\n",
+          "before": "\t\tchar *kaddr = nilfs_get_folio(dir, n, foliop);\n\t\tchar *limit;\n\n\n\t\tif (IS_ERR(kaddr))\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c\nindex 14e8d82f8629..8d6b61d0e773 100644\n--- a/fs/nilfs2/dir.c\n+++ b/fs/nilfs2/dir.c\n@@ -311,13 +311,14 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,\n \tn = start;\n \tdo {\n \t\tchar *kaddr = nilfs_get_folio(dir, n, foliop);\n+\t\tchar *limit;\n \n \t\tif (IS_ERR(kaddr))\n \t\t\treturn ERR_CAST(kaddr);\n \n \t\tde = (struct nilfs_dir_entry *)kaddr;\n-\t\tkaddr += nilfs_last_byte(dir, n) - reclen;\n-\t\twhile ((char *)de <= kaddr) {\n+\t\tlimit = kaddr + nilfs_last_byte(dir, n) - reclen;\n+\t\twhile ((char *)de <= limit) {\n \t\t\tif (de->rec_len == 0) {\n \t\t\t\tnilfs_error(dir->i_sb,\n \t\t\t\t\t    \"zero-length directory entry\");",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 1,
+      "start_step": 22
+    }
+  ],
+  "success_step": 22
+}

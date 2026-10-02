@@ -1,0 +1,16 @@
+diff --git a/net/core/sock_reuseport.c b/net/core/sock_reuseport.c
+index 5a165286e4d8..cdf62f1bcdf8 100644
+--- a/net/core/sock_reuseport.c
++++ b/net/core/sock_reuseport.c
+@@ -334,6 +334,11 @@ int reuseport_add_sock(struct sock *sk, struct sock *sk2, bool bind_inany)
+ 					  lockdep_is_held(&reuseport_lock));
+ 	old_reuse = rcu_dereference_protected(sk->sk_reuseport_cb,
+ 					      lockdep_is_held(&reuseport_lock));
++	if (!reuse) {
++		spin_unlock_bh(&reuseport_lock);
++		return -ENOENT;
++	}
++
+ 	if (old_reuse && old_reuse->num_closed_socks) {
+ 		/* sk was shutdown()ed before */
+ 		int err = reuseport_resurrect(sk, old_reuse, reuse, reuse->bind_inany);

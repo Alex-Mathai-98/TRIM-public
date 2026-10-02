@@ -1,0 +1,259 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      7,
+      8
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tif (WARN_ON(source.count > subreq->len)) {\n\t\t\t\t\tset_bit(NETFS_SREQ_FAILED, &subreq->flags);\n\t\t\t\t\treturn;\n\t\t\t\t}\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n",
+          "before": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/netfs/write_retry.c b/fs/netfs/write_retry.c\nindex 545d33079a77..8767770a4e61 100644\n--- a/fs/netfs/write_retry.c\n+++ b/fs/netfs/write_retry.c\n@@ -41,6 +41,11 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,\n \t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n \t\t\t\tstruct iov_iter source = subreq->io_iter;\n \n+\t\t\t\tif (WARN_ON(source.count > subreq->len)) {\n+\t\t\t\t\tset_bit(NETFS_SREQ_FAILED, &subreq->flags);\n+\t\t\t\t\treturn;\n+\t\t\t\t}\n+\n \t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n \t\t\t\tnetfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);\n \t\t\t\tnetfs_reissue_write(stream, subreq, &source);",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "fs/netfs/write_retry.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 0,
+      "start_step": 36
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n",
+          "before": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tif (WARN_ON(source.count > subreq->len)) {\n\t\t\t\t\tset_bit(NETFS_SREQ_FAILED, &subreq->flags);\n\t\t\t\t\treturn;\n\t\t\t\t}\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "fs/netfs/write_retry.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        },
+        {
+          "after": "\tif (subreq->len >= stream->sreq_max_len ||\n\t    subreq->nr_segs >= stream->sreq_max_segs ||\n\t    to_eof) {\n\t\tnetfs_issue_write(wreq, stream);\n\t\tsubreq = NULL;\n\t}\n\n\tif (subreq)\n\t\tiov_iter_truncate(&subreq->io_iter, subreq->len);\n\n\treturn part;\n}\n",
+          "before": "\tif (subreq->len >= stream->sreq_max_len ||\n\t    subreq->nr_segs >= stream->sreq_max_segs ||\n\t    to_eof) {\n\t\tnetfs_issue_write(wreq, stream);\n\t\tsubreq = NULL;\n\t}\n\n\treturn part;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c\nindex 77279fc5b5a7..52ed007c305c 100644\n--- a/fs/netfs/write_issue.c\n+++ b/fs/netfs/write_issue.c\n@@ -311,6 +311,9 @@ size_t netfs_advance_write(struct netfs_io_request *wreq,\n \t\tsubreq = NULL;\n \t}\n \n+\tif (subreq)\n+\t\tiov_iter_truncate(&subreq->io_iter, subreq->len);\n+\n \treturn part;\n }",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "fs/netfs/write_issue.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 1,
+      "start_step": 39
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (subreq->len >= stream->sreq_max_len ||\n\t    subreq->nr_segs >= stream->sreq_max_segs ||\n\t    to_eof) {\n\t\tnetfs_issue_write(wreq, stream);\n\t\tsubreq = NULL;\n\t}\n\n\treturn part;\n}\n",
+          "before": "\tif (subreq->len >= stream->sreq_max_len ||\n\t    subreq->nr_segs >= stream->sreq_max_segs ||\n\t    to_eof) {\n\t\tnetfs_issue_write(wreq, stream);\n\t\tsubreq = NULL;\n\t}\n\n\tif (subreq)\n\t\tiov_iter_truncate(&subreq->io_iter, subreq->len);\n\n\treturn part;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "fs/netfs/write_issue.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "\t} else {\n\t\tret = -EIOCBQUEUED;\n\t}\n\nout:\n\t// netfs_put_request(wreq, false, netfs_rreq_trace_put_return);\n\treturn ret;\n}\n",
+          "before": "\t} else {\n\t\tret = -EIOCBQUEUED;\n\t}\n\nout:\n\tnetfs_put_request(wreq, false, netfs_rreq_trace_put_return);\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/netfs/direct_write.c b/fs/netfs/direct_write.c\nindex 42ce53cc216e..b600c62c5dca 100644\n--- a/fs/netfs/direct_write.c\n+++ b/fs/netfs/direct_write.c\n@@ -117,7 +117,7 @@ ssize_t netfs_unbuffered_write_iter_locked(struct kiocb *iocb, struct iov_iter *\n \t}\n \n out:\n-\tnetfs_put_request(wreq, false, netfs_rreq_trace_put_return);\n+\t// netfs_put_request(wreq, false, netfs_rreq_trace_put_return);\n \treturn ret;\n }\n EXPORT_SYMBOL(netfs_unbuffered_write_iter_locked);",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "fs/netfs/direct_write.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 2,
+      "start_step": 43
+    },
+    {
+      "edits": [
+        {
+          "after": "out:\n\tnetfs_put_request(wreq, false, netfs_rreq_trace_put_return);\n\treturn ret;\n}\n",
+          "before": "out:\n\t// netfs_put_request(wreq, false, netfs_rreq_trace_put_return);\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 53 #1",
+          "filename": "fs/netfs/direct_write.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        },
+        {
+          "after": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tif (WARN_ON(source.count > subreq->len))\n\t\t\t\t\tsource.count = subreq->len;\n\n\t\t\t\tif (iov_iter_is_bvec(&source) && subreq->rreq->direct_bv) {\n\t\t\t\t\tconst struct bio_vec *bv = source.bvec;\n\t\t\t\t\tstruct bio_vec *start = subreq->rreq->direct_bv;\n\t\t\t\t\tif (bv < start || bv >= start + subreq->rreq->direct_bv_count) {\n\t\t\t\t\t\tpr_warn(\"netfs: iov_iter OOB: %p vs %p\\n\", bv, start);\n\t\t\t\t\t\tset_bit(NETFS_SREQ_FAILED, &subreq->flags);\n\t\t\t\t\t\tcontinue;\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n\t\t\t\tnetfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);\n",
+          "before": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n\t\t\t\tnetfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/netfs/write_retry.c b/fs/netfs/write_retry.c\nindex 545d33079a77..d611b537b771 100644\n--- a/fs/netfs/write_retry.c\n+++ b/fs/netfs/write_retry.c\n@@ -41,6 +41,19 @@ static void netfs_retry_write_stream(struct netfs_io_request *wreq,\n \t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n \t\t\t\tstruct iov_iter source = subreq->io_iter;\n \n+\t\t\t\tif (WARN_ON(source.count > subreq->len))\n+\t\t\t\t\tsource.count = subreq->len;\n+\n+\t\t\t\tif (iov_iter_is_bvec(&source) && subreq->rreq->direct_bv) {\n+\t\t\t\t\tconst struct bio_vec *bv = source.bvec;\n+\t\t\t\t\tstruct bio_vec *start = subreq->rreq->direct_bv;\n+\t\t\t\t\tif (bv < start || bv >= start + subreq->rreq->direct_bv_count) {\n+\t\t\t\t\t\tpr_warn(\"netfs: iov_iter OOB: %p vs %p\\n\", bv, start);\n+\t\t\t\t\t\tset_bit(NETFS_SREQ_FAILED, &subreq->flags);\n+\t\t\t\t\t\tcontinue;\n+\t\t\t\t\t}\n+\t\t\t\t}\n+\n \t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n \t\t\t\tnetfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);\n \t\t\t\tnetfs_reissue_write(stream, subreq, &source);",
+          "explanation": "classic_swe step 54 #1",
+          "filename": "fs/netfs/write_retry.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        }
+      ],
+      "end_step": 54,
+      "revision_index": 3,
+      "start_step": 53
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n\t\t\t\tnetfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);\n\t\t\t\tnetfs_reissue_write(stream, subreq, &source);\n\t\t\t}\n",
+          "before": "\t\t\tif (__test_and_clear_bit(NETFS_SREQ_NEED_RETRY, &subreq->flags)) {\n\t\t\t\tstruct iov_iter source = subreq->io_iter;\n\n\t\t\t\tif (WARN_ON(source.count > subreq->len))\n\t\t\t\t\tsource.count = subreq->len;\n\n\t\t\t\tif (iov_iter_is_bvec(&source) && subreq->rreq->direct_bv) {\n\t\t\t\t\tconst struct bio_vec *bv = source.bvec;\n\t\t\t\t\tstruct bio_vec *start = subreq->rreq->direct_bv;\n\t\t\t\t\tif (bv < start || bv >= start + subreq->rreq->direct_bv_count) {\n\t\t\t\t\t\tpr_warn(\"netfs: iov_iter OOB: %p vs %p\\n\", bv, start);\n\t\t\t\t\t\tset_bit(NETFS_SREQ_FAILED, &subreq->flags);\n\t\t\t\t\t\tcontinue;\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tiov_iter_revert(&source, subreq->len - source.count);\n\t\t\t\tnetfs_get_subrequest(subreq, netfs_sreq_trace_get_resubmit);\n\t\t\t\tnetfs_reissue_write(stream, subreq, &source);\n\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 58 #1",
+          "filename": "fs/netfs/write_retry.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 58
+        },
+        {
+          "after": "\tif (subreq->len >= stream->sreq_max_len ||\n\t    subreq->nr_segs >= stream->sreq_max_segs ||\n\t    to_eof) {\n\t\tnetfs_issue_write(wreq, stream);\n\t\tsubreq = NULL;\n\t}\n\n\tif (subreq)\n\t\tiov_iter_truncate(&subreq->io_iter, subreq->len);\n\n\treturn part;\n}\n",
+          "before": "\tif (subreq->len >= stream->sreq_max_len ||\n\t    subreq->nr_segs >= stream->sreq_max_segs ||\n\t    to_eof) {\n\t\tnetfs_issue_write(wreq, stream);\n\t\tsubreq = NULL;\n\t}\n\n\treturn part;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/netfs/write_issue.c b/fs/netfs/write_issue.c\nindex 77279fc5b5a7..52ed007c305c 100644\n--- a/fs/netfs/write_issue.c\n+++ b/fs/netfs/write_issue.c\n@@ -311,6 +311,9 @@ size_t netfs_advance_write(struct netfs_io_request *wreq,\n \t\tsubreq = NULL;\n \t}\n \n+\tif (subreq)\n+\t\tiov_iter_truncate(&subreq->io_iter, subreq->len);\n+\n \treturn part;\n }",
+          "explanation": "classic_swe step 59 #1",
+          "filename": "fs/netfs/write_issue.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "revision_index": 4,
+      "start_step": 58
+    }
+  ],
+  "success_step": 59
+}

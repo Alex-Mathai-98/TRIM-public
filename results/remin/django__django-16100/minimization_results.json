@@ -1,0 +1,123 @@
+{
+  "bug_id": "django__django-16100",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/admin/options.py",
+        "before": "        # Handle POSTed bulk-edit data.\n        if request.method == \"POST\" and cl.list_editable and \"_save\" in request.POST:\n            if not self.has_change_permission(request):\n                raise PermissionDenied\n            FormSet = self.get_changelist_formset(request)\n            modified_objects = self._get_list_editable_queryset(\n                request, FormSet.get_default_prefix()\n            )\n            formset = cl.formset = FormSet(\n                request.POST, request.FILES, queryset=modified_objects\n            )\n            if formset.is_valid():\n                changecount = 0\n                for form in formset.forms:\n                    if form.has_changed():\n                        obj = self.save_form(request, form, change=True)\n                        self.save_model(request, obj, form, change=True)\n                        self.save_related(request, form, formsets=[], change=True)\n                        change_msg = self.construct_change_message(request, form, None)\n                        self.log_change(request, obj, change_msg)\n                        changecount += 1\n\n                if changecount:\n                    msg = ngettext(\n                        \"%(count)s %(name)s was changed successfully.\",\n                        \"%(count)s %(name)s were changed successfully.\",\n                        changecount,\n                    ) % {\n                        \"count\": changecount,\n                        \"name\": model_ngettext(self.opts, changecount),\n                    }\n                    self.message_user(request, msg, messages.SUCCESS)\n\n                return HttpResponseRedirect(request.get_full_path())",
+        "after": "        # Handle POSTed bulk-edit data.\n        if request.method == \"POST\" and cl.list_editable and \"_save\" in request.POST:\n            if not self.has_change_permission(request):\n                raise PermissionDenied\n            FormSet = self.get_changelist_formset(request)\n            modified_objects = self._get_list_editable_queryset(\n                request, FormSet.get_default_prefix()\n            )\n            formset = cl.formset = FormSet(\n                request.POST, request.FILES, queryset=modified_objects\n            )\n            if formset.is_valid():\n                changecount = 0\n                with transaction.atomic():\n                    for form in formset.forms:\n                        if form.has_changed():\n                            obj = self.save_form(request, form, change=True)\n                            self.save_model(request, obj, form, change=True)\n                            self.save_related(request, form, formsets=[], change=True)\n                            change_msg = self.construct_change_message(request, form, None)\n                            self.log_change(request, obj, change_msg)\n                            changecount += 1\n\n                if changecount:\n                    msg = ngettext(\n                        \"%(count)s %(name)s was changed successfully.\",\n                        \"%(count)s %(name)s were changed successfully.\",\n                        changecount,\n                    ) % {\n                        \"count\": changecount,\n                        \"name\": model_ngettext(self.opts, changecount),\n                    }\n                    self.message_user(request, msg, messages.SUCCESS)\n\n                return HttpResponseRedirect(request.get_full_path())",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/admin/options.py b/django/contrib/admin/options.py\nindex 5f07a4208a..dbd8480a42 100644\n--- a/django/contrib/admin/options.py\n+++ b/django/contrib/admin/options.py\n@@ -2011,14 +2011,15 @@ class ModelAdmin(BaseModelAdmin):\n             )\n             if formset.is_valid():\n                 changecount = 0\n-                for form in formset.forms:\n-                    if form.has_changed():\n-                        obj = self.save_form(request, form, change=True)\n-                        self.save_model(request, obj, form, change=True)\n-                        self.save_related(request, form, formsets=[], change=True)\n-                        change_msg = self.construct_change_message(request, form, None)\n-                        self.log_change(request, obj, change_msg)\n-                        changecount += 1\n+                with transaction.atomic():\n+                    for form in formset.forms:\n+                        if form.has_changed():\n+                            obj = self.save_form(request, form, change=True)\n+                            self.save_model(request, obj, form, change=True)\n+                            self.save_related(request, form, formsets=[], change=True)\n+                            change_msg = self.construct_change_message(request, form, None)\n+                            self.log_change(request, obj, change_msg)\n+                            changecount += 1\n \n                 if changecount:\n                     msg = ngettext(\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      9
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      5
+    ],
+    "edit_list_after_file_min": [
+      5
+    ],
+    "edit_list_after_greedy": [
+      5
+    ],
+    "edit_list_after_refinement": [
+      5
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 1,
+  "reduction": "2_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/admin/options.py",
+          "before": "        # Handle POSTed bulk-edit data.\n        if request.method == \"POST\" and cl.list_editable and \"_save\" in request.POST:\n            if not self.has_change_permission(request):\n                raise PermissionDenied\n            FormSet = self.get_changelist_formset(request)\n            modified_objects = self._get_list_editable_queryset(\n                request, FormSet.get_default_prefix()\n            )\n            formset = cl.formset = FormSet(\n                request.POST, request.FILES, queryset=modified_objects\n            )\n            if formset.is_valid():\n                changecount = 0\n                for form in formset.forms:\n                    if form.has_changed():\n                        obj = self.save_form(request, form, change=True)\n                        self.save_model(request, obj, form, change=True)\n                        self.save_related(request, form, formsets=[], change=True)\n                        change_msg = self.construct_change_message(request, form, None)\n                        self.log_change(request, obj, change_msg)\n                        changecount += 1\n\n                if changecount:\n                    msg = ngettext(\n                        \"%(count)s %(name)s was changed successfully.\",\n                        \"%(count)s %(name)s were changed successfully.\",\n                        changecount,\n                    ) % {\n                        \"count\": changecount,\n                        \"name\": model_ngettext(self.opts, changecount),\n                    }\n                    self.message_user(request, msg, messages.SUCCESS)\n\n                return HttpResponseRedirect(request.get_full_path())",
+          "after": "        # Handle POSTed bulk-edit data.\n        if request.method == \"POST\" and cl.list_editable and \"_save\" in request.POST:\n            if not self.has_change_permission(request):\n                raise PermissionDenied\n            FormSet = self.get_changelist_formset(request)\n            modified_objects = self._get_list_editable_queryset(\n                request, FormSet.get_default_prefix()\n            )\n            formset = cl.formset = FormSet(\n                request.POST, request.FILES, queryset=modified_objects\n            )\n            if formset.is_valid():\n                changecount = 0\n                with transaction.atomic():\n                    for form in formset.forms:\n                        if form.has_changed():\n                            obj = self.save_form(request, form, change=True)\n                            self.save_model(request, obj, form, change=True)\n                            self.save_related(request, form, formsets=[], change=True)\n                            change_msg = self.construct_change_message(request, form, None)\n                            self.log_change(request, obj, change_msg)\n                            changecount += 1\n\n                if changecount:\n                    msg = ngettext(\n                        \"%(count)s %(name)s was changed successfully.\",\n                        \"%(count)s %(name)s were changed successfully.\",\n                        changecount,\n                    ) % {\n                        \"count\": changecount,\n                        \"name\": model_ngettext(self.opts, changecount),\n                    }\n                    self.message_user(request, msg, messages.SUCCESS)\n\n                return HttpResponseRedirect(request.get_full_path())",
+          "explanation": "classic_swe step 19 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/admin/options.py",
+          "before": "                with transaction.atomic():",
+          "after": "                with transaction.atomic(using=router.db_for_write(self.model)):",
+          "explanation": "classic_swe step 47 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 59,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 59,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "gold_files": [
+      "django/contrib/admin/options.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 9,
+    "minimized_deleted_lines": 8,
+    "gold_added_lines": 11,
+    "gold_deleted_lines": 9
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

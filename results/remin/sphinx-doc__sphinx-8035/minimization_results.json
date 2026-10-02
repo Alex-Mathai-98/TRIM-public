@@ -1,0 +1,166 @@
+{
+  "bug_id": "sphinx-doc__sphinx-8035",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "def inherited_members_option(arg: Any) -> Union[object, Set[str]]:\n    \"\"\"Used to convert the :members: option to auto directives.\"\"\"\n    if arg is None:\n        return 'object'\n    else:\n        return arg",
+        "after": "def inherited_members_option(arg: Any) -> Union[object, Set[str]]:\n    \"\"\"Used to convert the :members: option to auto directives.\"\"\"\n    if arg is None:\n        return 'object'\n    else:\n        return arg\n\n\ndef private_members_option(arg: Any) -> Union[object, List[str]]:\n    \"\"\"Used to convert the :private-members: option to auto directives.\"\"\"\n    if arg is None or arg is True:\n        return ALL\n    return [x.strip() for x in arg.split(',') if x.strip()]",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'synopsis': identity,\n        'platform': identity, 'deprecated': bool_option,\n        'member-order': member_order_option, 'exclude-members': members_set_option,\n        'private-members': bool_option, 'special-members': members_option,\n        'imported-members': bool_option, 'ignore-module-all': bool_option\n    }  # type: Dict[str, Callable]",
+        "after": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'synopsis': identity,\n        'platform': identity, 'deprecated': bool_option,\n        'member-order': member_order_option, 'exclude-members': members_set_option,\n        'private-members': private_members_option, 'special-members': members_option,\n        'imported-members': bool_option, 'ignore-module-all': bool_option\n    }  # type: Dict[str, Callable]",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'member-order': member_order_option,\n        'exclude-members': members_set_option,\n        'private-members': bool_option, 'special-members': members_option,\n    }  # type: Dict[str, Callable]",
+        "after": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'member-order': member_order_option,\n        'exclude-members': members_set_option,\n        'private-members': private_members_option, 'special-members': members_option,\n    }  # type: Dict[str, Callable]",
+        "explanation": "classic_swe step 22 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "            elif (namespace, membername) in attr_docs:\n                if want_all and isprivate:\n                    # ignore members whose name starts with _ by default\n                    keep = self.options.private_members\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True\n            elif want_all and isprivate:\n                # ignore members whose name starts with _ by default\n                keep = self.options.private_members and \\\n                    (has_doc or self.options.undoc_members)",
+        "after": "            elif (namespace, membername) in attr_docs:\n                if want_all and isprivate:\n                    # ignore members whose name starts with _ by default\n                    if self.options.private_members is ALL:\n                        keep = True\n                    elif self.options.private_members:\n                        keep = membername in self.options.private_members\n                    else:\n                        keep = False\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True\n            elif want_all and isprivate:\n                # ignore members whose name starts with _ by default\n                if self.options.private_members is ALL:\n                    keep = has_doc or self.options.undoc_members\n                elif self.options.private_members:\n                    keep = (membername in self.options.private_members and\n                            (has_doc or self.options.undoc_members))\n                else:\n                    keep = False",
+        "explanation": "classic_swe step 25 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py\nindex 8c3509c3b..70d4d1db9 100644\n--- a/sphinx/ext/autodoc/__init__.py\n+++ b/sphinx/ext/autodoc/__init__.py\n@@ -95,6 +95,13 @@ def inherited_members_option(arg: Any) -> Union[object, Set[str]]:\n         return arg\n \n \n+def private_members_option(arg: Any) -> Union[object, List[str]]:\n+    \"\"\"Used to convert the :private-members: option to auto directives.\"\"\"\n+    if arg is None or arg is True:\n+        return ALL\n+    return [x.strip() for x in arg.split(',') if x.strip()]\n+\n+\n def member_order_option(arg: Any) -> Optional[str]:\n     \"\"\"Used to convert the :members: option to auto directives.\"\"\"\n     if arg is None:\n@@ -649,15 +656,25 @@ class Documenter:\n             elif (namespace, membername) in attr_docs:\n                 if want_all and isprivate:\n                     # ignore members whose name starts with _ by default\n-                    keep = self.options.private_members\n+                    if self.options.private_members is ALL:\n+                        keep = True\n+                    elif self.options.private_members:\n+                        keep = membername in self.options.private_members\n+                    else:\n+                        keep = False\n                 else:\n                     # keep documented attributes\n                     keep = True\n                 isattr = True\n             elif want_all and isprivate:\n                 # ignore members whose name starts with _ by default\n-                keep = self.options.private_members and \\\n-                    (has_doc or self.options.undoc_members)\n+                if self.options.private_members is ALL:\n+                    keep = has_doc or self.options.undoc_members\n+                elif self.options.private_members:\n+                    keep = (membername in self.options.private_members and\n+                            (has_doc or self.options.undoc_members))\n+                else:\n+                    keep = False\n             else:\n                 if self.options.members is ALL and is_filtered_inherited_member(membername):\n                     keep = False\n@@ -859,7 +876,7 @@ class ModuleDocumenter(Documenter):\n         'show-inheritance': bool_option, 'synopsis': identity,\n         'platform': identity, 'deprecated': bool_option,\n         'member-order': member_order_option, 'exclude-members': members_set_option,\n-        'private-members': bool_option, 'special-members': members_option,\n+        'private-members': private_members_option, 'special-members': members_option,\n         'imported-members': bool_option, 'ignore-module-all': bool_option\n     }  # type: Dict[str, Callable]\n \n@@ -1279,7 +1296,7 @@ class ClassDocumenter(DocstringSignatureMixin, ModuleLevelDocumenter):  # type:\n         'noindex': bool_option, 'inherited-members': inherited_members_option,\n         'show-inheritance': bool_option, 'member-order': member_order_option,\n         'exclude-members': members_set_option,\n-        'private-members': bool_option, 'special-members': members_option,\n+        'private-members': private_members_option, 'special-members': members_option,\n     }  # type: Dict[str, Callable]\n \n     _signature_class = None  # type: Any\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 4,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_refinement": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "def inherited_members_option(arg: Any) -> Union[object, Set[str]]:\n    \"\"\"Used to convert the :members: option to auto directives.\"\"\"\n    if arg is None:\n        return 'object'\n    else:\n        return arg",
+          "after": "def inherited_members_option(arg: Any) -> Union[object, Set[str]]:\n    \"\"\"Used to convert the :members: option to auto directives.\"\"\"\n    if arg is None:\n        return 'object'\n    else:\n        return arg\n\n\ndef private_members_option(arg: Any) -> Union[object, List[str]]:\n    \"\"\"Used to convert the :private-members: option to auto directives.\"\"\"\n    if arg is None or arg is True:\n        return ALL\n    return [x.strip() for x in arg.split(',') if x.strip()]",
+          "explanation": "classic_swe step 20 #1"
+        },
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'synopsis': identity,\n        'platform': identity, 'deprecated': bool_option,\n        'member-order': member_order_option, 'exclude-members': members_set_option,\n        'private-members': bool_option, 'special-members': members_option,\n        'imported-members': bool_option, 'ignore-module-all': bool_option\n    }  # type: Dict[str, Callable]",
+          "after": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'synopsis': identity,\n        'platform': identity, 'deprecated': bool_option,\n        'member-order': member_order_option, 'exclude-members': members_set_option,\n        'private-members': private_members_option, 'special-members': members_option,\n        'imported-members': bool_option, 'ignore-module-all': bool_option\n    }  # type: Dict[str, Callable]",
+          "explanation": "classic_swe step 21 #1"
+        },
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'member-order': member_order_option,\n        'exclude-members': members_set_option,\n        'private-members': bool_option, 'special-members': members_option,\n    }  # type: Dict[str, Callable]",
+          "after": "    option_spec = {\n        'members': members_option, 'undoc-members': bool_option,\n        'noindex': bool_option, 'inherited-members': inherited_members_option,\n        'show-inheritance': bool_option, 'member-order': member_order_option,\n        'exclude-members': members_set_option,\n        'private-members': private_members_option, 'special-members': members_option,\n    }  # type: Dict[str, Callable]",
+          "explanation": "classic_swe step 22 #1"
+        },
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "            elif (namespace, membername) in attr_docs:\n                if want_all and isprivate:\n                    # ignore members whose name starts with _ by default\n                    keep = self.options.private_members\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True\n            elif want_all and isprivate:\n                # ignore members whose name starts with _ by default\n                keep = self.options.private_members and \\\n                    (has_doc or self.options.undoc_members)",
+          "after": "            elif (namespace, membername) in attr_docs:\n                if want_all and isprivate:\n                    # ignore members whose name starts with _ by default\n                    if self.options.private_members is ALL:\n                        keep = True\n                    elif self.options.private_members:\n                        keep = membername in self.options.private_members\n                    else:\n                        keep = False\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True\n            elif want_all and isprivate:\n                # ignore members whose name starts with _ by default\n                if self.options.private_members is ALL:\n                    keep = has_doc or self.options.undoc_members\n                elif self.options.private_members:\n                    keep = (membername in self.options.private_members and\n                            (has_doc or self.options.undoc_members))\n                else:\n                    keep = False",
+          "explanation": "classic_swe step 25 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 2,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 2,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "gold_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "minimized_hunks": 4,
+    "gold_hunks": 6,
+    "minimized_added_lines": 22,
+    "minimized_deleted_lines": 5,
+    "gold_added_lines": 37,
+    "gold_deleted_lines": 9
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

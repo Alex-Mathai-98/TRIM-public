@@ -1,0 +1,53 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 4414743b638e..411ca8fdfba3 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -1813,6 +1813,29 @@ static int __ocfs2_find_path(struct ocfs2_caching_info *ci,
+ 
+ 		}
+ 
++		if (le16_to_cpu(el->l_next_free_rec) > le16_to_cpu(el->l_count)) {
++			ocfs2_error(ocfs2_metadata_cache_get_super(ci),
++				    "Owner %llu has bad count in extent list at block %llu (next free=%u, count=%u)\n",
++				    (unsigned long long)ocfs2_metadata_cache_owner(ci),
++				    (unsigned long long)(bh ? bh->b_blocknr : 0),
++				    le16_to_cpu(el->l_next_free_rec),
++				    le16_to_cpu(el->l_count));
++			ret = -EROFS;
++			goto out;
++		}
++
++		if (sizeof(struct ocfs2_extent_list) + le16_to_cpu(el->l_next_free_rec) *
++		    sizeof(struct ocfs2_extent_rec) >
++		    ocfs2_metadata_cache_get_super(ci)->s_blocksize) {
++			ocfs2_error(ocfs2_metadata_cache_get_super(ci),
++				    "Owner %llu has bad next_free_rec in extent list at block %llu (next free=%u)\n",
++				    (unsigned long long)ocfs2_metadata_cache_owner(ci),
++				    (unsigned long long)(bh ? bh->b_blocknr : 0),
++				    le16_to_cpu(el->l_next_free_rec));
++			ret = -EROFS;
++			goto out;
++		}
++
+ 		for(i = 0; i < le16_to_cpu(el->l_next_free_rec) - 1; i++) {
+ 			rec = &el->l_recs[i];
+ 
+@@ -1848,18 +1871,6 @@ static int __ocfs2_find_path(struct ocfs2_caching_info *ci,
+ 		eb = (struct ocfs2_extent_block *) bh->b_data;
+ 		el = &eb->h_list;
+ 
+-		if (le16_to_cpu(el->l_next_free_rec) >
+-		    le16_to_cpu(el->l_count)) {
+-			ocfs2_error(ocfs2_metadata_cache_get_super(ci),
+-				    "Owner %llu has bad count in extent list at block %llu (next free=%u, count=%u)\n",
+-				    (unsigned long long)ocfs2_metadata_cache_owner(ci),
+-				    (unsigned long long)bh->b_blocknr,
+-				    le16_to_cpu(el->l_next_free_rec),
+-				    le16_to_cpu(el->l_count));
+-			ret = -EROFS;
+-			goto out;
+-		}
+-
+ 		if (func)
+ 			func(data, bh);
+ 	}

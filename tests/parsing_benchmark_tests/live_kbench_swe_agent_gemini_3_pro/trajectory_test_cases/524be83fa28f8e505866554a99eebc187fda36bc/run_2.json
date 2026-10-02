@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nenum_str = \"\"\"\n\tBPF_PROG_TYPE_UNSPEC,\n\tBPF_PROG_TYPE_SOCKET_FILTER,\n\tBPF_PROG_TYPE_SCHED_CLS,\n\tBPF_PROG_TYPE_SCHED_ACT,\n\tBPF_PROG_TYPE_TRACEPOINT,\n\tBPF_PROG_TYPE_XDP,\n\tBPF_PROG_TYPE_PERF_EVENT,\n\tBPF_PROG_TYPE_CGROUP_SKB,\n\tBPF_PROG_TYPE_CGROUP_SOCK,\n\tBPF_PROG_TYPE_LWT_IN,\n\tBPF_PROG_TYPE_LWT_OUT,\n\tBPF_PROG_TYPE_LWT_XMIT,\n\tBPF_PROG_TYPE_SOCK_OPS,\n\tBPF_PROG_TYPE_SK_SKB,\n\tBPF_PROG_TYPE_CGROUP_DEVICE,\n\tBPF_PROG_TYPE_SK_MSG,\n\tBPF_PROG_TYPE_RAW_TRACEPOINT,\n\tBPF_PROG_TYPE_CGROUP_SOCK_ADDR,\n\tBPF_PROG_TYPE_LWT_SEG6LOCAL,\n\tBPF_PROG_TYPE_LIRC_MODE2,\n\tBPF_PROG_TYPE_SK_REUSEPORT,\n\tBPF_PROG_TYPE_FLOW_DISSECTOR,\n\tBPF_PROG_TYPE_CGROUP_SYSCTL,\n\tBPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE,\n\tBPF_PROG_TYPE_CGROUP_SOCKOPT,\n\tBPF_PROG_TYPE_TRACING,\n\tBPF_PROG_TYPE_STRUCT_OPS,\n\tBPF_PROG_TYPE_EXT,\n\tBPF_PROG_TYPE_LSM,\n\tBPF_PROG_TYPE_SK_LOOKUP,\n\tBPF_PROG_TYPE_SYSCALL, /* a program that can execute syscalls */\n\tBPF_PROG_TYPE_NETFILTER,\n\t__MAX_BPF_PROG_TYPE\n\"\"\"\nlines = enum_str.strip().split(\"\\n\")\ncount = 0\nfor line in lines:\n    name = line.split(\",\")[0].strip()\n    print(f\"{count}: {name}\")\n    count += 1\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 36 create #1",
+          "filename": "print_enum.py",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "\treturn css_cls_state(task_css_check(p, net_cls_cgrp_id,\n\t\t\t\t\t    rcu_read_lock_bh_held() ||\n\t\t\t\t\t    rcu_read_lock_held()));",
+          "before": "\treturn css_cls_state(task_css_check(p, net_cls_cgrp_id,\n\t\t\t\t\t    rcu_read_lock_bh_held()));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/netclassid_cgroup.c b/net/core/netclassid_cgroup.c\nindex d22f0919821e..4a29c2efe24b 100644\n--- a/net/core/netclassid_cgroup.c\n+++ b/net/core/netclassid_cgroup.c\n@@ -21,7 +21,8 @@ static inline struct cgroup_cls_state *css_cls_state(struct cgroup_subsys_state\n struct cgroup_cls_state *task_cls_state(struct task_struct *p)\n {\n \treturn css_cls_state(task_css_check(p, net_cls_cgrp_id,\n-\t\t\t\t\t    rcu_read_lock_bh_held()));\n+\t\t\t\t\t    rcu_read_lock_bh_held() ||\n+\t\t\t\t\t    rcu_read_lock_held()));\n }\n EXPORT_SYMBOL_GPL(task_cls_state);",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "net/core/netclassid_cgroup.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        },
+        {
+          "after": "BPF_CALL_0(bpf_get_cgroup_classid_curr)\n{\n\tu32 ret;\n\n\trcu_read_lock();\n\tret = __task_get_classid(current);\n\trcu_read_unlock();\n\treturn ret;\n}",
+          "before": "BPF_CALL_0(bpf_get_cgroup_classid_curr)\n{\n\treturn __task_get_classid(current);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/filter.c b/net/core/filter.c\nindex 327ca73f9cd7..345fac1752e0 100644\n--- a/net/core/filter.c\n+++ b/net/core/filter.c\n@@ -3085,7 +3085,12 @@ static const struct bpf_func_proto bpf_msg_pop_data_proto = {\n #ifdef CONFIG_CGROUP_NET_CLASSID\n BPF_CALL_0(bpf_get_cgroup_classid_curr)\n {\n-\treturn __task_get_classid(current);\n+\tu32 ret;\n+\n+\trcu_read_lock();\n+\tret = __task_get_classid(current);\n+\trcu_read_unlock();\n+\treturn ret;\n }\n \n const struct bpf_func_proto bpf_get_cgroup_classid_curr_proto = {\ndiff --git a/net/core/netclassid_cgroup.c b/net/core/netclassid_cgroup.c\nindex d22f0919821e..4a29c2efe24b 100644\n--- a/net/core/netclassid_cgroup.c\n+++ b/net/core/netclassid_cgroup.c\n@@ -21,7 +21,8 @@ static inline struct cgroup_cls_state *css_cls_state(struct cgroup_subsys_state\n struct cgroup_cls_state *task_cls_state(struct task_struct *p)\n {\n \treturn css_cls_state(task_css_check(p, net_cls_cgrp_id,\n-\t\t\t\t\t    rcu_read_lock_bh_held()));\n+\t\t\t\t\t    rcu_read_lock_bh_held() ||\n+\t\t\t\t\t    rcu_read_lock_held()));\n }\n EXPORT_SYMBOL_GPL(task_cls_state);",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "net/core/filter.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        },
+        {
+          "after": "\treturn css_cls_state(task_css_check(p, net_cls_cgrp_id,\n\t\t\t\t\t    rcu_read_lock_bh_held()));",
+          "before": "\treturn css_cls_state(task_css_check(p, net_cls_cgrp_id,\n\t\t\t\t\t    rcu_read_lock_bh_held() ||\n\t\t\t\t\t    rcu_read_lock_held()));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/filter.c b/net/core/filter.c\nindex 327ca73f9cd7..345fac1752e0 100644\n--- a/net/core/filter.c\n+++ b/net/core/filter.c\n@@ -3085,7 +3085,12 @@ static const struct bpf_func_proto bpf_msg_pop_data_proto = {\n #ifdef CONFIG_CGROUP_NET_CLASSID\n BPF_CALL_0(bpf_get_cgroup_classid_curr)\n {\n-\treturn __task_get_classid(current);\n+\tu32 ret;\n+\n+\trcu_read_lock();\n+\tret = __task_get_classid(current);\n+\trcu_read_unlock();\n+\treturn ret;\n }\n \n const struct bpf_func_proto bpf_get_cgroup_classid_curr_proto = {",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "net/core/netclassid_cgroup.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        }
+      ],
+      "end_step": 51,
+      "revision_index": 0,
+      "start_step": 36
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/filter.c b/net/core/filter.c\nindex 327ca73f9cd7..345fac1752e0 100644\n--- a/net/core/filter.c\n+++ b/net/core/filter.c\n@@ -3085,7 +3085,12 @@ static const struct bpf_func_proto bpf_msg_pop_data_proto = {\n #ifdef CONFIG_CGROUP_NET_CLASSID\n BPF_CALL_0(bpf_get_cgroup_classid_curr)\n {\n-\treturn __task_get_classid(current);\n+\tu32 ret;\n+\n+\trcu_read_lock();\n+\tret = __task_get_classid(current);\n+\trcu_read_unlock();\n+\treturn ret;\n }\n \n const struct bpf_func_proto bpf_get_cgroup_classid_curr_proto = {",
+          "explanation": "classic_swe step 54 rm #1",
+          "filename": "print_enum.py",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        }
+      ],
+      "end_step": 54,
+      "revision_index": 1,
+      "start_step": 54
+    }
+  ],
+  "success_step": 54
+}

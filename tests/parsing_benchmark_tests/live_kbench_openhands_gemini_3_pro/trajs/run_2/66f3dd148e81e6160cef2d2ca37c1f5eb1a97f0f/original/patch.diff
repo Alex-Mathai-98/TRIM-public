@@ -1,0 +1,35 @@
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 78fcbb89cf32..e522f09a8bff 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -826,7 +826,7 @@ int __xfrm_state_delete(struct xfrm_state *x)
+ 		if (!hlist_unhashed(&x->state_cache_input))
+ 			hlist_del_rcu(&x->state_cache_input);
+ 
+-		if (x->id.spi)
++		if (!hlist_unhashed(&x->byspi))
+ 			hlist_del_rcu(&x->byspi);
+ 		net->xfrm.state_num--;
+ 		xfrm_nat_keepalive_state_updated(x);
+@@ -933,7 +933,8 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)
+ 		hlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {
+ 			if (!xfrm_state_kern(x) &&
+ 			    xfrm_id_proto_match(x->id.proto, proto)) {
+-				xfrm_state_hold(x);
++				if (!xfrm_state_hold_rcu(x))
++					continue;
+ 				spin_unlock_bh(&net->xfrm.xfrm_state_lock);
+ 
+ 				err = xfrm_state_delete(x);
+@@ -2583,6 +2584,11 @@ int xfrm_alloc_spi(struct xfrm_state *x, u32 low, u32 high,
+ 
+ 	for (h = 0; h < range; h++) {
+ 		u32 spi = (low == high) ? low : get_random_u32_inclusive(low, high);
++		if (spi == 0) {
++			if (low == high)
++				goto unlock;
++			continue;
++		}
+ 		newspi = htonl(spi);
+ 
+ 		spin_lock_bh(&net->xfrm.xfrm_state_lock);

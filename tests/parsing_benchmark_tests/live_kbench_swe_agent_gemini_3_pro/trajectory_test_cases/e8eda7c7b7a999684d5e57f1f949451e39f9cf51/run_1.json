@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tchild->part.offset = part->offset;\n\tINIT_LIST_HEAD(&child->part.node);\n\tINIT_LIST_HEAD(&child->partitions);\n",
+          "before": "\tchild->part.offset = part->offset;\n\tINIT_LIST_HEAD(&child->partitions);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c\nindex 6811a714349d..130f1bdea788 100644\n--- a/drivers/mtd/mtdpart.c\n+++ b/drivers/mtd/mtdpart.c\n@@ -91,6 +91,7 @@ static struct mtd_info *allocate_partition(struct mtd_info *parent,\n \tchild->dev.of_node = part->of_node;\n \tchild->parent = parent;\n \tchild->part.offset = part->offset;\n+\tINIT_LIST_HEAD(&child->part.node);\n \tINIT_LIST_HEAD(&child->partitions);\n \n \tif (child->part.offset == MTDPART_OFS_APPEND)",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "drivers/mtd/mtdpart.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        },
+        {
+          "after": "\tret = add_mtd_device(child);\n\tif (ret)\n\t\treturn ret;\n\n\tmutex_lock(&master->master.partitions_lock);\n\tlist_add_tail(&child->part.node, &parent->partitions);\n\tmutex_unlock(&master->master.partitions_lock);\n\n\tmtd_add_partition_attrs(child);\n\n\treturn 0;\n}\n",
+          "before": "\tmutex_lock(&master->master.partitions_lock);\n\tlist_add_tail(&child->part.node, &parent->partitions);\n\tmutex_unlock(&master->master.partitions_lock);\n\n\tret = add_mtd_device(child);\n\tif (ret)\n\t\tgoto err_remove_part;\n\n\tmtd_add_partition_attrs(child);\n\n\treturn 0;\n\nerr_remove_part:\n\tmutex_lock(&master->master.partitions_lock);\n\tlist_del(&child->part.node);\n\tmutex_unlock(&master->master.partitions_lock);\n\n\tfree_partition(child);\n\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c\nindex 6811a714349d..bd8e1fd726a8 100644\n--- a/drivers/mtd/mtdpart.c\n+++ b/drivers/mtd/mtdpart.c\n@@ -91,6 +91,7 @@ static struct mtd_info *allocate_partition(struct mtd_info *parent,\n \tchild->dev.of_node = part->of_node;\n \tchild->parent = parent;\n \tchild->part.offset = part->offset;\n+\tINIT_LIST_HEAD(&child->part.node);\n \tINIT_LIST_HEAD(&child->partitions);\n \n \tif (child->part.offset == MTDPART_OFS_APPEND)\n@@ -272,26 +273,17 @@ int mtd_add_partition(struct mtd_info *parent, const char *name,\n \tif (IS_ERR(child))\n \t\treturn PTR_ERR(child);\n \n-\tmutex_lock(&master->master.partitions_lock);\n-\tlist_add_tail(&child->part.node, &parent->partitions);\n-\tmutex_unlock(&master->master.partitions_lock);\n-\n \tret = add_mtd_device(child);\n \tif (ret)\n-\t\tgoto err_remove_part;\n-\n-\tmtd_add_partition_attrs(child);\n-\n-\treturn 0;\n+\t\treturn ret;\n \n-err_remove_part:\n \tmutex_lock(&master->master.partitions_lock);\n-\tlist_del(&child->part.node);\n+\tlist_add_tail(&child->part.node, &parent->partitions);\n \tmutex_unlock(&master->master.partitions_lock);\n \n-\tfree_partition(child);\n+\tmtd_add_partition_attrs(child);\n \n-\treturn ret;\n+\treturn 0;\n }\n EXPORT_SYMBOL_GPL(mtd_add_partition);",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "drivers/mtd/mtdpart.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        },
+        {
+          "after": "\t\tret = add_mtd_device(child);\n\t\tif (ret)\n\t\t\tgoto err_del_partitions;\n\n\t\tmutex_lock(&master->master.partitions_lock);\n\t\tlist_add_tail(&child->part.node, &parent->partitions);\n\t\tmutex_unlock(&master->master.partitions_lock);\n\n\t\tmtd_add_partition_attrs(child);\n",
+          "before": "\t\tmutex_lock(&master->master.partitions_lock);\n\t\tlist_add_tail(&child->part.node, &parent->partitions);\n\t\tmutex_unlock(&master->master.partitions_lock);\n\n\t\tret = add_mtd_device(child);\n\t\tif (ret) {\n\t\t\tmutex_lock(&master->master.partitions_lock);\n\t\t\tlist_del(&child->part.node);\n\t\t\tmutex_unlock(&master->master.partitions_lock);\n\n\t\t\tfree_partition(child);\n\t\t\tgoto err_del_partitions;\n\t\t}\n\n\t\tmtd_add_partition_attrs(child);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c\nindex 6811a714349d..59eb06cbc10c 100644\n--- a/drivers/mtd/mtdpart.c\n+++ b/drivers/mtd/mtdpart.c\n@@ -91,6 +91,7 @@ static struct mtd_info *allocate_partition(struct mtd_info *parent,\n \tchild->dev.of_node = part->of_node;\n \tchild->parent = parent;\n \tchild->part.offset = part->offset;\n+\tINIT_LIST_HEAD(&child->part.node);\n \tINIT_LIST_HEAD(&child->partitions);\n \n \tif (child->part.offset == MTDPART_OFS_APPEND)\n@@ -272,26 +273,17 @@ int mtd_add_partition(struct mtd_info *parent, const char *name,\n \tif (IS_ERR(child))\n \t\treturn PTR_ERR(child);\n \n-\tmutex_lock(&master->master.partitions_lock);\n-\tlist_add_tail(&child->part.node, &parent->partitions);\n-\tmutex_unlock(&master->master.partitions_lock);\n-\n \tret = add_mtd_device(child);\n \tif (ret)\n-\t\tgoto err_remove_part;\n-\n-\tmtd_add_partition_attrs(child);\n-\n-\treturn 0;\n+\t\treturn ret;\n \n-err_remove_part:\n \tmutex_lock(&master->master.partitions_lock);\n-\tlist_del(&child->part.node);\n+\tlist_add_tail(&child->part.node, &parent->partitions);\n \tmutex_unlock(&master->master.partitions_lock);\n \n-\tfree_partition(child);\n+\tmtd_add_partition_attrs(child);\n \n-\treturn ret;\n+\treturn 0;\n }\n EXPORT_SYMBOL_GPL(mtd_add_partition);\n \n@@ -409,20 +401,14 @@ int add_mtd_partitions(struct mtd_info *parent,\n \t\t\tgoto err_del_partitions;\n \t\t}\n \n+\t\tret = add_mtd_device(child);\n+\t\tif (ret)\n+\t\t\tgoto err_del_partitions;\n+\n \t\tmutex_lock(&master->master.partitions_lock);\n \t\tlist_add_tail(&child->part.node, &parent->partitions);\n \t\tmutex_unlock(&master->master.partitions_lock);\n \n-\t\tret = add_mtd_device(child);\n-\t\tif (ret) {\n-\t\t\tmutex_lock(&master->master.partitions_lock);\n-\t\t\tlist_del(&child->part.node);\n-\t\t\tmutex_unlock(&master->master.partitions_lock);\n-\n-\t\t\tfree_partition(child);\n-\t\t\tgoto err_del_partitions;\n-\t\t}\n-\n \t\tmtd_add_partition_attrs(child);\n \n \t\t/* Look for subpartitions */",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "drivers/mtd/mtdpart.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        }
+      ],
+      "end_step": 13,
+      "revision_index": 0,
+      "start_step": 9
+    }
+  ],
+  "success_step": 13
+}

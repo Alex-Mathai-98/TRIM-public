@@ -1,0 +1,85 @@
+diff --git a/drivers/mtd/mtdcore.c b/drivers/mtd/mtdcore.c
+index 724f917f91ba..09b61d8c187f 100644
+--- a/drivers/mtd/mtdcore.c
++++ b/drivers/mtd/mtdcore.c
+@@ -97,8 +97,6 @@ static void mtd_release(struct device *dev)
+ 	idr_remove(&mtd_idr, mtd->index);
+ 	of_node_put(mtd_get_of_node(mtd));
+ 
+-	if (mtd_is_partition(mtd))
+-		release_mtd_partition(mtd);
+ 
+ 	/* remove /dev/mtdXro node */
+ 	device_destroy(&mtd_class, index + 1);
+@@ -115,6 +113,8 @@ static void mtd_device_release(struct kref *kref)
+ 	nvmem_unregister(mtd->nvmem);
+ 
+ 	device_unregister(&mtd->dev);
++	if (is_partition)
++		release_mtd_partition(mtd);
+ 
+ 	/*
+ 	 *  Clear dev so mtd can be safely re-registered later if desired.
+@@ -748,7 +748,7 @@ int add_mtd_device(struct mtd_info *mtd)
+ 	error = device_register(&mtd->dev);
+ 	if (error) {
+ 		put_device(&mtd->dev);
+-		goto fail_added;
++		goto fail_locked;
+ 	}
+ 
+ 	/* Add the nvmem provider */
+diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c
+index 6811a714349d..44d4d30e3fcb 100644
+--- a/drivers/mtd/mtdpart.c
++++ b/drivers/mtd/mtdpart.c
+@@ -92,6 +92,7 @@ static struct mtd_info *allocate_partition(struct mtd_info *parent,
+ 	child->parent = parent;
+ 	child->part.offset = part->offset;
+ 	INIT_LIST_HEAD(&child->partitions);
++	INIT_LIST_HEAD(&child->part.node);
+ 
+ 	if (child->part.offset == MTDPART_OFS_APPEND)
+ 		child->part.offset = cur_offset;
+@@ -272,26 +273,19 @@ int mtd_add_partition(struct mtd_info *parent, const char *name,
+ 	if (IS_ERR(child))
+ 		return PTR_ERR(child);
+ 
++	ret = add_mtd_device(child);
++	if (ret) {
++		/* mtd is freed by add_mtd_device on failure */
++		return ret;
++	}
++
+ 	mutex_lock(&master->master.partitions_lock);
+ 	list_add_tail(&child->part.node, &parent->partitions);
+ 	mutex_unlock(&master->master.partitions_lock);
+ 
+-	ret = add_mtd_device(child);
+-	if (ret)
+-		goto err_remove_part;
+-
+ 	mtd_add_partition_attrs(child);
+ 
+ 	return 0;
+-
+-err_remove_part:
+-	mutex_lock(&master->master.partitions_lock);
+-	list_del(&child->part.node);
+-	mutex_unlock(&master->master.partitions_lock);
+-
+-	free_partition(child);
+-
+-	return ret;
+ }
+ EXPORT_SYMBOL_GPL(mtd_add_partition);
+ 
+@@ -419,7 +413,7 @@ int add_mtd_partitions(struct mtd_info *parent,
+ 			list_del(&child->part.node);
+ 			mutex_unlock(&master->master.partitions_lock);
+ 
+-			free_partition(child);
++			/* mtd is freed by add_mtd_device on failure */
+ 			goto err_del_partitions;
+ 		}
+ 

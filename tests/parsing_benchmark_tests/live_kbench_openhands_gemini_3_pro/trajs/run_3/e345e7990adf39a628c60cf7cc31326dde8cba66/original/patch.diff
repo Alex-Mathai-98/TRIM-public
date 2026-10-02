@@ -1,0 +1,19 @@
+diff --git a/fs/namei.c b/fs/namei.c
+index bf0f66f0e9b9..577ada50a393 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -5217,6 +5217,14 @@ int vfs_rmdir(struct mnt_idmap *idmap, struct inode *dir,
+ 	if (!dir->i_op->rmdir)
+ 		return -EPERM;
+ 
++	/*
++	 * On a corrupted filesystem, the victim might be the parent directory
++	 * itself (i.e. a hardlink to the directory). This would cause a
++	 * deadlock if we try to lock the directory again.
++	 */
++	if (dentry->d_inode == dir)
++		return -EINVAL;
++
+ 	dget(dentry);
+ 	inode_lock(dentry->d_inode);
+ 

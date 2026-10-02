@@ -1,0 +1,174 @@
+{
+  "bug_id": "sympy__sympy-16792",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/utilities/codegen.py",
+        "before": "        # setup input argument list\n        array_symbols = {}\n        for array in expressions.atoms(Indexed) | local_expressions.atoms(Indexed):\n            array_symbols[array.base.label] = array\n        for array in expressions.atoms(MatrixSymbol) | local_expressions.atoms(MatrixSymbol):\n            array_symbols[array] = array",
+        "after": "        # setup input argument list\n        array_symbols = {}\n        for array in expressions.atoms(Indexed) | local_expressions.atoms(Indexed):\n            array_symbols[array.base.label] = array\n        for array in expressions.atoms(MatrixSymbol) | local_expressions.atoms(MatrixSymbol):\n            array_symbols[array] = array\n        \n        # Also include array symbols from argument_sequence that might not appear in expressions\n        if argument_sequence is not None:\n            for arg in argument_sequence:\n                if isinstance(arg, MatrixSymbol):\n                    array_symbols[arg] = arg\n                elif isinstance(arg, IndexedBase):\n                    array_symbols[arg.label] = arg",
+        "explanation": "classic_swe step 39 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/utilities/codegen.py",
+        "before": "                except KeyError:\n                    new_args.append(InputArgument(symbol))\n            arg_list = new_args\n\n        return Routine(name, arg_list, return_val, local_vars, global_vars)",
+        "after": "                except KeyError:\n                    # Check if this symbol is a MatrixSymbol or IndexedBase that needs dimensions\n                    if symbol in array_symbols:\n                        dims = []\n                        array = array_symbols[symbol]\n                        for dim in array.shape:\n                            dims.append((S.Zero, dim - 1))\n                        metadata = {'dimensions': dims}\n                    else:\n                        metadata = {}\n                    new_args.append(InputArgument(symbol, **metadata))\n            arg_list = new_args\n\n        return Routine(name, arg_list, return_val, local_vars, global_vars)",
+        "explanation": "classic_swe step 45 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/utilities/codegen.py b/sympy/utilities/codegen.py\nindex f0befb2bd7..e8a29d268b 100644\n--- a/sympy/utilities/codegen.py\n+++ b/sympy/utilities/codegen.py\n@@ -700,6 +700,14 @@ def routine(self, name, expr, argument_sequence=None, global_vars=None):\n             array_symbols[array.base.label] = array\n         for array in expressions.atoms(MatrixSymbol) | local_expressions.atoms(MatrixSymbol):\n             array_symbols[array] = array\n+        \n+        # Also include array symbols from argument_sequence that might not appear in expressions\n+        if argument_sequence is not None:\n+            for arg in argument_sequence:\n+                if isinstance(arg, MatrixSymbol):\n+                    array_symbols[arg] = arg\n+                elif isinstance(arg, IndexedBase):\n+                    array_symbols[arg.label] = arg\n \n         for symbol in sorted(symbols, key=str):\n             if symbol in array_symbols:\n@@ -739,7 +747,16 @@ def routine(self, name, expr, argument_sequence=None, global_vars=None):\n                 try:\n                     new_args.append(name_arg_dict[symbol])\n                 except KeyError:\n-                    new_args.append(InputArgument(symbol))\n+                    # Check if this symbol is a MatrixSymbol or IndexedBase that needs dimensions\n+                    if symbol in array_symbols:\n+                        dims = []\n+                        array = array_symbols[symbol]\n+                        for dim in array.shape:\n+                            dims.append((S.Zero, dim - 1))\n+                        metadata = {'dimensions': dims}\n+                    else:\n+                        metadata = {}\n+                    new_args.append(InputArgument(symbol, **metadata))\n             arg_list = new_args\n \n         return Routine(name, arg_list, return_val, local_vars, global_vars)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      3,
+      7,
+      8
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 2,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_no_crash": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      3
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      3
+    ],
+    "edit_list_after_file_min": [
+      1,
+      3
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      1,
+      3
+    ],
+    "edit_list_after_refinement": [
+      1,
+      3
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 2,
+  "reduction": "4_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/utilities/codegen.py",
+          "before": "        # setup input argument list\n        array_symbols = {}\n        for array in expressions.atoms(Indexed) | local_expressions.atoms(Indexed):\n            array_symbols[array.base.label] = array\n        for array in expressions.atoms(MatrixSymbol) | local_expressions.atoms(MatrixSymbol):\n            array_symbols[array] = array",
+          "after": "        # setup input argument list\n        array_symbols = {}\n        for array in expressions.atoms(Indexed) | local_expressions.atoms(Indexed):\n            array_symbols[array.base.label] = array\n        for array in expressions.atoms(MatrixSymbol) | local_expressions.atoms(MatrixSymbol):\n            array_symbols[array] = array\n        \n        # Also include array symbols from argument_sequence that might not appear in expressions\n        if argument_sequence is not None:\n            for arg in argument_sequence:\n                if isinstance(arg, MatrixSymbol):\n                    array_symbols[arg] = arg\n                elif isinstance(arg, IndexedBase):\n                    array_symbols[arg.label] = arg",
+          "explanation": "classic_swe step 39 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/utilities/codegen.py",
+          "before": "                except KeyError:\n                    new_args.append(InputArgument(symbol))\n            arg_list = new_args\n\n        return Routine(name, arg_list, return_val, local_vars, global_vars)",
+          "after": "                except KeyError:\n                    # Check if this symbol is a MatrixSymbol or IndexedBase that needs dimensions\n                    if symbol in array_symbols:\n                        dims = []\n                        array = array_symbols[symbol]\n                        for dim in array.shape:\n                            dims.append((S.Zero, dim - 1))\n                        metadata = {'dimensions': dims}\n                    else:\n                        metadata = {}\n                    new_args.append(InputArgument(symbol, **metadata))\n            arg_list = new_args\n\n        return Routine(name, arg_list, return_val, local_vars, global_vars)",
+          "explanation": "classic_swe step 45 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/utilities/codegen.py",
+          "before": "                    # Check if this symbol is a MatrixSymbol or IndexedBase that needs dimensions\n                    if symbol in array_symbols:\n                        dims = []\n                        array = array_symbols[symbol]\n                        for dim in array.shape:\n                            dims.append((S.Zero, dim - 1))\n                        metadata = {'dimensions': dims}\n                    else:\n                        metadata = {}\n                    new_args.append(InputArgument(symbol, **metadata))",
+          "after": "                    # Check if this symbol is a MatrixSymbol or IndexedBase that needs dimensions\n                    if symbol in array_symbols:\n                        array = array_symbols[symbol]\n                        if hasattr(array, 'shape') and array.shape is not None:\n                            dims = []\n                            for dim in array.shape:\n                                dims.append((S.Zero, dim - 1))\n                            metadata = {'dimensions': dims}\n                        else:\n                            metadata = {}\n                    else:\n                        metadata = {}\n                    new_args.append(InputArgument(symbol, **metadata))",
+          "explanation": "classic_swe step 55 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/utilities/codegen.py",
+          "before": "        for symbol in sorted(symbols, key=str):\n            if symbol in array_symbols:\n                dims = []\n                array = array_symbols[symbol]\n                for dim in array.shape:\n                    dims.append((S.Zero, dim - 1))\n                metadata = {'dimensions': dims}\n            else:\n                metadata = {}\n\n            arg_list.append(InputArgument(symbol, **metadata))",
+          "after": "        for symbol in sorted(symbols, key=str):\n            if symbol in array_symbols:\n                array = array_symbols[symbol]\n                if hasattr(array, 'shape') and array.shape is not None:\n                    dims = []\n                    for dim in array.shape:\n                        dims.append((S.Zero, dim - 1))\n                    metadata = {'dimensions': dims}\n                else:\n                    metadata = {}\n            else:\n                metadata = {}\n\n            arg_list.append(InputArgument(symbol, **metadata))",
+          "explanation": "classic_swe step 65 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 54,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": false,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 53,
+    "p2p_fail": 1,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/utilities/codegen.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/utilities/codegen.py"
+    ],
+    "gold_files": [
+      "sympy/utilities/codegen.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 3,
+    "minimized_added_lines": 18,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 11,
+    "gold_deleted_lines": 5
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

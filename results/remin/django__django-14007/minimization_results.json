@@ -1,0 +1,171 @@
+{
+  "bug_id": "django__django-14007",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/compiler.py",
+        "before": "    def execute_sql(self, returning_fields=None):\n        assert not (\n            returning_fields and len(self.query.objs) != 1 and\n            not self.connection.features.can_return_rows_from_bulk_insert\n        )\n        self.returning_fields = returning_fields\n        with self.connection.cursor() as cursor:\n            for sql, params in self.as_sql():\n                cursor.execute(sql, params)\n            if not self.returning_fields:\n                return []\n            if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:\n                return self.connection.ops.fetch_returned_insert_rows(cursor)\n            if self.connection.features.can_return_columns_from_insert:\n                assert len(self.query.objs) == 1\n                return [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]\n            return [(self.connection.ops.last_insert_id(\n                cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column\n            ),)]",
+        "after": "    def execute_sql(self, returning_fields=None):\n        assert not (\n            returning_fields and len(self.query.objs) != 1 and\n            not self.connection.features.can_return_rows_from_bulk_insert\n        )\n        self.returning_fields = returning_fields\n        with self.connection.cursor() as cursor:\n            for sql, params in self.as_sql():\n                cursor.execute(sql, params)\n            if not self.returning_fields:\n                return []\n            if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:\n                rows = self.connection.ops.fetch_returned_insert_rows(cursor)\n            elif self.connection.features.can_return_columns_from_insert:\n                assert len(self.query.objs) == 1\n                rows = [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]\n            else:\n                rows = [(self.connection.ops.last_insert_id(\n                    cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column\n                ),)]\n            \n            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                converters = self.get_converters(self.returning_fields)\n                if converters:\n                    rows = list(self.apply_converters(rows, converters))\n            \n            return rows",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/compiler.py",
+        "before": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                converters = self.get_converters(self.returning_fields)\n                if converters:\n                    rows = list(self.apply_converters(rows, converters))",
+        "after": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                # Get converters for each returning field\n                field_converters = []\n                for i, field in enumerate(self.returning_fields):\n                    backend_converters = self.connection.ops.get_db_converters(field)\n                    field_converters_list = field.get_db_converters(self.connection)\n                    if backend_converters or field_converters_list:\n                        field_converters.append((i, backend_converters + field_converters_list, field))\n                \n                # Apply converters to each row\n                if field_converters:\n                    converted_rows = []\n                    for row in rows:\n                        row = list(row)\n                        for pos, convs, field in field_converters:\n                            if pos < len(row):\n                                value = row[pos]\n                                for converter in convs:\n                                    value = converter(value, field, self.connection)\n                                row[pos] = value\n                        converted_rows.append(tuple(row))\n                    rows = converted_rows",
+        "explanation": "classic_swe step 49 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/compiler.py",
+        "before": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                # Get converters for each returning field\n                field_converters = []\n                for i, field in enumerate(self.returning_fields):\n                    backend_converters = self.connection.ops.get_db_converters(field)\n                    field_converters_list = field.get_db_converters(self.connection)\n                    if backend_converters or field_converters_list:\n                        field_converters.append((i, backend_converters + field_converters_list, field))\n                \n                # Apply converters to each row\n                if field_converters:\n                    converted_rows = []\n                    for row in rows:\n                        row = list(row)\n                        for pos, convs, field in field_converters:\n                            if pos < len(row):\n                                value = row[pos]\n                                for converter in convs:\n                                    value = converter(value, field, self.connection)\n                                row[pos] = value\n                        converted_rows.append(tuple(row))\n                    rows = converted_rows",
+        "after": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                # Get converters for each returning field\n                field_converters = []\n                for i, field in enumerate(self.returning_fields):\n                    field_converters_list = field.get_db_converters(self.connection)\n                    if field_converters_list:\n                        field_converters.append((i, field_converters_list, field))\n                \n                # Apply converters to each row\n                if field_converters:\n                    converted_rows = []\n                    for row in rows:\n                        row = list(row)\n                        for pos, convs, field in field_converters:\n                            if pos < len(row):\n                                value = row[pos]\n                                for converter in convs:\n                                    value = converter(value, field, self.connection)\n                                row[pos] = value\n                        converted_rows.append(tuple(row))\n                    rows = converted_rows",
+        "explanation": "classic_swe step 55 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/compiler.py b/django/db/models/sql/compiler.py\nindex f02199d97c..6d7769ecd1 100644\n--- a/django/db/models/sql/compiler.py\n+++ b/django/db/models/sql/compiler.py\n@@ -1412,13 +1412,39 @@ class SQLInsertCompiler(SQLCompiler):\n             if not self.returning_fields:\n                 return []\n             if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:\n-                return self.connection.ops.fetch_returned_insert_rows(cursor)\n-            if self.connection.features.can_return_columns_from_insert:\n+                rows = self.connection.ops.fetch_returned_insert_rows(cursor)\n+            elif self.connection.features.can_return_columns_from_insert:\n                 assert len(self.query.objs) == 1\n-                return [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]\n-            return [(self.connection.ops.last_insert_id(\n-                cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column\n-            ),)]\n+                rows = [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]\n+            else:\n+                rows = [(self.connection.ops.last_insert_id(\n+                    cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column\n+                ),)]\n+            \n+            # Apply field converters to the returned values\n+            if rows and self.returning_fields:\n+                # Get converters for each returning field\n+                field_converters = []\n+                for i, field in enumerate(self.returning_fields):\n+                    field_converters_list = field.get_db_converters(self.connection)\n+                    if field_converters_list:\n+                        field_converters.append((i, field_converters_list, field))\n+                \n+                # Apply converters to each row\n+                if field_converters:\n+                    converted_rows = []\n+                    for row in rows:\n+                        row = list(row)\n+                        for pos, convs, field in field_converters:\n+                            if pos < len(row):\n+                                value = row[pos]\n+                                for converter in convs:\n+                                    value = converter(value, field, self.connection)\n+                                row[pos] = value\n+                        converted_rows.append(tuple(row))\n+                    rows = converted_rows\n+            \n+            return rows\n \n \n class SQLDeleteCompiler(SQLCompiler):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      3
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2,
+      3
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2,
+      3
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/compiler.py",
+          "before": "    def execute_sql(self, returning_fields=None):\n        assert not (\n            returning_fields and len(self.query.objs) != 1 and\n            not self.connection.features.can_return_rows_from_bulk_insert\n        )\n        self.returning_fields = returning_fields\n        with self.connection.cursor() as cursor:\n            for sql, params in self.as_sql():\n                cursor.execute(sql, params)\n            if not self.returning_fields:\n                return []\n            if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:\n                return self.connection.ops.fetch_returned_insert_rows(cursor)\n            if self.connection.features.can_return_columns_from_insert:\n                assert len(self.query.objs) == 1\n                return [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]\n            return [(self.connection.ops.last_insert_id(\n                cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column\n            ),)]",
+          "after": "    def execute_sql(self, returning_fields=None):\n        assert not (\n            returning_fields and len(self.query.objs) != 1 and\n            not self.connection.features.can_return_rows_from_bulk_insert\n        )\n        self.returning_fields = returning_fields\n        with self.connection.cursor() as cursor:\n            for sql, params in self.as_sql():\n                cursor.execute(sql, params)\n            if not self.returning_fields:\n                return []\n            if self.connection.features.can_return_rows_from_bulk_insert and len(self.query.objs) > 1:\n                rows = self.connection.ops.fetch_returned_insert_rows(cursor)\n            elif self.connection.features.can_return_columns_from_insert:\n                assert len(self.query.objs) == 1\n                rows = [self.connection.ops.fetch_returned_insert_columns(cursor, self.returning_params)]\n            else:\n                rows = [(self.connection.ops.last_insert_id(\n                    cursor, self.query.get_meta().db_table, self.query.get_meta().pk.column\n                ),)]\n            \n            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                converters = self.get_converters(self.returning_fields)\n                if converters:\n                    rows = list(self.apply_converters(rows, converters))\n            \n            return rows",
+          "explanation": "classic_swe step 41 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/compiler.py",
+          "before": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                converters = self.get_converters(self.returning_fields)\n                if converters:\n                    rows = list(self.apply_converters(rows, converters))",
+          "after": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                # Get converters for each returning field\n                field_converters = []\n                for i, field in enumerate(self.returning_fields):\n                    backend_converters = self.connection.ops.get_db_converters(field)\n                    field_converters_list = field.get_db_converters(self.connection)\n                    if backend_converters or field_converters_list:\n                        field_converters.append((i, backend_converters + field_converters_list, field))\n                \n                # Apply converters to each row\n                if field_converters:\n                    converted_rows = []\n                    for row in rows:\n                        row = list(row)\n                        for pos, convs, field in field_converters:\n                            if pos < len(row):\n                                value = row[pos]\n                                for converter in convs:\n                                    value = converter(value, field, self.connection)\n                                row[pos] = value\n                        converted_rows.append(tuple(row))\n                    rows = converted_rows",
+          "explanation": "classic_swe step 49 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/compiler.py",
+          "before": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                # Get converters for each returning field\n                field_converters = []\n                for i, field in enumerate(self.returning_fields):\n                    backend_converters = self.connection.ops.get_db_converters(field)\n                    field_converters_list = field.get_db_converters(self.connection)\n                    if backend_converters or field_converters_list:\n                        field_converters.append((i, backend_converters + field_converters_list, field))\n                \n                # Apply converters to each row\n                if field_converters:\n                    converted_rows = []\n                    for row in rows:\n                        row = list(row)\n                        for pos, convs, field in field_converters:\n                            if pos < len(row):\n                                value = row[pos]\n                                for converter in convs:\n                                    value = converter(value, field, self.connection)\n                                row[pos] = value\n                        converted_rows.append(tuple(row))\n                    rows = converted_rows",
+          "after": "            # Apply field converters to the returned values\n            if rows and self.returning_fields:\n                # Get converters for each returning field\n                field_converters = []\n                for i, field in enumerate(self.returning_fields):\n                    field_converters_list = field.get_db_converters(self.connection)\n                    if field_converters_list:\n                        field_converters.append((i, field_converters_list, field))\n                \n                # Apply converters to each row\n                if field_converters:\n                    converted_rows = []\n                    for row in rows:\n                        row = list(row)\n                        for pos, convs, field in field_converters:\n                            if pos < len(row):\n                                value = row[pos]\n                                for converter in convs:\n                                    value = converter(value, field, self.connection)\n                                row[pos] = value\n                        converted_rows.append(tuple(row))\n                    rows = converted_rows",
+          "explanation": "classic_swe step 55 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 12,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 12,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 32,
+    "minimized_deleted_lines": 6,
+    "gold_added_lines": 15,
+    "gold_deleted_lines": 6
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

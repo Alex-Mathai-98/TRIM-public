@@ -1,0 +1,251 @@
+{
+  "bug_id": "matplotlib__matplotlib-25311",
+  "short_path": [
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    def finalize_offset(self):\n        pass",
+        "after": "    def finalize_offset(self):\n        pass\n\n    def __getstate__(self):\n        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n        state = self.__dict__.copy()\n        state['canvas'] = None\n        return state\n\n    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist and self.ref_artist.figure:\n            self.canvas = self.ref_artist.figure.canvas\n        else:\n            self.canvas = None",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist and self.ref_artist.figure:\n            self.canvas = self.ref_artist.figure.canvas\n        else:\n            self.canvas = None",
+        "after": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist:\n            # Get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure'):\n                figure = self.ref_artist.figure\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes:\n                figure = self.ref_artist.axes.figure\n            else:\n                figure = None\n            \n            if figure:\n                self.canvas = figure.canvas\n            else:\n                self.canvas = None\n        else:\n            self.canvas = None",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist:\n            # Get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure'):\n                figure = self.ref_artist.figure\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes:\n                figure = self.ref_artist.axes.figure\n            else:\n                figure = None\n            \n            if figure:\n                self.canvas = figure.canvas\n            else:\n                self.canvas = None\n        else:\n            self.canvas = None",
+        "after": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        # Note: We defer canvas restoration because during unpickling,\n        # the figure/axes references might not be fully restored yet.\n        # The canvas will be restored on first access if needed.\n        self.canvas = None",
+        "explanation": "classic_swe step 47 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        # Note: We defer canvas restoration because during unpickling,\n        # the figure/axes references might not be fully restored yet.\n        # The canvas will be restored on first access if needed.\n        self.canvas = None",
+        "after": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        # Note: We defer canvas restoration because during unpickling,\n        # the figure/axes references might not be fully restored yet.\n        # The canvas will be restored on first access if needed.\n        self._canvas = None\n\n    @property\n    def canvas(self):\n        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n        if self._canvas is None and self.ref_artist:\n            # Try to get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n                self._canvas = self.ref_artist.figure.canvas\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n                self._canvas = self.ref_artist.axes.figure.canvas\n        return self._canvas\n\n    @canvas.setter\n    def canvas(self, value):\n        \"\"\"Set the canvas.\"\"\"\n        self._canvas = value",
+        "explanation": "classic_swe step 48 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    def __getstate__(self):\n        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n        state = self.__dict__.copy()\n        state['canvas'] = None\n        return state",
+        "after": "    def __getstate__(self):\n        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n        state = self.__dict__.copy()\n        # Remove both canvas and _canvas to avoid pickling issues\n        state.pop('canvas', None)\n        state.pop('_canvas', None)\n        return state",
+        "explanation": "classic_swe step 49 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/lib/matplotlib/offsetbox.py b/lib/matplotlib/offsetbox.py\nindex 1dee8a23d9..611ae315f0 100644\n--- a/lib/matplotlib/offsetbox.py\n+++ b/lib/matplotlib/offsetbox.py\n@@ -1580,6 +1580,38 @@ class DraggableBase:\n     def finalize_offset(self):\n         pass\n \n+    def __getstate__(self):\n+        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n+        state = self.__dict__.copy()\n+        # Remove both canvas and _canvas to avoid pickling issues\n+        state.pop('canvas', None)\n+        state.pop('_canvas', None)\n+        return state\n+\n+    def __setstate__(self, state):\n+        self.__dict__.update(state)\n+        # Restore canvas from ref_artist\n+        # Note: We defer canvas restoration because during unpickling,\n+        # the figure/axes references might not be fully restored yet.\n+        # The canvas will be restored on first access if needed.\n+        self._canvas = None\n+\n+    @property\n+    def canvas(self):\n+        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n+        if self._canvas is None and self.ref_artist:\n+            # Try to get the figure from the ref_artist\n+            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n+                self._canvas = self.ref_artist.figure.canvas\n+            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n+                self._canvas = self.ref_artist.axes.figure.canvas\n+        return self._canvas\n+\n+    @canvas.setter\n+    def canvas(self, value):\n+        \"\"\"Set the canvas.\"\"\"\n+        self._canvas = value\n+\n \n class DraggableOffsetBox(DraggableBase):\n     def __init__(self, ref_artist, offsetbox, use_blit=False):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      8,
+      10,
+      11,
+      12,
+      13,
+      16,
+      17,
+      18
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 3,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 2,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 4,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      5,
+      8,
+      10,
+      11,
+      12,
+      13
+    ],
+    "edit_list_after_file_min": [
+      5,
+      8,
+      10,
+      11,
+      12,
+      13
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 2,
+    "greedy_removal_edit_not_applicable": 6,
+    "edit_list_after_greedy": [
+      5,
+      8,
+      10,
+      11,
+      12
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      5,
+      8,
+      10,
+      11,
+      12
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 9,
+  "minimized_edit_count": 5,
+  "reduction": "9_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def finalize_offset(self):\n        pass",
+          "after": "    def finalize_offset(self):\n        pass\n\n    def __getstate__(self):\n        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n        state = self.__dict__.copy()\n        state['canvas'] = None\n        return state\n\n    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist and self.ref_artist.figure:\n            self.canvas = self.ref_artist.figure.canvas\n        else:\n            self.canvas = None",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist and self.ref_artist.figure:\n            self.canvas = self.ref_artist.figure.canvas\n        else:\n            self.canvas = None",
+          "after": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist:\n            # Get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure'):\n                figure = self.ref_artist.figure\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes:\n                figure = self.ref_artist.axes.figure\n            else:\n                figure = None\n            \n            if figure:\n                self.canvas = figure.canvas\n            else:\n                self.canvas = None\n        else:\n            self.canvas = None",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        if self.ref_artist:\n            # Get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure'):\n                figure = self.ref_artist.figure\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes:\n                figure = self.ref_artist.axes.figure\n            else:\n                figure = None\n            \n            if figure:\n                self.canvas = figure.canvas\n            else:\n                self.canvas = None\n        else:\n            self.canvas = None",
+          "after": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        # Note: We defer canvas restoration because during unpickling,\n        # the figure/axes references might not be fully restored yet.\n        # The canvas will be restored on first access if needed.\n        self.canvas = None",
+          "explanation": "classic_swe step 47 #1"
+        },
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        # Note: We defer canvas restoration because during unpickling,\n        # the figure/axes references might not be fully restored yet.\n        # The canvas will be restored on first access if needed.\n        self.canvas = None",
+          "after": "    def __setstate__(self, state):\n        self.__dict__.update(state)\n        # Restore canvas from ref_artist\n        # Note: We defer canvas restoration because during unpickling,\n        # the figure/axes references might not be fully restored yet.\n        # The canvas will be restored on first access if needed.\n        self._canvas = None\n\n    @property\n    def canvas(self):\n        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n        if self._canvas is None and self.ref_artist:\n            # Try to get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n                self._canvas = self.ref_artist.figure.canvas\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n                self._canvas = self.ref_artist.axes.figure.canvas\n        return self._canvas\n\n    @canvas.setter\n    def canvas(self, value):\n        \"\"\"Set the canvas.\"\"\"\n        self._canvas = value",
+          "explanation": "classic_swe step 48 #1"
+        },
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def __getstate__(self):\n        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n        state = self.__dict__.copy()\n        state['canvas'] = None\n        return state",
+          "after": "    def __getstate__(self):\n        # Exclude canvas from pickling as it may not be picklable (e.g., Qt backends)\n        state = self.__dict__.copy()\n        # Remove both canvas and _canvas to avoid pickling issues\n        state.pop('canvas', None)\n        state.pop('_canvas', None)\n        return state",
+          "explanation": "classic_swe step 49 #1"
+        },
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def __init__(self, ref_artist, use_blit=False):\n        self.ref_artist = ref_artist\n        if not ref_artist.pickable():\n            ref_artist.set_picker(True)\n        self.got_artist = False\n        self.canvas = self.ref_artist.figure.canvas\n        self._use_blit = use_blit and self.canvas.supports_blit\n        self.cids = [\n            self.canvas.callbacks._connect_picklable(\n                'pick_event', self.on_pick),\n            self.canvas.callbacks._connect_picklable(\n                'button_release_event', self.on_release),\n        ]",
+          "after": "    def __init__(self, ref_artist, use_blit=False):\n        self.ref_artist = ref_artist\n        if not ref_artist.pickable():\n            ref_artist.set_picker(True)\n        self.got_artist = False\n        self._canvas = self.ref_artist.figure.canvas\n        self._use_blit = use_blit and self.canvas.supports_blit\n        self.cids = [\n            self.canvas.callbacks._connect_picklable(\n                'pick_event', self.on_pick),\n            self.canvas.callbacks._connect_picklable(\n                'button_release_event', self.on_release),\n        ]",
+          "explanation": "classic_swe step 50 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    @property\n    def canvas(self):\n        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n        if self._canvas is None and self.ref_artist:\n            # Try to get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n                self._canvas = self.ref_artist.figure.canvas\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n                self._canvas = self.ref_artist.axes.figure.canvas\n        return self._canvas",
+          "after": "    @property\n    def canvas(self):\n        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n        if self._canvas is None and self.ref_artist and not hasattr(self, '_canvas_explicitly_set_to_none'):\n            # Try to get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n                self._canvas = self.ref_artist.figure.canvas\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n                self._canvas = self.ref_artist.axes.figure.canvas\n        return self._canvas",
+          "explanation": "classic_swe step 60 #1"
+        },
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    @canvas.setter\n    def canvas(self, value):\n        \"\"\"Set the canvas.\"\"\"\n        self._canvas = value",
+          "after": "    @canvas.setter\n    def canvas(self, value):\n        \"\"\"Set the canvas.\"\"\"\n        self._canvas = value\n        if value is None:\n            self._canvas_explicitly_set_to_none = True\n        else:\n            # Remove the flag if canvas is set to a non-None value\n            if hasattr(self, '_canvas_explicitly_set_to_none'):\n                delattr(self, '_canvas_explicitly_set_to_none')",
+          "explanation": "classic_swe step 61 #1"
+        },
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    @property\n    def canvas(self):\n        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n        if self._canvas is None and self.ref_artist and not hasattr(self, '_canvas_explicitly_set_to_none'):\n            # Try to get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n                self._canvas = self.ref_artist.figure.canvas\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n                self._canvas = self.ref_artist.axes.figure.canvas\n        return self._canvas\n\n    @canvas.setter\n    def canvas(self, value):\n        \"\"\"Set the canvas.\"\"\"\n        self._canvas = value\n        if value is None:\n            self._canvas_explicitly_set_to_none = True\n        else:\n            # Remove the flag if canvas is set to a non-None value\n            if hasattr(self, '_canvas_explicitly_set_to_none'):\n                delattr(self, '_canvas_explicitly_set_to_none')",
+          "after": "    @property\n    def canvas(self):\n        \"\"\"Get the canvas, restoring it from ref_artist if needed.\"\"\"\n        if self._canvas is None and self.ref_artist:\n            # Try to get the figure from the ref_artist\n            if hasattr(self.ref_artist, 'figure') and self.ref_artist.figure:\n                self._canvas = self.ref_artist.figure.canvas\n            elif hasattr(self.ref_artist, 'axes') and self.ref_artist.axes and self.ref_artist.axes.figure:\n                self._canvas = self.ref_artist.axes.figure.canvas\n        return self._canvas\n\n    @canvas.setter\n    def canvas(self, value):\n        \"\"\"Set the canvas.\"\"\"\n        self._canvas = value",
+          "explanation": "classic_swe step 62 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 181,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 181,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "lib/matplotlib/offsetbox.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "lib/matplotlib/offsetbox.py"
+    ],
+    "gold_files": [
+      "lib/matplotlib/offsetbox.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 32,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

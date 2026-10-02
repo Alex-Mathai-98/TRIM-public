@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tcase UDP_ENCAP:\n\t{\n\t\tudp_tunnel_gro_receive_t old_gro_receive = READ_ONCE(up->gro_receive);\n\n\t\tswitch (val) {\n\t\tcase 0:\n#ifdef CONFIG_XFRM\n\t\tcase UDP_ENCAP_ESPINUDP:\n\t\t\tset_xfrm_gro_udp_encap_rcv(val, sk->sk_family, sk);\n#if IS_ENABLED(CONFIG_IPV6)\n\t\t\tif (sk->sk_family == AF_INET6)\n\t\t\t\tWRITE_ONCE(up->encap_rcv,\n\t\t\t\t\t   ipv6_stub->xfrm6_udp_encap_rcv);\n\t\t\telse\n#endif\n\t\t\t\tWRITE_ONCE(up->encap_rcv,\n\t\t\t\t\t   xfrm4_udp_encap_rcv);\n#endif\n\t\t\tfallthrough;\n\t\tcase UDP_ENCAP_L2TPINUDP:\n\t\t\tWRITE_ONCE(up->encap_type, val);\n\t\t\tudp_tunnel_encap_enable(sk);\n\t\t\tbreak;\n\t\tdefault:\n\t\t\terr = -ENOPROTOOPT;\n\t\t\tbreak;\n\t\t}\n\t\tif (!err && udp_test_bit(ENCAP_ENABLED, sk) &&\n\t\t    !old_gro_receive && READ_ONCE(up->gro_receive))\n\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n\t\tbreak;\n\t}",
+          "before": "\tcase UDP_ENCAP:\n\t\tswitch (val) {\n\t\tcase 0:\n#ifdef CONFIG_XFRM\n\t\tcase UDP_ENCAP_ESPINUDP:\n\t\t\tset_xfrm_gro_udp_encap_rcv(val, sk->sk_family, sk);\n#if IS_ENABLED(CONFIG_IPV6)\n\t\t\tif (sk->sk_family == AF_INET6)\n\t\t\t\tWRITE_ONCE(up->encap_rcv,\n\t\t\t\t\t   ipv6_stub->xfrm6_udp_encap_rcv);\n\t\t\telse\n#endif\n\t\t\t\tWRITE_ONCE(up->encap_rcv,\n\t\t\t\t\t   xfrm4_udp_encap_rcv);\n#endif\n\t\t\tfallthrough;\n\t\tcase UDP_ENCAP_L2TPINUDP:\n\t\t\tWRITE_ONCE(up->encap_type, val);\n\t\t\tudp_tunnel_encap_enable(sk);\n\t\t\tbreak;\n\t\tdefault:\n\t\t\terr = -ENOPROTOOPT;\n\t\t\tbreak;\n\t\t}\n\t\tbreak;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv4/udp.c\n+++ /linux/net/ipv4/udp.c\n@@ -2964,0 +2965,3 @@\n+\t{\n+\t\tudp_tunnel_gro_receive_t old_gro_receive = READ_ONCE(up->gro_receive);\n+\n@@ -2987,0 +2991,3 @@\n+\t\tif (!err && udp_test_bit(ENCAP_ENABLED, sk) &&\n+\t\t    !old_gro_receive && READ_ONCE(up->gro_receive))\n+\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n@@ -2988,0 +2995 @@\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 42",
+          "filename": "net/ipv4/udp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        },
+        {
+          "after": "\n\tcase UDP_GRO:\n\t{\n\t\tudp_tunnel_gro_receive_t old_gro_receive = READ_ONCE(up->gro_receive);\n\n\t\t/* when enabling GRO, accept the related GSO packet type */\n\t\tif (valbool)\n\t\t\tudp_tunnel_encap_enable(sk);\n\t\tudp_assign_bit(GRO_ENABLED, sk, valbool);\n\t\tudp_assign_bit(ACCEPT_L4, sk, valbool);\n\t\tset_xfrm_gro_udp_encap_rcv(up->encap_type, sk->sk_family, sk);\n\n\t\tif (valbool && udp_test_bit(ENCAP_ENABLED, sk) &&\n\t\t    !old_gro_receive && READ_ONCE(up->gro_receive))\n\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n\t\tbreak;\n\t}\n",
+          "before": "\n\tcase UDP_GRO:\n\n\t\t/* when enabling GRO, accept the related GSO packet type */\n\t\tif (valbool)\n\t\t\tudp_tunnel_encap_enable(sk);\n\t\tudp_assign_bit(GRO_ENABLED, sk, valbool);\n\t\tudp_assign_bit(ACCEPT_L4, sk, valbool);\n\t\tset_xfrm_gro_udp_encap_rcv(up->encap_type, sk->sk_family, sk);\n\t\tbreak;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv4/udp.c\n+++ /linux/net/ipv4/udp.c\n@@ -3011,0 +3012,2 @@\n+\t{\n+\t\tudp_tunnel_gro_receive_t old_gro_receive = READ_ONCE(up->gro_receive);\n@@ -3018,0 +3021,4 @@\n+\n+\t\tif (valbool && udp_test_bit(ENCAP_ENABLED, sk) &&\n+\t\t    !old_gro_receive && READ_ONCE(up->gro_receive))\n+\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n@@ -3019,0 +3026 @@\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 44",
+          "filename": "net/ipv4/udp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 0,
+      "start_step": 42
+    }
+  ],
+  "success_step": 44
+}

@@ -1,0 +1,77 @@
+diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c
+index eeae160c898d..30f2fdba25d8 100644
+--- a/drivers/atm/atmtcp.c
++++ b/drivers/atm/atmtcp.c
+@@ -394,18 +394,29 @@ static int atmtcp_attach(struct atm_vcc *vcc,int itf)
+ 			atm_dev_put(dev);
+ 			return -EMEDIUMTYPE;
+ 		}
++		spin_lock(&dev->lock);
++		if (!PRIV(dev)) {
++			spin_unlock(&dev->lock);
++			atm_dev_put(dev);
++			return -EUNATCH;
++		}
+ 		if (PRIV(dev)->vcc) {
++			spin_unlock(&dev->lock);
+ 			atm_dev_put(dev);
+ 			return -EBUSY;
+ 		}
++		PRIV(dev)->vcc = vcc;
++		spin_unlock(&dev->lock);
+ 	}
+ 	else {
+ 		int error;
+ 
+ 		error = atmtcp_create(itf,0,&dev);
+ 		if (error) return error;
++		spin_lock(&dev->lock);
++		PRIV(dev)->vcc = vcc;
++		spin_unlock(&dev->lock);
+ 	}
+-	PRIV(dev)->vcc = vcc;
+ 	vcc->dev = &atmtcp_control_dev;
+ 	vcc_insert_socket(sk_atm(vcc));
+ 	set_bit(ATM_VF_META,&vcc->flags);
+@@ -444,9 +455,12 @@ static int atmtcp_remove_persistent(int itf)
+ 		atm_dev_put(dev);
+ 		return 0;
+ 	}
++	atm_dev_deregister(dev);
++	spin_lock(&dev->lock);
++	dev->dev_data = NULL;
++	spin_unlock(&dev->lock);
+ 	kfree(dev_data);
+ 	atm_dev_put(dev);
+-	atm_dev_deregister(dev);
+ 	return 0;
+ }
+ 
+diff --git a/net/atm/resources.c b/net/atm/resources.c
+index 995d29e7fb13..5c16910db8d4 100644
+--- a/net/atm/resources.c
++++ b/net/atm/resources.c
+@@ -146,11 +146,11 @@ void atm_dev_deregister(struct atm_dev *dev)
+ 	 */
+ 	mutex_lock(&atm_dev_mutex);
+ 	list_del(&dev->dev_list);
++	atm_unregister_sysfs(dev);
++	atm_proc_dev_deregister(dev);
+ 	mutex_unlock(&atm_dev_mutex);
+ 
+ 	atm_dev_release_vccs(dev);
+-	atm_unregister_sysfs(dev);
+-	atm_proc_dev_deregister(dev);
+ 
+ 	atm_dev_put(dev);
+ }
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..3d6578808c92
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "25eb50652444b8a0af22c0f264a1d3a16760ab14": 90567
++}
+\ No newline at end of file

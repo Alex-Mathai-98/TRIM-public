@@ -1,0 +1,40 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6296a11ccb09..be76e7daca33 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -754,6 +754,17 @@ static int validate_bset(struct bch_fs *c, struct bch_dev *ca,
+ 	if (!offset) {
+ 		struct btree_node *bn =
+ 			container_of(i, struct btree_node, keys);
++
++		if (bn->format.key_u64s < 2) {
++			btree_err_on(true,
++			     -BCH_ERR_btree_node_read_err_must_retry,
++			     c, ca, b, i, NULL,
++			     btree_node_bad_format,
++			     "invalid bkey format: key_u64s %u", bn->format.key_u64s);
++			ret = -BCH_ERR_btree_node_read_err_must_retry;
++			goto out;
++		}
++
+ 		/* These indicate that we read the wrong btree node: */
+ 
+ 		if (b->key.k.type == KEY_TYPE_btree_ptr_v2) {
+diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c
+index eef9b89c561d..d228ec299078 100644
+--- a/fs/bcachefs/btree_iter.c
++++ b/fs/bcachefs/btree_iter.c
+@@ -758,6 +758,13 @@ static inline int btree_path_lock_root(struct btree_trans *trans,
+ 		if (likely(b == READ_ONCE(*rootp) &&
+ 			   b->c.level == path->level &&
+ 			   !race_fault())) {
++			if (btree_node_read_in_flight(b) ||
++			    btree_node_read_error(b) ||
++			    b->format.key_u64s < 2) {
++				six_unlock_type(&b->c.lock, lock_type);
++				return -BCH_ERR_btree_node_read_error;
++			}
++
+ 			for (i = 0; i < path->level; i++)
+ 				path->l[i].b = ERR_PTR(-BCH_ERR_no_btree_node_lock_root);
+ 			path->l[path->level].b = b;

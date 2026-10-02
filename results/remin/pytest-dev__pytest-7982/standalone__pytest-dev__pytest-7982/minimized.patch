@@ -1,0 +1,36 @@
+diff --git a/src/_pytest/main.py b/src/_pytest/main.py
+index d8a208a1a..762b953cd 100644
+--- a/src/_pytest/main.py
++++ b/src/_pytest/main.py
+@@ -676,7 +676,11 @@ class Session(nodes.FSCollector):
+ 
+                 seen_dirs: Set[py.path.local] = set()
+                 for direntry in visit(str(argpath), self._recurse):
+-                    if not direntry.is_file():
++                    try:
++                        if not direntry.is_file():
++                            continue
++                    except OSError:
++                        # Skip entries that can't be accessed (e.g., circular symlinks)
+                         continue
+ 
+                     path = py.path.local(direntry.path)
+diff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py
+index f0bdb1481..24bb4d507 100644
+--- a/src/_pytest/pathlib.py
++++ b/src/_pytest/pathlib.py
+@@ -558,8 +558,12 @@ def visit(
+     entries = sorted(os.scandir(path), key=lambda entry: entry.name)
+     yield from entries
+     for entry in entries:
+-        if entry.is_dir(follow_symlinks=False) and recurse(entry):
+-            yield from visit(entry.path, recurse)
++        try:
++            if entry.is_dir() and recurse(entry):
++                yield from visit(entry.path, recurse)
++        except OSError:
++            # Skip entries that can't be accessed (e.g., circular symlinks)
++            continue
+ 
+ 
+ def absolutepath(path: Union[Path, str]) -> Path:

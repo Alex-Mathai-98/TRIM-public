@@ -1,0 +1,27 @@
+diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
+index e2e34a49e98d..ca57b1a7dcbd 100644
+--- a/net/packet/af_packet.c
++++ b/net/packet/af_packet.c
+@@ -573,14 +573,14 @@ static __be16 vlan_get_protocol_dgram(struct sk_buff *skb)
+ 	__be16 proto = skb->protocol;
+ 
+ 	if (unlikely(eth_type_vlan(proto))) {
+-		u8 *skb_orig_data = skb->data;
+-		int skb_orig_len = skb->len;
+-
+-		skb_push(skb, skb->data - skb_mac_header(skb));
+-		proto = __vlan_get_protocol(skb, proto, NULL);
+-		if (skb_orig_data != skb->data) {
+-			skb->data = skb_orig_data;
+-			skb->len = skb_orig_len;
++		struct sk_buff tmp_skb;
++		int off = skb->data - skb_mac_header(skb);
++
++		if (off > 0 && skb->data - off >= skb->head) {
++			tmp_skb = *skb;
++			tmp_skb.data -= off;
++			tmp_skb.len += off;
++			proto = __vlan_get_protocol(&tmp_skb, proto, NULL);
+ 		}
+ 	}
+ 

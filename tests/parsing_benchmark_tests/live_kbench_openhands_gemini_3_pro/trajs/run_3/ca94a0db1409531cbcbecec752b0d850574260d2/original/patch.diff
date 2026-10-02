@@ -1,0 +1,35 @@
+diff --git a/net/packet/af_packet.c b/net/packet/af_packet.c
+index d4dba06297c3..b8eaf0947b79 100644
+--- a/net/packet/af_packet.c
++++ b/net/packet/af_packet.c
+@@ -4238,13 +4238,28 @@ static int packet_notifier(struct notifier_block *this,
+ 	struct net *net = dev_net(dev);
+ 
+ 	rcu_read_lock();
++restart:
+ 	sk_for_each_rcu(sk, &net->packet.sklist) {
+ 		struct packet_sock *po = pkt_sk(sk);
+ 
+ 		switch (msg) {
+ 		case NETDEV_UNREGISTER:
+-			if (po->mclist)
+-				packet_dev_mclist_delete(dev, &po->mclist);
++			if (po->mclist) {
++				struct packet_mclist *ml;
++
++				for (ml = po->mclist; ml; ml = ml->next) {
++					if (ml->ifindex == dev->ifindex) {
++						sock_hold(sk);
++						rcu_read_unlock();
++
++						packet_dev_mclist_delete(dev, &po->mclist);
++
++						sock_put(sk);
++						rcu_read_lock();
++						goto restart;
++					}
++				}
++			}
+ 			fallthrough;
+ 
+ 		case NETDEV_DOWN:

@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tictx->idev = imon_init_idev(ictx);\n\tif (!ictx->idev) {\n\t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n\t\tgoto idev_setup_failed;\n\t}\n\n\tictx->rdev = imon_init_rdev(ictx);\n\tif (!ictx->rdev) {\n\t\tdev_err(dev, \"%s: rc device setup failed\\n\", __func__);\n\t\tgoto rdev_setup_failed;\n\t}\n\n\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n\tif (ret) {\n\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tictx->dev_present_intf0 = true;\n\n\tmutex_unlock(&ictx->lock);\n\treturn ictx;\n\nurb_submit_failed:\n\trc_unregister_device(ictx->rdev);\nrdev_setup_failed:\n\tinput_unregister_device(ictx->idev);\nidev_setup_failed:\nfind_endpoint_failed:\n",
+          "before": "\n\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n\tif (ret) {\n\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tictx->idev = imon_init_idev(ictx);\n\tif (!ictx->idev) {\n\t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n\t\tgoto idev_setup_failed;\n\t}\n\n\tictx->rdev = imon_init_rdev(ictx);\n\tif (!ictx->rdev) {\n\t\tdev_err(dev, \"%s: rc device setup failed\\n\", __func__);\n\t\tgoto rdev_setup_failed;\n\t}\n\n\tictx->dev_present_intf0 = true;\n\n\tmutex_unlock(&ictx->lock);\n\treturn ictx;\n\nrdev_setup_failed:\n\tinput_unregister_device(ictx->idev);\nidev_setup_failed:\n\tusb_kill_urb(ictx->rx_urb_intf0);\nurb_submit_failed:\nfind_endpoint_failed:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/rc/imon.c\n+++ /linux/drivers/media/rc/imon.c\n@@ -2264,0 +2265,12 @@\n+\tictx->idev = imon_init_idev(ictx);\n+\tif (!ictx->idev) {\n+\t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n+\t\tgoto idev_setup_failed;\n+\t}\n+\n+\tictx->rdev = imon_init_rdev(ictx);\n+\tif (!ictx->rdev) {\n+\t\tdev_err(dev, \"%s: rc device setup failed\\n\", __func__);\n+\t\tgoto rdev_setup_failed;\n+\t}\n+\n@@ -2271,12 +2282,0 @@\n-\tictx->idev = imon_init_idev(ictx);\n-\tif (!ictx->idev) {\n-\t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n-\t\tgoto idev_setup_failed;\n-\t}\n-\n-\tictx->rdev = imon_init_rdev(ictx);\n-\tif (!ictx->rdev) {\n-\t\tdev_err(dev, \"%s: rc device setup failed\\n\", __func__);\n-\t\tgoto rdev_setup_failed;\n-\t}\n-\n@@ -2287,0 +2288,2 @@\n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n@@ -2291,2 +2292,0 @@\n-\tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 31",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 0,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (retval) {\n\t\tictx->tx.busy = false;\n\t\tsmp_rmb(); /* ensure later readers know we're not busy */\n\t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n\t} else {\n\t\t/* Wait for transmission to complete (or abort) */\n\t\tlong ret_timeout;\n\n\t\tret_timeout = wait_for_completion_interruptible_timeout(\n\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(1000));\n\t\tif (!ret_timeout) { /* Timeout */\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"packet tx timeout\\n\");\n\t\t\tretval = -ETIMEDOUT;\n\t\t} else if (ret_timeout < 0) { /* Interrupted */\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n\t\t\tretval = ret_timeout;\n\t\t} else { /* Completed */\n\t\t\tretval = ictx->tx.status;\n\t\t\tif (retval)\n\t\t\t\tpr_err_ratelimited(\"packet tx failed (%d)\\n\", retval);\n\t\t}\n\t\tictx->tx.busy = false;\n\t}\n",
+          "before": "\n\tif (retval) {\n\t\tictx->tx.busy = false;\n\t\tsmp_rmb(); /* ensure later readers know we're not busy */\n\t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n\t} else {\n\t\t/* Wait for transmission to complete (or abort) */\n\t\tretval = wait_for_completion_interruptible(\n\t\t\t\t&ictx->tx.finished);\n\t\tif (retval) {\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n\t\t}\n\n\t\tictx->tx.busy = false;\n\t\tretval = ictx->tx.status;\n\t\tif (retval)\n\t\t\tpr_err_ratelimited(\"packet tx failed (%d)\\n\", retval);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/rc/imon.c\n+++ /linux/drivers/media/rc/imon.c\n@@ -649,3 +649,9 @@\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tlong ret_timeout;\n+\n+\t\tret_timeout = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(1000));\n+\t\tif (!ret_timeout) { /* Timeout */\n+\t\t\tusb_kill_urb(ictx->tx_urb);\n+\t\t\tpr_err_ratelimited(\"packet tx timeout\\n\");\n+\t\t\tretval = -ETIMEDOUT;\n+\t\t} else if (ret_timeout < 0) { /* Interrupted */\n@@ -653,0 +660,5 @@\n+\t\t\tretval = ret_timeout;\n+\t\t} else { /* Completed */\n+\t\t\tretval = ictx->tx.status;\n+\t\t\tif (retval)\n+\t\t\t\tpr_err_ratelimited(\"packet tx failed (%d)\\n\", retval);\n@@ -655 +665,0 @@\n-\n@@ -657,3 +666,0 @@\n-\t\tretval = ictx->tx.status;\n-\t\tif (retval)\n-\t\t\tpr_err_ratelimited(\"packet tx failed (%d)\\n\", retval);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 49",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        }
+      ],
+      "end_step": 49,
+      "revision_index": 1,
+      "start_step": 49
+    }
+  ],
+  "success_step": 49
+}

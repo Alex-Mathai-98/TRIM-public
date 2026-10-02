@@ -1,0 +1,93 @@
+diff --git a/net/ipv6/route.c b/net/ipv6/route.c
+index 6baf177c529b..78e8a765baed 100644
+--- a/net/ipv6/route.c
++++ b/net/ipv6/route.c
+@@ -3832,6 +3832,7 @@ static struct fib6_info *ip6_route_info_create(struct fib6_config *cfg,
+ 
+ static int ip6_route_info_create_nh(struct fib6_info *rt,
+ 				    struct fib6_config *cfg,
++				    gfp_t gfp_flags,
+ 				    struct netlink_ext_ack *extack)
+ {
+ 	struct net *net = cfg->fc_nlinfo.nl_net;
+@@ -3863,7 +3864,7 @@ static int ip6_route_info_create_nh(struct fib6_info *rt,
+ 	} else {
+ 		int addr_type;
+ 
+-		err = fib6_nh_init(net, rt->fib6_nh, cfg, GFP_ATOMIC, extack);
++		err = fib6_nh_init(net, rt->fib6_nh, cfg, gfp_flags, extack);
+ 		if (err)
+ 			goto out_release;
+ 
+@@ -3910,17 +3911,20 @@ int ip6_route_add(struct fib6_config *cfg, gfp_t gfp_flags,
+ 	if (IS_ERR(rt))
+ 		return PTR_ERR(rt);
+ 
+-	rcu_read_lock();
++	if (cfg->fc_nh_id) {
++		rcu_read_lock();
++		err = ip6_route_info_create_nh(rt, cfg, gfp_flags, extack);
++		rcu_read_unlock();
++	} else {
++		err = ip6_route_info_create_nh(rt, cfg, gfp_flags, extack);
++	}
+ 
+-	err = ip6_route_info_create_nh(rt, cfg, extack);
+ 	if (err)
+-		goto unlock;
++		goto out;
+ 
+ 	err = __ip6_ins_rt(rt, &cfg->fc_nlinfo, extack);
+ 	fib6_info_release(rt);
+-unlock:
+-	rcu_read_unlock();
+-
++out:
+ 	return err;
+ }
+ 
+@@ -4704,7 +4708,7 @@ struct fib6_info *addrconf_f6i_alloc(struct net *net,
+ 	if (IS_ERR(f6i))
+ 		return f6i;
+ 
+-	err = ip6_route_info_create_nh(f6i, &cfg, extack);
++	err = ip6_route_info_create_nh(f6i, &cfg, gfp_flags, extack);
+ 	if (err)
+ 		return ERR_PTR(err);
+ 
+@@ -5433,7 +5437,16 @@ static int ip6_route_mpath_info_create_nh(struct list_head *rt6_nh_list,
+ 	list_for_each_entry_safe(nh, nh_next, rt6_nh_list, list) {
+ 		struct fib6_info *rt = nh->fib6_info;
+ 
+-		err = ip6_route_info_create_nh(rt, &nh->r_cfg, extack);
++		if (nh->r_cfg.fc_nh_id) {
++			rcu_read_lock();
++			err = ip6_route_info_create_nh(rt, &nh->r_cfg,
++						       GFP_KERNEL, extack);
++			rcu_read_unlock();
++		} else {
++			err = ip6_route_info_create_nh(rt, &nh->r_cfg,
++						       GFP_KERNEL, extack);
++		}
++
+ 		if (err) {
+ 			nh->fib6_info = NULL;
+ 			goto err;
+@@ -5534,8 +5547,6 @@ static int ip6_route_multipath_add(struct fib6_config *cfg,
+ 	if (err)
+ 		return err;
+ 
+-	rcu_read_lock();
+-
+ 	err = ip6_route_mpath_info_create_nh(&rt6_nh_list, extack);
+ 	if (err)
+ 		goto cleanup;
+@@ -5627,8 +5638,6 @@ static int ip6_route_multipath_add(struct fib6_config *cfg,
+ 	}
+ 
+ cleanup:
+-	rcu_read_unlock();
+-
+ 	list_for_each_entry_safe(nh, nh_safe, &rt6_nh_list, list) {
+ 		fib6_info_release(nh->fib6_info);
+ 		list_del(&nh->list);

@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache;\n\t\tstruct qlist_node *next;\n\n\t\tif (unlikely(!virt_addr_valid(qlink))) {\n\t\t\tWARN_ONCE(1, \"KASAN: invalid qlink %px in quarantine\\n\", qlink);\n\t\t\tbreak;\n\t\t}\n\n\t\tif (cache) {\n\t\t\tobj_cache = cache;\n\t\t} else {\n\t\t\tstruct slab *slab = virt_to_slab(qlink);\n\n\t\t\tif (unlikely(!slab)) {\n\t\t\t\tWARN_ONCE(1, \"KASAN: invalid qlink %px in quarantine\\n\", qlink);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tobj_cache = slab->slab_cache;\n\t\t}\n\n\t\tnext = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}",
+          "before": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache =\n\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n\t\tstruct qlist_node *next = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/kasan/quarantine.c b/mm/kasan/quarantine.c\nindex 6958aa713c67..c552379e4850 100644\n--- a/mm/kasan/quarantine.c\n+++ b/mm/kasan/quarantine.c\n@@ -172,9 +172,27 @@ static void qlist_free_all(struct qlist_head *q, struct kmem_cache *cache)\n \n \tqlink = q->head;\n \twhile (qlink) {\n-\t\tstruct kmem_cache *obj_cache =\n-\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n-\t\tstruct qlist_node *next = qlink->next;\n+\t\tstruct kmem_cache *obj_cache;\n+\t\tstruct qlist_node *next;\n+\n+\t\tif (unlikely(!virt_addr_valid(qlink))) {\n+\t\t\tWARN_ONCE(1, \"KASAN: invalid qlink %px in quarantine\\n\", qlink);\n+\t\t\tbreak;\n+\t\t}\n+\n+\t\tif (cache) {\n+\t\t\tobj_cache = cache;\n+\t\t} else {\n+\t\t\tstruct slab *slab = virt_to_slab(qlink);\n+\n+\t\t\tif (unlikely(!slab)) {\n+\t\t\t\tWARN_ONCE(1, \"KASAN: invalid qlink %px in quarantine\\n\", qlink);\n+\t\t\t\tbreak;\n+\t\t\t}\n+\t\t\tobj_cache = slab->slab_cache;\n+\t\t}\n+\n+\t\tnext = qlink->next;\n \n \t\tqlink_free(qlink, obj_cache);\n \t\tqlink = next;",
+          "explanation": "classic_swe step 12 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        }
+      ],
+      "end_step": 12,
+      "revision_index": 0,
+      "start_step": 12
+    },
+    {
+      "edits": [
+        {
+          "after": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache =\n\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n\t\tstruct qlist_node *next = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}",
+          "before": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache;\n\t\tstruct qlist_node *next;\n\n\t\tif (unlikely(!virt_addr_valid(qlink))) {\n\t\t\tWARN_ONCE(1, \"KASAN: invalid qlink %px in quarantine\\n\", qlink);\n\t\t\tbreak;\n\t\t}\n\n\t\tif (cache) {\n\t\t\tobj_cache = cache;\n\t\t} else {\n\t\t\tstruct slab *slab = virt_to_slab(qlink);\n\n\t\t\tif (unlikely(!slab)) {\n\t\t\t\tWARN_ONCE(1, \"KASAN: invalid qlink %px in quarantine\\n\", qlink);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tobj_cache = slab->slab_cache;\n\t\t}\n\n\t\tnext = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\t\t\tif (i->seq != b->data->keys.seq)\n\t\t\t\tbreak;\n\t\t}\n\n\t\tif (unlikely(b->written + vstruct_sectors(i, c->block_bits) > (ptr_written ?: btree_sectors(c)))) {\n\t\t\tbtree_err_on(1, -BCH_ERR_btree_node_read_err_bad_node,\n\t\t\t\t     c, ca, b, i, NULL,\n\t\t\t\t     btree_node_bad_magic,\n\t\t\t\t     \"bset extends beyond btree node buffer\");\n\t\t\tbreak;\n\t\t}\n\n\t\tstruct nonce nonce = btree_nonce(i, b->written << 9);",
+          "before": "\t\t\tif (i->seq != b->data->keys.seq)\n\t\t\t\tbreak;\n\t\t}\n\n\t\tstruct nonce nonce = btree_nonce(i, b->written << 9);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex dece27d9db04..5a337bc269e1 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1084,6 +1084,14 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n \t\t\t\tbreak;\n \t\t}\n \n+\t\tif (unlikely(b->written + vstruct_sectors(i, c->block_bits) > (ptr_written ?: btree_sectors(c)))) {\n+\t\t\tbtree_err_on(1, -BCH_ERR_btree_node_read_err_bad_node,\n+\t\t\t\t     c, ca, b, i, NULL,\n+\t\t\t\t     btree_node_bad_magic,\n+\t\t\t\t     \"bset extends beyond btree node buffer\");\n+\t\t\tbreak;\n+\t\t}\n+\n \t\tstruct nonce nonce = btree_nonce(i, b->written << 9);\n \t\tbool good_csum_type = bch2_checksum_type_valid(c, BSET_CSUM_TYPE(i));",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 1,
+      "start_step": 21
+    }
+  ],
+  "success_step": 34
+}

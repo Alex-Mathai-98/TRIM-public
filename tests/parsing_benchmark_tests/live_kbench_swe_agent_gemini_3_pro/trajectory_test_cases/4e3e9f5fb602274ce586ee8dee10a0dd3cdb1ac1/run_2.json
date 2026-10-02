@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct alloc_request *req = kzalloc(sizeof(*req), GFP_KERNEL);\n\tint ret;\n\n\tif (!req)\n\t\treturn -ENOMEM;",
+          "before": "\tstruct alloc_request *req = bch2_trans_kmalloc_nomemzero(trans, sizeof(*req));\n\tint ret = PTR_ERR_OR_ZERO(req);\n\tif (unlikely(ret))\n\t\treturn ret;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/alloc_foreground.c b/fs/bcachefs/alloc_foreground.c\nindex b375ad610acd..e292ac80d4f4 100644\n--- a/fs/bcachefs/alloc_foreground.c\n+++ b/fs/bcachefs/alloc_foreground.c\n@@ -1247,10 +1247,11 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,\n \tunsigned write_points_nr;\n \tint i;\n \n-\tstruct alloc_request *req = bch2_trans_kmalloc_nomemzero(trans, sizeof(*req));\n-\tint ret = PTR_ERR_OR_ZERO(req);\n-\tif (unlikely(ret))\n-\t\treturn ret;\n+\tstruct alloc_request *req = kzalloc(sizeof(*req), GFP_KERNEL);\n+\tint ret;\n+\n+\tif (!req)\n+\t\treturn -ENOMEM;\n \n \tif (!IS_ENABLED(CONFIG_BCACHEFS_ERASURE_CODING))\n \t\terasure_code = false;",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "fs/bcachefs/alloc_foreground.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "\tBUG_ON(!req->wp->sectors_free || req->wp->sectors_free == UINT_MAX);\n\n\tkfree(req);\n\treturn 0;",
+          "before": "\tBUG_ON(!req->wp->sectors_free || req->wp->sectors_free == UINT_MAX);\n\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/alloc_foreground.c b/fs/bcachefs/alloc_foreground.c\nindex b375ad610acd..bdfc16e51353 100644\n--- a/fs/bcachefs/alloc_foreground.c\n+++ b/fs/bcachefs/alloc_foreground.c\n@@ -1247,10 +1247,11 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,\n \tunsigned write_points_nr;\n \tint i;\n \n-\tstruct alloc_request *req = bch2_trans_kmalloc_nomemzero(trans, sizeof(*req));\n-\tint ret = PTR_ERR_OR_ZERO(req);\n-\tif (unlikely(ret))\n-\t\treturn ret;\n+\tstruct alloc_request *req = kzalloc(sizeof(*req), GFP_KERNEL);\n+\tint ret;\n+\n+\tif (!req)\n+\t\treturn -ENOMEM;\n \n \tif (!IS_ENABLED(CONFIG_BCACHEFS_ERASURE_CODING))\n \t\terasure_code = false;\n@@ -1360,6 +1361,7 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,\n \n \tBUG_ON(!req->wp->sectors_free || req->wp->sectors_free == UINT_MAX);\n \n+\tkfree(req);\n \treturn 0;\n err:\n \topen_bucket_for_each(c, &req->wp->ptrs, ob, i)",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "fs/bcachefs/alloc_foreground.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\tif (cl && !(flags & BCH_WRITE_alloc_nowait) &&\n\t    bch2_err_matches(ret, BCH_ERR_freelist_empty))\n\t\tret = bch_err_throw(c, bucket_alloc_blocked);\n\n\tkfree(req);\n\treturn ret;\n}",
+          "before": "\tif (cl && !(flags & BCH_WRITE_alloc_nowait) &&\n\t    bch2_err_matches(ret, BCH_ERR_freelist_empty))\n\t\tret = bch_err_throw(c, bucket_alloc_blocked);\n\n\treturn ret;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/alloc_foreground.c b/fs/bcachefs/alloc_foreground.c\nindex b375ad610acd..c9b55df88d94 100644\n--- a/fs/bcachefs/alloc_foreground.c\n+++ b/fs/bcachefs/alloc_foreground.c\n@@ -1247,10 +1247,11 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,\n \tunsigned write_points_nr;\n \tint i;\n \n-\tstruct alloc_request *req = bch2_trans_kmalloc_nomemzero(trans, sizeof(*req));\n-\tint ret = PTR_ERR_OR_ZERO(req);\n-\tif (unlikely(ret))\n-\t\treturn ret;\n+\tstruct alloc_request *req = kzalloc(sizeof(*req), GFP_KERNEL);\n+\tint ret;\n+\n+\tif (!req)\n+\t\treturn -ENOMEM;\n \n \tif (!IS_ENABLED(CONFIG_BCACHEFS_ERASURE_CODING))\n \t\terasure_code = false;\n@@ -1360,6 +1361,7 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,\n \n \tBUG_ON(!req->wp->sectors_free || req->wp->sectors_free == UINT_MAX);\n \n+\tkfree(req);\n \treturn 0;\n err:\n \topen_bucket_for_each(c, &req->wp->ptrs, ob, i)\n@@ -1382,6 +1384,7 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,\n \t    bch2_err_matches(ret, BCH_ERR_freelist_empty))\n \t\tret = bch_err_throw(c, bucket_alloc_blocked);\n \n+\tkfree(req);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "fs/bcachefs/alloc_foreground.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 18
+    }
+  ],
+  "success_step": 22
+}

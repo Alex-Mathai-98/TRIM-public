@@ -1,0 +1,61 @@
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ca5499e9412b..64b9ca30ef96 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -535,7 +535,7 @@ static void ext4_cache_extents(struct inode *inode,
+ 		ext4_lblk_t lblk = le32_to_cpu(ex->ee_block);
+ 		int len = ext4_ext_get_actual_len(ex);
+ 
+-		if (prev && (prev != lblk))
++		if (prev && (lblk > prev))
+ 			ext4_es_cache_extent(inode, prev, lblk - prev, ~0,
+ 					     EXTENT_STATUS_HOLE);
+ 
+@@ -924,8 +924,12 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 	path[0].p_bh = NULL;
+ 
+ 	i = depth;
+-	if (!(flags & EXT4_EX_NOCACHE) && depth == 0)
++	if (!(flags & EXT4_EX_NOCACHE) && depth == 0) {
++		ret = ext4_ext_check(inode, eh, depth, 0);
++		if (ret)
++			goto err;
+ 		ext4_cache_extents(inode, eh);
++	}
+ 	/* walk through the tree */
+ 	while (i) {
+ 		ext_debug(inode, "depth %d: num %d, max %d\n",
+diff --git a/fs/ext4/extents_status.c b/fs/ext4/extents_status.c
+index 31dc0496f8d0..db784865b410 100644
+--- a/fs/ext4/extents_status.c
++++ b/fs/ext4/extents_status.c
+@@ -900,7 +900,8 @@ void ext4_es_insert_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	if (!len)
+ 		return;
+ 
+-	BUG_ON(end < lblk);
++	if (end < lblk)
++		return;
+ 	WARN_ON_ONCE(status & EXTENT_STATUS_DELAYED);
+ 
+ 	newes.es_lblk = lblk;
+@@ -1009,7 +1010,8 @@ void ext4_es_cache_extent(struct inode *inode, ext4_lblk_t lblk,
+ 	if (!len)
+ 		return;
+ 
+-	BUG_ON(end < lblk);
++	if (end < lblk)
++		return;
+ 
+ 	write_lock(&EXT4_I(inode)->i_es_lock);
+ 
+@@ -1558,7 +1560,8 @@ void ext4_es_remove_extent(struct inode *inode, ext4_lblk_t lblk,
+ 		return;
+ 
+ 	end = lblk + len - 1;
+-	BUG_ON(end < lblk);
++	if (end < lblk)
++		return;
+ 
+ retry:
+ 	if (err && !es)

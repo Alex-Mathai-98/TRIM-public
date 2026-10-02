@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tkeys_info_len = struct_size(keys_info, keys, read_keys.num_keys);\n\tif (keys_info_len == SIZE_MAX)\n\t\treturn -EINVAL;\n\n\tkeys_info = kvzalloc(keys_info_len, GFP_KERNEL);\n\tif (!keys_info)\n\t\treturn -ENOMEM;\n\n\tkeys_info->num_keys = read_keys.num_keys;\n\n\tret = ops->pr_read_keys(bdev, keys_info);\n\tif (ret)\n\t\tgoto out;\n\n\t/* Copy out individual keys */\n\tkeys_ptr = u64_to_user_ptr(read_keys.keys_ptr);\n\tkeys_copy_len = min(read_keys.num_keys, keys_info->num_keys) *\n\t\t        sizeof(keys_info->keys[0]);\n\n\tif (copy_to_user(keys_ptr, keys_info->keys, keys_copy_len)) {\n\t\tret = -EFAULT;\n\t\tgoto out;\n\t}\n\n\t/* Copy out the arg struct */\n\tread_keys.generation = keys_info->generation;\n\tread_keys.num_keys = keys_info->num_keys;\n\n\tif (copy_to_user(arg, &read_keys, sizeof(read_keys)))\n\t\tret = -EFAULT;\nout:\n\tkvfree(keys_info);\n\treturn ret;\n",
+          "before": "\n\tkeys_info_len = struct_size(keys_info, keys, read_keys.num_keys);\n\tif (keys_info_len == SIZE_MAX)\n\t\treturn -EINVAL;\n\n\tkeys_info = kzalloc(keys_info_len, GFP_KERNEL);\n\tif (!keys_info)\n\t\treturn -ENOMEM;\n\n\tkeys_info->num_keys = read_keys.num_keys;\n\n\tret = ops->pr_read_keys(bdev, keys_info);\n\tif (ret)\n\t\tgoto out;\n\n\t/* Copy out individual keys */\n\tkeys_ptr = u64_to_user_ptr(read_keys.keys_ptr);\n\tkeys_copy_len = min(read_keys.num_keys, keys_info->num_keys) *\n\t\t        sizeof(keys_info->keys[0]);\n\n\tif (copy_to_user(keys_ptr, keys_info->keys, keys_copy_len)) {\n\t\tret = -EFAULT;\n\t\tgoto out;\n\t}\n\n\t/* Copy out the arg struct */\n\tread_keys.generation = keys_info->generation;\n\tread_keys.num_keys = keys_info->num_keys;\n\n\tif (copy_to_user(arg, &read_keys, sizeof(read_keys)))\n\t\tret = -EFAULT;\nout:\n\tkfree(keys_info);\n\treturn ret;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/block/ioctl.c\n+++ /linux/block/ioctl.c\n@@ -449 +449 @@\n-\tkeys_info = kzalloc(keys_info_len, GFP_KERNEL);\n+\tkeys_info = kvzalloc(keys_info_len, GFP_KERNEL);\n@@ -476 +476 @@\n-\tkfree(keys_info);\n+\tkvfree(keys_info);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 110",
+          "filename": "block/ioctl.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 110
+        }
+      ],
+      "end_step": 110,
+      "revision_index": 0,
+      "start_step": 110
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tkeys_info_len = struct_size(keys_info, keys, read_keys.num_keys);\n\tif (keys_info_len == SIZE_MAX || keys_info_len > INT_MAX)\n\t\treturn -EINVAL;\n\n\tkeys_info = kvzalloc(keys_info_len, GFP_KERNEL);\n",
+          "before": "\n\tkeys_info_len = struct_size(keys_info, keys, read_keys.num_keys);\n\tif (keys_info_len == SIZE_MAX)\n\t\treturn -EINVAL;\n\n\tkeys_info = kvzalloc(keys_info_len, GFP_KERNEL);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/block/ioctl.c\n+++ /linux/block/ioctl.c\n@@ -446 +446 @@\n-\tif (keys_info_len == SIZE_MAX)\n+\tif (keys_info_len == SIZE_MAX || keys_info_len > INT_MAX)",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 130",
+          "filename": "block/ioctl.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 130
+        }
+      ],
+      "end_step": 130,
+      "revision_index": 1,
+      "start_step": 130
+    }
+  ],
+  "success_step": 130
+}

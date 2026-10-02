@@ -1,0 +1,128 @@
+{
+  "bug_id": "django__django-16145",
+  "short_path": [
+    [
+      {
+        "filename": "django/core/management/commands/runserver.py",
+        "before": "        self.stdout.write(\n            (\n                \"Django version %(version)s, using settings %(settings)r\\n\"\n                \"Starting development server at %(protocol)s://%(addr)s:%(port)s/\\n\"\n                \"Quit the server with %(quit_command)s.\"\n            )\n            % {\n                \"version\": self.get_version(),\n                \"settings\": settings.SETTINGS_MODULE,\n                \"protocol\": self.protocol,\n                \"addr\": \"[%s]\" % self.addr if self._raw_ipv6 else self.addr,\n                \"port\": self.port,\n                \"quit_command\": quit_command,\n            }\n        )",
+        "after": "        self.stdout.write(\n            (\n                \"Django version %(version)s, using settings %(settings)r\\n\"\n                \"Starting development server at %(protocol)s://%(addr)s:%(port)s/\\n\"\n                \"Quit the server with %(quit_command)s.\"\n            )\n            % {\n                \"version\": self.get_version(),\n                \"settings\": settings.SETTINGS_MODULE,\n                \"protocol\": self.protocol,\n                \"addr\": self.get_addr_for_display(),\n                \"port\": self.port,\n                \"quit_command\": quit_command,\n            }\n        )",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/management/commands/runserver.py",
+        "before": "    def get_handler(self, *args, **options):\n        \"\"\"Return the default WSGI handler for the runner.\"\"\"\n        return get_internal_wsgi_application()",
+        "after": "    def get_handler(self, *args, **options):\n        \"\"\"Return the default WSGI handler for the runner.\"\"\"\n        return get_internal_wsgi_application()\n\n    def get_addr_for_display(self):\n        \"\"\"Return the address to display in the startup message.\"\"\"\n        if self._raw_ipv6:\n            return \"[%s]\" % self.addr\n        elif self.addr == \"0\":\n            # Display \"0.0.0.0\" instead of \"0\" for better clarity\n            return \"0.0.0.0\"\n        else:\n            return self.addr",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/core/management/commands/runserver.py b/django/core/management/commands/runserver.py\nindex 3c39f57e4d..5c43d5ebbd 100644\n--- a/django/core/management/commands/runserver.py\n+++ b/django/core/management/commands/runserver.py\n@@ -77,6 +77,16 @@ class Command(BaseCommand):\n         \"\"\"Return the default WSGI handler for the runner.\"\"\"\n         return get_internal_wsgi_application()\n \n+    def get_addr_for_display(self):\n+        \"\"\"Return the address to display in the startup message.\"\"\"\n+        if self._raw_ipv6:\n+            return \"[%s]\" % self.addr\n+        elif self.addr == \"0\":\n+            # Display \"0.0.0.0\" instead of \"0\" for better clarity\n+            return \"0.0.0.0\"\n+        else:\n+            return self.addr\n+\n     def handle(self, *args, **options):\n         if not settings.DEBUG and not settings.ALLOWED_HOSTS:\n             raise CommandError(\"You must set settings.ALLOWED_HOSTS if DEBUG is False.\")\n@@ -147,7 +157,7 @@ class Command(BaseCommand):\n                 \"version\": self.get_version(),\n                 \"settings\": settings.SETTINGS_MODULE,\n                 \"protocol\": self.protocol,\n-                \"addr\": \"[%s]\" % self.addr if self._raw_ipv6 else self.addr,\n+                \"addr\": self.get_addr_for_display(),\n                 \"port\": self.port,\n                 \"quit_command\": quit_command,\n             }\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1,
+      2
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      1,
+      2
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/core/management/commands/runserver.py",
+          "before": "        self.stdout.write(\n            (\n                \"Django version %(version)s, using settings %(settings)r\\n\"\n                \"Starting development server at %(protocol)s://%(addr)s:%(port)s/\\n\"\n                \"Quit the server with %(quit_command)s.\"\n            )\n            % {\n                \"version\": self.get_version(),\n                \"settings\": settings.SETTINGS_MODULE,\n                \"protocol\": self.protocol,\n                \"addr\": \"[%s]\" % self.addr if self._raw_ipv6 else self.addr,\n                \"port\": self.port,\n                \"quit_command\": quit_command,\n            }\n        )",
+          "after": "        self.stdout.write(\n            (\n                \"Django version %(version)s, using settings %(settings)r\\n\"\n                \"Starting development server at %(protocol)s://%(addr)s:%(port)s/\\n\"\n                \"Quit the server with %(quit_command)s.\"\n            )\n            % {\n                \"version\": self.get_version(),\n                \"settings\": settings.SETTINGS_MODULE,\n                \"protocol\": self.protocol,\n                \"addr\": self.get_addr_for_display(),\n                \"port\": self.port,\n                \"quit_command\": quit_command,\n            }\n        )",
+          "explanation": "classic_swe step 16 #1"
+        },
+        {
+          "filename": "django/core/management/commands/runserver.py",
+          "before": "    def get_handler(self, *args, **options):\n        \"\"\"Return the default WSGI handler for the runner.\"\"\"\n        return get_internal_wsgi_application()",
+          "after": "    def get_handler(self, *args, **options):\n        \"\"\"Return the default WSGI handler for the runner.\"\"\"\n        return get_internal_wsgi_application()\n\n    def get_addr_for_display(self):\n        \"\"\"Return the address to display in the startup message.\"\"\"\n        if self._raw_ipv6:\n            return \"[%s]\" % self.addr\n        elif self.addr == \"0\":\n            # Display \"0.0.0.0\" instead of \"0\" for better clarity\n            return \"0.0.0.0\"\n        else:\n            return self.addr",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 174,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 174,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/core/management/commands/runserver.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/core/management/commands/runserver.py"
+    ],
+    "gold_files": [
+      "django/core/management/commands/runserver.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 11,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 8,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

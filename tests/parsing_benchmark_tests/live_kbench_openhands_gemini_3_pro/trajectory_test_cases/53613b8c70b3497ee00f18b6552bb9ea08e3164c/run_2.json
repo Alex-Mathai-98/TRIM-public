@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstatic void bq_enqueue(struct net_device *dev, struct xdp_frame *xdpf,\n\t\t       struct net_device *dev_rx, struct bpf_prog *xdp_prog)\n{\n\tstruct xdp_dev_bulk_queue *bq;\n\n\tlocal_bh_disable();\n\tbq = this_cpu_ptr(dev->xdp_bulkq);\n\n\tif (unlikely(bq->count == DEV_MAP_BULK_SIZE))\n\t\tbq_xmit_all(bq, 0);\n\n\t/* Ingress dev_rx will be the same for all xdp_frame's in\n\t * bulk_queue, because bq stored per-CPU and must be flushed\n\t * from net_device drivers NAPI func end.\n\t *\n\t * Do the same with xdp_prog and flush_list since these fields\n\t * are only ever modified together.\n\t */\n\tif (!bq->dev_rx) {\n\t\tstruct list_head *flush_list = bpf_net_ctx_get_dev_flush_list();\n\n\t\tbq->dev_rx = dev_rx;\n\t\tbq->xdp_prog = xdp_prog;\n\t\tlist_add(&bq->flush_node, flush_list);\n\t} else if (unlikely(bq->dev_rx != dev_rx || bq->xdp_prog != xdp_prog)) {\n\t\tstruct list_head *flush_list;\n\n\t\tbq_xmit_all(bq, 0);\n\t\tflush_list = bpf_net_ctx_get_dev_flush_list();\n\t\tbq->dev_rx = dev_rx;\n\t\tbq->xdp_prog = xdp_prog;\n\t\tlist_add(&bq->flush_node, flush_list);\n\t}\n\n\tif (likely(bq->count < DEV_MAP_BULK_SIZE))\n\t\tbq->q[bq->count++] = xdpf;\n\n\tlocal_bh_enable();\n}\n",
+          "before": "\nstatic void bq_enqueue(struct net_device *dev, struct xdp_frame *xdpf,\n\t\t       struct net_device *dev_rx, struct bpf_prog *xdp_prog)\n{\n\tstruct xdp_dev_bulk_queue *bq = this_cpu_ptr(dev->xdp_bulkq);\n\n\tif (unlikely(bq->count == DEV_MAP_BULK_SIZE))\n\t\tbq_xmit_all(bq, 0);\n\n\t/* Ingress dev_rx will be the same for all xdp_frame's in\n\t * bulk_queue, because bq stored per-CPU and must be flushed\n\t * from net_device drivers NAPI func end.\n\t *\n\t * Do the same with xdp_prog and flush_list since these fields\n\t * are only ever modified together.\n\t */\n\tif (!bq->dev_rx) {\n\t\tstruct list_head *flush_list = bpf_net_ctx_get_dev_flush_list();\n\n\t\tbq->dev_rx = dev_rx;\n\t\tbq->xdp_prog = xdp_prog;\n\t\tlist_add(&bq->flush_node, flush_list);\n\t}\n\n\tbq->q[bq->count++] = xdpf;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/devmap.c\n+++ /linux/kernel/bpf/devmap.c\n@@ -456 +456,4 @@\n-\tstruct xdp_dev_bulk_queue *bq = this_cpu_ptr(dev->xdp_bulkq);\n+\tstruct xdp_dev_bulk_queue *bq;\n+\n+\tlocal_bh_disable();\n+\tbq = this_cpu_ptr(dev->xdp_bulkq);\n@@ -474,3 +477,14 @@\n-\t}\n-\n-\tbq->q[bq->count++] = xdpf;\n+\t} else if (unlikely(bq->dev_rx != dev_rx || bq->xdp_prog != xdp_prog)) {\n+\t\tstruct list_head *flush_list;\n+\n+\t\tbq_xmit_all(bq, 0);\n+\t\tflush_list = bpf_net_ctx_get_dev_flush_list();\n+\t\tbq->dev_rx = dev_rx;\n+\t\tbq->xdp_prog = xdp_prog;\n+\t\tlist_add(&bq->flush_node, flush_list);\n+\t}\n+\n+\tif (likely(bq->count < DEV_MAP_BULK_SIZE))\n+\t\tbq->q[bq->count++] = xdpf;\n+\n+\tlocal_bh_enable();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 164",
+          "filename": "kernel/bpf/devmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 164
+        }
+      ],
+      "end_step": 164,
+      "revision_index": 0,
+      "start_step": 164
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tstruct tun_pi pi = { 0, cpu_to_be16(ETH_P_IP) };\n\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\tstruct sk_buff *skb;\n\tsize_t total_len = iov_iter_count(from);\n",
+          "before": "\n\tstruct tun_pi pi = { 0, cpu_to_be16(ETH_P_IP) };\n\tstruct sk_buff *skb;\n\tsize_t total_len = iov_iter_count(from);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -1751,0 +1752 @@\n+\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 178",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 178
+        },
+        {
+          "after": "\n\tif (skb_xdp) {\n\t\tstruct bpf_prog *xdp_prog;\n\t\tint ret;\n\n\t\tlocal_bh_disable();\n\t\trcu_read_lock();\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\t\txdp_prog = rcu_dereference(tun->xdp_prog);\n\t\tif (xdp_prog) {\n\t\t\tret = do_xdp_generic(xdp_prog, &skb);\n\t\t\tif (ret != XDP_PASS) {\n\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\t\trcu_read_unlock();\n\t\t\t\tlocal_bh_enable();\n\t\t\t\tgoto unlock_frags;\n\t\t\t}\n\t\t}\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\trcu_read_unlock();\n\t\tlocal_bh_enable();\n\t}\n",
+          "before": "\n\tif (skb_xdp) {\n\t\tstruct bpf_prog *xdp_prog;\n\t\tint ret;\n\n\t\tlocal_bh_disable();\n\t\trcu_read_lock();\n\t\txdp_prog = rcu_dereference(tun->xdp_prog);\n\t\tif (xdp_prog) {\n\t\t\tret = do_xdp_generic(xdp_prog, &skb);\n\t\t\tif (ret != XDP_PASS) {\n\t\t\t\trcu_read_unlock();\n\t\t\t\tlocal_bh_enable();\n\t\t\t\tgoto unlock_frags;\n\t\t\t}\n\t\t}\n\t\trcu_read_unlock();\n\t\tlocal_bh_enable();\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -1926,0 +1927 @@\n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n@@ -1930,0 +1932 @@\n+\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n@@ -1935,0 +1938 @@\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 186",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 186
+        }
+      ],
+      "end_step": 186,
+      "revision_index": 1,
+      "start_step": 178
+    }
+  ],
+  "success_step": 186
+}

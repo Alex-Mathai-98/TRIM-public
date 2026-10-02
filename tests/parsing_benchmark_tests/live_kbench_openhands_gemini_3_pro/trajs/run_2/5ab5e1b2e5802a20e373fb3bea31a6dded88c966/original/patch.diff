@@ -1,0 +1,43 @@
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index 1b094a4f3866..a26f306be2ac 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -782,6 +782,12 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 	struct ext4_iloc iloc;
+ 	int ret = 0, ret2;
+ 
++	if (unlikely(!handle)) {
++		folio_unlock(folio);
++		folio_put(folio);
++		return -EIO;
++	}
++
+ 	if (unlikely(copied < len) && !folio_test_uptodate(folio))
+ 		copied = 0;
+ 
+@@ -801,14 +807,17 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 		 * ext4_write_begin() called
+ 		 * ext4_try_to_write_inline_data()
+ 		 */
+-		(void) ext4_find_inline_data_nolock(inode);
+-
+-		kaddr = kmap_local_folio(folio, 0);
+-		ext4_write_inline_data(inode, &iloc, kaddr, pos, copied);
+-		kunmap_local(kaddr);
+-		folio_mark_uptodate(folio);
+-		/* clear dirty flag so that writepages wouldn't work for us. */
+-		folio_clear_dirty(folio);
++		if (ext4_find_inline_data_nolock(inode) == 0 &&
++		    pos + copied <= EXT4_I(inode)->i_inline_size) {
++			kaddr = kmap_local_folio(folio, 0);
++			ext4_write_inline_data(inode, &iloc, kaddr, pos, copied);
++			kunmap_local(kaddr);
++			folio_mark_uptodate(folio);
++			/* clear dirty flag so that writepages wouldn't work for us. */
++			folio_clear_dirty(folio);
++		} else {
++			copied = 0;
++		}
+ 
+ 		ext4_write_unlock_xattr(inode, &no_expand);
+ 		brelse(iloc.bh);

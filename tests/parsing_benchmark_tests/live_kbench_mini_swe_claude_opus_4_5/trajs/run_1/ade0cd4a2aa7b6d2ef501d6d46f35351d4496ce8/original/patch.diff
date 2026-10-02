@@ -1,0 +1,27 @@
+diff --git a/drivers/i2c/busses/i2c-robotfuzz-osif.c b/drivers/i2c/busses/i2c-robotfuzz-osif.c
+index 80d45079b763..a9d187c36702 100644
+--- a/drivers/i2c/busses/i2c-robotfuzz-osif.c
++++ b/drivers/i2c/busses/i2c-robotfuzz-osif.c
+@@ -37,10 +37,18 @@ static int osif_usb_read(struct i2c_adapter *adapter, int cmd,
+ 			 int value, int index, void *data, int len)
+ {
+ 	struct osif_priv *priv = adapter->algo_data;
+-
+-	return usb_control_msg(priv->usb_dev, usb_rcvctrlpipe(priv->usb_dev, 0),
+-			       cmd, USB_TYPE_VENDOR | USB_RECIP_INTERFACE |
+-			       USB_DIR_IN, value, index, data, len, 2000);
++	int actual_len;
++
++	/* USB control transfers with wLength=0 must use usb_sndctrlpipe */
++	actual_len = usb_control_msg(priv->usb_dev,
++			len ? usb_rcvctrlpipe(priv->usb_dev, 0) :
++			      usb_sndctrlpipe(priv->usb_dev, 0),
++			cmd,
++			USB_TYPE_VENDOR | USB_RECIP_INTERFACE |
++			(len ? USB_DIR_IN : 0),
++			value, index, data, len, 2000);
++
++	return actual_len;
+ }
+ 
+ static int osif_usb_write(struct i2c_adapter *adapter, int cmd,

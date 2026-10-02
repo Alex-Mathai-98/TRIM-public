@@ -1,0 +1,30 @@
+diff --git a/net/core/rtnetlink.c b/net/core/rtnetlink.c
+index d8d03ff87a3b..56ba7c407585 100644
+--- a/net/core/rtnetlink.c
++++ b/net/core/rtnetlink.c
+@@ -3027,7 +3027,7 @@ static int do_setlink(const struct sk_buff *skb, struct net_device *dev,
+ 
+ 	err = validate_linkmsg(dev, tb, extack);
+ 	if (err < 0)
+-		goto errout;
++		goto errout_status;
+ 
+ 	if (tb[IFLA_IFNAME])
+ 		nla_strscpy(ifname, tb[IFLA_IFNAME], IFNAMSIZ);
+@@ -3394,6 +3394,8 @@ static int do_setlink(const struct sk_buff *skb, struct net_device *dev,
+ 	}
+ 
+ errout:
++	netdev_unlock_ops(dev);
++errout_status:
+ 	if (status & DO_SETLINK_MODIFIED) {
+ 		if ((status & DO_SETLINK_NOTIFY) == DO_SETLINK_NOTIFY)
+ 			netif_state_change(dev);
+@@ -3403,7 +3405,6 @@ static int do_setlink(const struct sk_buff *skb, struct net_device *dev,
+ 					     dev->name);
+ 	}
+ 
+-	netdev_unlock_ops(dev);
+ 
+ 	return err;
+ }

@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int nilfs_collect_file_data(struct nilfs_sc_info *sci,\n\t\t\t\t   struct buffer_head *bh, struct inode *inode)\n{\n\tstruct folio *folio = page_folio(bh->b_page);\n\tint err;\n\n\tfolio_lock(folio);\n\tif (!buffer_dirty(bh)) {\n\t\tfolio_unlock(folio);\n\t\treturn 0;\n\t}\n\n\terr = nilfs_bmap_propagate(NILFS_I(inode)->i_bmap, bh);\n\tfolio_unlock(folio);\n\n\tif (err < 0)\n\t\treturn err;\n\n\terr = nilfs_segctor_add_file_block(sci, bh, inode,\n\t\t\t\t\t   sizeof(struct nilfs_binfo_v));\n\tif (!err)\n\t\tsci->sc_datablk_cnt++;\n\treturn err;\n}",
+          "before": "static int nilfs_collect_file_data(struct nilfs_sc_info *sci,\n\t\t\t\t   struct buffer_head *bh, struct inode *inode)\n{\n\tint err;\n\n\terr = nilfs_bmap_propagate(NILFS_I(inode)->i_bmap, bh);\n\tif (err < 0)\n\t\treturn err;\n\n\terr = nilfs_segctor_add_file_block(sci, bh, inode,\n\t\t\t\t\t   sizeof(struct nilfs_binfo_v));\n\tif (!err)\n\t\tsci->sc_datablk_cnt++;\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c\nindex 587251830897..b923db643f5e 100644\n--- a/fs/nilfs2/segment.c\n+++ b/fs/nilfs2/segment.c\n@@ -582,9 +582,18 @@ static int nilfs_segctor_add_file_block(struct nilfs_sc_info *sci,\n static int nilfs_collect_file_data(struct nilfs_sc_info *sci,\n \t\t\t\t   struct buffer_head *bh, struct inode *inode)\n {\n+\tstruct folio *folio = page_folio(bh->b_page);\n \tint err;\n \n+\tfolio_lock(folio);\n+\tif (!buffer_dirty(bh)) {\n+\t\tfolio_unlock(folio);\n+\t\treturn 0;\n+\t}\n+\n \terr = nilfs_bmap_propagate(NILFS_I(inode)->i_bmap, bh);\n+\tfolio_unlock(folio);\n+\n \tif (err < 0)\n \t\treturn err;",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/nilfs2/segment.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 0,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "\t\t\tBUG_ON(!err); /* always receive -E2BIG or true error */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c\nindex 587251830897..aa0ca5c5eed9 100644\n--- a/fs/nilfs2/segment.c\n+++ b/fs/nilfs2/segment.c\n@@ -582,9 +582,18 @@ static int nilfs_segctor_add_file_block(struct nilfs_sc_info *sci,\n static int nilfs_collect_file_data(struct nilfs_sc_info *sci,\n \t\t\t\t   struct buffer_head *bh, struct inode *inode)\n {\n+\tstruct folio *folio = page_folio(bh->b_page);\n \tint err;\n \n+\tfolio_lock(folio);\n+\tif (!buffer_dirty(bh)) {\n+\t\tfolio_unlock(folio);\n+\t\treturn 0;\n+\t}\n+\n \terr = nilfs_bmap_propagate(NILFS_I(inode)->i_bmap, bh);\n+\tfolio_unlock(folio);\n+\n \tif (err < 0)\n \t\treturn err;\n \n@@ -1045,7 +1054,6 @@ static int nilfs_segctor_scan_file(struct nilfs_sc_info *sci,\n \t\t\terr = nilfs_segctor_apply_buffers(\n \t\t\t\tsci, inode, &data_buffers,\n \t\t\t\tsc_ops->collect_data);\n-\t\t\tBUG_ON(!err); /* always receive -E2BIG or true error */\n \t\t\tgoto break_or_fail;\n \t\t}\n \t}",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/nilfs2/segment.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 1,
+      "start_step": 34
+    }
+  ],
+  "success_step": 34
+}

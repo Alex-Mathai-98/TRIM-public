@@ -1,0 +1,41 @@
+diff --git a/security/keys/key.c b/security/keys/key.c
+index 3d7d185019d3..b9cb15a6420e 100644
+--- a/security/keys/key.c
++++ b/security/keys/key.c
+@@ -646,20 +646,31 @@ EXPORT_SYMBOL(key_reject_and_link);
+ void key_put(struct key *key)
+ {
+ 	if (key) {
++		struct key_user *user;
++		unsigned int quotalen;
++		bool in_quota;
++
+ 		key_check(key);
+ 
++		user = key->user;
++		quotalen = key->quotalen;
++		in_quota = test_bit(KEY_FLAG_IN_QUOTA, &key->flags);
++
++		refcount_inc(&user->usage);
++
+ 		if (refcount_dec_and_test(&key->usage)) {
+ 			unsigned long flags;
+ 
+ 			/* deal with the user's key tracking and quota */
+-			if (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {
+-				spin_lock_irqsave(&key->user->lock, flags);
+-				key->user->qnkeys--;
+-				key->user->qnbytes -= key->quotalen;
+-				spin_unlock_irqrestore(&key->user->lock, flags);
++			if (in_quota) {
++				spin_lock_irqsave(&user->lock, flags);
++				user->qnkeys--;
++				user->qnbytes -= quotalen;
++				spin_unlock_irqrestore(&user->lock, flags);
+ 			}
+ 			schedule_work(&key_gc_work);
+ 		}
++		key_user_put(user);
+ 	}
+ }
+ EXPORT_SYMBOL(key_put);

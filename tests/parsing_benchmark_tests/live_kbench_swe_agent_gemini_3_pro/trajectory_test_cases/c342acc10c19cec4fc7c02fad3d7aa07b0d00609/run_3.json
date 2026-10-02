@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tfor (bitno = 0; mask != 0; bitno += nb) {\n\t\tif ((mask & word) == mask)\n\t\t\tbreak;\n\n\t\tif (nb < DBWORD)\n\t\t\tmask >>= nb;\n\t\telse\n\t\t\tmask = 0;\n\t}",
+          "before": "\tfor (bitno = 0; mask != 0; bitno += nb, mask >>= nb) {\n\t\tif ((mask & word) == mask)\n\t\t\tbreak;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c\nindex 5713994328cb..c83d5b62e26c 100644\n--- a/fs/jfs/jfs_dmap.c\n+++ b/fs/jfs/jfs_dmap.c\n@@ -3022,9 +3022,14 @@ static int dbFindBits(u32 word, int l2nb)\n \n \t/* scan the word for nb free bits at nb alignments.\n \t */\n-\tfor (bitno = 0; mask != 0; bitno += nb, mask >>= nb) {\n+\tfor (bitno = 0; mask != 0; bitno += nb) {\n \t\tif ((mask & word) == mask)\n \t\t\tbreak;\n+\n+\t\tif (nb < DBWORD)\n+\t\t\tmask >>= nb;\n+\t\telse\n+\t\t\tmask = 0;\n \t}\n \n \tASSERT(bitno < 32);",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "fs/jfs/jfs_dmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (bitno = 0; mask != 0; bitno += nb) {\n\t\tif ((mask & word) == mask)\n\t\t\tbreak;\n\n\t\tif (nb < DBWORD)\n\t\t\tmask >>= nb;\n\t\telse\n\t\t\tmask = 0;\n\t}\n\n\tif (bitno >= 32)\n\t\treturn -EIO;\n",
+          "before": "\tfor (bitno = 0; mask != 0; bitno += nb) {\n\t\tif ((mask & word) == mask)\n\t\t\tbreak;\n\n\t\tif (nb < DBWORD)\n\t\t\tmask >>= nb;\n\t\telse\n\t\t\tmask = 0;\n\t}\n\n\tASSERT(bitno < 32);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c\nindex 5713994328cb..f5ce1f0a8ff2 100644\n--- a/fs/jfs/jfs_dmap.c\n+++ b/fs/jfs/jfs_dmap.c\n@@ -3022,12 +3022,18 @@ static int dbFindBits(u32 word, int l2nb)\n \n \t/* scan the word for nb free bits at nb alignments.\n \t */\n-\tfor (bitno = 0; mask != 0; bitno += nb, mask >>= nb) {\n+\tfor (bitno = 0; mask != 0; bitno += nb) {\n \t\tif ((mask & word) == mask)\n \t\t\tbreak;\n+\n+\t\tif (nb < DBWORD)\n+\t\t\tmask >>= nb;\n+\t\telse\n+\t\t\tmask = 0;\n \t}\n \n-\tASSERT(bitno < 32);\n+\tif (bitno >= 32)\n+\t\treturn -EIO;\n \n \t/* return the bit number.\n \t */",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/jfs/jfs_dmap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\t\tif (leaf[word] < BUDMIN) {\n\t\t\trc = dbFindBits(le32_to_cpu(dp->wmap[word]), l2nb);\n\t\t\tif (rc < 0)\n\t\t\t\treturn rc;\n\t\t\tblkno += rc;\n\t\t}",
+          "before": "\t\tif (leaf[word] < BUDMIN)\n\t\t\tblkno +=\n\t\t\t    dbFindBits(le32_to_cpu(dp->wmap[word]), l2nb);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c\nindex 5713994328cb..7b82286ca21f 100644\n--- a/fs/jfs/jfs_dmap.c\n+++ b/fs/jfs/jfs_dmap.c\n@@ -1249,9 +1249,12 @@ dbAllocNear(struct bmap * bmp,\n \t\t * string of free bits and adjust the block number with the\n \t\t * value.\n \t\t */\n-\t\tif (leaf[word] < BUDMIN)\n-\t\t\tblkno +=\n-\t\t\t    dbFindBits(le32_to_cpu(dp->wmap[word]), l2nb);\n+\t\tif (leaf[word] < BUDMIN) {\n+\t\t\trc = dbFindBits(le32_to_cpu(dp->wmap[word]), l2nb);\n+\t\t\tif (rc < 0)\n+\t\t\t\treturn rc;\n+\t\t\tblkno += rc;\n+\t\t}\n \n \t\t/* allocate the blocks.\n \t\t */\n@@ -3022,12 +3025,18 @@ static int dbFindBits(u32 word, int l2nb)\n \n \t/* scan the word for nb free bits at nb alignments.\n \t */\n-\tfor (bitno = 0; mask != 0; bitno += nb, mask >>= nb) {\n+\tfor (bitno = 0; mask != 0; bitno += nb) {\n \t\tif ((mask & word) == mask)\n \t\t\tbreak;\n+\n+\t\tif (nb < DBWORD)\n+\t\t\tmask >>= nb;\n+\t\telse\n+\t\t\tmask = 0;\n \t}\n \n-\tASSERT(bitno < 32);\n+\tif (bitno >= 32)\n+\t\treturn -EIO;\n \n \t/* return the bit number.\n \t */",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/jfs/jfs_dmap.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "\tif (dp->tree.stree[leafidx + LEAFIND] < BUDMIN) {\n\t\trc = dbFindBits(le32_to_cpu(dp->wmap[leafidx]), l2nb);\n\t\tif (rc < 0)\n\t\t\treturn rc;\n\t\tblkno += rc;\n\t}",
+          "before": "\tif (dp->tree.stree[leafidx + LEAFIND] < BUDMIN)\n\t\tblkno += dbFindBits(le32_to_cpu(dp->wmap[leafidx]), l2nb);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c\nindex 5713994328cb..4cb4e2a299fb 100644\n--- a/fs/jfs/jfs_dmap.c\n+++ b/fs/jfs/jfs_dmap.c\n@@ -1249,9 +1249,12 @@ dbAllocNear(struct bmap * bmp,\n \t\t * string of free bits and adjust the block number with the\n \t\t * value.\n \t\t */\n-\t\tif (leaf[word] < BUDMIN)\n-\t\t\tblkno +=\n-\t\t\t    dbFindBits(le32_to_cpu(dp->wmap[word]), l2nb);\n+\t\tif (leaf[word] < BUDMIN) {\n+\t\t\trc = dbFindBits(le32_to_cpu(dp->wmap[word]), l2nb);\n+\t\t\tif (rc < 0)\n+\t\t\t\treturn rc;\n+\t\t\tblkno += rc;\n+\t\t}\n \n \t\t/* allocate the blocks.\n \t\t */\n@@ -1981,8 +1984,12 @@ dbAllocDmapLev(struct bmap * bmp,\n \t * bit number within the dmap word of the required string of free\n \t * bits and adjust the block number with this value.\n \t */\n-\tif (dp->tree.stree[leafidx + LEAFIND] < BUDMIN)\n-\t\tblkno += dbFindBits(le32_to_cpu(dp->wmap[leafidx]), l2nb);\n+\tif (dp->tree.stree[leafidx + LEAFIND] < BUDMIN) {\n+\t\trc = dbFindBits(le32_to_cpu(dp->wmap[leafidx]), l2nb);\n+\t\tif (rc < 0)\n+\t\t\treturn rc;\n+\t\tblkno += rc;\n+\t}\n \n \t/* allocate the blocks */\n \tif ((rc = dbAllocDmap(bmp, dp, blkno, nblocks)) == 0)\n@@ -3022,12 +3029,18 @@ static int dbFindBits(u32 word, int l2nb)\n \n \t/* scan the word for nb free bits at nb alignments.\n \t */\n-\tfor (bitno = 0; mask != 0; bitno += nb, mask >>= nb) {\n+\tfor (bitno = 0; mask != 0; bitno += nb) {\n \t\tif ((mask & word) == mask)\n \t\t\tbreak;\n+\n+\t\tif (nb < DBWORD)\n+\t\t\tmask >>= nb;\n+\t\telse\n+\t\t\tmask = 0;\n \t}\n \n-\tASSERT(bitno < 32);\n+\tif (bitno >= 32)\n+\t\treturn -EIO;\n \n \t/* return the bit number.\n \t */",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "fs/jfs/jfs_dmap.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 1,
+      "start_step": 27
+    }
+  ],
+  "success_step": 31
+}

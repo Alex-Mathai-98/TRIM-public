@@ -1,0 +1,204 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      5,
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#define _GNU_SOURCE\n#include <stdio.h>\n#include <stdlib.h>\n#include <stdint.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include <sys/ioctl.h>\n#include <sys/mman.h>\n#include <string.h>\n#include <errno.h>\n\n#define IOMMUFD_TYPE ';'\n#define IOMMU_IOAS_ALLOC _IO(IOMMUFD_TYPE, 0x81)\n#define IOMMU_IOAS_MAP _IO(IOMMUFD_TYPE, 0x85)\n#define IOMMU_TEST_CMD _IO(IOMMUFD_TYPE, 0xa0)\n\nstruct iommu_ioas_alloc {\n    uint32_t size;\n    uint32_t flags;\n    uint32_t out_ioas_id;\n};\n\nstruct iommu_test_cmd {\n    uint32_t size;\n    uint32_t op;\n    uint32_t id;\n    uint32_t __reserved;\n    union {\n        struct {\n            uint64_t start;\n            uint64_t length;\n        } add_reserved;\n        uint64_t padding[6]; // padding to ensure size is large enough\n    };\n    uint32_t last;\n};\n\nstruct iommu_ioas_map {\n    uint32_t size;\n    uint32_t flags;\n    uint32_t ioas_id;\n    uint32_t __reserved;\n    uint64_t user_va;\n    uint64_t length;\n    uint64_t iova;\n};\n\nint main() {\n    int fd = open(\"/dev/iommu\", O_RDWR);\n    if (fd < 0) {\n        perror(\"open /dev/iommu\");\n        return 0; // Don't fail if device not found\n    }\n\n    struct iommu_ioas_alloc alloc_cmd = {0};\n    alloc_cmd.size = sizeof(alloc_cmd);\n    if (ioctl(fd, IOMMU_IOAS_ALLOC, &alloc_cmd) < 0) {\n        perror(\"IOMMU_IOAS_ALLOC\");\n        return 1;\n    }\n    printf(\"Allocated IOAS ID: %u\\n\", alloc_cmd.out_ioas_id);\n\n    struct iommu_test_cmd test_cmd = {0};\n    test_cmd.size = sizeof(test_cmd);\n    test_cmd.op = 1; // IOMMU_TEST_OP_ADD_RESERVED\n    test_cmd.id = alloc_cmd.out_ioas_id;\n    test_cmd.add_reserved.start = 0x6;\n    test_cmd.add_reserved.length = 0xffffffffffff8001ULL;\n\n    if (ioctl(fd, IOMMU_TEST_CMD, &test_cmd) < 0) {\n        perror(\"IOMMU_TEST_CMD ADD_RESERVED\");\n        // If this fails, crash might not happen because condition not met\n    }\n\n    void *ptr = mmap(NULL, 0x5000, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);\n    if (ptr == MAP_FAILED) {\n        perror(\"mmap\");\n        return 1;\n    }\n\n    struct iommu_ioas_map map_cmd = {0};\n    map_cmd.size = sizeof(map_cmd);\n    map_cmd.flags = (1 << 1) | (1 << 2); // WRITEABLE | READABLE\n    map_cmd.ioas_id = alloc_cmd.out_ioas_id;\n    map_cmd.user_va = (uint64_t)ptr;\n    map_cmd.length = 0x5000;\n\n    if (ioctl(fd, IOMMU_IOAS_MAP, &map_cmd) < 0) {\n        perror(\"IOMMU_IOAS_MAP\");\n        return 1;\n    }\n    printf(\"Mapped IOVA: 0x%lx\\n\", map_cmd.iova);\n\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 14 create #1",
+          "filename": "repro.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "\t\trc = iopt_alloc_iova(iopt, dst_iova, start, length);\n\t\tif (rc)\n\t\t\tgoto out_unlock;\n\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST)) {\n\t\t\tint check_rc = iopt_check_iova(iopt, *dst_iova, length);\n\t\t\tif (check_rc) {\n\t\t\t\tpr_warn(\"DEBUG: iopt_check_iova failed rc=%d iova=0x%lx length=0x%lx\\n\",\n\t\t\t\t\tcheck_rc, *dst_iova, length);\n\t\t\t\t// Check why it failed\n\t\t\t\tif (*dst_iova & (iopt->iova_alignment - 1))\n\t\t\t\t\tpr_warn(\"DEBUG: Alignment check failed. align=0x%lx\\n\", iopt->iova_alignment);\n\t\t\t\t\n\t\t\t\tunsigned long last;\n\t\t\t\tif (check_add_overflow(*dst_iova, length - 1, &last))\n\t\t\t\t\tpr_warn(\"DEBUG: Overflow check failed\\n\");\n\t\t\t\t\n\t\t\t\tif (iopt_reserved_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct interval_tree_node *node = iopt_reserved_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Reserved intersection! node=[0x%lx, 0x%lx]\\n\", node->start, node->last);\n\t\t\t\t}\n\t\t\t\tif (iopt_area_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct interval_tree_node *node = iopt_area_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Area intersection! node=[0x%lx, 0x%lx]\\n\", node->start, node->last);\n\t\t\t\t}\n\n\t\t\t\tWARN_ON(1);\n\t\t\t\trc = -EINVAL;\n\t\t\t\tgoto out_unlock;\n\t\t\t}\n\t\t}\n",
+          "before": "\t\trc = iopt_alloc_iova(iopt, dst_iova, start, length);\n\t\tif (rc)\n\t\t\tgoto out_unlock;\n\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST) &&\n\t\t    WARN_ON(iopt_check_iova(iopt, *dst_iova, length))) {\n\t\t\trc = -EINVAL;\n\t\t\tgoto out_unlock;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c\nindex abf4aadca96c..3920a3d31ae4 100644\n--- a/drivers/iommu/iommufd/io_pagetable.c\n+++ b/drivers/iommu/iommufd/io_pagetable.c\n@@ -279,10 +279,32 @@ static int iopt_alloc_area_pages(struct io_pagetable *iopt,\n \t\trc = iopt_alloc_iova(iopt, dst_iova, start, length);\n \t\tif (rc)\n \t\t\tgoto out_unlock;\n-\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST) &&\n-\t\t    WARN_ON(iopt_check_iova(iopt, *dst_iova, length))) {\n-\t\t\trc = -EINVAL;\n-\t\t\tgoto out_unlock;\n+\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST)) {\n+\t\t\tint check_rc = iopt_check_iova(iopt, *dst_iova, length);\n+\t\t\tif (check_rc) {\n+\t\t\t\tpr_warn(\"DEBUG: iopt_check_iova failed rc=%d iova=0x%lx length=0x%lx\\n\",\n+\t\t\t\t\tcheck_rc, *dst_iova, length);\n+\t\t\t\t// Check why it failed\n+\t\t\t\tif (*dst_iova & (iopt->iova_alignment - 1))\n+\t\t\t\t\tpr_warn(\"DEBUG: Alignment check failed. align=0x%lx\\n\", iopt->iova_alignment);\n+\t\t\t\t\n+\t\t\t\tunsigned long last;\n+\t\t\t\tif (check_add_overflow(*dst_iova, length - 1, &last))\n+\t\t\t\t\tpr_warn(\"DEBUG: Overflow check failed\\n\");\n+\t\t\t\t\n+\t\t\t\tif (iopt_reserved_iter_first(iopt, *dst_iova, last)) {\n+\t\t\t\t\tstruct interval_tree_node *node = iopt_reserved_iter_first(iopt, *dst_iova, last);\n+\t\t\t\t\tpr_warn(\"DEBUG: Reserved intersection! node=[0x%lx, 0x%lx]\\n\", node->start, node->last);\n+\t\t\t\t}\n+\t\t\t\tif (iopt_area_iter_first(iopt, *dst_iova, last)) {\n+\t\t\t\t\tstruct interval_tree_node *node = iopt_area_iter_first(iopt, *dst_iova, last);\n+\t\t\t\t\tpr_warn(\"DEBUG: Area intersection! node=[0x%lx, 0x%lx]\\n\", node->start, node->last);\n+\t\t\t\t}\n+\n+\t\t\t\tWARN_ON(1);\n+\t\t\t\trc = -EINVAL;\n+\t\t\t\tgoto out_unlock;\n+\t\t\t}\n \t\t}\n \t} else {\n \t\trc = iopt_check_iova(iopt, *dst_iova, length);",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "drivers/iommu/iommufd/io_pagetable.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 14
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\t\tif (iopt_reserved_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct iopt_reserved *res = iopt_reserved_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Reserved intersection! node=[0x%lx, 0x%lx]\\n\", res->node.start, res->node.last);\n\t\t\t\t}\n\t\t\t\tif (iopt_area_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct iopt_area *area = iopt_area_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Area intersection! node=[0x%lx, 0x%lx]\\n\", area->node.start, area->node.last);\n\t\t\t\t}\n",
+          "before": "\t\t\t\tif (iopt_reserved_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct interval_tree_node *node = iopt_reserved_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Reserved intersection! node=[0x%lx, 0x%lx]\\n\", node->start, node->last);\n\t\t\t\t}\n\t\t\t\tif (iopt_area_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct interval_tree_node *node = iopt_area_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Area intersection! node=[0x%lx, 0x%lx]\\n\", node->start, node->last);\n\t\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c\nindex abf4aadca96c..11ff0683a2b3 100644\n--- a/drivers/iommu/iommufd/io_pagetable.c\n+++ b/drivers/iommu/iommufd/io_pagetable.c\n@@ -279,10 +279,32 @@ static int iopt_alloc_area_pages(struct io_pagetable *iopt,\n \t\trc = iopt_alloc_iova(iopt, dst_iova, start, length);\n \t\tif (rc)\n \t\t\tgoto out_unlock;\n-\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST) &&\n-\t\t    WARN_ON(iopt_check_iova(iopt, *dst_iova, length))) {\n-\t\t\trc = -EINVAL;\n-\t\t\tgoto out_unlock;\n+\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST)) {\n+\t\t\tint check_rc = iopt_check_iova(iopt, *dst_iova, length);\n+\t\t\tif (check_rc) {\n+\t\t\t\tpr_warn(\"DEBUG: iopt_check_iova failed rc=%d iova=0x%lx length=0x%lx\\n\",\n+\t\t\t\t\tcheck_rc, *dst_iova, length);\n+\t\t\t\t// Check why it failed\n+\t\t\t\tif (*dst_iova & (iopt->iova_alignment - 1))\n+\t\t\t\t\tpr_warn(\"DEBUG: Alignment check failed. align=0x%lx\\n\", iopt->iova_alignment);\n+\t\t\t\t\n+\t\t\t\tunsigned long last;\n+\t\t\t\tif (check_add_overflow(*dst_iova, length - 1, &last))\n+\t\t\t\t\tpr_warn(\"DEBUG: Overflow check failed\\n\");\n+\t\t\t\t\n+\t\t\t\tif (iopt_reserved_iter_first(iopt, *dst_iova, last)) {\n+\t\t\t\t\tstruct iopt_reserved *res = iopt_reserved_iter_first(iopt, *dst_iova, last);\n+\t\t\t\t\tpr_warn(\"DEBUG: Reserved intersection! node=[0x%lx, 0x%lx]\\n\", res->node.start, res->node.last);\n+\t\t\t\t}\n+\t\t\t\tif (iopt_area_iter_first(iopt, *dst_iova, last)) {\n+\t\t\t\t\tstruct iopt_area *area = iopt_area_iter_first(iopt, *dst_iova, last);\n+\t\t\t\t\tpr_warn(\"DEBUG: Area intersection! node=[0x%lx, 0x%lx]\\n\", area->node.start, area->node.last);\n+\t\t\t\t}\n+\n+\t\t\t\tWARN_ON(1);\n+\t\t\t\trc = -EINVAL;\n+\t\t\t\tgoto out_unlock;\n+\t\t\t}\n \t\t}\n \t} else {\n \t\trc = iopt_check_iova(iopt, *dst_iova, length);",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "drivers/iommu/iommufd/io_pagetable.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 1,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\trc = iopt_alloc_iova(iopt, dst_iova, start, length);\n\t\tif (rc)\n\t\t\tgoto out_unlock;\n\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST) &&\n\t\t    WARN_ON(iopt_check_iova(iopt, *dst_iova, length))) {\n\t\t\trc = -EINVAL;\n\t\t\tgoto out_unlock;\n\t\t}\n",
+          "before": "\t\trc = iopt_alloc_iova(iopt, dst_iova, start, length);\n\t\tif (rc)\n\t\t\tgoto out_unlock;\n\t\tif (IS_ENABLED(CONFIG_IOMMUFD_TEST)) {\n\t\t\tint check_rc = iopt_check_iova(iopt, *dst_iova, length);\n\t\t\tif (check_rc) {\n\t\t\t\tpr_warn(\"DEBUG: iopt_check_iova failed rc=%d iova=0x%lx length=0x%lx\\n\",\n\t\t\t\t\tcheck_rc, *dst_iova, length);\n\t\t\t\t// Check why it failed\n\t\t\t\tif (*dst_iova & (iopt->iova_alignment - 1))\n\t\t\t\t\tpr_warn(\"DEBUG: Alignment check failed. align=0x%lx\\n\", iopt->iova_alignment);\n\t\t\t\t\n\t\t\t\tunsigned long last;\n\t\t\t\tif (check_add_overflow(*dst_iova, length - 1, &last))\n\t\t\t\t\tpr_warn(\"DEBUG: Overflow check failed\\n\");\n\t\t\t\t\n\t\t\t\tif (iopt_reserved_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct iopt_reserved *res = iopt_reserved_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Reserved intersection! node=[0x%lx, 0x%lx]\\n\", res->node.start, res->node.last);\n\t\t\t\t}\n\t\t\t\tif (iopt_area_iter_first(iopt, *dst_iova, last)) {\n\t\t\t\t\tstruct iopt_area *area = iopt_area_iter_first(iopt, *dst_iova, last);\n\t\t\t\t\tpr_warn(\"DEBUG: Area intersection! node=[0x%lx, 0x%lx]\\n\", area->node.start, area->node.last);\n\t\t\t\t}\n\n\t\t\t\tWARN_ON(1);\n\t\t\t\trc = -EINVAL;\n\t\t\t\tgoto out_unlock;\n\t\t\t}\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 46 #1",
+          "filename": "drivers/iommu/iommufd/io_pagetable.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        },
+        {
+          "after": "\t\t\tif (!__alloc_iova_check_hole(&used_span, length,\n\t\t\t\t\t\t     iova_alignment,\n\t\t\t\t\t\t     page_offset))\n\t\t\t\tcontinue;\n\n\t\t\tif (used_span.start_hole < allowed_span.start_used)\n\t\t\t\tcontinue;\n\n\t\t\t*iova = used_span.start_hole;\n",
+          "before": "\t\t\tif (!__alloc_iova_check_hole(&used_span, length,\n\t\t\t\t\t\t     iova_alignment,\n\t\t\t\t\t\t     page_offset))\n\t\t\t\tcontinue;\n\n\t\t\t*iova = used_span.start_hole;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c\nindex abf4aadca96c..5cf0da2871d2 100644\n--- a/drivers/iommu/iommufd/io_pagetable.c\n+++ b/drivers/iommu/iommufd/io_pagetable.c\n@@ -162,6 +162,9 @@ static int iopt_alloc_iova(struct io_pagetable *iopt, unsigned long *iova,\n \t\t\t\t\t\t     page_offset))\n \t\t\t\tcontinue;\n \n+\t\t\tif (used_span.start_hole < allowed_span.start_used)\n+\t\t\t\tcontinue;\n+\n \t\t\t*iova = used_span.start_hole;\n \t\t\treturn 0;\n \t\t}",
+          "explanation": "classic_swe step 50 #1",
+          "filename": "drivers/iommu/iommufd/io_pagetable.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "revision_index": 2,
+      "start_step": 46
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 52 rm #1",
+          "filename": "repro.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c\nindex abf4aadca96c..5cf0da2871d2 100644\n--- a/drivers/iommu/iommufd/io_pagetable.c\n+++ b/drivers/iommu/iommufd/io_pagetable.c\n@@ -162,6 +162,9 @@ static int iopt_alloc_iova(struct io_pagetable *iopt, unsigned long *iova,\n \t\t\t\t\t\t     page_offset))\n \t\t\t\tcontinue;\n \n+\t\t\tif (used_span.start_hole < allowed_span.start_used)\n+\t\t\t\tcontinue;\n+\n \t\t\t*iova = used_span.start_hole;\n \t\t\treturn 0;\n \t\t}",
+          "explanation": "classic_swe step 52 rm #2",
+          "filename": "repro",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        }
+      ],
+      "end_step": 52,
+      "revision_index": 3,
+      "start_step": 52
+    }
+  ],
+  "success_step": 52
+}

@@ -1,0 +1,32 @@
+diff --git a/fs/bcachefs/bset.c b/fs/bcachefs/bset.c
+index 32841f762eb2..23e3fb4f791f 100644
+--- a/fs/bcachefs/bset.c
++++ b/fs/bcachefs/bset.c
+@@ -1193,15 +1193,22 @@ struct bkey_packed *bch2_bset_search_linear(struct btree *b,
+ 				struct bkey_packed *m)
+ {
+ 	if (lossy_packed_search)
+-		while (m != btree_bkey_last(b, t) &&
+-		       bkey_iter_cmp_p_or_unp(b, m,
+-					lossy_packed_search, search) < 0)
++		while (m != btree_bkey_last(b, t)) {
++			if (unlikely(bkey_packed(m) && m->u64s < b->format.key_u64s))
++				break;
++			if (bkey_iter_cmp_p_or_unp(b, m, lossy_packed_search, search) >= 0)
++				break;
+ 			m = bkey_p_next(m);
++		}
+ 
+ 	if (!packed_search)
+-		while (m != btree_bkey_last(b, t) &&
+-		       bkey_iter_pos_cmp(b, m, search) < 0)
++		while (m != btree_bkey_last(b, t)) {
++			if (unlikely(bkey_packed(m) && m->u64s < b->format.key_u64s))
++				break;
++			if (bkey_iter_pos_cmp(b, m, search) >= 0)
++				break;
+ 			m = bkey_p_next(m);
++		}
+ 
+ 	if (static_branch_unlikely(&bch2_debug_check_bset_lookups)) {
+ 		struct bkey_packed *prev = bch2_bkey_prev_all(b, t, m);

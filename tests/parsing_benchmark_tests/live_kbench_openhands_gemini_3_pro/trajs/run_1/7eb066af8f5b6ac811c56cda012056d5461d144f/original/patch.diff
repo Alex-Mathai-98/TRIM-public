@@ -1,0 +1,54 @@
+diff --git a/net/hsr/hsr_device.c b/net/hsr/hsr_device.c
+index a06e790042e2..61a6b2c1be4b 100644
+--- a/net/hsr/hsr_device.c
++++ b/net/hsr/hsr_device.c
+@@ -427,18 +427,20 @@ static void hsr_proxy_announce(struct timer_list *t)
+ 	 * of SAN nodes stored in ProxyNodeTable.
+ 	 */
+ 	interlink = hsr_port_get_hsr(hsr, HSR_PT_INTERLINK);
+-	list_for_each_entry_rcu(node, &hsr->proxy_node_db, mac_list) {
+-		if (hsr_addr_is_redbox(hsr, node->macaddress_A))
+-			continue;
+-		hsr->proto_ops->send_sv_frame(interlink, &interval,
+-					      node->macaddress_A);
+-	}
++	if (interlink) {
++		list_for_each_entry_rcu(node, &hsr->proxy_node_db, mac_list) {
++			if (hsr_addr_is_redbox(hsr, node->macaddress_A))
++				continue;
++			hsr->proto_ops->send_sv_frame(interlink, &interval,
++						      node->macaddress_A);
++		}
+ 
+-	if (is_admin_up(interlink->dev)) {
+-		if (!interval)
+-			interval = msecs_to_jiffies(HSR_ANNOUNCE_INTERVAL);
++		if (is_admin_up(interlink->dev)) {
++			if (!interval)
++				interval = msecs_to_jiffies(HSR_ANNOUNCE_INTERVAL);
+ 
+-		mod_timer(&hsr->announce_proxy_timer, jiffies + interval);
++			mod_timer(&hsr->announce_proxy_timer, jiffies + interval);
++		}
+ 	}
+ 
+ 	rcu_read_unlock();
+diff --git a/net/hsr/hsr_slave.c b/net/hsr/hsr_slave.c
+index af6cf64a00e0..c9a46708730f 100644
+--- a/net/hsr/hsr_slave.c
++++ b/net/hsr/hsr_slave.c
+@@ -67,7 +67,13 @@ static rx_handler_result_t hsr_handle_frame(struct sk_buff **pskb)
+ 		skb_set_network_header(skb, ETH_HLEN + HSR_HLEN);
+ 	skb_reset_mac_len(skb);
+ 
+-	hsr_forward_skb(skb, port);
++	if (port->type == HSR_PT_INTERLINK) {
++		spin_lock(&hsr->seqnr_lock);
++		hsr_forward_skb(skb, port);
++		spin_unlock(&hsr->seqnr_lock);
++	} else {
++		hsr_forward_skb(skb, port);
++	}
+ 
+ finish_consume:
+ 	return RX_HANDLER_CONSUMED;

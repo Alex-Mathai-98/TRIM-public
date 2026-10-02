@@ -1,0 +1,32 @@
+diff --git a/drivers/net/netdevsim/netdev.c b/drivers/net/netdevsim/netdev.c
+index 39fe28af48b9..61f1dc677e53 100644
+--- a/drivers/net/netdevsim/netdev.c
++++ b/drivers/net/netdevsim/netdev.c
+@@ -710,9 +710,11 @@ static struct nsim_rq *nsim_queue_alloc(void)
+ static void nsim_queue_free(struct net_device *dev, struct nsim_rq *rq)
+ {
+ 	hrtimer_cancel(&rq->napi_timer);
+-	local_bh_disable();
+-	dev_dstats_rx_dropped_add(dev, rq->skb_queue.qlen);
+-	local_bh_enable();
++	if (dev->dstats) {
++		local_bh_disable();
++		dev_dstats_rx_dropped_add(dev, rq->skb_queue.qlen);
++		local_bh_enable();
++	}
+ 	skb_queue_purge_reason(&rq->skb_queue, SKB_DROP_REASON_QUEUE_PURGE);
+ 	kfree(rq);
+ }
+diff --git a/net/ipv4/udp_tunnel_nic.c b/net/ipv4/udp_tunnel_nic.c
+index ff66db48453c..b583b4a065a8 100644
+--- a/net/ipv4/udp_tunnel_nic.c
++++ b/net/ipv4/udp_tunnel_nic.c
+@@ -904,7 +904,7 @@ udp_tunnel_nic_unregister(struct net_device *dev, struct udp_tunnel_nic *utn)
+ 	/* Wait for the work to be done using the state, netdev core will
+ 	 * retry unregister until we give up our reference on this device.
+ 	 */
+-	if (utn->work_pending)
++	if (utn->work_pending || work_busy(&utn->work))
+ 		return;
+ 
+ 	udp_tunnel_nic_free(utn);

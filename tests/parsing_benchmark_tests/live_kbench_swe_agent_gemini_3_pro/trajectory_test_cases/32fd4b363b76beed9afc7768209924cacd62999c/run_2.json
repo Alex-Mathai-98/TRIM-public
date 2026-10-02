@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "enum trace_iter_flags {\n\tTRACE_FILE_LAT_FMT\t= 1,\n\tTRACE_FILE_ANNOTATE\t= 2,\n\tTRACE_FILE_TIME_IN_NS\t= 4,\n\tTRACE_FILE_STOPPED\t= 8,\n};\n",
+          "before": "enum trace_iter_flags {\n\tTRACE_FILE_LAT_FMT\t= 1,\n\tTRACE_FILE_ANNOTATE\t= 2,\n\tTRACE_FILE_TIME_IN_NS\t= 4,\n};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/trace_events.h b/include/linux/trace_events.h\nindex 04307a19cde3..465fc7e5e5ca 100644\n--- a/include/linux/trace_events.h\n+++ b/include/linux/trace_events.h\n@@ -138,6 +138,7 @@ enum trace_iter_flags {\n \tTRACE_FILE_LAT_FMT\t= 1,\n \tTRACE_FILE_ANNOTATE\t= 2,\n \tTRACE_FILE_TIME_IN_NS\t= 4,\n+\tTRACE_FILE_STOPPED\t= 8,\n };",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "include/linux/trace_events.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        },
+        {
+          "after": "\tif (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE))) {\n\t\ttracing_stop_tr(tr);\n\t\titer->iter_flags |= TRACE_FILE_STOPPED;\n\t}\n",
+          "before": "\tif (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE)))\n\t\ttracing_stop_tr(tr);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/trace_events.h b/include/linux/trace_events.h\nindex 04307a19cde3..465fc7e5e5ca 100644\n--- a/include/linux/trace_events.h\n+++ b/include/linux/trace_events.h\n@@ -138,6 +138,7 @@ enum trace_iter_flags {\n \tTRACE_FILE_LAT_FMT\t= 1,\n \tTRACE_FILE_ANNOTATE\t= 2,\n \tTRACE_FILE_TIME_IN_NS\t= 4,\n+\tTRACE_FILE_STOPPED\t= 8,\n };\n \n \ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex c9fbb316dcbd..20af1efa6666 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -4709,8 +4709,10 @@ __tracing_open(struct inode *inode, struct file *file, bool snapshot)\n \t * If pause-on-trace is enabled, then stop the trace while\n \t * dumping, unless this is the \"snapshot\" file\n \t */\n-\tif (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE)))\n+\tif (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE))) {\n \t\ttracing_stop_tr(tr);\n+\t\titer->iter_flags |= TRACE_FILE_STOPPED;\n+\t}\n \n \tif (iter->cpu_file == RING_BUFFER_ALL_CPUS) {\n \t\tfor_each_tracing_cpu(cpu) {",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "kernel/trace/trace.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\tif (iter->iter_flags & TRACE_FILE_STOPPED)\n\t\ttracing_start_tr(tr);\n",
+          "before": "\tif (!iter->snapshot && tr->stop_count)\n\t\t/* reenable tracing if it was previously enabled */\n\t\ttracing_start_tr(tr);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/trace_events.h b/include/linux/trace_events.h\nindex 04307a19cde3..465fc7e5e5ca 100644\n--- a/include/linux/trace_events.h\n+++ b/include/linux/trace_events.h\n@@ -138,6 +138,7 @@ enum trace_iter_flags {\n \tTRACE_FILE_LAT_FMT\t= 1,\n \tTRACE_FILE_ANNOTATE\t= 2,\n \tTRACE_FILE_TIME_IN_NS\t= 4,\n+\tTRACE_FILE_STOPPED\t= 8,\n };\n \n \ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex c9fbb316dcbd..f8b1e76a4d3d 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -4709,8 +4709,10 @@ __tracing_open(struct inode *inode, struct file *file, bool snapshot)\n \t * If pause-on-trace is enabled, then stop the trace while\n \t * dumping, unless this is the \"snapshot\" file\n \t */\n-\tif (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE)))\n+\tif (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE))) {\n \t\ttracing_stop_tr(tr);\n+\t\titer->iter_flags |= TRACE_FILE_STOPPED;\n+\t}\n \n \tif (iter->cpu_file == RING_BUFFER_ALL_CPUS) {\n \t\tfor_each_tracing_cpu(cpu) {\n@@ -4842,8 +4844,7 @@ static int tracing_release(struct inode *inode, struct file *file)\n \tif (iter->trace && iter->trace->close)\n \t\titer->trace->close(iter);\n \n-\tif (!iter->snapshot && tr->stop_count)\n-\t\t/* reenable tracing if it was previously enabled */\n+\tif (iter->iter_flags & TRACE_FILE_STOPPED)\n \t\ttracing_start_tr(tr);\n \n \t__trace_array_put(tr);",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "kernel/trace/trace.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 25
+}

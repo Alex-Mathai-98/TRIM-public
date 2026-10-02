@@ -1,0 +1,141 @@
+{
+  "bug_id": "sympy__sympy-24066",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/physics/units/unitsystem.py",
+        "before": "        elif isinstance(expr, Function):\n            fds = [self._collect_factor_and_dimension(\n                arg) for arg in expr.args]\n            return (expr.func(*(f[0] for f in fds)),\n                    *(d[1] for d in fds))",
+        "after": "        elif isinstance(expr, Function):\n            fds = [self._collect_factor_and_dimension(\n                arg) for arg in expr.args]\n            factors = [f[0] for f in fds]\n            dimensions = [d[1] for d in fds]\n            \n            # For most mathematical functions, if all arguments are dimensionless,\n            # the result should be dimensionless\n            from sympy.functions.elementary.exponential import ExpBase, log\n            from sympy.functions.elementary.trigonometric import TrigonometricFunction, InverseTrigonometricFunction\n            from sympy.functions.elementary.hyperbolic import HyperbolicFunction, InverseHyperbolicFunction\n            from sympy.functions.elementary.miscellaneous import sqrt\n            from sympy.functions.elementary.complexes import Abs, re, im, arg, conjugate\n            \n            # Check if this is a function that should return dimensionless result\n            # when given dimensionless arguments\n            dimensionless_functions = (\n                ExpBase,  # exp, exp_polar\n                TrigonometricFunction,  # sin, cos, tan, sec, csc, cot, sinc\n                InverseTrigonometricFunction,  # asin, acos, atan, asec, acsc, acot\n                HyperbolicFunction,  # sinh, cosh, tanh, coth, sech, csch\n                InverseHyperbolicFunction,  # asinh, acosh, atanh, acoth, asech, acsch\n            )\n            \n            # Special case: log always returns dimensionless\n            if isinstance(expr, log):\n                return expr.func(*factors), Dimension(1)\n            \n            # For dimensionless functions, check if all arguments are dimensionless\n            if isinstance(expr, dimensionless_functions):\n                if all(self.get_dimension_system().is_dimensionless(d) for d in dimensions):\n                    return expr.func(*factors), Dimension(1)\n                else:\n                    # If arguments are not dimensionless, this is an error for most functions\n                    # But we'll let it pass through for now and let other validation catch it\n                    pass\n            \n            # For functions like Abs, re, im, the result has the same dimension as the argument\n            if isinstance(expr, (Abs, re, im)):\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0]\n            \n            # For sqrt and other power-like functions\n            if isinstance(expr, sqrt):\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0] ** S.Half\n            \n            # Default case: if we don't know how to handle this function,\n            # we'll assume it preserves the dimension of its first argument\n            # This is a fallback that may not be correct for all functions\n            if len(dimensions) == 1:\n                return expr.func(*factors), dimensions[0]\n            elif len(dimensions) == 0:\n                return expr.func(*factors), Dimension(1)\n            else:\n                # Multiple arguments - this is complex, for now return the first dimension\n                # This may need more sophisticated handling for specific functions\n                return expr.func(*factors), dimensions[0]",
+        "explanation": "classic_swe step 40 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/physics/units/unitsystem.py",
+        "before": "            # For sqrt and other power-like functions\n            if isinstance(expr, sqrt):\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0] ** S.Half",
+        "after": "            # For sqrt and other power-like functions\n            if expr.func == sqrt:\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0] ** S.Half",
+        "explanation": "classic_swe step 44 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/physics/units/unitsystem.py b/sympy/physics/units/unitsystem.py\nindex 3daf84c108..563db7323d 100644\n--- a/sympy/physics/units/unitsystem.py\n+++ b/sympy/physics/units/unitsystem.py\n@@ -192,8 +192,61 @@ def _collect_factor_and_dimension(self, expr):\n         elif isinstance(expr, Function):\n             fds = [self._collect_factor_and_dimension(\n                 arg) for arg in expr.args]\n-            return (expr.func(*(f[0] for f in fds)),\n-                    *(d[1] for d in fds))\n+            factors = [f[0] for f in fds]\n+            dimensions = [d[1] for d in fds]\n+            \n+            # For most mathematical functions, if all arguments are dimensionless,\n+            # the result should be dimensionless\n+            from sympy.functions.elementary.exponential import ExpBase, log\n+            from sympy.functions.elementary.trigonometric import TrigonometricFunction, InverseTrigonometricFunction\n+            from sympy.functions.elementary.hyperbolic import HyperbolicFunction, InverseHyperbolicFunction\n+            from sympy.functions.elementary.miscellaneous import sqrt\n+            from sympy.functions.elementary.complexes import Abs, re, im, arg, conjugate\n+            \n+            # Check if this is a function that should return dimensionless result\n+            # when given dimensionless arguments\n+            dimensionless_functions = (\n+                ExpBase,  # exp, exp_polar\n+                TrigonometricFunction,  # sin, cos, tan, sec, csc, cot, sinc\n+                InverseTrigonometricFunction,  # asin, acos, atan, asec, acsc, acot\n+                HyperbolicFunction,  # sinh, cosh, tanh, coth, sech, csch\n+                InverseHyperbolicFunction,  # asinh, acosh, atanh, acoth, asech, acsch\n+            )\n+            \n+            # Special case: log always returns dimensionless\n+            if isinstance(expr, log):\n+                return expr.func(*factors), Dimension(1)\n+            \n+            # For dimensionless functions, check if all arguments are dimensionless\n+            if isinstance(expr, dimensionless_functions):\n+                if all(self.get_dimension_system().is_dimensionless(d) for d in dimensions):\n+                    return expr.func(*factors), Dimension(1)\n+                else:\n+                    # If arguments are not dimensionless, this is an error for most functions\n+                    # But we'll let it pass through for now and let other validation catch it\n+                    pass\n+            \n+            # For functions like Abs, re, im, the result has the same dimension as the argument\n+            if isinstance(expr, (Abs, re, im)):\n+                if len(dimensions) == 1:\n+                    return expr.func(*factors), dimensions[0]\n+            \n+            # For sqrt and other power-like functions\n+            if expr.func == sqrt:\n+                if len(dimensions) == 1:\n+                    return expr.func(*factors), dimensions[0] ** S.Half\n+            \n+            # Default case: if we don't know how to handle this function,\n+            # we'll assume it preserves the dimension of its first argument\n+            # This is a fallback that may not be correct for all functions\n+            if len(dimensions) == 1:\n+                return expr.func(*factors), dimensions[0]\n+            elif len(dimensions) == 0:\n+                return expr.func(*factors), Dimension(1)\n+            else:\n+                # Multiple arguments - this is complex, for now return the first dimension\n+                # This may need more sophisticated handling for specific functions\n+                return expr.func(*factors), dimensions[0]\n         elif isinstance(expr, Dimension):\n             return S.One, expr\n         else:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      6,
+      7
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      6,
+      7
+    ],
+    "edit_list_after_file_min": [
+      6,
+      7
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      6,
+      7
+    ],
+    "edit_list_after_refinement": [
+      6,
+      7
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/physics/units/unitsystem.py",
+          "before": "        elif isinstance(expr, Function):\n            fds = [self._collect_factor_and_dimension(\n                arg) for arg in expr.args]\n            return (expr.func(*(f[0] for f in fds)),\n                    *(d[1] for d in fds))",
+          "after": "        elif isinstance(expr, Function):\n            fds = [self._collect_factor_and_dimension(\n                arg) for arg in expr.args]\n            factors = [f[0] for f in fds]\n            dimensions = [d[1] for d in fds]\n            \n            # For most mathematical functions, if all arguments are dimensionless,\n            # the result should be dimensionless\n            from sympy.functions.elementary.exponential import ExpBase, log\n            from sympy.functions.elementary.trigonometric import TrigonometricFunction, InverseTrigonometricFunction\n            from sympy.functions.elementary.hyperbolic import HyperbolicFunction, InverseHyperbolicFunction\n            from sympy.functions.elementary.miscellaneous import sqrt\n            from sympy.functions.elementary.complexes import Abs, re, im, arg, conjugate\n            \n            # Check if this is a function that should return dimensionless result\n            # when given dimensionless arguments\n            dimensionless_functions = (\n                ExpBase,  # exp, exp_polar\n                TrigonometricFunction,  # sin, cos, tan, sec, csc, cot, sinc\n                InverseTrigonometricFunction,  # asin, acos, atan, asec, acsc, acot\n                HyperbolicFunction,  # sinh, cosh, tanh, coth, sech, csch\n                InverseHyperbolicFunction,  # asinh, acosh, atanh, acoth, asech, acsch\n            )\n            \n            # Special case: log always returns dimensionless\n            if isinstance(expr, log):\n                return expr.func(*factors), Dimension(1)\n            \n            # For dimensionless functions, check if all arguments are dimensionless\n            if isinstance(expr, dimensionless_functions):\n                if all(self.get_dimension_system().is_dimensionless(d) for d in dimensions):\n                    return expr.func(*factors), Dimension(1)\n                else:\n                    # If arguments are not dimensionless, this is an error for most functions\n                    # But we'll let it pass through for now and let other validation catch it\n                    pass\n            \n            # For functions like Abs, re, im, the result has the same dimension as the argument\n            if isinstance(expr, (Abs, re, im)):\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0]\n            \n            # For sqrt and other power-like functions\n            if isinstance(expr, sqrt):\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0] ** S.Half\n            \n            # Default case: if we don't know how to handle this function,\n            # we'll assume it preserves the dimension of its first argument\n            # This is a fallback that may not be correct for all functions\n            if len(dimensions) == 1:\n                return expr.func(*factors), dimensions[0]\n            elif len(dimensions) == 0:\n                return expr.func(*factors), Dimension(1)\n            else:\n                # Multiple arguments - this is complex, for now return the first dimension\n                # This may need more sophisticated handling for specific functions\n                return expr.func(*factors), dimensions[0]",
+          "explanation": "classic_swe step 40 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/physics/units/unitsystem.py",
+          "before": "            # For sqrt and other power-like functions\n            if isinstance(expr, sqrt):\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0] ** S.Half",
+          "after": "            # For sqrt and other power-like functions\n            if expr.func == sqrt:\n                if len(dimensions) == 1:\n                    return expr.func(*factors), dimensions[0] ** S.Half",
+          "explanation": "classic_swe step 44 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 30,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 30,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/physics/units/unitsystem.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/physics/units/unitsystem.py"
+    ],
+    "gold_files": [
+      "sympy/physics/units/unitsystem.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 55,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 4
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

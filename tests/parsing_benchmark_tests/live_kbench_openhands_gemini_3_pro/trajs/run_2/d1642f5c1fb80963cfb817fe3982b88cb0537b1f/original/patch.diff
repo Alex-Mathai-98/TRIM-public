@@ -1,0 +1,69 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6296a11ccb09..57b8ccf65f1e 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -816,18 +816,42 @@ static int validate_bset(struct bch_fs *c, struct bch_dev *ca,
+ 			compat_btree_node(b->c.level, b->c.btree_id, version,
+ 					  BSET_BIG_ENDIAN(i), write, bn);
+ 
+-		btree_err_on(bch2_bkey_format_invalid(c, &bn->format, write, &buf1),
+-			     -BCH_ERR_btree_node_read_err_bad_node,
+-			     c, ca, b, i, NULL,
+-			     btree_node_bad_format,
+-			     "invalid bkey format: %s\n  %s", buf1.buf,
+-			     (printbuf_reset(&buf2),
+-			      bch2_bkey_format_to_text(&buf2, &bn->format), buf2.buf));
++		{
++			int invalid = bch2_bkey_format_invalid(c, &bn->format, write, &buf1);
++
++			if (btree_err_on(invalid,
++				     -BCH_ERR_btree_node_read_err_bad_node,
++				     c, ca, b, i, NULL,
++				     btree_node_bad_format,
++				     "invalid bkey format: %s\n  %s", buf1.buf,
++				     (printbuf_reset(&buf2),
++				      bch2_bkey_format_to_text(&buf2, &bn->format), buf2.buf)) ||
++			    invalid) {
++				ret = -BCH_ERR_btree_node_read_err_bad_node;
++				goto fsck_err;
++			}
++		}
+ 		printbuf_reset(&buf1);
+ 
+ 		compat_bformat(b->c.level, b->c.btree_id, version,
+ 			       BSET_BIG_ENDIAN(i), write,
+ 			       &bn->format);
++
++		{
++			int invalid = bch2_bkey_format_invalid(c, &bn->format, write, &buf1);
++
++			if (btree_err_on(invalid,
++				     -BCH_ERR_btree_node_read_err_bad_node,
++				     c, ca, b, i, NULL,
++				     btree_node_bad_format,
++				     "invalid bkey format: %s\n  %s", buf1.buf,
++				     (printbuf_reset(&buf2),
++				      bch2_bkey_format_to_text(&buf2, &bn->format), buf2.buf)) ||
++			    invalid) {
++				ret = -BCH_ERR_btree_node_read_err_bad_node;
++				goto fsck_err;
++			}
++		}
+ 	}
+ out:
+ fsck_err:
+@@ -1128,8 +1152,13 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		if (ret)
+ 			goto fsck_err;
+ 
+-		if (!b->written)
++		if (!b->written) {
++			if (b->data->format.nr_fields != BKEY_NR_FIELDS) {
++				ret = -BCH_ERR_btree_node_read_err_bad_node;
++				goto fsck_err;
++			}
+ 			btree_node_set_format(b, b->data->format);
++		}
+ 
+ 		ret = validate_bset_keys(c, b, i, READ, have_retry, saw_error);
+ 		if (ret)

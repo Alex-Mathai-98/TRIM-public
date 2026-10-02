@@ -1,0 +1,33 @@
+diff --git a/fs/nilfs2/btree.c b/fs/nilfs2/btree.c
+index ef5061bb56da..d657b4fc6ef1 100644
+--- a/fs/nilfs2/btree.c
++++ b/fs/nilfs2/btree.c
+@@ -2036,7 +2036,8 @@ static void nilfs_btree_commit_propagate_v(struct nilfs_bmap *btree,
+ {
+ 	int level;
+ 
+-	if (!buffer_nilfs_volatile(path[minlevel].bp_bh))
++	if (!buffer_nilfs_volatile(path[minlevel].bp_bh) &&
++	    path[minlevel].bp_oldreq.bpr_req.pr_entry_bh != NULL)
+ 		nilfs_btree_commit_update_v(btree, path, minlevel, dat);
+ 
+ 	for (level = minlevel + 1; level <= maxlevel; level++)
+@@ -2055,6 +2056,8 @@ static int nilfs_btree_propagate_v(struct nilfs_bmap *btree,
+ 
+ 	get_bh(bh);
+ 	path[level].bp_bh = bh;
++	memset(&path[level].bp_oldreq, 0, sizeof(path[level].bp_oldreq));
++	memset(&path[level].bp_newreq, 0, sizeof(path[level].bp_newreq));
+ 	ret = nilfs_btree_prepare_propagate_v(btree, path, level, &maxlevel,
+ 					      dat);
+ 	if (ret < 0)
+@@ -2086,7 +2089,8 @@ static int nilfs_btree_propagate(struct nilfs_bmap *btree,
+ 	__u64 key;
+ 	int level, ret;
+ 
+-	WARN_ON(!buffer_dirty(bh));
++	if (unlikely(!buffer_dirty(bh)))
++		return 0;
+ 
+ 	path = nilfs_btree_alloc_path();
+ 	if (path == NULL)

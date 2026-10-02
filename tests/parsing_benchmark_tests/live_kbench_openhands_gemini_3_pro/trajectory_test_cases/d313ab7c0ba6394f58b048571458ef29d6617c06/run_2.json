@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int bond_check_dev_link(struct bonding *bond,\n\t\t\t       struct net_device *slave_dev, int reporting,\n\t\t\t       bool rtnl_held)\n{\n\tconst struct net_device_ops *slave_ops = slave_dev->netdev_ops;\n\tstruct mii_ioctl_data *mii;\n\tstruct ifreq ifr;\n\tint ret;\n\n\tif (!reporting && !netif_running(slave_dev))\n\t\treturn 0;\n\n\tif (bond->params.use_carrier)\n\t\treturn netif_carrier_ok(slave_dev) ? BMSR_LSTATUS : 0;\n\n\t/* If we are running in RCU context (which calls this),\n\t * we cannot use legacy ops that require RTNL if we don't hold it.\n\t * netdev_need_ops_lock() tells us if we can lock the device (modern)\n\t * or rely on RTNL (legacy).\n\t * If we are legacy and don't hold RTNL, we can't inspect.\n\t */\n\tif (!rtnl_held && !netdev_need_ops_lock(slave_dev))\n\t\treturn reporting ? -1 : BMSR_LSTATUS;",
+          "before": "static int bond_check_dev_link(struct bonding *bond,\n\t\t\t       struct net_device *slave_dev, int reporting)\n{\n\tconst struct net_device_ops *slave_ops = slave_dev->netdev_ops;\n\tstruct mii_ioctl_data *mii;\n\tstruct ifreq ifr;\n\tint ret;\n\n\tif (!reporting && !netif_running(slave_dev))\n\t\treturn 0;\n\n\tif (bond->params.use_carrier)\n\t\treturn netif_carrier_ok(slave_dev) ? BMSR_LSTATUS : 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -850 +850,2 @@\n-\t\t\t       struct net_device *slave_dev, int reporting)\n+\t\t\t       struct net_device *slave_dev, int reporting,\n+\t\t\t       bool rtnl_held)\n@@ -861,0 +863,9 @@\n+\n+\t/* If we are running in RCU context (which calls this),\n+\t * we cannot use legacy ops that require RTNL if we don't hold it.\n+\t * netdev_need_ops_lock() tells us if we can lock the device (modern)\n+\t * or rely on RTNL (legacy).\n+\t * If we are legacy and don't hold RTNL, we can't inspect.\n+\t */\n+\tif (!rtnl_held && !netdev_need_ops_lock(slave_dev))\n+\t\treturn reporting ? -1 : BMSR_LSTATUS;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 91",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 91
+        },
+        {
+          "after": "\n\tif (bond->params.miimon && !bond->params.use_carrier) {\n\t\tlink_reporting = bond_check_dev_link(bond, slave_dev, 1, true);\n\n\t\tif ((link_reporting == -1) && !bond->params.arp_interval) {\n",
+          "before": "\n\tif (bond->params.miimon && !bond->params.use_carrier) {\n\t\tlink_reporting = bond_check_dev_link(bond, slave_dev, 1);\n\n\t\tif ((link_reporting == -1) && !bond->params.arp_interval) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -2186 +2186 @@\n-\t\tlink_reporting = bond_check_dev_link(bond, slave_dev, 1);\n+\t\tlink_reporting = bond_check_dev_link(bond, slave_dev, 1, true);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 93",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 93
+        },
+        {
+          "after": "\n\t/* check for initial state */\n\tnew_slave->link = BOND_LINK_NOCHANGE;\n\tif (bond->params.miimon) {\n\t\tif (bond_check_dev_link(bond, slave_dev, 0, true) == BMSR_LSTATUS) {\n\t\t\tif (bond->params.updelay) {\n\t\t\t\tbond_set_slave_link_state(new_slave,\n",
+          "before": "\n\t/* check for initial state */\n\tnew_slave->link = BOND_LINK_NOCHANGE;\n\tif (bond->params.miimon) {\n\t\tif (bond_check_dev_link(bond, slave_dev, 0) == BMSR_LSTATUS) {\n\t\t\tif (bond->params.updelay) {\n\t\t\t\tbond_set_slave_link_state(new_slave,\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -2207 +2207 @@\n-\t\tif (bond_check_dev_link(bond, slave_dev, 0) == BMSR_LSTATUS) {\n+\t\tif (bond_check_dev_link(bond, slave_dev, 0, true) == BMSR_LSTATUS) {",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 95",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 95
+        },
+        {
+          "after": "\n\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n\n\t\tlink_state = bond_check_dev_link(bond, slave->dev, 0, false);\n\n\t\tswitch (slave->link) {\n\t\tcase BOND_LINK_UP:\n",
+          "before": "\n\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n\n\t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);\n\n\t\tswitch (slave->link) {\n\t\tcase BOND_LINK_UP:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -2749 +2749 @@\n-\t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);\n+\t\tlink_state = bond_check_dev_link(bond, slave->dev, 0, false);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 97",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 97
+        }
+      ],
+      "end_step": 97,
+      "revision_index": 0,
+      "start_step": 91
+    }
+  ],
+  "success_step": 97
+}

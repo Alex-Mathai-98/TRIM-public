@@ -1,0 +1,130 @@
+{
+  "bug_id": "sphinx-doc__sphinx-8459",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/ext/autodoc/typehints.py",
+        "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation)\n    except (TypeError, ValueError):\n        pass",
+        "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation)\n    except (TypeError, ValueError):\n        pass",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/ext/autodoc/typehints.py b/sphinx/ext/autodoc/typehints.py\nindex 70cbc3ba1..e6451b52c 100644\n--- a/sphinx/ext/autodoc/typehints.py\n+++ b/sphinx/ext/autodoc/typehints.py\n@@ -27,7 +27,7 @@ def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n         if callable(obj):\n             annotations = app.env.temp_data.setdefault('annotations', {})\n             annotation = annotations.setdefault(name, OrderedDict())\n-            sig = inspect.signature(obj)\n+            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n             for param in sig.parameters.values():\n                 if param.annotation is not param.empty:\n                     annotation[param.name] = typing.stringify(param.annotation)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5,
+      14,
+      15
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      5
+    ],
+    "edit_list_after_file_min": [
+      5
+    ],
+    "edit_list_after_greedy": [
+      5
+    ],
+    "edit_list_after_refinement": [
+      5
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 1,
+  "reduction": "3_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation)\n    except (TypeError, ValueError):\n        pass",
+          "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation)\n    except (TypeError, ValueError):\n        pass",
+          "explanation": "classic_swe step 21 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "from sphinx.util import inspect, typing",
+          "after": "from sphinx.util import inspect, typing\n\n\ndef apply_type_aliases(annotation: str, type_aliases: Dict[str, str]) -> str:\n    \"\"\"Apply type aliases to a stringified annotation.\"\"\"\n    for alias, replacement in type_aliases.items():\n        if annotation == alias:\n            return replacement\n    return annotation",
+          "explanation": "classic_swe step 53 #1"
+        },
+        {
+          "filename": "sphinx/ext/autodoc/typehints.py",
+          "before": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    annotation[param.name] = typing.stringify(param.annotation)\n            if sig.return_annotation is not sig.empty:\n                annotation['return'] = typing.stringify(sig.return_annotation)\n    except (TypeError, ValueError):\n        pass",
+          "after": "def record_typehints(app: Sphinx, objtype: str, name: str, obj: Any,\n                     options: Dict, args: str, retann: str) -> None:\n    \"\"\"Record type hints to env object.\"\"\"\n    try:\n        if callable(obj):\n            annotations = app.env.temp_data.setdefault('annotations', {})\n            annotation = annotations.setdefault(name, OrderedDict())\n            sig = inspect.signature(obj, type_aliases=app.config.autodoc_type_aliases)\n            for param in sig.parameters.values():\n                if param.annotation is not param.empty:\n                    stringified = typing.stringify(param.annotation)\n                    annotation[param.name] = apply_type_aliases(stringified, app.config.autodoc_type_aliases)\n            if sig.return_annotation is not sig.empty:\n                stringified = typing.stringify(sig.return_annotation)\n                annotation['return'] = apply_type_aliases(stringified, app.config.autodoc_type_aliases)\n    except (TypeError, ValueError):\n        pass",
+          "explanation": "classic_swe step 54 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 17,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 17,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": true,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sphinx/ext/autodoc/typehints.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/ext/autodoc/typehints.py"
+    ],
+    "gold_files": [
+      "sphinx/ext/autodoc/typehints.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 1,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "byte_equivalent"
+}

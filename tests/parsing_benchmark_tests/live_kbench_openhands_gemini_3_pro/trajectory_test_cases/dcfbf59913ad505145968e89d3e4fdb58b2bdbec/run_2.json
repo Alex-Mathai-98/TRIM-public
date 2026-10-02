@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tchar *limit = kaddr + nilfs_last_byte(dir, n) - reclen;\n\n\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\twhile ((char *)de <= limit) {\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t    \"zero-length directory entry\");\n\t\t\t\tfolio_release_kmap(*foliop, kaddr);\n\t\t\t\tgoto out;\n\t\t\t}",
+          "before": "\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\tkaddr += nilfs_last_byte(dir, n) - reclen;\n\t\twhile ((char *)de <= kaddr) {\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t    \"zero-length directory entry\");\n\t\t\t\tfolio_release_kmap(*foliop, kaddr);\n\t\t\t\tgoto out;\n\t\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nilfs2/dir.c\n+++ /linux/fs/nilfs2/dir.c\n@@ -317,0 +318,2 @@\n+\t\tchar *limit = kaddr + nilfs_last_byte(dir, n) - reclen;\n+\n@@ -319,2 +321 @@\n-\t\tkaddr += nilfs_last_byte(dir, n) - reclen;\n-\t\twhile ((char *)de <= kaddr) {\n+\t\twhile ((char *)de <= limit) {",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 38",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 0,
+      "start_step": 38
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\tchar *limit = kaddr + nilfs_last_byte(inode, i) - NILFS_DIR_REC_LEN(1);\n\n\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\twhile ((char *)de <= limit) {\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(inode->i_sb,\n\t\t\t\t\t    \"zero-length directory entry (kaddr=%p, de=%p)\",\n\t\t\t\t\t    limit, de);\n\t\t\t\tgoto not_empty;\n\t\t\t}\n",
+          "before": "\n\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\tkaddr += nilfs_last_byte(inode, i) - NILFS_DIR_REC_LEN(1);\n\n\t\twhile ((char *)de <= kaddr) {\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(inode->i_sb,\n\t\t\t\t\t    \"zero-length directory entry (kaddr=%p, de=%p)\",\n\t\t\t\t\t    kaddr, de);\n\t\t\t\tgoto not_empty;\n\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nilfs2/dir.c\n+++ /linux/fs/nilfs2/dir.c\n@@ -614,0 +615,2 @@\n+\t\tchar *limit = kaddr + nilfs_last_byte(inode, i) - NILFS_DIR_REC_LEN(1);\n+\n@@ -616,3 +618 @@\n-\t\tkaddr += nilfs_last_byte(inode, i) - NILFS_DIR_REC_LEN(1);\n-\n-\t\twhile ((char *)de <= kaddr) {\n+\t\twhile ((char *)de <= limit) {\n@@ -622 +622 @@\n-\t\t\t\t\t    kaddr, de);\n+\t\t\t\t\t    limit, de);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 50",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        },
+        {
+          "after": "\n\tfor (n = 0; n <= npages; n++) {\n\t\tchar *kaddr = nilfs_get_folio(dir, n, &folio);\n\t\tchar *dir_end;\n\t\tchar *limit;\n\n\t\tif (IS_ERR(kaddr))\n\t\t\treturn PTR_ERR(kaddr);\n\t\tfolio_lock(folio);\n\t\tdir_end = kaddr + nilfs_last_byte(dir, n);\n\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\tlimit = kaddr + folio_size(folio) - reclen;\n\t\twhile ((char *)de <= limit) {\n\t\t\tif ((char *)de == dir_end) {\n\t\t\t\t/* We hit i_size */\n\t\t\t\tname_len = 0;\n\t\t\t\trec_len = chunk_size;\n\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(chunk_size);\n\t\t\t\tde->inode = 0;\n\t\t\t\tgoto got_it;\n\t\t\t}\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t    \"zero-length directory entry\");\n\t\t\t\terr = -EIO;\n\t\t\t\tgoto out_unlock;\n\t\t\t}\n\t\t\terr = -EEXIST;\n\t\t\tif (nilfs_match(namelen, name, de))\n\t\t\t\tgoto out_unlock;\n\t\t\tname_len = NILFS_DIR_REC_LEN(de->name_len);\n\t\t\trec_len = nilfs_rec_len_from_disk(de->rec_len);\n\t\t\tif (!de->inode && rec_len >= reclen)\n\t\t\t\tgoto got_it;\n\t\t\tif (rec_len >= name_len + reclen)\n\t\t\t\tgoto got_it;\n\t\t\tde = (struct nilfs_dir_entry *)((char *)de + rec_len);\n\t\t}\n\t\tfolio_unlock(folio);\n\t\tfolio_release_kmap(folio, kaddr);\n\t}\n\tBUG();\n\treturn -EINVAL;\n\ngot_it:\n",
+          "before": "\n\tfor (n = 0; n <= npages; n++) {\n\t\tchar *kaddr = nilfs_get_folio(dir, n, &folio);\n\t\tchar *dir_end;\n\n\t\tif (IS_ERR(kaddr))\n\t\t\treturn PTR_ERR(kaddr);\n\t\tfolio_lock(folio);\n\t\tdir_end = kaddr + nilfs_last_byte(dir, n);\n\t\tde = (struct nilfs_dir_entry *)kaddr;\n\t\tkaddr += folio_size(folio) - reclen;\n\t\twhile ((char *)de <= kaddr) {\n\t\t\tif ((char *)de == dir_end) {\n\t\t\t\t/* We hit i_size */\n\t\t\t\tname_len = 0;\n\t\t\t\trec_len = chunk_size;\n\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(chunk_size);\n\t\t\t\tde->inode = 0;\n\t\t\t\tgoto got_it;\n\t\t\t}\n\t\t\tif (de->rec_len == 0) {\n\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t    \"zero-length directory entry\");\n\t\t\t\terr = -EIO;\n\t\t\t\tgoto out_unlock;\n\t\t\t}\n\t\t\terr = -EEXIST;\n\t\t\tif (nilfs_match(namelen, name, de))\n\t\t\t\tgoto out_unlock;\n\t\t\tname_len = NILFS_DIR_REC_LEN(de->name_len);\n\t\t\trec_len = nilfs_rec_len_from_disk(de->rec_len);\n\t\t\tif (!de->inode && rec_len >= reclen)\n\t\t\t\tgoto got_it;\n\t\t\tif (rec_len >= name_len + reclen)\n\t\t\t\tgoto got_it;\n\t\t\tde = (struct nilfs_dir_entry *)((char *)de + rec_len);\n\t\t}\n\t\tfolio_unlock(folio);\n\t\tfolio_release_kmap(folio, kaddr);\n\t}\n\tBUG();\n\treturn -EINVAL;\n\ngot_it:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nilfs2/dir.c\n+++ /linux/fs/nilfs2/dir.c\n@@ -446,0 +447 @@\n+\t\tchar *limit;\n@@ -453,2 +454,2 @@\n-\t\tkaddr += folio_size(folio) - reclen;\n-\t\twhile ((char *)de <= kaddr) {\n+\t\tlimit = kaddr + folio_size(folio) - reclen;\n+\t\twhile ((char *)de <= limit) {",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 66",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        },
+        {
+          "after": "\nout_put:\n\tfolio_release_kmap(folio, (char *)((unsigned long)de & ~(folio_size(folio) - 1)));\n\treturn err;\nout_unlock:\n",
+          "before": "\nout_put:\n\tfolio_release_kmap(folio, de);\n\treturn err;\nout_unlock:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nilfs2/dir.c\n+++ /linux/fs/nilfs2/dir.c\n@@ -510 +510 @@\n-\tfolio_release_kmap(folio, de);\n+\tfolio_release_kmap(folio, (char *)((unsigned long)de & ~(folio_size(folio) - 1)));",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 70",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        }
+      ],
+      "end_step": 70,
+      "revision_index": 1,
+      "start_step": 50
+    }
+  ],
+  "success_step": 70
+}

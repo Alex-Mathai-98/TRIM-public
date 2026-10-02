@@ -1,0 +1,24 @@
+diff --git a/fs/bcachefs/journal.c b/fs/bcachefs/journal.c
+index 649e3a01608a..8834268630c9 100644
+--- a/fs/bcachefs/journal.c
++++ b/fs/bcachefs/journal.c
+@@ -1307,9 +1307,17 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)
+ 
+ 	if (journal_buckets_v2) {
+ 		unsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);
++		u64 nr_buckets = 0;
+ 
+-		for (unsigned i = 0; i < nr; i++)
+-			ja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);
++		for (unsigned i = 0; i < nr; i++) {
++			u64 n = le64_to_cpu(journal_buckets_v2->d[i].nr);
++
++			if (n > UINT_MAX || nr_buckets + n > UINT_MAX)
++				return -BCH_ERR_invalid_sb_journal;
++			nr_buckets += n;
++		}
++
++		ja->nr = nr_buckets;
+ 	} else if (journal_buckets) {
+ 		ja->nr = bch2_nr_journal_buckets(journal_buckets);
+ 	}

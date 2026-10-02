@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tlist_del_rcu(&wdev->list);\n\trdev->devlist_generation++;\n\n\tif (wdev->netdev) {\n\t\tsysfs_remove_link(&wdev->netdev->dev.kobj, \"phy80211\");\n\t\tif (unregister_netdev) {\n\t\t\twiphy_unlock(&rdev->wiphy);\n\t\t\tunregister_netdevice(wdev->netdev);\n\t\t\twiphy_lock(&rdev->wiphy);\n\t\t}\n\t}\n\n\tsynchronize_net();",
+          "before": "\tif (wdev->netdev) {\n\t\tsysfs_remove_link(&wdev->netdev->dev.kobj, \"phy80211\");\n\t\tif (unregister_netdev)\n\t\t\tunregister_netdevice(wdev->netdev);\n\t}\n\n\tlist_del_rcu(&wdev->list);\n\tsynchronize_net();\n\trdev->devlist_generation++;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/wireless/core.c b/net/wireless/core.c\nindex 70857018f020..e3e798ad1211 100644\n--- a/net/wireless/core.c\n+++ b/net/wireless/core.c\n@@ -1245,15 +1245,19 @@ static void _cfg80211_unregister_wdev(struct wireless_dev *wdev,\n \n \twdev->registered = false;\n \n+\tlist_del_rcu(&wdev->list);\n+\trdev->devlist_generation++;\n+\n \tif (wdev->netdev) {\n \t\tsysfs_remove_link(&wdev->netdev->dev.kobj, \"phy80211\");\n-\t\tif (unregister_netdev)\n+\t\tif (unregister_netdev) {\n+\t\t\twiphy_unlock(&rdev->wiphy);\n \t\t\tunregister_netdevice(wdev->netdev);\n+\t\t\twiphy_lock(&rdev->wiphy);\n+\t\t}\n \t}\n \n-\tlist_del_rcu(&wdev->list);\n \tsynchronize_net();\n-\trdev->devlist_generation++;\n \n \tcfg80211_mlme_purge_registrations(wdev);",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "net/wireless/core.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    },
+    {
+      "edits": [
+        {
+          "after": "static void ieee80211_uninit(struct net_device *dev)\n{\n\tstruct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);\n\n\tguard(wiphy)(sdata->local->hw.wiphy);\n\tieee80211_teardown_sdata(sdata);\n}",
+          "before": "static void ieee80211_uninit(struct net_device *dev)\n{\n\tieee80211_teardown_sdata(IEEE80211_DEV_TO_SUB_IF(dev));\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/mac80211/iface.c b/net/mac80211/iface.c\nindex 0ea7e77860b7..2f6a63e05a9c 100644\n--- a/net/mac80211/iface.c\n+++ b/net/mac80211/iface.c\n@@ -823,7 +823,10 @@ static void ieee80211_teardown_sdata(struct ieee80211_sub_if_data *sdata)\n \n static void ieee80211_uninit(struct net_device *dev)\n {\n-\tieee80211_teardown_sdata(IEEE80211_DEV_TO_SUB_IF(dev));\n+\tstruct ieee80211_sub_if_data *sdata = IEEE80211_DEV_TO_SUB_IF(dev);\n+\n+\tguard(wiphy)(sdata->local->hw.wiphy);\n+\tieee80211_teardown_sdata(sdata);\n }\n \n static int ieee80211_netdev_setup_tc(struct net_device *dev,\ndiff --git a/net/wireless/core.c b/net/wireless/core.c\nindex 70857018f020..e3e798ad1211 100644\n--- a/net/wireless/core.c\n+++ b/net/wireless/core.c\n@@ -1245,15 +1245,19 @@ static void _cfg80211_unregister_wdev(struct wireless_dev *wdev,\n \n \twdev->registered = false;\n \n+\tlist_del_rcu(&wdev->list);\n+\trdev->devlist_generation++;\n+\n \tif (wdev->netdev) {\n \t\tsysfs_remove_link(&wdev->netdev->dev.kobj, \"phy80211\");\n-\t\tif (unregister_netdev)\n+\t\tif (unregister_netdev) {\n+\t\t\twiphy_unlock(&rdev->wiphy);\n \t\t\tunregister_netdevice(wdev->netdev);\n+\t\t\twiphy_lock(&rdev->wiphy);\n+\t\t}\n \t}\n \n-\tlist_del_rcu(&wdev->list);\n \tsynchronize_net();\n-\trdev->devlist_generation++;\n \n \tcfg80211_mlme_purge_registrations(wdev);",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "net/mac80211/iface.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 1,
+      "start_step": 30
+    }
+  ],
+  "success_step": 30
+}

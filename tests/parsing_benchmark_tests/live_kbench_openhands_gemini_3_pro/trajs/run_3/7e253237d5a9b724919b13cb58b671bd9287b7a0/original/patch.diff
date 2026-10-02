@@ -1,0 +1,18 @@
+diff --git a/kernel/bpf/core.c b/kernel/bpf/core.c
+index a3e571688421..1b46dc1d3700 100644
+--- a/kernel/bpf/core.c
++++ b/kernel/bpf/core.c
+@@ -2502,6 +2502,13 @@ struct bpf_prog *bpf_prog_select_runtime(struct bpf_prog *fp, int *err)
+ 			*err = -ENOTSUPP;
+ 			return fp;
+ 		}
++		if (!fp->jited) {
++			u32 stack_depth = max_t(u32, fp->aux->stack_depth, 1);
++			u32 idx = (round_up(stack_depth, 32) / 32) - 1;
++
++			if (!WARN_ON_ONCE(idx >= ARRAY_SIZE(interpreters)))
++				fp->bpf_func = interpreters[idx];
++		}
+ 	} else {
+ 		*err = bpf_prog_offload_compile(fp);
+ 		if (*err)

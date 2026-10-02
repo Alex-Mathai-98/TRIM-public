@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/* 0 is reserved for the context manager */\n\tif (node == proc->context->binder_context_mgr_node) {\n\t\tif (binder_get_ref_olocked(proc, 0, false))\n\t\t\treturn -EINVAL;\n\t\t*desc = 0;\n\t\treturn 0;\n\t}\n",
+          "before": "\t/* 0 is reserved for the context manager */\n\tif (node == proc->context->binder_context_mgr_node) {\n\t\t*desc = 0;\n\t\treturn 0;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binder.c b/drivers/android/binder.c\nindex f26286e3713e..852e0647d25d 100644\n--- a/drivers/android/binder.c\n+++ b/drivers/android/binder.c\n@@ -1076,6 +1076,8 @@ static int get_ref_desc_olocked(struct binder_proc *proc,\n \n \t/* 0 is reserved for the context manager */\n \tif (node == proc->context->binder_context_mgr_node) {\n+\t\tif (binder_get_ref_olocked(proc, 0, false))\n+\t\t\treturn -EINVAL;\n \t\t*desc = 0;\n \t\treturn 0;\n \t}",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "drivers/android/binder.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        },
+        {
+          "after": "\tstruct rb_node **p;\n\tu32 desc;\n\tint ret;\n\nretry:\n",
+          "before": "\tstruct rb_node **p;\n\tu32 desc;\n\nretry:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binder.c b/drivers/android/binder.c\nindex f26286e3713e..6b4b4e6b3033 100644\n--- a/drivers/android/binder.c\n+++ b/drivers/android/binder.c\n@@ -1076,6 +1076,8 @@ static int get_ref_desc_olocked(struct binder_proc *proc,\n \n \t/* 0 is reserved for the context manager */\n \tif (node == proc->context->binder_context_mgr_node) {\n+\t\tif (binder_get_ref_olocked(proc, 0, false))\n+\t\t\treturn -EINVAL;\n \t\t*desc = 0;\n \t\treturn 0;\n \t}\n@@ -1130,6 +1132,7 @@ static struct binder_ref *binder_get_ref_for_node_olocked(\n \tstruct rb_node *parent;\n \tstruct rb_node **p;\n \tu32 desc;\n+\tint ret;\n \n retry:\n \tp = &proc->refs_by_node.rb_node;",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "drivers/android/binder.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "\t/* might release the proc->outer_lock */\n\tret = get_ref_desc_olocked(proc, node, &desc);\n\tif (ret == -EAGAIN)\n\t\tgoto retry;\n\tif (ret)\n\t\treturn NULL;\n\n\tbinder_stats_created(BINDER_STAT_REF);\n",
+          "before": "\t/* might release the proc->outer_lock */\n\tif (get_ref_desc_olocked(proc, node, &desc) == -EAGAIN)\n\t\tgoto retry;\n\n\tbinder_stats_created(BINDER_STAT_REF);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binder.c b/drivers/android/binder.c\nindex f26286e3713e..97af964b88d0 100644\n--- a/drivers/android/binder.c\n+++ b/drivers/android/binder.c\n@@ -1076,6 +1076,8 @@ static int get_ref_desc_olocked(struct binder_proc *proc,\n \n \t/* 0 is reserved for the context manager */\n \tif (node == proc->context->binder_context_mgr_node) {\n+\t\tif (binder_get_ref_olocked(proc, 0, false))\n+\t\t\treturn -EINVAL;\n \t\t*desc = 0;\n \t\treturn 0;\n \t}\n@@ -1130,6 +1132,7 @@ static struct binder_ref *binder_get_ref_for_node_olocked(\n \tstruct rb_node *parent;\n \tstruct rb_node **p;\n \tu32 desc;\n+\tint ret;\n \n retry:\n \tp = &proc->refs_by_node.rb_node;\n@@ -1149,8 +1152,11 @@ static struct binder_ref *binder_get_ref_for_node_olocked(\n \t\treturn NULL;\n \n \t/* might release the proc->outer_lock */\n-\tif (get_ref_desc_olocked(proc, node, &desc) == -EAGAIN)\n+\tret = get_ref_desc_olocked(proc, node, &desc);\n+\tif (ret == -EAGAIN)\n \t\tgoto retry;\n+\tif (ret)\n+\t\treturn NULL;\n \n \tbinder_stats_created(BINDER_STAT_REF);\n \tnew_ref->data.debug_id = atomic_inc_return(&binder_last_id);",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "drivers/android/binder.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 13
+    }
+  ],
+  "success_step": 15
+}

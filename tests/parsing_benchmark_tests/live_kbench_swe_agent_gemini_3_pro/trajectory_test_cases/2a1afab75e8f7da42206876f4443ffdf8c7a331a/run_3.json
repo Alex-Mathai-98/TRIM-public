@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED)) {\n\t\tio_vec_free(&rw->vec);\n\t\treturn;\n\t}\n\n\tio_alloc_cache_vec_kasan(&rw->vec);\n\tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n\t\tio_vec_free(&rw->vec);\n\n\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {\n\t\tio_req_async_data_clear(req, 0);\n\t\treturn;\n\t}\n\tio_vec_free(&rw->vec);\n}",
+          "before": "\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED))\n\t\treturn;\n\n\tio_alloc_cache_vec_kasan(&rw->vec);\n\tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n\t\tio_vec_free(&rw->vec);\n\n\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw))\n\t\tio_req_async_data_clear(req, 0);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/rw.c b/io_uring/rw.c\nindex 5b2241a5813c..df276d4b6c53 100644\n--- a/io_uring/rw.c\n+++ b/io_uring/rw.c\n@@ -148,15 +148,20 @@ static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)\n {\n \tstruct io_async_rw *rw = req->async_data;\n \n-\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED))\n+\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED)) {\n+\t\tio_vec_free(&rw->vec);\n \t\treturn;\n+\t}\n \n \tio_alloc_cache_vec_kasan(&rw->vec);\n \tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n \t\tio_vec_free(&rw->vec);\n \n-\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw))\n+\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {\n \t\tio_req_async_data_clear(req, 0);\n+\t\treturn;\n+\t}\n+\tio_vec_free(&rw->vec);\n }\n \n static void io_req_rw_cleanup(struct io_kiocb *req, unsigned int issue_flags)",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "io_uring/rw.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "static inline void io_vec_reset_iovec(struct iou_vec *iv,\n\t\t\t\t      struct iovec *iovec, unsigned nr)\n{\n\tif (iv->iovec != iovec)\n\t\tio_vec_free(iv);\n\tiv->iovec = iovec;\n\tiv->nr = nr;\n}",
+          "before": "static inline void io_vec_reset_iovec(struct iou_vec *iv,\n\t\t\t\t      struct iovec *iovec, unsigned nr)\n{\n\tio_vec_free(iv);\n\tiv->iovec = iovec;\n\tiv->nr = nr;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/rsrc.h b/io_uring/rsrc.h\nindex a3ca6ba66596..b6605d017994 100644\n--- a/io_uring/rsrc.h\n+++ b/io_uring/rsrc.h\n@@ -135,7 +135,8 @@ int io_vec_realloc(struct iou_vec *iv, unsigned nr_entries);\n static inline void io_vec_reset_iovec(struct iou_vec *iv,\n \t\t\t\t      struct iovec *iovec, unsigned nr)\n {\n-\tio_vec_free(iv);\n+\tif (iv->iovec != iovec)\n+\t\tio_vec_free(iv);\n \tiv->iovec = iovec;\n \tiv->nr = nr;\n }\ndiff --git a/io_uring/rw.c b/io_uring/rw.c\nindex 5b2241a5813c..df276d4b6c53 100644\n--- a/io_uring/rw.c\n+++ b/io_uring/rw.c\n@@ -148,15 +148,20 @@ static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)\n {\n \tstruct io_async_rw *rw = req->async_data;\n \n-\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED))\n+\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED)) {\n+\t\tio_vec_free(&rw->vec);\n \t\treturn;\n+\t}\n \n \tio_alloc_cache_vec_kasan(&rw->vec);\n \tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n \t\tio_vec_free(&rw->vec);\n \n-\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw))\n+\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {\n \t\tio_req_async_data_clear(req, 0);\n+\t\treturn;\n+\t}\n+\tio_vec_free(&rw->vec);\n }\n \n static void io_req_rw_cleanup(struct io_kiocb *req, unsigned int issue_flags)",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "io_uring/rsrc.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 19
+    }
+  ],
+  "success_step": 22
+}

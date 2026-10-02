@@ -1,0 +1,29 @@
+diff --git a/drivers/net/usb/rtl8150.c b/drivers/net/usb/rtl8150.c
+index 01a3b2417a54..8a9cb282c2b7 100644
+--- a/drivers/net/usb/rtl8150.c
++++ b/drivers/net/usb/rtl8150.c
+@@ -867,7 +867,23 @@ static int rtl8150_probe(struct usb_interface *intf,
+ 	struct usb_device *udev = interface_to_usbdev(intf);
+ 	rtl8150_t *dev;
+ 	struct net_device *netdev;
+-
++        struct usb_host_interface *iface_desc;
++        struct usb_endpoint_descriptor *endpoint;
++        int i;
++        bool has_ep1 = false, has_ep2 = false, has_ep3 = false;
++
++        iface_desc = intf->cur_altsetting;
++        for (i = 0; i < iface_desc->desc.bNumEndpoints; i++) {
++                endpoint = &iface_desc->endpoint[i].desc;
++                if (usb_endpoint_num(endpoint) == 1 && usb_endpoint_is_bulk_in(endpoint))
++                        has_ep1 = true;
++                if (usb_endpoint_num(endpoint) == 2 && usb_endpoint_is_bulk_out(endpoint))
++                        has_ep2 = true;
++                if (usb_endpoint_num(endpoint) == 3 && usb_endpoint_is_int_in(endpoint))
++                        has_ep3 = true;
++        }
++        if (!has_ep1 || !has_ep2 || !has_ep3)
++                return -ENODEV;
+ 	netdev = alloc_etherdev(sizeof(rtl8150_t));
+ 	if (!netdev)
+ 		return -ENOMEM;

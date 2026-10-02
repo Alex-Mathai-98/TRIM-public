@@ -1,0 +1,37 @@
+diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c
+index fb08dd680dac..9f5ff3979758 100644
+--- a/fs/bcachefs/sb-members.c
++++ b/fs/bcachefs/sb-members.c
+@@ -437,6 +437,11 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns
+ 	struct bch_member *m = __bch2_members_v2_get_mut(mi, dev);
+ 	u64 bitmap = le64_to_cpu(m->btree_allocated_bitmap);
+ 
++	if (m->btree_bitmap_shift > 57 ||
++	    start >= le64_to_cpu(m->nbuckets) * le16_to_cpu(m->bucket_size) ||
++	    start + sectors > (64ULL << 57))
++		return;
++
+ 	u64 end = start + sectors;
+ 
+ 	int resize = ilog2(roundup_pow_of_two(end)) - (m->btree_bitmap_shift + 6);
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index a6ed9a0bf1c7..e758e87278e3 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -217,9 +217,14 @@ static struct bch_fs *__bch2_uuid_to_fs(__uuid_t uuid)
+ 
+ 	lockdep_assert_held(&bch_fs_list_lock);
+ 
+-	list_for_each_entry(c, &bch_fs_list, list)
+-		if (!memcmp(&c->disk_sb.sb->uuid, &uuid, sizeof(uuid)))
++	list_for_each_entry(c, &bch_fs_list, list) {
++		mutex_lock(&c->sb_lock);
++		if (!memcmp(&c->disk_sb.sb->uuid, &uuid, sizeof(uuid))) {
++			mutex_unlock(&c->sb_lock);
+ 			return c;
++		}
++		mutex_unlock(&c->sb_lock);
++	}
+ 
+ 	return NULL;
+ }

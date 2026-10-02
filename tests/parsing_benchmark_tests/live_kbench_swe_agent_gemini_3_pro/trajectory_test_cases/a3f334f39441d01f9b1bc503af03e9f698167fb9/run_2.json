@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tBUG_ON(!sb);\n\tosb = OCFS2_SB(sb);\n\tif (!osb)\n\t\treturn;\n",
+          "before": "\tBUG_ON(!sb);\n\tosb = OCFS2_SB(sb);\n\tBUG_ON(!osb);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c\nindex 53daa4482406..0786b7e716af 100644\n--- a/fs/ocfs2/super.c\n+++ b/fs/ocfs2/super.c\n@@ -1801,7 +1801,8 @@ static void ocfs2_dismount_volume(struct super_block *sb, int mnt_err)\n \n \tBUG_ON(!sb);\n \tosb = OCFS2_SB(sb);\n-\tBUG_ON(!osb);\n+\tif (!osb)\n+\t\treturn;\n \n \t/* Remove file check sysfs related directories/files,\n \t * and wait for the pending file check operations */",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "fs/ocfs2/super.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        },
+        {
+          "after": "\tocfs2_delete_osb(osb);\n\tkfree(osb);\n\tsb->s_fs_info = NULL;\nout:\n",
+          "before": "\tocfs2_delete_osb(osb);\n\tkfree(osb);\nout:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c\nindex 53daa4482406..b74ab9f225ad 100644\n--- a/fs/ocfs2/super.c\n+++ b/fs/ocfs2/super.c\n@@ -1173,6 +1173,7 @@ static int ocfs2_fill_super(struct super_block *sb, struct fs_context *fc)\n \tkfree(osb->recovery_map);\n \tocfs2_delete_osb(osb);\n \tkfree(osb);\n+\tsb->s_fs_info = NULL;\n out:\n \tmlog_errno(status);\n \n@@ -1801,7 +1802,8 @@ static void ocfs2_dismount_volume(struct super_block *sb, int mnt_err)\n \n \tBUG_ON(!sb);\n \tosb = OCFS2_SB(sb);\n-\tBUG_ON(!osb);\n+\tif (!osb)\n+\t\treturn;\n \n \t/* Remove file check sysfs related directories/files,\n \t * and wait for the pending file check operations */",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "fs/ocfs2/super.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        }
+      ],
+      "end_step": 45,
+      "revision_index": 0,
+      "start_step": 44
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (osb->journal)\n\t\tjbd2_journal_release_jbd_inode(osb->journal->j_journal,\n\t\t\t\t\t       &oi->ip_jinode);\n",
+          "before": "\tjbd2_journal_release_jbd_inode(osb->journal->j_journal,\n\t\t\t\t       &oi->ip_jinode);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c\nindex 14bf440ea4df..792af69d8db1 100644\n--- a/fs/ocfs2/inode.c\n+++ b/fs/ocfs2/inode.c\n@@ -1281,8 +1281,9 @@ static void ocfs2_clear_inode(struct inode *inode)\n \t * the journal is flushed before journal shutdown. Thus it is safe to\n \t * have inodes get cleaned up after journal shutdown.\n \t */\n-\tjbd2_journal_release_jbd_inode(osb->journal->j_journal,\n-\t\t\t\t       &oi->ip_jinode);\n+\tif (osb->journal)\n+\t\tjbd2_journal_release_jbd_inode(osb->journal->j_journal,\n+\t\t\t\t\t       &oi->ip_jinode);\n }\n \n void ocfs2_evict_inode(struct inode *inode)\ndiff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c\nindex 53daa4482406..b74ab9f225ad 100644\n--- a/fs/ocfs2/super.c\n+++ b/fs/ocfs2/super.c\n@@ -1173,6 +1173,7 @@ static int ocfs2_fill_super(struct super_block *sb, struct fs_context *fc)\n \tkfree(osb->recovery_map);\n \tocfs2_delete_osb(osb);\n \tkfree(osb);\n+\tsb->s_fs_info = NULL;\n out:\n \tmlog_errno(status);\n \n@@ -1801,7 +1802,8 @@ static void ocfs2_dismount_volume(struct super_block *sb, int mnt_err)\n \n \tBUG_ON(!sb);\n \tosb = OCFS2_SB(sb);\n-\tBUG_ON(!osb);\n+\tif (!osb)\n+\t\treturn;\n \n \t/* Remove file check sysfs related directories/files,\n \t * and wait for the pending file check operations */",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "fs/ocfs2/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        }
+      ],
+      "end_step": 51,
+      "revision_index": 1,
+      "start_step": 51
+    }
+  ],
+  "success_step": 51
+}

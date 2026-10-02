@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nint vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t      int flags);\nint vsock_connectible_recvmsg_native(struct socket *sock, struct msghdr *msg,\n\t\t\t\t     size_t len, int flags);\n",
+          "before": "\nint vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t      int flags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/net/af_vsock.h\n+++ /linux/include/net/af_vsock.h\n@@ -234,0 +235,2 @@\n+int vsock_connectible_recvmsg_native(struct socket *sock, struct msghdr *msg,\n+\t\t\t\t     size_t len, int flags);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 49",
+          "filename": "include/net/af_vsock.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        },
+        {
+          "after": "\nint vsock_connectible_recvmsg_native(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t\t     int flags)\n{\n\tstruct sock *sk;\n\tstruct vsock_sock *vsk;\n\tconst struct vsock_transport *transport;\n\tint err;\n\n\tsk = sock->sk;\n\n\tif (unlikely(flags & MSG_ERRQUEUE))\n\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n\n\tvsk = vsock_sk(sk);\n\terr = 0;\n\n\tlock_sock(sk);\n\n\ttransport = vsk->transport;\n\n\tif (!transport || sk->sk_state != TCP_ESTABLISHED) {\n\t\t/* Recvmsg is supposed to return 0 if a peer performs an\n\t\t * orderly shutdown. Differentiate between that case and when a\n\t\t * peer has not connected or a local shutdown occurred with the\n\t\t * SOCK_DONE flag.\n\t\t */\n\t\tif (sock_flag(sk, SOCK_DONE))\n\t\t\terr = 0;\n\t\telse\n\t\t\terr = -ENOTCONN;\n\n\t\tgoto out;\n\t}\n\n\tif (flags & MSG_OOB) {\n\t\terr = -EOPNOTSUPP;\n\t\tgoto out;\n\t}\n\n\t/* We don't check peer_shutdown flag here since peer may actually shut\n\t * down, but there can be data in the queue that a local socket can\n\t * receive.\n\t */\n\tif (sk->sk_shutdown & RCV_SHUTDOWN) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n\t/* It is valid on Linux to pass in a zero-length receive buffer.  This\n\t * is not an error.  We may as well bail out now.\n\t */\n\tif (!len) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n\tif (sk->sk_type == SOCK_STREAM)\n\t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n\telse\n\t\terr = __vsock_seqpacket_recvmsg(sk, msg, len, flags);\n\nout:\n\trelease_sock(sk);\n\treturn err;\n}\nEXPORT_SYMBOL_GPL(vsock_connectible_recvmsg_native);\n\nint vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t      int flags)\n{\n\tstruct sock *sk = sock->sk;\n\n#ifdef CONFIG_BPF_SYSCALL\n\tconst struct proto *prot;\n\n\tprot = READ_ONCE(sk->sk_prot);\n\tif (prot != &vsock_proto)\n\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n#endif\n\n\treturn vsock_connectible_recvmsg_native(sock, msg, len, flags);\n}\n",
+          "before": "\nvsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n\t\t\t  int flags)\n{\n\tstruct sock *sk;\n\tstruct vsock_sock *vsk;\n\tconst struct vsock_transport *transport;\n#ifdef CONFIG_BPF_SYSCALL\n\tconst struct proto *prot;\n#endif\n\tint err;\n\n\tsk = sock->sk;\n\n\tif (unlikely(flags & MSG_ERRQUEUE))\n\t\treturn sock_recv_errqueue(sk, msg, len, SOL_VSOCK, VSOCK_RECVERR);\n\n\tvsk = vsock_sk(sk);\n\terr = 0;\n\n\tlock_sock(sk);\n\n\ttransport = vsk->transport;\n\n\tif (!transport || sk->sk_state != TCP_ESTABLISHED) {\n\t\t/* Recvmsg is supposed to return 0 if a peer performs an\n\t\t * orderly shutdown. Differentiate between that case and when a\n\t\t * peer has not connected or a local shutdown occurred with the\n\t\t * SOCK_DONE flag.\n\t\t */\n\t\tif (sock_flag(sk, SOCK_DONE))\n\t\t\terr = 0;\n\t\telse\n\t\t\terr = -ENOTCONN;\n\n\t\tgoto out;\n\t}\n\n\tif (flags & MSG_OOB) {\n\t\terr = -EOPNOTSUPP;\n\t\tgoto out;\n\t}\n\n\t/* We don't check peer_shutdown flag here since peer may actually shut\n\t * down, but there can be data in the queue that a local socket can\n\t * receive.\n\t */\n\tif (sk->sk_shutdown & RCV_SHUTDOWN) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n\t/* It is valid on Linux to pass in a zero-length receive buffer.  This\n\t * is not an error.  We may as well bail out now.\n\t */\n\tif (!len) {\n\t\terr = 0;\n\t\tgoto out;\n\t}\n\n#ifdef CONFIG_BPF_SYSCALL\n\tprot = READ_ONCE(sk->sk_prot);\n\tif (prot != &vsock_proto) {\n\t\trelease_sock(sk);\n\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n\t}\n#endif\n\n\tif (sk->sk_type == SOCK_STREAM)\n\t\terr = __vsock_stream_recvmsg(sk, msg, len, flags);\n\telse\n\t\terr = __vsock_seqpacket_recvmsg(sk, msg, len, flags);\n\nout:\n\trelease_sock(sk);\n\treturn err;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/vmw_vsock/af_vsock.c\n+++ /linux/net/vmw_vsock/af_vsock.c\n@@ -2177,2 +2177,2 @@\n-vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n-\t\t\t  int flags)\n+int vsock_connectible_recvmsg_native(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t\t     int flags)\n@@ -2183,3 +2182,0 @@\n-#ifdef CONFIG_BPF_SYSCALL\n-\tconst struct proto *prot;\n-#endif\n@@ -2236,8 +2232,0 @@\n-#ifdef CONFIG_BPF_SYSCALL\n-\tprot = READ_ONCE(sk->sk_prot);\n-\tif (prot != &vsock_proto) {\n-\t\trelease_sock(sk);\n-\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n-\t}\n-#endif\n-\n@@ -2251,0 +2241,17 @@\n+}\n+EXPORT_SYMBOL_GPL(vsock_connectible_recvmsg_native);\n+\n+int vsock_connectible_recvmsg(struct socket *sock, struct msghdr *msg, size_t len,\n+\t\t\t      int flags)\n+{\n+\tstruct sock *sk = sock->sk;\n+\n+#ifdef CONFIG_BPF_SYSCALL\n+\tconst struct proto *prot;\n+\n+\tprot = READ_ONCE(sk->sk_prot);\n+\tif (prot != &vsock_proto)\n+\t\treturn prot->recvmsg(sk, msg, len, flags, NULL);\n+#endif\n+\n+\treturn vsock_connectible_recvmsg_native(sock, msg, len, flags);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 51",
+          "filename": "net/vmw_vsock/af_vsock.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 55 sed d #1",
+          "filename": "net/vmw_vsock/af_vsock.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 2176,
+          "step_index": 55
+        },
+        {
+          "after": "\n\tif (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET)\n\t\terr = vsock_connectible_recvmsg_native(sock, msg, len, flags);\n",
+          "before": "\n\tif (sk->sk_type == SOCK_STREAM || sk->sk_type == SOCK_SEQPACKET)\n\t\terr = vsock_connectible_recvmsg(sock, msg, len, flags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/vmw_vsock/vsock_bpf.c\n+++ /linux/net/vmw_vsock/vsock_bpf.c\n@@ -67 +67 @@\n-\t\terr = vsock_connectible_recvmsg(sock, msg, len, flags);\n+\t\terr = vsock_connectible_recvmsg_native(sock, msg, len, flags);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "net/vmw_vsock/vsock_bpf.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "revision_index": 0,
+      "start_step": 49
+    }
+  ],
+  "success_step": 59
+}

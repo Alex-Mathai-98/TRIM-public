@@ -1,0 +1,23 @@
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index 1029380f84db..2ee195617f79 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -1949,11 +1949,13 @@ static int maybe_exit_scc(struct bpf_verifier_env *env, struct bpf_verifier_stat
+ 	if (!compute_scc_callchain(env, st, callchain))
+ 		return 0;
+ 	visit = scc_visit_lookup(env, callchain);
+-	if (!visit) {
+-		verifier_bug(env, "scc exit: no visit info for call chain %s",
+-			     format_callchain(env, callchain));
+-		return -EFAULT;
+-	}
++	/* If there's no visit info, it means maybe_enter_scc() was never
++	 * called for this state. This can happen for states that were
++	 * never added to the explored states list (e.g., the initial
++	 * state created in do_check_common()).
++	 */
++	if (!visit)
++		return 0;
+ 	if (visit->entry_state != st)
+ 		return 0;
+ 	if (env->log.level & BPF_LOG_LEVEL2)

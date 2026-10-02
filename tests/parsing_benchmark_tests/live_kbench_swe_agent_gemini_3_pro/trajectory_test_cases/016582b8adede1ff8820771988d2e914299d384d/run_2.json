@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (opt->max && v >= opt->max) {\n\t\tif (err)\n\t\t\tprt_printf(err, \"%s: too big (max %llu)\",\n\t\t\t       opt->attr.name, opt->max);\n\t\treturn -BCH_ERR_ERANGE_option_too_big;\n\t}\n\n\tif (opt->type == BCH_OPT_STR && !opt->choices[v]) {\n\t\tif (err)\n\t\t\tprt_printf(err, \"%s: invalid choice\",\n\t\t\t       opt->attr.name);\n\t\treturn -BCH_ERR_ERANGE_option_too_big;\n\t}\n",
+          "before": "\tif (opt->max && v >= opt->max) {\n\t\tif (err)\n\t\t\tprt_printf(err, \"%s: too big (max %llu)\",\n\t\t\t       opt->attr.name, opt->max);\n\t\treturn -BCH_ERR_ERANGE_option_too_big;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c\nindex 6673cbd8bdb9..115c43c73a5e 100644\n--- a/fs/bcachefs/opts.c\n+++ b/fs/bcachefs/opts.c\n@@ -303,6 +303,13 @@ int bch2_opt_validate(const struct bch_option *opt, u64 v, struct printbuf *err)\n \t\treturn -BCH_ERR_ERANGE_option_too_big;\n \t}\n \n+\tif (opt->type == BCH_OPT_STR && !opt->choices[v]) {\n+\t\tif (err)\n+\t\t\tprt_printf(err, \"%s: invalid choice\",\n+\t\t\t       opt->attr.name);\n+\t\treturn -BCH_ERR_ERANGE_option_too_big;\n+\t}\n+\n \tif ((opt->flags & OPT_SB_FIELD_SECTORS) && (v & 511)) {\n \t\tif (err)\n \t\t\tprt_printf(err, \"%s: not a multiple of 512\",",
+          "explanation": "classic_swe step 47 #1",
+          "filename": "fs/bcachefs/opts.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        },
+        {
+          "after": "\tfor (id = 0; id < bch2_opts_nr; id++) {\n\t\tconst struct bch_option *opt = bch2_opt_table + id;\n\t\tu64 v;\n\t\tint ret;\n\n\t\tif (opt->get_sb == BCH2_NO_SB_OPT)\n\t\t\tcontinue;\n\n\t\tv = bch2_opt_from_sb(sb, id);\n\t\tret = bch2_opt_validate(opt, v, NULL);\n\t\tif (ret)\n\t\t\treturn ret;\n\n\t\tbch2_opt_set_by_id(opts, id, v);\n\t}\n",
+          "before": "\tfor (id = 0; id < bch2_opts_nr; id++) {\n\t\tconst struct bch_option *opt = bch2_opt_table + id;\n\n\t\tif (opt->get_sb == BCH2_NO_SB_OPT)\n\t\t\tcontinue;\n\n\t\tbch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c\nindex 6673cbd8bdb9..717750c8a173 100644\n--- a/fs/bcachefs/opts.c\n+++ b/fs/bcachefs/opts.c\n@@ -303,6 +303,13 @@ int bch2_opt_validate(const struct bch_option *opt, u64 v, struct printbuf *err)\n \t\treturn -BCH_ERR_ERANGE_option_too_big;\n \t}\n \n+\tif (opt->type == BCH_OPT_STR && !opt->choices[v]) {\n+\t\tif (err)\n+\t\t\tprt_printf(err, \"%s: invalid choice\",\n+\t\t\t       opt->attr.name);\n+\t\treturn -BCH_ERR_ERANGE_option_too_big;\n+\t}\n+\n \tif ((opt->flags & OPT_SB_FIELD_SECTORS) && (v & 511)) {\n \t\tif (err)\n \t\t\tprt_printf(err, \"%s: not a multiple of 512\",\n@@ -642,11 +649,18 @@ int bch2_opts_from_sb(struct bch_opts *opts, struct bch_sb *sb)\n \n \tfor (id = 0; id < bch2_opts_nr; id++) {\n \t\tconst struct bch_option *opt = bch2_opt_table + id;\n+\t\tu64 v;\n+\t\tint ret;\n \n \t\tif (opt->get_sb == BCH2_NO_SB_OPT)\n \t\t\tcontinue;\n \n-\t\tbch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));\n+\t\tv = bch2_opt_from_sb(sb, id);\n+\t\tret = bch2_opt_validate(opt, v, NULL);\n+\t\tif (ret)\n+\t\t\treturn ret;\n+\n+\t\tbch2_opt_set_by_id(opts, id, v);\n \t}\n \n \treturn 0;",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "fs/bcachefs/opts.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 0,
+      "start_step": 47
+    }
+  ],
+  "success_step": 48
+}

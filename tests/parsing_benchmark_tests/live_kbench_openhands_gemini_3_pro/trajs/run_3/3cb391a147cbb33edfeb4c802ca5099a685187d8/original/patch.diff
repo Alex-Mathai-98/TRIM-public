@@ -1,0 +1,71 @@
+diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
+index 3e6cb35baf25..5ae13f5d3a80 100644
+--- a/net/smc/af_smc.c
++++ b/net/smc/af_smc.c
+@@ -3070,11 +3070,9 @@ int smc_setsockopt(struct socket *sock, int level, int optname,
+ 	/* generic setsockopts reaching us here always apply to the
+ 	 * CLC socket
+ 	 */
+-	mutex_lock(&smc->clcsock_release_lock);
+-	if (!smc->clcsock) {
+-		mutex_unlock(&smc->clcsock_release_lock);
++	if (!smc->clcsock)
+ 		return -EBADF;
+-	}
++
+ 	if (unlikely(!smc->clcsock->ops->setsockopt))
+ 		rc = -EOPNOTSUPP;
+ 	else
+@@ -3084,7 +3082,6 @@ int smc_setsockopt(struct socket *sock, int level, int optname,
+ 		sk->sk_err = smc->clcsock->sk->sk_err;
+ 		sk_error_report(sk);
+ 	}
+-	mutex_unlock(&smc->clcsock_release_lock);
+ 
+ 	if (optlen < sizeof(int))
+ 		return -EINVAL;
+@@ -3150,19 +3147,15 @@ int smc_getsockopt(struct socket *sock, int level, int optname,
+ 		return __smc_getsockopt(sock, level, optname, optval, optlen);
+ 
+ 	smc = smc_sk(sock->sk);
+-	mutex_lock(&smc->clcsock_release_lock);
+-	if (!smc->clcsock) {
+-		mutex_unlock(&smc->clcsock_release_lock);
++	if (!smc->clcsock)
+ 		return -EBADF;
+-	}
++
+ 	/* socket options apply to the CLC socket */
+-	if (unlikely(!smc->clcsock->ops->getsockopt)) {
+-		mutex_unlock(&smc->clcsock_release_lock);
++	if (unlikely(!smc->clcsock->ops->getsockopt))
+ 		return -EOPNOTSUPP;
+-	}
++
+ 	rc = smc->clcsock->ops->getsockopt(smc->clcsock, level, optname,
+ 					   optval, optlen);
+-	mutex_unlock(&smc->clcsock_release_lock);
+ 	return rc;
+ }
+ 
+diff --git a/net/smc/smc_close.c b/net/smc/smc_close.c
+index 10219f55aad1..cc1d53f91d77 100644
+--- a/net/smc/smc_close.c
++++ b/net/smc/smc_close.c
+@@ -28,12 +28,11 @@ void smc_clcsock_release(struct smc_sock *smc)
+ 	if (smc->listen_smc && current_work() != &smc->smc_listen_work)
+ 		cancel_work_sync(&smc->smc_listen_work);
+ 	mutex_lock(&smc->clcsock_release_lock);
+-	if (smc->clcsock) {
+-		tcp = smc->clcsock;
+-		smc->clcsock = NULL;
+-		sock_release(tcp);
+-	}
++	tcp = smc->clcsock;
++	smc->clcsock = NULL;
+ 	mutex_unlock(&smc->clcsock_release_lock);
++	if (tcp)
++		sock_release(tcp);
+ }
+ 
+ static void smc_close_cleanup_listen(struct sock *parent)

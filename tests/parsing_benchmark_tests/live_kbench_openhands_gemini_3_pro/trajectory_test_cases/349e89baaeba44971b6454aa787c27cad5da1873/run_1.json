@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (journal_buckets_v2) {\n\t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n\t\tu64 total_nr = 0;\n\n\t\tfor (unsigned i = 0; i < nr; i++) {\n\t\t\tu64 entry_nr = le64_to_cpu(journal_buckets_v2->d[i].nr);\n\n\t\t\tif (total_nr + entry_nr < total_nr ||\n\t\t\t    total_nr + entry_nr > UINT_MAX)\n\t\t\t\treturn -BCH_ERR_ENOMEM_dev_journal_init;\n\t\t\ttotal_nr += entry_nr;\n\t\t}\n\t\tja->nr = total_nr;\n\t} else if (journal_buckets) {\n",
+          "before": "\n\tif (journal_buckets_v2) {\n\t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n\n\t\tfor (unsigned i = 0; i < nr; i++)\n\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n\t} else if (journal_buckets) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/journal.c\n+++ /linux/fs/bcachefs/journal.c\n@@ -1310,3 +1310,11 @@\n-\n-\t\tfor (unsigned i = 0; i < nr; i++)\n-\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\t\tu64 total_nr = 0;\n+\n+\t\tfor (unsigned i = 0; i < nr; i++) {\n+\t\t\tu64 entry_nr = le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\n+\t\t\tif (total_nr + entry_nr < total_nr ||\n+\t\t\t    total_nr + entry_nr > UINT_MAX)\n+\t\t\t\treturn -BCH_ERR_ENOMEM_dev_journal_init;\n+\t\t\ttotal_nr += entry_nr;\n+\t\t}\n+\t\tja->nr = total_nr;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 37",
+          "filename": "fs/bcachefs/journal.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 0,
+      "start_step": 37
+    }
+  ],
+  "success_step": 37
+}

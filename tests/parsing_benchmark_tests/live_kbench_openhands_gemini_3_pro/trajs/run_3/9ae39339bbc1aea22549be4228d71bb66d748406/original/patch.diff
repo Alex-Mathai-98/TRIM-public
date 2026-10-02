@@ -1,0 +1,21 @@
+diff --git a/net/tipc/udp_media.c b/net/tipc/udp_media.c
+index b7e25e7e9933..d04978bbb073 100644
+--- a/net/tipc/udp_media.c
++++ b/net/tipc/udp_media.c
+@@ -815,9 +815,13 @@ static void cleanup_bearer(struct work_struct *work)
+ 	}
+ 
+ 	dst_cache_destroy(&ub->rcast.dst_cache);
+-	udp_tunnel_sock_release(ub->ubsock);
+-	synchronize_net();
+-	atomic_dec(&tipc_net(sock_net(ub->ubsock->sk))->wq_count);
++	if (ub->ubsock->sk) {
++		struct tipc_net *tn = tipc_net(sock_net(ub->ubsock->sk));
++
++		udp_tunnel_sock_release(ub->ubsock);
++		synchronize_net();
++		atomic_dec(&tn->wq_count);
++	}
+ 	kfree(ub);
+ }
+ 

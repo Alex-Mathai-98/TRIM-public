@@ -1,0 +1,78 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 5cf698785fae..d09f0ed1fed2 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -916,11 +916,33 @@ static int ocfs2_validate_extent_block(struct super_block *sb,
+ 		goto bail;
+ 	}
+ 
+-	if (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation)
++	if (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation) {
+ 		rc = ocfs2_error(sb,
+ 				 "Extent block #%llu has an invalid h_fs_generation of #%u\n",
+ 				 (unsigned long long)bh->b_blocknr,
+ 				 le32_to_cpu(eb->h_fs_generation));
++		goto bail;
++	}
++
++	if (le16_to_cpu(eb->h_list.l_next_free_rec) >
++	    le16_to_cpu(eb->h_list.l_count)) {
++		rc = ocfs2_error(sb,
++				 "Extent block #%llu has next_free_rec %u > count %u\n",
++				 (unsigned long long)bh->b_blocknr,
++				 le16_to_cpu(eb->h_list.l_next_free_rec),
++				 le16_to_cpu(eb->h_list.l_count));
++		goto bail;
++	}
++
++	if (le16_to_cpu(eb->h_list.l_count) > (sb->s_blocksize -
++			offsetof(struct ocfs2_extent_block, h_list.l_recs)) /
++			sizeof(struct ocfs2_extent_rec)) {
++		rc = ocfs2_error(sb, "Extent block #%llu has too many records: %u\n",
++				 (unsigned long long)bh->b_blocknr,
++				 le16_to_cpu(eb->h_list.l_count));
++		goto bail;
++	}
++
+ bail:
+ 	return rc;
+ }
+diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
+index cd3173062ae3..c5c91deb5582 100644
+--- a/fs/ocfs2/inode.c
++++ b/fs/ocfs2/inode.c
+@@ -1416,6 +1416,34 @@ int ocfs2_validate_inode_block(struct super_block *sb,
+ 		goto bail;
+ 	}
+ 
++	if (!(di->i_flags & cpu_to_le32(OCFS2_SUPER_BLOCK_FL |
++					OCFS2_LOCAL_ALLOC_FL |
++					OCFS2_CHAIN_FL |
++					OCFS2_DEALLOC_FL)) &&
++	    !(le16_to_cpu(di->i_dyn_features) & OCFS2_INLINE_DATA_FL) &&
++	    !(S_ISLNK(le16_to_cpu(di->i_mode)) && !le32_to_cpu(di->i_clusters))) {
++		struct ocfs2_extent_list *el = &di->id2.i_list;
++
++		if (le16_to_cpu(el->l_next_free_rec) >
++		    le16_to_cpu(el->l_count)) {
++			rc = ocfs2_error(sb,
++					 "Invalid dinode #%llu: next_free_rec %u > count %u\n",
++					 (unsigned long long)bh->b_blocknr,
++					 le16_to_cpu(el->l_next_free_rec),
++					 le16_to_cpu(el->l_count));
++			goto bail;
++		}
++
++		if (le16_to_cpu(el->l_count) > (sb->s_blocksize -
++				offsetof(struct ocfs2_dinode, id2.i_list.l_recs)) /
++				sizeof(struct ocfs2_extent_rec)) {
++			rc = ocfs2_error(sb, "Invalid dinode #%llu: too many records: %u\n",
++					 (unsigned long long)bh->b_blocknr,
++					 le16_to_cpu(el->l_count));
++			goto bail;
++		}
++	}
++
+ 	rc = 0;
+ 
+ bail:

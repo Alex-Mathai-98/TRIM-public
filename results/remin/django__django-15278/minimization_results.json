@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-15278",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/sqlite3/schema.py",
+        "before": "    def add_field(self, model, field):\n        \"\"\"Create a field on a model.\"\"\"\n        # Fields with default values cannot by handled by ALTER TABLE ADD\n        # COLUMN statement because DROP DEFAULT is not supported in\n        # ALTER TABLE.\n        if not field.null or self.effective_default(field) is not None:\n            self._remake_table(model, create_field=field)\n        else:\n            super().add_field(model, field)",
+        "after": "    def add_field(self, model, field):\n        \"\"\"Create a field on a model.\"\"\"\n        # Fields with default values cannot by handled by ALTER TABLE ADD\n        # COLUMN statement because DROP DEFAULT is not supported in\n        # ALTER TABLE.\n        # Unique fields cannot be added with ALTER TABLE ADD COLUMN either\n        # because SQLite doesn't support adding UNIQUE columns.\n        if not field.null or self.effective_default(field) is not None or field.unique:\n            self._remake_table(model, create_field=field)\n        else:\n            super().add_field(model, field)",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/sqlite3/schema.py b/django/db/backends/sqlite3/schema.py\nindex 6752a8e3c0..444a9bb1fe 100644\n--- a/django/db/backends/sqlite3/schema.py\n+++ b/django/db/backends/sqlite3/schema.py\n@@ -327,7 +327,9 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):\n         # Fields with default values cannot by handled by ALTER TABLE ADD\n         # COLUMN statement because DROP DEFAULT is not supported in\n         # ALTER TABLE.\n-        if not field.null or self.effective_default(field) is not None:\n+        # Unique fields cannot be added with ALTER TABLE ADD COLUMN either\n+        # because SQLite doesn't support adding UNIQUE columns.\n+        if not field.null or self.effective_default(field) is not None or field.unique:\n             self._remake_table(model, create_field=field)\n         else:\n             super().add_field(model, field)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/sqlite3/schema.py",
+          "before": "    def add_field(self, model, field):\n        \"\"\"Create a field on a model.\"\"\"\n        # Fields with default values cannot by handled by ALTER TABLE ADD\n        # COLUMN statement because DROP DEFAULT is not supported in\n        # ALTER TABLE.\n        if not field.null or self.effective_default(field) is not None:\n            self._remake_table(model, create_field=field)\n        else:\n            super().add_field(model, field)",
+          "after": "    def add_field(self, model, field):\n        \"\"\"Create a field on a model.\"\"\"\n        # Fields with default values cannot by handled by ALTER TABLE ADD\n        # COLUMN statement because DROP DEFAULT is not supported in\n        # ALTER TABLE.\n        # Unique fields cannot be added with ALTER TABLE ADD COLUMN either\n        # because SQLite doesn't support adding UNIQUE columns.\n        if not field.null or self.effective_default(field) is not None or field.unique:\n            self._remake_table(model, create_field=field)\n        else:\n            super().add_field(model, field)",
+          "explanation": "classic_swe step 19 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 138,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 138,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/backends/sqlite3/schema.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/backends/sqlite3/schema.py"
+    ],
+    "gold_files": [
+      "django/db/backends/sqlite3/schema.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 3,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 9,
+    "gold_deleted_lines": 4
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

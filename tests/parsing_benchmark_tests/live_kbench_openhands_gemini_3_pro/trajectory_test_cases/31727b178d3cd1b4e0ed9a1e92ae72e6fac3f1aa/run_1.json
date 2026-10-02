@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (sleepable || link->type == BPF_LINK_TYPE_RAW_TRACEPOINT)\n\t\t\tcall_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);\n\t\telse\n\t\t\tcall_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);",
+          "before": "\t\tif (sleepable)\n\t\t\tcall_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);\n\t\telse\n\t\t\tcall_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/syscall.c\n+++ /linux/kernel/bpf/syscall.c\n@@ -3013 +3013 @@\n-\t\tif (sleepable)\n+\t\tif (sleepable || link->type == BPF_LINK_TYPE_RAW_TRACEPOINT)",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 129",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 129
+        }
+      ],
+      "end_step": 129,
+      "revision_index": 0,
+      "start_step": 129
+    },
+    {
+      "edits": [
+        {
+          "after": "\nstatic void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)\n{\n\tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n\n\tif (link->prog)\n\t\tbpf_prog_put(link->prog);\n\t/* free bpf_link and its containing memory */\n\tlink->ops->dealloc_deferred(link);\n}\n",
+          "before": "\nstatic void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)\n{\n\tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n\n\t/* free bpf_link and its containing memory */\n\tlink->ops->dealloc_deferred(link);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/syscall.c\n+++ /linux/kernel/bpf/syscall.c\n@@ -2982,0 +2983,2 @@\n+\tif (link->prog)\n+\t\tbpf_prog_put(link->prog);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 151",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 151
+        },
+        {
+          "after": "\n\tif (link->prog) {\n\t\tsleepable = link->prog->sleepable;\n\t\t/* detach BPF program, clean up used resources */\n\t\tops->release(link);\n\t}\n\tif (ops->dealloc_deferred) {\n\t\t/* schedule BPF link deallocation; if underlying BPF program\n\t\t * is sleepable, we need to first wait for RCU tasks trace\n\t\t * sync, then go through \"classic\" RCU grace period\n\t\t */\n\t\tif (sleepable || link->type == BPF_LINK_TYPE_RAW_TRACEPOINT)\n\t\t\tcall_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);\n\t\telse\n\t\t\tcall_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);\n\t} else if (ops->dealloc) {\n\t\tif (link->prog)\n\t\t\tbpf_prog_put(link->prog);\n\t\tops->dealloc(link);\n\t}\n",
+          "before": "\n\tif (link->prog) {\n\t\tsleepable = link->prog->sleepable;\n\t\t/* detach BPF program, clean up used resources */\n\t\tops->release(link);\n\t\tbpf_prog_put(link->prog);\n\t}\n\tif (ops->dealloc_deferred) {\n\t\t/* schedule BPF link deallocation; if underlying BPF program\n\t\t * is sleepable, we need to first wait for RCU tasks trace\n\t\t * sync, then go through \"classic\" RCU grace period\n\t\t */\n\t\tif (sleepable || link->type == BPF_LINK_TYPE_RAW_TRACEPOINT)\n\t\t\tcall_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);\n\t\telse\n\t\t\tcall_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);\n\t} else if (ops->dealloc)\n\t\tops->dealloc(link);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/syscall.c\n+++ /linux/kernel/bpf/syscall.c\n@@ -3008 +3007,0 @@\n-\t\tbpf_prog_put(link->prog);\n@@ -3019 +3018,3 @@\n-\t} else if (ops->dealloc)\n+\t} else if (ops->dealloc) {\n+\t\tif (link->prog)\n+\t\t\tbpf_prog_put(link->prog);\n@@ -3020,0 +3022 @@\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 154",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 154
+        }
+      ],
+      "end_step": 154,
+      "revision_index": 1,
+      "start_step": 151
+    }
+  ],
+  "success_step": 154
+}

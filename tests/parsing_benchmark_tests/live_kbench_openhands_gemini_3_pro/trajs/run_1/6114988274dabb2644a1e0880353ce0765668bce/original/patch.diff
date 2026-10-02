@@ -1,0 +1,43 @@
+diff --git a/kernel/futex/requeue.c b/kernel/futex/requeue.c
+index c716a66f8692..613c87f26d44 100644
+--- a/kernel/futex/requeue.c
++++ b/kernel/futex/requeue.c
+@@ -244,9 +244,26 @@ void requeue_pi_wake_futex(struct futex_q *q, union futex_key *key,
+ 	q->drop_hb_ref = true;
+ 	q->lock_ptr = &hb->lock;
+ 
++	struct task_struct *task = q->task;
++
++	/*
++	 * The waiter calls futex_requeue_pi_wakeup_sync() which waits for
++	 * q->requeue_state != Q_REQUEUE_PI_IN_PROGRESS.
++	 *
++	 * As soon as we call futex_requeue_pi_complete(), the waiter can
++	 * define the stack frame of 'q' invalid. So we must cache q->task
++	 * before calling futex_requeue_pi_complete().
++	 */
++	if (task)
++		get_task_struct(task);
++
+ 	/* Signal locked state to the waiter */
+ 	futex_requeue_pi_complete(q, 1);
+-	wake_up_state(q->task, TASK_NORMAL);
++
++	if (task) {
++		wake_up_state(task, TASK_NORMAL);
++		put_task_struct(task);
++	}
+ }
+ 
+ /**
+@@ -305,6 +322,10 @@ futex_proxy_trylock_atomic(u32 __user *pifutex, struct futex_hash_bucket *hb1,
+ 	if (!top_waiter)
+ 		return 0;
+ 
++	/* Ensure we have a task value for the waiter */
++	if (WARN_ON_ONCE(!top_waiter->task))
++		return -EFAULT;
++
+ 	/*
+ 	 * Ensure that this is a waiter sitting in futex_wait_requeue_pi()
+ 	 * and waiting on the 'waitqueue' futex which is always !PI.

@@ -1,0 +1,195 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));\n\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);",
+          "before": "\t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/huge_memory.c b/mm/huge_memory.c\nindex 3ca89e0279a7..eaa40f04b1b9 100644\n--- a/mm/huge_memory.c\n+++ b/mm/huge_memory.c\n@@ -1600,6 +1600,8 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,\n \t\t * able to wrongly write to the backend MMIO.\n \t\t */\n \t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));\n+\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n+\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);\n \t\tgoto set_pmd;\n \t}",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t * able to wrongly write to the backend MMIO.\n\t\t */\n\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);\n\t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));",
+          "before": "\t\t * able to wrongly write to the backend MMIO.\n\t\t */\n\t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/huge_memory.c b/mm/huge_memory.c\nindex 3ca89e0279a7..5878ae08ecad 100644\n--- a/mm/huge_memory.c\n+++ b/mm/huge_memory.c\n@@ -1599,7 +1599,11 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,\n \t\t * applied special bit, or we made the PRIVATE mapping be\n \t\t * able to wrongly write to the backend MMIO.\n \t\t */\n+\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n+\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);\n \t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));\n+\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n+\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);\n \t\tgoto set_pmd;\n \t}",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 1,
+      "start_step": 37
+    },
+    {
+      "edits": [
+        {
+          "after": "if (unlikely(pmd_present(pmd) && pmd_special(pmd))) {",
+          "before": "if (unlikely(pmd_special(pmd))) {",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace_once_per_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/huge_memory.c b/mm/huge_memory.c\nindex 3ca89e0279a7..f9e32ba9a8e2 100644\n--- a/mm/huge_memory.c\n+++ b/mm/huge_memory.c\n@@ -1586,7 +1586,7 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,\n \tint ret = -ENOMEM;\n \n \tpmd = pmdp_get_lockless(src_pmd);\n-\tif (unlikely(pmd_special(pmd))) {\n+\tif (unlikely(pmd_present(pmd) && pmd_special(pmd))) {\n \t\tdst_ptl = pmd_lock(dst_mm, dst_pmd);\n \t\tsrc_ptl = pmd_lockptr(src_mm, src_pmd);\n \t\tspin_lock_nested(src_ptl, SINGLE_DEPTH_NESTING);\n@@ -1599,7 +1599,11 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,\n \t\t * applied special bit, or we made the PRIVATE mapping be\n \t\t * able to wrongly write to the backend MMIO.\n \t\t */\n+\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n+\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);\n \t\tVM_WARN_ON_ONCE(is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd));\n+\t\tif (is_cow_mapping(src_vma->vm_flags) && pmd_write(pmd))\n+\t\t\tpr_err(\"Debugging: pmd_val=%lx flags=%lx file=%p\\n\", pmd_val(pmd), src_vma->vm_flags, src_vma->vm_file);\n \t\tgoto set_pmd;\n \t}",
+          "explanation": "classic_swe step 46 sed s #1",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 50 sed d #1",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1606,
+          "step_index": 50
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 50 sed d #2",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1605,
+          "step_index": 50
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 50 sed d #3",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1603,
+          "step_index": 50
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/huge_memory.c b/mm/huge_memory.c\nindex 3ca89e0279a7..87b49ecc7b1e 100644\n--- a/mm/huge_memory.c\n+++ b/mm/huge_memory.c\n@@ -1586,7 +1586,7 @@ int copy_huge_pmd(struct mm_struct *dst_mm, struct mm_struct *src_mm,\n \tint ret = -ENOMEM;\n \n \tpmd = pmdp_get_lockless(src_pmd);\n-\tif (unlikely(pmd_special(pmd))) {\n+\tif (unlikely(pmd_present(pmd) && pmd_special(pmd))) {\n \t\tdst_ptl = pmd_lock(dst_mm, dst_pmd);\n \t\tsrc_ptl = pmd_lockptr(src_mm, src_pmd);\n \t\tspin_lock_nested(src_ptl, SINGLE_DEPTH_NESTING);",
+          "explanation": "classic_swe step 50 sed d #4",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1602,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "revision_index": 2,
+      "start_step": 46
+    }
+  ],
+  "success_step": 50
+}

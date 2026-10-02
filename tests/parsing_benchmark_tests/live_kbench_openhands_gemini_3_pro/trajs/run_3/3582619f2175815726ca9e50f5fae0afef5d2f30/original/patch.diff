@@ -1,0 +1,110 @@
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index 1e567fff6f23..c65c7a229126 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -20073,7 +20073,12 @@ static int do_check(struct bpf_verifier_env *env)
+ 			 * to document this in case nospec_result is used
+ 			 * elsewhere in the future.
+ 			 */
+-			WARN_ON_ONCE(env->insn_idx != prev_insn_idx + 1);
++			if (env->insn_idx != prev_insn_idx + 1) {
++				struct bpf_insn *prev_insn = &env->prog->insnsi[prev_insn_idx];
++
++				WARN_ON_ONCE(env->insn_idx != prev_insn_idx + 2 ||
++					     prev_insn->code != (BPF_LD | BPF_IMM | BPF_DW));
++			}
+ process_bpf_exit:
+ 			mark_verifier_state_scratched(env);
+ 			err = update_branch_counts(env, env->cur_state);
+diff --git a/reproduce_crash.c b/reproduce_crash.c
+new file mode 100644
+index 000000000000..f66c87187b36
+--- /dev/null
++++ b/reproduce_crash.c
+@@ -0,0 +1,86 @@
++
++#define _GNU_SOURCE
++#include <unistd.h>
++#include <stdlib.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++#include <sys/syscall.h>
++#include <linux/bpf.h>
++#include <errno.h>
++
++/* Wrapper for bpf syscall */
++static int bpf(int cmd, union bpf_attr *attr, unsigned int size)
++{
++    return syscall(__NR_bpf, cmd, attr, size);
++}
++
++int main(void)
++{
++    /* 1. Create a map */
++    union bpf_attr map_attr = {
++        .map_type = BPF_MAP_TYPE_ARRAY,
++        .key_size = 4,
++        .value_size = 8,
++        .max_entries = 1,
++    };
++    int map_fd = bpf(BPF_MAP_CREATE, &map_attr, sizeof(map_attr));
++    if (map_fd < 0) {
++        perror("map_create");
++        // exit(1);
++    }
++
++    /* 2. Load program */
++    /*
++     * Instructions from reproducer:
++     * 18 00 00 00 00 00 00 00  -- ld_imm64 r0, 0
++     * 00 00 00 00 00 00 00 00  -- (part 2)
++     * b7 08 00 00 00 00 00 00  -- mov r8, 0
++     * 7b 8a f8 ff 00 00 00 00  -- *(u64*)(r10 - 8) = r8
++     * 95 00 00 00 00 00 00 00  -- exit
++     */
++    
++    /* SYZ reproducer instructions seem truncated in description, but let's try to reconstruct/guess.
++       syzbot: r0 = bpf$MAP_CREATE_CONST_STR(...)
++       bpf$PROG_LOAD(0x5, ...
++       Instructions:
++       0: 18 00 00 00 00 00 00 00
++       1: 00 00 00 00 00 00 00 00
++       2: b7 08 00 00 00 00 00 00
++       3: 7b 8a f8 ff 00 00 00 00
++       
++       We should add an exit instruction.
++       4: 95 00 00 00 00 00 00 00
++    */
++
++    struct bpf_insn insns[] = {
++        { .code = BPF_LD | BPF_IMM | BPF_DW, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },
++        { .code = 0, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },
++        { .code = BPF_ALU64 | BPF_MOV | BPF_K, .dst_reg = 8, .src_reg = 0, .off = 0, .imm = 0 },
++        { .code = BPF_STX | BPF_MEM | BPF_DW, .dst_reg = 10, .src_reg = 8, .off = -8, .imm = 0 },
++        { .code = BPF_JMP | BPF_EXIT, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },
++    };
++
++    union bpf_attr prog_attr = {
++        .prog_type = BPF_PROG_TYPE_TRACEPOINT, // 5
++        .insns = (uint64_t)insns,
++        .insn_cnt = sizeof(insns) / sizeof(insns[0]),
++        .license = (uint64_t)"GPL",
++    };
++    
++    // Note: syzbot sets log_level=0, but I might want to see logs if it fails without crashing
++    prog_attr.log_level = 1;
++    char log_buf[65535];
++    prog_attr.log_buf = (uint64_t)log_buf;
++    prog_attr.log_size = sizeof(log_buf);
++
++    int prog_fd = bpf(BPF_PROG_LOAD, &prog_attr, sizeof(prog_attr));
++    if (prog_fd < 0) {
++        printf("prog_load failed: %s\n", strerror(errno));
++        printf("Log:\n%s\n", log_buf);
++    } else {
++        printf("prog_load success\n");
++    }
++
++    return 0;
++}

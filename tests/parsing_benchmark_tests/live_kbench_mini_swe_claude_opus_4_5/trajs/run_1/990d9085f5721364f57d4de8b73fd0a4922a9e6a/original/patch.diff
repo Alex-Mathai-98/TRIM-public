@@ -1,0 +1,25 @@
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index a630b27a4cc6..2c592d4bff6e 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2253,6 +2253,20 @@ static int make_indexed_dir(handle_t *handle, struct ext4_filename *fname,
+ 	}
+ 	root = (struct dx_root *) bh->b_data;
+ 
++	/* Validate dot and dotdot before making dir indexed */
++	if (root->dot.name_len != 1 ||
++	    ext4_rec_len_from_disk(root->dot.rec_len, blocksize) !=
++	    ext4_dir_rec_len(1, NULL)) {
++		EXT4_ERROR_INODE(dir, "invalid '.' entry");
++		brelse(bh);
++		return -EFSCORRUPTED;
++	}
++	if (root->dotdot.name_len != 2) {
++		EXT4_ERROR_INODE(dir, "invalid '..' entry");
++		brelse(bh);
++		return -EFSCORRUPTED;
++	}
++
+ 	/* The 0th block becomes the root, move the dirents out */
+ 	fde = &root->dotdot;
+ 	de = (struct ext4_dir_entry_2 *)((char *)fde +

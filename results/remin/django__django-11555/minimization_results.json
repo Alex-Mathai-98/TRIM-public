@@ -1,0 +1,125 @@
+{
+  "bug_id": "django__django-11555",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/compiler.py",
+        "before": "    def find_ordering_name(self, name, opts, alias=None, default_order='ASC',\n                           already_seen=None):\n        \"\"\"\n        Return the table alias (the name might be ambiguous, the alias will\n        not be) and column name for ordering by the given 'name' parameter.\n        The 'name' is of the form 'field1__field2__...__fieldN'.\n        \"\"\"\n        name, order = get_order_dir(name, default_order)\n        descending = order == 'DESC'\n        pieces = name.split(LOOKUP_SEP)",
+        "after": "    def find_ordering_name(self, name, opts, alias=None, default_order='ASC',\n                           already_seen=None):\n        \"\"\"\n        Return the table alias (the name might be ambiguous, the alias will\n        not be) and column name for ordering by the given 'name' parameter.\n        The 'name' is of the form 'field1__field2__...__fieldN'.\n        \"\"\"\n        # Handle OrderBy and other expression objects\n        if hasattr(name, 'resolve_expression'):\n            # For OrderBy objects and other expressions, return them as-is\n            # since they already contain the ordering information\n            return [(name, False)]\n        \n        name, order = get_order_dir(name, default_order)\n        descending = order == 'DESC'\n        pieces = name.split(LOOKUP_SEP)",
+        "explanation": "classic_swe step 55 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/compiler.py b/django/db/models/sql/compiler.py\nindex eaccc96d7d..3c172dc64b 100644\n--- a/django/db/models/sql/compiler.py\n+++ b/django/db/models/sql/compiler.py\n@@ -704,6 +704,12 @@ class SQLCompiler:\n         not be) and column name for ordering by the given 'name' parameter.\n         The 'name' is of the form 'field1__field2__...__fieldN'.\n         \"\"\"\n+        # Handle OrderBy and other expression objects\n+        if hasattr(name, 'resolve_expression'):\n+            # For OrderBy objects and other expressions, return them as-is\n+            # since they already contain the ordering information\n+            return [(name, False)]\n+        \n         name, order = get_order_dir(name, default_order)\n         descending = order == 'DESC'\n         pieces = name.split(LOOKUP_SEP)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      8,
+      9,
+      10
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 2,
+    "node_list_after_phase1": [
+      1
+    ],
+    "node_list_after_phase2": [
+      1
+    ],
+    "node_refinement_passes": 0,
+    "node_list_after_refinement": [
+      1
+    ],
+    "edit_list_after_node_min": [
+      10
+    ],
+    "edit_list_after_file_min": [
+      10
+    ],
+    "edit_list_after_greedy": [
+      10
+    ],
+    "edit_list_after_refinement": [
+      10
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 1,
+  "reduction": "3_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "from django.db.models.expressions import (\n    BaseExpression, Col, F, OuterRef, Ref, SimpleCol,\n)",
+          "after": "from django.db.models.expressions import (\n    BaseExpression, Col, F, OrderBy, OuterRef, Ref, SimpleCol,\n)",
+          "explanation": "classic_swe step 48 #1"
+        },
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "def get_order_dir(field, default='ASC'):\n    \"\"\"\n    Return the field name and direction for an order specification. For\n    example, '-foo' is returned as ('foo', 'DESC').\n\n    The 'default' param is used to indicate which way no prefix (or a '+'\n    prefix) should sort. The '-' prefix always sorts the opposite way.\n    \"\"\"\n    dirn = ORDER_DIR[default]\n    if field[0] == '-':\n        return field[1:], dirn[1]\n    return field, dirn[0]",
+          "after": "def get_order_dir(field, default='ASC'):\n    \"\"\"\n    Return the field name and direction for an order specification. For\n    example, '-foo' is returned as ('foo', 'DESC').\n\n    The 'default' param is used to indicate which way no prefix (or a '+'\n    prefix) should sort. The '-' prefix always sorts the opposite way.\n    \"\"\"\n    # Handle OrderBy and other expression objects\n    if hasattr(field, 'resolve_expression'):\n        # For OrderBy objects and other expressions, return them as-is\n        # since they already contain the ordering information\n        return field, default\n    \n    dirn = ORDER_DIR[default]\n    if field[0] == '-':\n        return field[1:], dirn[1]\n    return field, dirn[0]",
+          "explanation": "classic_swe step 49 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/compiler.py",
+          "before": "    def find_ordering_name(self, name, opts, alias=None, default_order='ASC',\n                           already_seen=None):\n        \"\"\"\n        Return the table alias (the name might be ambiguous, the alias will\n        not be) and column name for ordering by the given 'name' parameter.\n        The 'name' is of the form 'field1__field2__...__fieldN'.\n        \"\"\"\n        name, order = get_order_dir(name, default_order)\n        descending = order == 'DESC'\n        pieces = name.split(LOOKUP_SEP)",
+          "after": "    def find_ordering_name(self, name, opts, alias=None, default_order='ASC',\n                           already_seen=None):\n        \"\"\"\n        Return the table alias (the name might be ambiguous, the alias will\n        not be) and column name for ordering by the given 'name' parameter.\n        The 'name' is of the form 'field1__field2__...__fieldN'.\n        \"\"\"\n        # Handle OrderBy and other expression objects\n        if hasattr(name, 'resolve_expression'):\n            # For OrderBy objects and other expressions, return them as-is\n            # since they already contain the ordering information\n            return [(name, False)]\n        \n        name, order = get_order_dir(name, default_order)\n        descending = order == 'DESC'\n        pieces = name.split(LOOKUP_SEP)",
+          "explanation": "classic_swe step 55 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 26,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 26,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/compiler.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 6,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

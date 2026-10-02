@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu)\n{\n\tstruct ring_buffer_per_cpu *cpu_buffer;\n\n\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n\t\treturn -EINVAL;\n\n\tcpu_buffer = buffer->buffers[cpu];\n\n\tguard(mutex)(&cpu_buffer->mapping_lock);\n\n\tif (!cpu_buffer->user_mapped)\n\t\treturn -ENODEV;\n\n\treturn __rb_inc_dec_mapped(cpu_buffer, true);\n}\nEXPORT_SYMBOL_GPL(ring_buffer_map_vma_open);\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 1244d2c5c384..5e30970031d1 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7275,6 +7275,24 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \n \treturn err;\n }\n+int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu)\n+{\n+\tstruct ring_buffer_per_cpu *cpu_buffer;\n+\n+\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n+\t\treturn -EINVAL;\n+\n+\tcpu_buffer = buffer->buffers[cpu];\n+\n+\tguard(mutex)(&cpu_buffer->mapping_lock);\n+\n+\tif (!cpu_buffer->user_mapped)\n+\t\treturn -ENODEV;\n+\n+\treturn __rb_inc_dec_mapped(cpu_buffer, true);\n+}\n+EXPORT_SYMBOL_GPL(ring_buffer_map_vma_open);\n+\n \n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\n {",
+          "explanation": "classic_swe step 16 insert #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 7278,
+          "step_index": 16
+        },
+        {
+          "after": "int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu);",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/ring_buffer.h b/include/linux/ring_buffer.h\nindex 876358cfe1b1..7961d202cfa6 100644\n--- a/include/linux/ring_buffer.h\n+++ b/include/linux/ring_buffer.h\n@@ -248,6 +248,7 @@ int trace_rb_cpu_prepare(unsigned int cpu, struct hlist_node *node);\n \n int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t\t    struct vm_area_struct *vma);\n+int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu);\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu);\n int ring_buffer_map_get_reader(struct trace_buffer *buffer, int cpu);\n #endif /* _LINUX_RING_BUFFER_H */\ndiff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 1244d2c5c384..5e30970031d1 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7275,6 +7275,24 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \n \treturn err;\n }\n+int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu)\n+{\n+\tstruct ring_buffer_per_cpu *cpu_buffer;\n+\n+\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n+\t\treturn -EINVAL;\n+\n+\tcpu_buffer = buffer->buffers[cpu];\n+\n+\tguard(mutex)(&cpu_buffer->mapping_lock);\n+\n+\tif (!cpu_buffer->user_mapped)\n+\t\treturn -ENODEV;\n+\n+\treturn __rb_inc_dec_mapped(cpu_buffer, true);\n+}\n+EXPORT_SYMBOL_GPL(ring_buffer_map_vma_open);\n+\n \n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\n {",
+          "explanation": "classic_swe step 18 insert #1",
+          "filename": "include/linux/ring_buffer.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 251,
+          "step_index": 18
+        },
+        {
+          "after": "static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(get_snapshot_map(iter->tr));\n\tWARN_ON(ring_buffer_map_vma_open(iter->array_buffer->buffer, iter->cpu_file));\n}\n\nstatic void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(ring_buffer_unmap(iter->array_buffer->buffer, iter->cpu_file));\n\tput_snapshot_map(iter->tr);\n}\n\nstatic const struct vm_operations_struct tracing_buffers_vmops = {\n\t.open\t\t= tracing_buffers_mmap_open,\n\t.close\t\t= tracing_buffers_mmap_close,\n};",
+          "before": "static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n{\n\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n\tstruct trace_iterator *iter = &info->iter;\n\n\tWARN_ON(ring_buffer_unmap(iter->array_buffer->buffer, iter->cpu_file));\n\tput_snapshot_map(iter->tr);\n}\n\nstatic const struct vm_operations_struct tracing_buffers_vmops = {\n\t.close\t\t= tracing_buffers_mmap_close,\n};",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/ring_buffer.h b/include/linux/ring_buffer.h\nindex 876358cfe1b1..7961d202cfa6 100644\n--- a/include/linux/ring_buffer.h\n+++ b/include/linux/ring_buffer.h\n@@ -248,6 +248,7 @@ int trace_rb_cpu_prepare(unsigned int cpu, struct hlist_node *node);\n \n int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t\t    struct vm_area_struct *vma);\n+int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu);\n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu);\n int ring_buffer_map_get_reader(struct trace_buffer *buffer, int cpu);\n #endif /* _LINUX_RING_BUFFER_H */\ndiff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 1244d2c5c384..5e30970031d1 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7275,6 +7275,24 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \n \treturn err;\n }\n+int ring_buffer_map_vma_open(struct trace_buffer *buffer, int cpu)\n+{\n+\tstruct ring_buffer_per_cpu *cpu_buffer;\n+\n+\tif (!cpumask_test_cpu(cpu, buffer->cpumask))\n+\t\treturn -EINVAL;\n+\n+\tcpu_buffer = buffer->buffers[cpu];\n+\n+\tguard(mutex)(&cpu_buffer->mapping_lock);\n+\n+\tif (!cpu_buffer->user_mapped)\n+\t\treturn -ENODEV;\n+\n+\treturn __rb_inc_dec_mapped(cpu_buffer, true);\n+}\n+EXPORT_SYMBOL_GPL(ring_buffer_map_vma_open);\n+\n \n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\n {\ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex d1e527cf2aae..e47ee3c9478b 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -8772,6 +8772,15 @@ static inline int get_snapshot_map(struct trace_array *tr) { return 0; }\n static inline void put_snapshot_map(struct trace_array *tr) { }\n #endif\n \n+static void tracing_buffers_mmap_open(struct vm_area_struct *vma)\n+{\n+\tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n+\tstruct trace_iterator *iter = &info->iter;\n+\n+\tWARN_ON(get_snapshot_map(iter->tr));\n+\tWARN_ON(ring_buffer_map_vma_open(iter->array_buffer->buffer, iter->cpu_file));\n+}\n+\n static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n {\n \tstruct ftrace_buffer_info *info = vma->vm_file->private_data;\n@@ -8782,6 +8791,7 @@ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)\n }\n \n static const struct vm_operations_struct tracing_buffers_vmops = {\n+\t.open\t\t= tracing_buffers_mmap_open,\n \t.close\t\t= tracing_buffers_mmap_close,\n };",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "kernel/trace/trace.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 22
+}

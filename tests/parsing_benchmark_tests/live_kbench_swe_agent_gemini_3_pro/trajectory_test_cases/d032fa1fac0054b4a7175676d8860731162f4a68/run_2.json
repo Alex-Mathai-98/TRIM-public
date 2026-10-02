@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (size_changed) {\n\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n\t\t\t\t\t   lo->lo_backing_file);\n\t\tset_capacity(lo->lo_disk, new_size);\n\t}\n\n\t/* update the direct I/O flag if lo_offset changed */\n\tloop_update_dio(lo);\n\nout_unfreeze:\n\tblk_mq_unfreeze_queue(lo->lo_queue, memflags);\n\tif (partscan)\n\t\tclear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);\nout_unlock:\n\tmutex_unlock(&lo->lo_mutex);\n\tif (partscan)\n\t\tloop_reread_partitions(lo);\n\tif (!err && size_changed)\n\t\tkobject_uevent(&disk_to_dev(lo->lo_disk)->kobj, KOBJ_CHANGE);\n\n\treturn err;",
+          "before": "\tif (size_changed) {\n\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n\t\t\t\t\t   lo->lo_backing_file);\n\t\tloop_set_size(lo, new_size);\n\t}\n\n\t/* update the direct I/O flag if lo_offset changed */\n\tloop_update_dio(lo);\n\nout_unfreeze:\n\tblk_mq_unfreeze_queue(lo->lo_queue, memflags);\n\tif (partscan)\n\t\tclear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);\nout_unlock:\n\tmutex_unlock(&lo->lo_mutex);\n\tif (partscan)\n\t\tloop_reread_partitions(lo);\n\n\treturn err;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/block/loop.c b/drivers/block/loop.c\nindex f8d136684109..604be9423abc 100644\n--- a/drivers/block/loop.c\n+++ b/drivers/block/loop.c\n@@ -1251,7 +1251,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tif (size_changed) {\n \t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n \t\t\t\t\t   lo->lo_backing_file);\n-\t\tloop_set_size(lo, new_size);\n+\t\tset_capacity(lo->lo_disk, new_size);\n \t}\n \n \t/* update the direct I/O flag if lo_offset changed */\n@@ -1265,6 +1265,8 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tmutex_unlock(&lo->lo_mutex);\n \tif (partscan)\n \t\tloop_reread_partitions(lo);\n+\tif (!err && size_changed)\n+\t\tkobject_uevent(&disk_to_dev(lo->lo_disk)->kobj, KOBJ_CHANGE);\n \n \treturn err;\n }",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "drivers/block/loop.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 32
+    }
+  ],
+  "success_step": 32
+}

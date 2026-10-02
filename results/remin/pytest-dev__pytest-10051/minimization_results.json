@@ -1,0 +1,152 @@
+{
+  "bug_id": "pytest-dev__pytest-10051",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/logging.py",
+        "before": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        self.handler.reset()",
+        "after": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        # Store the old records list before reset\n        old_records = self.handler.records\n        self.handler.reset()\n        \n        # Update any stash entries that were pointing to the old records list\n        # to point to the new empty records list\n        records_dict = self._item.stash.get(caplog_records_key, {})\n        for when in records_dict:\n            if records_dict[when] is old_records:\n                records_dict[when] = self.handler.records",
+        "explanation": "classic_swe step 46 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex a4f4214b1..8bd43661c 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -440,7 +440,16 @@ class LogCaptureFixture:\n \n     def clear(self) -> None:\n         \"\"\"Reset the list of log records and the captured log text.\"\"\"\n+        # Store the old records list before reset\n+        old_records = self.handler.records\n         self.handler.reset()\n+        \n+        # Update any stash entries that were pointing to the old records list\n+        # to point to the new empty records list\n+        records_dict = self._item.stash.get(caplog_records_key, {})\n+        for when in records_dict:\n+            if records_dict[when] is old_records:\n+                records_dict[when] = self.handler.records\n \n     def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n         \"\"\"Set the level of a logger for the duration of a test.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      5,
+      6,
+      7,
+      10
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 2,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      3
+    ],
+    "node_list_after_phase2": [
+      3
+    ],
+    "node_refinement_passes": 0,
+    "node_list_after_refinement": [
+      3
+    ],
+    "edit_list_after_node_min": [
+      10
+    ],
+    "edit_list_after_file_min": [
+      10
+    ],
+    "edit_list_after_greedy": [
+      10
+    ],
+    "edit_list_after_refinement": [
+      10
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 1,
+  "reduction": "5_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def reset(self) -> None:\n        self.records = []\n        self.stream = StringIO()",
+          "after": "    def reset(self) -> None:\n        self.records.clear()\n        self.stream = StringIO()",
+          "explanation": "classic_swe step 14 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def reset(self) -> None:\n        self.records.clear()\n        self.stream = StringIO()",
+          "after": "    def reset(self) -> None:\n        self.records = []\n        self.stream = StringIO()",
+          "explanation": "classic_swe step 25 #1"
+        },
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        self.handler.reset()",
+          "after": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        self.handler.reset()\n        # Update the stash to point to the new records list\n        records_dict = self._item.stash.get(caplog_records_key, {})\n        for when, records_list in records_dict.items():\n            if records_list is not self.handler.records:\n                # Only update if this phase was pointing to the old records list\n                # We need to find which phase was pointing to the old list\n                pass\n        # Actually, we need to find the current phase and update only that\n        # For now, let's update all phases to point to the new empty list\n        for when in records_dict:\n            records_dict[when] = self.handler.records",
+          "explanation": "classic_swe step 35 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        self.handler.reset()\n        # Update the stash to point to the new records list\n        records_dict = self._item.stash.get(caplog_records_key, {})\n        for when, records_list in records_dict.items():\n            if records_list is not self.handler.records:\n                # Only update if this phase was pointing to the old records list\n                # We need to find which phase was pointing to the old list\n                pass\n        # Actually, we need to find the current phase and update only that\n        # For now, let's update all phases to point to the new empty list\n        for when in records_dict:\n            records_dict[when] = self.handler.records",
+          "after": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        self.handler.reset()",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        self.handler.reset()",
+          "after": "    def clear(self) -> None:\n        \"\"\"Reset the list of log records and the captured log text.\"\"\"\n        # Store the old records list before reset\n        old_records = self.handler.records\n        self.handler.reset()\n        \n        # Update any stash entries that were pointing to the old records list\n        # to point to the new empty records list\n        records_dict = self._item.stash.get(caplog_records_key, {})\n        for when in records_dict:\n            if records_dict[when] is old_records:\n                records_dict[when] = self.handler.records",
+          "explanation": "classic_swe step 46 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 15,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 15,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "src/_pytest/logging.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/logging.py"
+    ],
+    "gold_files": [
+      "src/_pytest/logging.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 3,
+    "minimized_added_lines": 9,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 5,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

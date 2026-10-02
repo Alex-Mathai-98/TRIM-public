@@ -1,0 +1,227 @@
+{
+  "bug_id": "sympy__sympy-20801",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+        "after": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not isinstance(other, Number):\n            # S(0.0) == S.false is False\n            # S(0.0) == False is True\n            return False\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not isinstance(other, Number):\n            # S(0.0) == S.false is False\n            # S(0.0) == False is True\n            return False\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+        "after": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            if not self:\n                return not other\n            return False\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not isinstance(other, Number):\n            # S(0.0) == S.false is False\n            return False\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+        "explanation": "classic_swe step 44 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            if not self:\n                return not other\n            return False",
+        "after": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Convert self to int for comparison if possible\n            try:\n                self_as_int = int(self)\n                return self_as_int == other\n            except (ValueError, OverflowError):\n                return False",
+        "explanation": "classic_swe step 50 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Convert self to int for comparison if possible\n            try:\n                self_as_int = int(self)\n                return self_as_int == other\n            except (ValueError, OverflowError):\n                return False",
+        "after": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Only compare if self is actually an integer value\n            try:\n                self_as_int = int(self)\n                # Check if the float is actually an integer (no fractional part)\n                if self == self_as_int:\n                    return self_as_int == other\n                else:\n                    return False\n            except (ValueError, OverflowError):\n                return False",
+        "explanation": "classic_swe step 56 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/core/numbers.py",
+        "before": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Only compare if self is actually an integer value\n            try:\n                self_as_int = int(self)\n                # Check if the float is actually an integer (no fractional part)\n                if self == self_as_int:\n                    return self_as_int == other\n                else:\n                    return False\n            except (ValueError, OverflowError):\n                return False",
+        "after": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Only compare if self is actually an integer value\n            try:\n                self_as_int = int(self)\n                # Check if the float is actually an integer (no fractional part)\n                # Use float comparison to avoid recursion\n                if float(self) == float(self_as_int):\n                    return self_as_int == other\n                else:\n                    return False\n            except (ValueError, OverflowError):\n                return False",
+        "explanation": "classic_swe step 58 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/core/numbers.py b/sympy/core/numbers.py\nindex 79f6a7d165..a46a09939c 100644\n--- a/sympy/core/numbers.py\n+++ b/sympy/core/numbers.py\n@@ -1382,10 +1382,26 @@ def __int__(self):\n \n     def __eq__(self, other):\n         from sympy.logic.boolalg import Boolean\n+        # Handle int/bool values before sympifying to match Integer behavior\n+        if isinstance(other, int):\n+            # Only compare if self is actually an integer value\n+            try:\n+                self_as_int = int(self)\n+                # Check if the float is actually an integer (no fractional part)\n+                # Use float comparison to avoid recursion\n+                if float(self) == float(self_as_int):\n+                    return self_as_int == other\n+                else:\n+                    return False\n+            except (ValueError, OverflowError):\n+                return False\n         try:\n             other = _sympify(other)\n         except SympifyError:\n             return NotImplemented\n+        if not isinstance(other, Number):\n+            # S(0.0) == S.false is False\n+            return False\n         if not self:\n             return not other\n         if isinstance(other, Boolean):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      9,
+      11,
+      14,
+      15
+    ],
+    "nodes_original_count": 5,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 4,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 3,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 4,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "edit_list_after_node_min": [
+      2,
+      9,
+      11,
+      14,
+      15
+    ],
+    "edit_list_after_file_min": [
+      2,
+      9,
+      11,
+      14,
+      15
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 8,
+    "edit_list_after_greedy": [
+      2,
+      9,
+      11,
+      14,
+      15
+    ],
+    "edit_list_after_refinement": [
+      2,
+      9,
+      11,
+      14,
+      15
+    ],
+    "edits_after_node_min": 5,
+    "edits_after_file_min": 5,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 5,
+  "reduction": "5_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+          "after": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not isinstance(other, Number):\n            # S(0.0) == S.false is False\n            # S(0.0) == False is True\n            return False\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+          "explanation": "classic_swe step 21 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not isinstance(other, Number):\n            # S(0.0) == S.false is False\n            # S(0.0) == False is True\n            return False\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+          "after": "    def __eq__(self, other):\n        from sympy.logic.boolalg import Boolean\n        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            if not self:\n                return not other\n            return False\n        try:\n            other = _sympify(other)\n        except SympifyError:\n            return NotImplemented\n        if not isinstance(other, Number):\n            # S(0.0) == S.false is False\n            return False\n        if not self:\n            return not other\n        if isinstance(other, Boolean):\n            return False",
+          "explanation": "classic_swe step 44 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            if not self:\n                return not other\n            return False",
+          "after": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Convert self to int for comparison if possible\n            try:\n                self_as_int = int(self)\n                return self_as_int == other\n            except (ValueError, OverflowError):\n                return False",
+          "explanation": "classic_swe step 50 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Convert self to int for comparison if possible\n            try:\n                self_as_int = int(self)\n                return self_as_int == other\n            except (ValueError, OverflowError):\n                return False",
+          "after": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Only compare if self is actually an integer value\n            try:\n                self_as_int = int(self)\n                # Check if the float is actually an integer (no fractional part)\n                if self == self_as_int:\n                    return self_as_int == other\n                else:\n                    return False\n            except (ValueError, OverflowError):\n                return False",
+          "explanation": "classic_swe step 56 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/core/numbers.py",
+          "before": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Only compare if self is actually an integer value\n            try:\n                self_as_int = int(self)\n                # Check if the float is actually an integer (no fractional part)\n                if self == self_as_int:\n                    return self_as_int == other\n                else:\n                    return False\n            except (ValueError, OverflowError):\n                return False",
+          "after": "        # Handle int/bool values before sympifying to match Integer behavior\n        if isinstance(other, int):\n            # Only compare if self is actually an integer value\n            try:\n                self_as_int = int(self)\n                # Check if the float is actually an integer (no fractional part)\n                # Use float comparison to avoid recursion\n                if float(self) == float(self_as_int):\n                    return self_as_int == other\n                else:\n                    return False\n            except (ValueError, OverflowError):\n                return False",
+          "explanation": "classic_swe step 58 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 96,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 96,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/core/numbers.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/core/numbers.py"
+    ],
+    "gold_files": [
+      "sympy/core/numbers.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 16,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

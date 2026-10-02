@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\troot = kernfs_root(kn);\n\tdown_read(&root->kernfs_rwsem);\n\n\tknparent = find_next_ancestor(kn, NULL);\n\tif (WARN_ON(!knparent)) {\n\t\tup_read(&root->kernfs_rwsem);\n\t\tdput(dentry);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\tup_read(&root->kernfs_rwsem);\n\n\tdo {\n\t\tstruct dentry *dtmp;\n\t\tstruct kernfs_node *kntmp;\n\t\tconst char *name;\n\t\tchar *name_copy;\n\n\t\tif (kn == knparent)\n\t\t\treturn dentry;\n\n\t\tdown_read(&root->kernfs_rwsem);\n\t\tkntmp = find_next_ancestor(kn, knparent);\n\t\tif (WARN_ON(!kntmp)) {\n\t\t\tup_read(&root->kernfs_rwsem);\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\t\tname = kernfs_rcu_name(kntmp);\n\t\tname_copy = kstrdup(name, GFP_KERNEL);\n\t\tif (!name_copy) {\n\t\t\tup_read(&root->kernfs_rwsem);\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t\t}\n\t\tup_read(&root->kernfs_rwsem);\n\n\t\tdtmp = lookup_positive_unlocked(name_copy, dentry, strlen(name_copy));\n\t\tkfree(name_copy);\n\t\tdput(dentry);\n\t\tif (IS_ERR(dtmp))\n\t\t\treturn dtmp;\n\t\tknparent = kntmp;\n\t\tdentry = dtmp;\n\t} while (true);",
+          "before": "\troot = kernfs_root(kn);\n\tguard(rwsem_read)(&root->kernfs_rwsem);\n\n\tknparent = find_next_ancestor(kn, NULL);\n\tif (WARN_ON(!knparent)) {\n\t\tdput(dentry);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\n\tdo {\n\t\tstruct dentry *dtmp;\n\t\tstruct kernfs_node *kntmp;\n\t\tconst char *name;\n\n\t\tif (kn == knparent)\n\t\t\treturn dentry;\n\t\tkntmp = find_next_ancestor(kn, knparent);\n\t\tif (WARN_ON(!kntmp)) {\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\t\tname = rcu_dereference(kntmp->name);\n\t\tdtmp = lookup_positive_unlocked(name, dentry, strlen(name));\n\t\tdput(dentry);\n\t\tif (IS_ERR(dtmp))\n\t\t\treturn dtmp;\n\t\tknparent = kntmp;\n\t\tdentry = dtmp;\n\t} while (true);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/kernfs/mount.c b/fs/kernfs/mount.c\nindex d1f512b7bf86..ef18dc29ce6f 100644\n--- a/fs/kernfs/mount.c\n+++ b/fs/kernfs/mount.c\n@@ -220,28 +220,43 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,\n \t\treturn dentry;\n \n \troot = kernfs_root(kn);\n-\tguard(rwsem_read)(&root->kernfs_rwsem);\n+\tdown_read(&root->kernfs_rwsem);\n \n \tknparent = find_next_ancestor(kn, NULL);\n \tif (WARN_ON(!knparent)) {\n+\t\tup_read(&root->kernfs_rwsem);\n \t\tdput(dentry);\n \t\treturn ERR_PTR(-EINVAL);\n \t}\n+\tup_read(&root->kernfs_rwsem);\n \n \tdo {\n \t\tstruct dentry *dtmp;\n \t\tstruct kernfs_node *kntmp;\n \t\tconst char *name;\n+\t\tchar *name_copy;\n \n \t\tif (kn == knparent)\n \t\t\treturn dentry;\n+\n+\t\tdown_read(&root->kernfs_rwsem);\n \t\tkntmp = find_next_ancestor(kn, knparent);\n \t\tif (WARN_ON(!kntmp)) {\n+\t\t\tup_read(&root->kernfs_rwsem);\n \t\t\tdput(dentry);\n \t\t\treturn ERR_PTR(-EINVAL);\n \t\t}\n-\t\tname = rcu_dereference(kntmp->name);\n-\t\tdtmp = lookup_positive_unlocked(name, dentry, strlen(name));\n+\t\tname = kernfs_rcu_name(kntmp);\n+\t\tname_copy = kstrdup(name, GFP_KERNEL);\n+\t\tif (!name_copy) {\n+\t\t\tup_read(&root->kernfs_rwsem);\n+\t\t\tdput(dentry);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\t\tup_read(&root->kernfs_rwsem);\n+\n+\t\tdtmp = lookup_positive_unlocked(name_copy, dentry, strlen(name_copy));\n+\t\tkfree(name_copy);\n \t\tdput(dentry);\n \t\tif (IS_ERR(dtmp))\n \t\t\treturn dtmp;",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/kernfs/mount.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 17
+}

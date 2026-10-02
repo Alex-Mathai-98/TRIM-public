@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <linux/mutex.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers/c6xdigio.c b/drivers/comedi/drivers/c6xdigio.c\nindex 14b90d1c64dc..917b11634b92 100644\n--- a/drivers/comedi/drivers/c6xdigio.c\n+++ b/drivers/comedi/drivers/c6xdigio.c\n@@ -31,6 +31,7 @@\n #include <linux/io.h>\n #include <linux/pnp.h>\n #include <linux/comedi/comedidev.h>\n+#include <linux/mutex.h>\n \n /*\n  * Register I/O map",
+          "explanation": "classic_swe step 17 insert #1",
+          "filename": "drivers/comedi/drivers/c6xdigio.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 34,
+          "step_index": 17
+        },
+        {
+          "after": "static DEFINE_MUTEX(c6xdigio_pnp_lock);\nstatic int c6xdigio_pnp_driver_refcount;",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers/c6xdigio.c b/drivers/comedi/drivers/c6xdigio.c\nindex 14b90d1c64dc..4bf78dc0bf7c 100644\n--- a/drivers/comedi/drivers/c6xdigio.c\n+++ b/drivers/comedi/drivers/c6xdigio.c\n@@ -31,6 +31,7 @@\n #include <linux/io.h>\n #include <linux/pnp.h>\n #include <linux/comedi/comedidev.h>\n+#include <linux/mutex.h>\n \n /*\n  * Register I/O map\n@@ -234,6 +235,8 @@ static struct pnp_driver c6xdigio_pnp_driver = {\n \t.name = \"c6xdigio\",\n \t.id_table = c6xdigio_pnp_tbl,\n };\n+static DEFINE_MUTEX(c6xdigio_pnp_lock);\n+static int c6xdigio_pnp_driver_refcount;\n \n static int c6xdigio_attach(struct comedi_device *dev,\n \t\t\t   struct comedi_devconfig *it)",
+          "explanation": "classic_swe step 18 insert #1",
+          "filename": "drivers/comedi/drivers/c6xdigio.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 238,
+          "step_index": 18
+        },
+        {
+          "after": "\t/*  Make sure that PnP ports get activated */\n\tmutex_lock(&c6xdigio_pnp_lock);\n\tif (c6xdigio_pnp_driver_refcount == 0) {\n\t\tret = pnp_register_driver(&c6xdigio_pnp_driver);\n\t\tif (ret < 0) {\n\t\t\tmutex_unlock(&c6xdigio_pnp_lock);\n\t\t\treturn ret;\n\t\t}\n\t}\n\tc6xdigio_pnp_driver_refcount++;\n\tmutex_unlock(&c6xdigio_pnp_lock);",
+          "before": "\t/*  Make sure that PnP ports get activated */\n\tpnp_register_driver(&c6xdigio_pnp_driver);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers/c6xdigio.c b/drivers/comedi/drivers/c6xdigio.c\nindex 14b90d1c64dc..37c23582e5f2 100644\n--- a/drivers/comedi/drivers/c6xdigio.c\n+++ b/drivers/comedi/drivers/c6xdigio.c\n@@ -31,6 +31,7 @@\n #include <linux/io.h>\n #include <linux/pnp.h>\n #include <linux/comedi/comedidev.h>\n+#include <linux/mutex.h>\n \n /*\n  * Register I/O map\n@@ -234,6 +235,8 @@ static struct pnp_driver c6xdigio_pnp_driver = {\n \t.name = \"c6xdigio\",\n \t.id_table = c6xdigio_pnp_tbl,\n };\n+static DEFINE_MUTEX(c6xdigio_pnp_lock);\n+static int c6xdigio_pnp_driver_refcount;\n \n static int c6xdigio_attach(struct comedi_device *dev,\n \t\t\t   struct comedi_devconfig *it)\n@@ -250,7 +253,16 @@ static int c6xdigio_attach(struct comedi_device *dev,\n \t\treturn ret;\n \n \t/*  Make sure that PnP ports get activated */\n-\tpnp_register_driver(&c6xdigio_pnp_driver);\n+\tmutex_lock(&c6xdigio_pnp_lock);\n+\tif (c6xdigio_pnp_driver_refcount == 0) {\n+\t\tret = pnp_register_driver(&c6xdigio_pnp_driver);\n+\t\tif (ret < 0) {\n+\t\t\tmutex_unlock(&c6xdigio_pnp_lock);\n+\t\t\treturn ret;\n+\t\t}\n+\t}\n+\tc6xdigio_pnp_driver_refcount++;\n+\tmutex_unlock(&c6xdigio_pnp_lock);\n \n \ts = &dev->subdevices[0];\n \t/* pwm output subdevice */",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "drivers/comedi/drivers/c6xdigio.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "\tmutex_lock(&c6xdigio_pnp_lock);\n\tif (c6xdigio_pnp_driver_refcount > 0) {\n\t\tc6xdigio_pnp_driver_refcount--;\n\t\tif (c6xdigio_pnp_driver_refcount == 0)\n\t\t\tpnp_unregister_driver(&c6xdigio_pnp_driver);\n\t}\n\tmutex_unlock(&c6xdigio_pnp_lock);",
+          "before": "\tpnp_unregister_driver(&c6xdigio_pnp_driver);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers/c6xdigio.c b/drivers/comedi/drivers/c6xdigio.c\nindex 14b90d1c64dc..14dd51677bab 100644\n--- a/drivers/comedi/drivers/c6xdigio.c\n+++ b/drivers/comedi/drivers/c6xdigio.c\n@@ -31,6 +31,7 @@\n #include <linux/io.h>\n #include <linux/pnp.h>\n #include <linux/comedi/comedidev.h>\n+#include <linux/mutex.h>\n \n /*\n  * Register I/O map\n@@ -234,6 +235,8 @@ static struct pnp_driver c6xdigio_pnp_driver = {\n \t.name = \"c6xdigio\",\n \t.id_table = c6xdigio_pnp_tbl,\n };\n+static DEFINE_MUTEX(c6xdigio_pnp_lock);\n+static int c6xdigio_pnp_driver_refcount;\n \n static int c6xdigio_attach(struct comedi_device *dev,\n \t\t\t   struct comedi_devconfig *it)\n@@ -250,7 +253,16 @@ static int c6xdigio_attach(struct comedi_device *dev,\n \t\treturn ret;\n \n \t/*  Make sure that PnP ports get activated */\n-\tpnp_register_driver(&c6xdigio_pnp_driver);\n+\tmutex_lock(&c6xdigio_pnp_lock);\n+\tif (c6xdigio_pnp_driver_refcount == 0) {\n+\t\tret = pnp_register_driver(&c6xdigio_pnp_driver);\n+\t\tif (ret < 0) {\n+\t\t\tmutex_unlock(&c6xdigio_pnp_lock);\n+\t\t\treturn ret;\n+\t\t}\n+\t}\n+\tc6xdigio_pnp_driver_refcount++;\n+\tmutex_unlock(&c6xdigio_pnp_lock);\n \n \ts = &dev->subdevices[0];\n \t/* pwm output subdevice */\n@@ -281,7 +293,13 @@ static int c6xdigio_attach(struct comedi_device *dev,\n static void c6xdigio_detach(struct comedi_device *dev)\n {\n \tcomedi_legacy_detach(dev);\n-\tpnp_unregister_driver(&c6xdigio_pnp_driver);\n+\tmutex_lock(&c6xdigio_pnp_lock);\n+\tif (c6xdigio_pnp_driver_refcount > 0) {\n+\t\tc6xdigio_pnp_driver_refcount--;\n+\t\tif (c6xdigio_pnp_driver_refcount == 0)\n+\t\t\tpnp_unregister_driver(&c6xdigio_pnp_driver);\n+\t}\n+\tmutex_unlock(&c6xdigio_pnp_lock);\n }\n \n static struct comedi_driver c6xdigio_driver = {",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "drivers/comedi/drivers/c6xdigio.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 20
+}

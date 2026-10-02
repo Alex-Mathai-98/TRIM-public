@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&sdp->open_rel_lock);\n\tsdp->open_cnt--;\n\n\t/* possibly many open()s waiting on exlude clearing, start many;\n\t * only open(O_EXCL)s wait on 0==open_cnt so only start one */\n\tif (sdp->exclude) {\n\t\tsdp->exclude = false;\n\t\twake_up_interruptible_all(&sdp->open_wait);\n\t} else if (0 == sdp->open_cnt) {\n\t\twake_up_interruptible(&sdp->open_wait);\n\t}\n\tmutex_unlock(&sdp->open_rel_lock);\n\tkref_put(&sfp->f_ref, sg_remove_sfp);\n\treturn 0;\n}",
+          "before": "\tmutex_lock(&sdp->open_rel_lock);\n\tkref_put(&sfp->f_ref, sg_remove_sfp);\n\tsdp->open_cnt--;\n\n\t/* possibly many open()s waiting on exlude clearing, start many;\n\t * only open(O_EXCL)s wait on 0==open_cnt so only start one */\n\tif (sdp->exclude) {\n\t\tsdp->exclude = false;\n\t\twake_up_interruptible_all(&sdp->open_wait);\n\t} else if (0 == sdp->open_cnt) {\n\t\twake_up_interruptible(&sdp->open_wait);\n\t}\n\tmutex_unlock(&sdp->open_rel_lock);\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/scsi/sg.c b/drivers/scsi/sg.c\nindex 84334ab39c81..94127868bedf 100644\n--- a/drivers/scsi/sg.c\n+++ b/drivers/scsi/sg.c\n@@ -386,7 +386,6 @@ sg_release(struct inode *inode, struct file *filp)\n \tSCSI_LOG_TIMEOUT(3, sg_printk(KERN_INFO, sdp, \"sg_release\\n\"));\n \n \tmutex_lock(&sdp->open_rel_lock);\n-\tkref_put(&sfp->f_ref, sg_remove_sfp);\n \tsdp->open_cnt--;\n \n \t/* possibly many open()s waiting on exlude clearing, start many;\n@@ -398,6 +397,7 @@ sg_release(struct inode *inode, struct file *filp)\n \t\twake_up_interruptible(&sdp->open_wait);\n \t}\n \tmutex_unlock(&sdp->open_rel_lock);\n+\tkref_put(&sfp->f_ref, sg_remove_sfp);\n \treturn 0;\n }",
+          "explanation": "classic_swe step 8 #1",
+          "filename": "drivers/scsi/sg.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 8
+        }
+      ],
+      "end_step": 8,
+      "revision_index": 0,
+      "start_step": 8
+    }
+  ],
+  "success_step": 8
+}

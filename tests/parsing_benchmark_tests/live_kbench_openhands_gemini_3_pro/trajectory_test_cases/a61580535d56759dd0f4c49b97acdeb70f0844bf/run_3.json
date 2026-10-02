@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int data_type_to_alloc_counter(enum bch_data_type t)\n{\n\tswitch (t) {\n\tcase BCH_DATA_btree:\n\tcase BCH_DATA_user:\n\t\treturn ALLOC_dirty;\n\tcase BCH_DATA_cached:\n\t\treturn ALLOC_cached;\n\tcase BCH_DATA_stripe:\n\tcase BCH_DATA_parity:\n\t\treturn ALLOC_stripe;\n\tdefault:\n\t\treturn -1;\n\t}\n}",
+          "before": "static enum alloc_sector_counter data_type_to_alloc_counter(enum bch_data_type t)\n{\n\tswitch (t) {\n\tcase BCH_DATA_btree:\n\tcase BCH_DATA_user:\n\t\treturn ALLOC_dirty;\n\tcase BCH_DATA_cached:\n\t\treturn ALLOC_cached;\n\tcase BCH_DATA_stripe:\n\tcase BCH_DATA_parity:\n\t\treturn ALLOC_stripe;\n\tdefault:\n\t\tBUG();\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/backpointers.c\n+++ /linux/fs/bcachefs/backpointers.c\n@@ -787 +787 @@\n-static enum alloc_sector_counter data_type_to_alloc_counter(enum bch_data_type t)\n+static int data_type_to_alloc_counter(enum bch_data_type t)\n@@ -799 +799 @@\n-\t\tBUG();\n+\t\treturn -1;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "fs/bcachefs/backpointers.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        },
+        {
+          "after": "\n\t\tstruct bkey_s_c_backpointer bp = bkey_s_c_to_backpointer(bp_k);\n\t\tint bucket_type = data_type_to_alloc_counter(bp.v->data_type);\n\n\t\tif (c->sb.version_upgrade_complete >= bcachefs_metadata_version_backpointer_bucket_gen &&\n\t\t    (bp.v->bucket_gen != a->gen ||\n\t\t     bp.v->pad ||\n\t\t     bucket_type < 0)) {\n\t\t\tret = bch2_backpointer_del(trans, bp_k.k->p);\n\t\t\tif (ret)\n\t\t\t\tbreak;\n\n\t\t\tneed_commit = true;\n\t\t\tcontinue;\n\t\t}\n\n\t\tif (bp.v->bucket_gen != a->gen)\n\t\t\tcontinue;\n\n\t\tif (bucket_type < 0)\n\t\t\tcontinue;\n\n\t\tsectors[bucket_type] += bp.v->bucket_len;\n",
+          "before": "\n\t\tstruct bkey_s_c_backpointer bp = bkey_s_c_to_backpointer(bp_k);\n\n\t\tif (c->sb.version_upgrade_complete >= bcachefs_metadata_version_backpointer_bucket_gen &&\n\t\t    (bp.v->bucket_gen != a->gen ||\n\t\t     bp.v->pad)) {\n\t\t\tret = bch2_backpointer_del(trans, bp_k.k->p);\n\t\t\tif (ret)\n\t\t\t\tbreak;\n\n\t\t\tneed_commit = true;\n\t\t\tcontinue;\n\t\t}\n\n\t\tif (bp.v->bucket_gen != a->gen)\n\t\t\tcontinue;\n\n\t\tsectors[data_type_to_alloc_counter(bp.v->data_type)] += bp.v->bucket_len;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/backpointers.c\n+++ /linux/fs/bcachefs/backpointers.c\n@@ -834,0 +835 @@\n+\t\tint bucket_type = data_type_to_alloc_counter(bp.v->data_type);\n@@ -838 +839,2 @@\n-\t\t     bp.v->pad)) {\n+\t\t     bp.v->pad ||\n+\t\t     bucket_type < 0)) {\n@@ -850 +852,4 @@\n-\t\tsectors[data_type_to_alloc_counter(bp.v->data_type)] += bp.v->bucket_len;\n+\t\tif (bucket_type < 0)\n+\t\t\tcontinue;\n+\n+\t\tsectors[bucket_type] += bp.v->bucket_len;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 43",
+          "filename": "fs/bcachefs/backpointers.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        }
+      ],
+      "end_step": 43,
+      "revision_index": 0,
+      "start_step": 41
+    }
+  ],
+  "success_step": 43
+}

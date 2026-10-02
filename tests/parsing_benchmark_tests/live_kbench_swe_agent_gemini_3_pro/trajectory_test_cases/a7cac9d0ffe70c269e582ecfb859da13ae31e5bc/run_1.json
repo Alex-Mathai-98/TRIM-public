@@ -1,0 +1,231 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n\t\t\ttxAbort(tid, 1);\t/* Marks FS Dirty */\n\t\t\ttxEnd(tid);\n\t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinode_inc_link_count(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n\t\t\tgoto out1;\n\t\t}\n",
+          "before": "\t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n\t\t\ttxAbort(tid, 1);\t/* Marks FS Dirty */\n\t\t\ttxEnd(tid);\n\t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n\t\t\tgoto out1;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..dd5745d06d7a 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -530,6 +530,7 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\ttxEnd(tid);\n \t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n \t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n+\t\t\tinode_inc_link_count(ip);\n \t\t\tIWRITE_UNLOCK(ip);\n \t\t\trc = new_size;\n \t\t\tgoto out1;",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 0,
+      "start_step": 18
+    },
+    {
+      "edits": [
+        {
+          "after": "\t/*\n\t *\tcommit zero link count object\n\t */\n\tif (ip->i_nlink <= 1) {\n\t\tassert(!test_cflag(COMMIT_Nolink, ip));\n\t\t/* free block resources */\n\t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n\t\t\ttxAbort(tid, 1);\t/* Marks FS Dirty */\n\t\t\ttxEnd(tid);\n\t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n\t\t\tgoto out1;\n\t\t}\n\t\tinode_dec_link_count(ip);\n\t\ttblk = tid_to_tblock(tid);\n\t\ttblk->xflag |= COMMIT_DELETE;\n\t\ttblk->u.ip = ip;\n\t} else\n\t\tinode_dec_link_count(ip);\n",
+          "before": "\tinode_dec_link_count(ip);\n\n\t/*\n\t *\tcommit zero link count object\n\t */\n\tif (ip->i_nlink == 0) {\n\t\tassert(!test_cflag(COMMIT_Nolink, ip));\n\t\t/* free block resources */\n\t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n\t\t\ttxAbort(tid, 1);\t/* Marks FS Dirty */\n\t\t\ttxEnd(tid);\n\t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinode_inc_link_count(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n\t\t\tgoto out1;\n\t\t}\n\t\ttblk = tid_to_tblock(tid);\n\t\ttblk->xflag |= COMMIT_DELETE;\n\t\ttblk->u.ip = ip;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..8fc0ecbefea4 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -517,12 +517,10 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \tmark_inode_dirty(dip);\n \n \t/* update target's inode */\n-\tinode_dec_link_count(ip);\n-\n \t/*\n \t *\tcommit zero link count object\n \t */\n-\tif (ip->i_nlink == 0) {\n+\tif (ip->i_nlink <= 1) {\n \t\tassert(!test_cflag(COMMIT_Nolink, ip));\n \t\t/* free block resources */\n \t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n@@ -534,10 +532,12 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\trc = new_size;\n \t\t\tgoto out1;\n \t\t}\n+\t\tinode_dec_link_count(ip);\n \t\ttblk = tid_to_tblock(tid);\n \t\ttblk->xflag |= COMMIT_DELETE;\n \t\ttblk->u.ip = ip;\n-\t}\n+\t} else\n+\t\tinode_dec_link_count(ip);\n \n \t/*\n \t * Incomplete truncate of file data can",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 1,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "\tinode_dec_link_count(ip);\n\n\t/*\n\t *\tcommit zero link count object\n\t */\n\tif (ip->i_nlink == 0) {\n\t\tassert(!test_cflag(COMMIT_Nolink, ip));\n\t\t/* free block resources */\n\t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n\t\t\ttxAbort(tid, 1);\t/* Marks FS Dirty */\n\t\t\ttxEnd(tid);\n\t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinode_inc_link_count(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n\t\t\tgoto out1;\n\t\t}\n\t\ttblk = tid_to_tblock(tid);\n\t\ttblk->xflag |= COMMIT_DELETE;\n\t\ttblk->u.ip = ip;\n\t}\n",
+          "before": "\t/*\n\t *\tcommit zero link count object\n\t */\n\tif (ip->i_nlink <= 1) {\n\t\tassert(!test_cflag(COMMIT_Nolink, ip));\n\t\t/* free block resources */\n\t\tif ((new_size = commitZeroLink(tid, ip)) < 0) {\n\t\t\ttxAbort(tid, 1);\t/* Marks FS Dirty */\n\t\t\ttxEnd(tid);\n\t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n\t\t\tgoto out1;\n\t\t}\n\t\tinode_dec_link_count(ip);\n\t\ttblk = tid_to_tblock(tid);\n\t\ttblk->xflag |= COMMIT_DELETE;\n\t\ttblk->u.ip = ip;\n\t} else\n\t\tinode_dec_link_count(ip);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..dd5745d06d7a 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -530,6 +530,7 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\ttxEnd(tid);\n \t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n \t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n+\t\t\tinode_inc_link_count(ip);\n \t\t\tIWRITE_UNLOCK(ip);\n \t\t\trc = new_size;\n \t\t\tgoto out1;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 2,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tinc_nlink(ip);\n",
+          "before": "\t\t\tinode_inc_link_count(ip);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..11d7ce944a8e 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -530,6 +530,7 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\ttxEnd(tid);\n \t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n \t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n+\t\t\tinc_nlink(ip);\n \t\t\tIWRITE_UNLOCK(ip);\n \t\t\trc = new_size;\n \t\t\tgoto out1;",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 3,
+      "start_step": 37
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinc_nlink(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\tiput(ip);\n\t\t\trc = new_size;\n",
+          "before": "\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinc_nlink(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..5a794b4fc0ea 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -530,7 +530,9 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\ttxEnd(tid);\n \t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n \t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n+\t\t\tinc_nlink(ip);\n \t\t\tIWRITE_UNLOCK(ip);\n+\t\t\tiput(ip);\n \t\t\trc = new_size;\n \t\t\tgoto out1;\n \t\t}",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 4,
+      "start_step": 42
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\tinode_inc_link_count(ip);\n\t\t\trc = new_size;\n",
+          "before": "\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinc_nlink(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\tiput(ip);\n\t\t\trc = new_size;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..8973046f45bf 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -531,6 +531,7 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n \t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n \t\t\tIWRITE_UNLOCK(ip);\n+\t\t\tinode_inc_link_count(ip);\n \t\t\trc = new_size;\n \t\t\tgoto out1;\n \t\t}",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 5,
+      "start_step": 44
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tinode_inc_link_count(ip);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\trc = new_size;\n",
+          "before": "\t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n\t\t\tIWRITE_UNLOCK(ip);\n\t\t\tinode_inc_link_count(ip);\n\t\t\trc = new_size;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c\nindex 65a218eba8fa..dd5745d06d7a 100644\n--- a/fs/jfs/namei.c\n+++ b/fs/jfs/namei.c\n@@ -530,6 +530,7 @@ static int jfs_unlink(struct inode *dip, struct dentry *dentry)\n \t\t\ttxEnd(tid);\n \t\t\tmutex_unlock(&JFS_IP(ip)->commit_mutex);\n \t\t\tmutex_unlock(&JFS_IP(dip)->commit_mutex);\n+\t\t\tinode_inc_link_count(ip);\n \t\t\tIWRITE_UNLOCK(ip);\n \t\t\trc = new_size;\n \t\t\tgoto out1;",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "fs/jfs/namei.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 6,
+      "start_step": 48
+    }
+  ],
+  "success_step": 48
+}

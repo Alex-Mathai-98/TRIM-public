@@ -1,0 +1,20 @@
+diff --git a/io_uring/eventfd.c b/io_uring/eventfd.c
+index fab936d31ba8..ddd77bdc1765 100644
+--- a/io_uring/eventfd.c
++++ b/io_uring/eventfd.c
+@@ -61,7 +61,14 @@ static void io_eventfd_release(struct io_ev_fd *ev_fd, bool put_ref)
+  */
+ static bool __io_eventfd_signal(struct io_ev_fd *ev_fd)
+ {
+-	if (eventfd_signal_allowed()) {
++	/*
++	 * Signaling the eventfd requires a regular spinlock, which can't be
++	 * acquired while holding a raw spinlock (with IRQs disabled). Defer
++	 * the signal to a safe context if we're in such a situation.
++	 * eventfd_signal_allowed() checks for recursive signaling, and
++	 * !irqs_disabled() ensures we're not holding a raw spinlock.
++	 */
++	if (eventfd_signal_allowed() && !irqs_disabled()) {
+ 		eventfd_signal_mask(ev_fd->cq_ev_fd, EPOLL_URING_WAKE);
+ 		return true;
+ 	}

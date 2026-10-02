@@ -1,0 +1,64 @@
+diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c
+index 1244d2c5c384..6760886c671f 100644
+--- a/kernel/trace/ring_buffer.c
++++ b/kernel/trace/ring_buffer.c
+@@ -7203,6 +7203,14 @@ static int __rb_map_vma(struct ring_buffer_per_cpu *cpu_buffer,
+ 
+ 	err = vm_insert_pages(vma, vma->vm_start, pages, &nr_pages);
+ 
++	/*
++	 * If the pages are already mapped (which can happen if this is
++	 * a split_vma), then vm_insert_pages() will return -EBUSY.
++	 * In that case, we can just return success.
++	 */
++	if (err == -EBUSY)
++		return 0;
++
+ 	return err;
+ }
+ #else
+diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
+index d1e527cf2aae..aec94717265f 100644
+--- a/kernel/trace/trace.c
++++ b/kernel/trace/trace.c
+@@ -8772,6 +8772,15 @@ static inline int get_snapshot_map(struct trace_array *tr) { return 0; }
+ static inline void put_snapshot_map(struct trace_array *tr) { }
+ #endif
+ 
++static void tracing_buffers_mmap_open(struct vm_area_struct *vma)
++{
++	struct ftrace_buffer_info *info = vma->vm_file->private_data;
++	struct trace_iterator *iter = &info->iter;
++
++	WARN_ON(get_snapshot_map(iter->tr));
++	WARN_ON(ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma));
++}
++
+ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)
+ {
+ 	struct ftrace_buffer_info *info = vma->vm_file->private_data;
+@@ -8782,6 +8791,7 @@ static void tracing_buffers_mmap_close(struct vm_area_struct *vma)
+ }
+ 
+ static const struct vm_operations_struct tracing_buffers_vmops = {
++	.open		= tracing_buffers_mmap_open,
+ 	.close		= tracing_buffers_mmap_close,
+ };
+ 
+@@ -8800,12 +8810,14 @@ static int tracing_buffers_mmap(struct file *filp, struct vm_area_struct *vma)
+ 		return ret;
+ 
+ 	ret = ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma);
+-	if (ret)
++	if (ret) {
+ 		put_snapshot_map(iter->tr);
++		return ret;
++	}
+ 
+ 	vma->vm_ops = &tracing_buffers_vmops;
+ 
+-	return ret;
++	return 0;
+ }
+ 
+ static const struct file_operations tracing_buffers_fops = {

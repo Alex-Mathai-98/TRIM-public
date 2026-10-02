@@ -1,0 +1,131 @@
+diff --git a/check_offsets.c b/check_offsets.c
+new file mode 100644
+index 000000000000..98dfea16bdb2
+--- /dev/null
++++ b/check_offsets.c
+@@ -0,0 +1,25 @@
++#include <linux/types.h>
++#include <linux/comedi/comedidev.h>
++#include <stdio.h>
++#include <stddef.h>
++
++int main() {
++    printf("Offset of wait_head in comedi_async: %lu\n", offsetof(struct comedi_async, wait_head));
++    printf("Offset of cmd in comedi_async: %lu\n", offsetof(struct comedi_async, cmd));
++    printf("Size of comedi_cmd: %lu\n", sizeof(struct comedi_cmd));
++    printf("Size of wait_queue_head_t: %lu\n", sizeof(wait_queue_head_t));
++    return 0;
++}
++EOF > check_offsets.c
++#include <linux/types.h>
++#include <linux/comedi/comedidev.h>
++#include <stdio.h>
++#include <stddef.h>
++
++int main() {
++    printf("Offset of wait_head in comedi_async: %lu\n", offsetof(struct comedi_async, wait_head));
++    printf("Offset of cmd in comedi_async: %lu\n", offsetof(struct comedi_async, cmd));
++    printf("Size of comedi_cmd: %lu\n", sizeof(struct comedi_cmd));
++    printf("Size of wait_queue_head_t: %lu\n", sizeof(wait_queue_head_t));
++    return 0;
++}
+diff --git a/drivers/comedi/comedi_fops.c b/drivers/comedi/comedi_fops.c
+index 3383a7ce27ff..489cdf83f178 100644
+--- a/drivers/comedi/comedi_fops.c
++++ b/drivers/comedi/comedi_fops.c
+@@ -105,6 +105,7 @@ static void comedi_device_init(struct comedi_device *dev)
+ 	spin_lock_init(&dev->spinlock);
+ 	mutex_init(&dev->mutex);
+ 	init_rwsem(&dev->attach_lock);
++	init_waitqueue_head(&dev->wait_head);
+ 	dev->minor = -1;
+ }
+ 
+@@ -745,7 +746,7 @@ static void do_become_nonbusy(struct comedi_device *dev,
+ 		kfree(async->cmd.chanlist);
+ 		async->cmd.chanlist = NULL;
+ 		s->busy = NULL;
+-		wake_up_interruptible_all(&async->wait_head);
++		wake_up_interruptible_all(&dev->wait_head);
+ 	} else {
+ 		dev_err(dev->class_dev,
+ 			"BUG: (?) %s called with async=NULL\n", __func__);
+@@ -2461,10 +2462,11 @@ static __poll_t comedi_poll(struct file *file, poll_table *wait)
+ 		goto done;
+ 	}
+ 
++	poll_wait(file, &dev->wait_head, wait);
+ 	s = comedi_file_read_subdevice(file);
+ 	s_read = s;
+ 	if (s && s->async) {
+-		poll_wait(file, &s->async->wait_head, wait);
++		
+ 		if (s->busy != file || !comedi_is_subdevice_running(s) ||
+ 		    (s->async->cmd.flags & CMDF_WRITE) ||
+ 		    comedi_buf_read_n_available(s) > 0)
+@@ -2476,7 +2478,7 @@ static __poll_t comedi_poll(struct file *file, poll_table *wait)
+ 		unsigned int bps = comedi_bytes_per_sample(s);
+ 
+ 		if (s != s_read)
+-			poll_wait(file, &s->async->wait_head, wait);
++			
+ 		if (s->busy != file || !comedi_is_subdevice_running(s) ||
+ 		    !(s->async->cmd.flags & CMDF_WRITE) ||
+ 		    comedi_buf_write_n_available(s) >= bps)
+@@ -2582,7 +2584,7 @@ static ssize_t comedi_write(struct file *file, const char __user *buf,
+ 		goto out;
+ 	}
+ 
+-	add_wait_queue(&async->wait_head, &wait);
++	add_wait_queue(&dev->wait_head, &wait);
+ 	while (count == 0 && !retval) {
+ 		unsigned int runflags;
+ 
+@@ -2635,7 +2637,7 @@ static ssize_t comedi_write(struct file *file, const char __user *buf,
+ 
+ 		buf += n;
+ 	}
+-	remove_wait_queue(&async->wait_head, &wait);
++	remove_wait_queue(&dev->wait_head, &wait);
+ 	set_current_state(TASK_RUNNING);
+ 	if (become_nonbusy && count == 0) {
+ 		struct comedi_subdevice *new_s;
+@@ -2710,7 +2712,7 @@ static ssize_t comedi_read(struct file *file, char __user *buf, size_t nbytes,
+ 		goto out;
+ 	}
+ 
+-	add_wait_queue(&async->wait_head, &wait);
++	add_wait_queue(&dev->wait_head, &wait);
+ 	while (count == 0 && !retval) {
+ 		set_current_state(TASK_INTERRUPTIBLE);
+ 
+@@ -2762,7 +2764,7 @@ static ssize_t comedi_read(struct file *file, char __user *buf, size_t nbytes,
+ 
+ 		buf += n;
+ 	}
+-	remove_wait_queue(&async->wait_head, &wait);
++	remove_wait_queue(&dev->wait_head, &wait);
+ 	set_current_state(TASK_RUNNING);
+ 	if (become_nonbusy && count == 0) {
+ 		struct comedi_subdevice *new_s;
+@@ -3289,7 +3291,7 @@ void comedi_event(struct comedi_device *dev, struct comedi_subdevice *s)
+ 		__comedi_set_subdevice_runflags(s, COMEDI_SRF_ERROR);
+ 
+ 	if (async->cb_mask & events) {
+-		wake_up_interruptible(&async->wait_head);
++		wake_up_interruptible(&dev->wait_head);
+ 		si_code = async->cmd.flags & CMDF_WRITE ? POLL_OUT : POLL_IN;
+ 	}
+ 
+diff --git a/include/linux/comedi/comedidev.h b/include/linux/comedi/comedidev.h
+index 4cb0400ad616..2ce8302a0e72 100644
+--- a/include/linux/comedi/comedidev.h
++++ b/include/linux/comedi/comedidev.h
+@@ -550,6 +550,7 @@ struct comedi_device {
+ 	struct mutex mutex;	/* generic mutex for COMEDI core */
+ 	struct rw_semaphore attach_lock;
+ 	struct kref refcount;
++	wait_queue_head_t wait_head;
+ 
+ 	int n_subdevices;
+ 	struct comedi_subdevice *subdevices;

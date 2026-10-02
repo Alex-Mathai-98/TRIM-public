@@ -1,0 +1,46 @@
+diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c
+index 29118c43ebf5..8f59f2f05f9e 100644
+--- a/net/ipv4/nexthop.c
++++ b/net/ipv4/nexthop.c
+@@ -2509,6 +2509,7 @@ static int replace_nexthop(struct net *net, struct nexthop *old,
+ 			   struct netlink_ext_ack *extack)
+ {
+ 	bool new_is_reject = false;
++	bool new_is_fdb = false;
+ 	struct nh_grp_entry *nhge;
+ 	int err;
+ 
+@@ -2523,13 +2524,20 @@ static int replace_nexthop(struct net *net, struct nexthop *old,
+ 	if (err)
+ 		return err;
+ 
+-	if (!new->is_group) {
++	if (new->is_group) {
++		struct nh_group *nhg = rtnl_dereference(new->nh_grp);
++
++		new_is_fdb = nhg->fdb_nh;
++	} else {
+ 		struct nh_info *nhi = rtnl_dereference(new->nh_info);
+ 
+ 		new_is_reject = nhi->reject_nh;
++		new_is_fdb = nhi->fdb_nh;
+ 	}
+ 
+ 	list_for_each_entry(nhge, &old->grp_list, nh_list) {
++		struct nh_group *nhg = rtnl_dereference(nhge->nh_parent->nh_grp);
++
+ 		/* if new nexthop is a blackhole, any groups using this
+ 		 * nexthop cannot have more than 1 path
+ 		 */
+@@ -2539,6 +2547,11 @@ static int replace_nexthop(struct net *net, struct nexthop *old,
+ 			return -EINVAL;
+ 		}
+ 
++		if (new_is_fdb != nhg->fdb_nh) {
++			NL_SET_ERR_MSG(extack, "FDB nexthop group status cannot be changed");
++			return -EINVAL;
++		}
++
+ 		err = fib_check_nh_list(nhge->nh_parent, new, extack);
+ 		if (err)
+ 			return err;

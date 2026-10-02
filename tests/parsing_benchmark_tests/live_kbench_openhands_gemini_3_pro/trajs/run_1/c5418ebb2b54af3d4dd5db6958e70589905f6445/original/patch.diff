@@ -1,0 +1,47 @@
+diff --git a/include/net/pkt_cls.h b/include/net/pkt_cls.h
+index c64fd896b1f9..cf3905745e11 100644
+--- a/include/net/pkt_cls.h
++++ b/include/net/pkt_cls.h
+@@ -532,11 +532,15 @@ static inline unsigned char * tcf_get_base_ptr(struct sk_buff *skb, int layer)
+ {
+ 	switch (layer) {
+ 		case TCF_LAYER_LINK:
+-			return skb_mac_header(skb);
++			if (skb_mac_header_was_set(skb))
++				return skb_mac_header(skb);
++			break;
+ 		case TCF_LAYER_NETWORK:
+ 			return skb_network_header(skb);
+ 		case TCF_LAYER_TRANSPORT:
+-			return skb_transport_header(skb);
++			if (skb_transport_header_was_set(skb))
++				return skb_transport_header(skb);
++			break;
+ 	}
+ 
+ 	return NULL;
+diff --git a/net/sched/em_text.c b/net/sched/em_text.c
+index 6b3d0af72c39..7d3da1231c55 100644
+--- a/net/sched/em_text.c
++++ b/net/sched/em_text.c
+@@ -30,11 +30,18 @@ static int em_text_match(struct sk_buff *skb, struct tcf_ematch *m,
+ {
+ 	struct text_match *tm = EM_TEXT_PRIV(m);
+ 	int from, to;
++	unsigned char *ptr;
+ 
+-	from = tcf_get_base_ptr(skb, tm->from_layer) - skb->data;
++	ptr = tcf_get_base_ptr(skb, tm->from_layer);
++	if (!ptr)
++		return 0;
++	from = ptr - skb->data;
+ 	from += tm->from_offset;
+ 
+-	to = tcf_get_base_ptr(skb, tm->to_layer) - skb->data;
++	ptr = tcf_get_base_ptr(skb, tm->to_layer);
++	if (!ptr)
++		return 0;
++	to = ptr - skb->data;
+ 	to += tm->to_offset;
+ 
+ 	return skb_find_text(skb, from, to, tm->config) != UINT_MAX;

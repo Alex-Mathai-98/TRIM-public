@@ -1,0 +1,25 @@
+diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c
+index 8f9fe1d7a690..a857480cbd21 100644
+--- a/fs/ntfs3/frecord.c
++++ b/fs/ntfs3/frecord.c
+@@ -3008,6 +3008,9 @@ int ni_rename(struct ntfs_inode *dir_ni, struct ntfs_inode *new_dir_ni,
+ 	int err;
+ 	struct NTFS_DE *de2 = NULL;
+ 	int undo = 0;
++	struct ATTR_FILE_NAME *fname, *de_name = (struct ATTR_FILE_NAME *)(de + 1);
++	struct mft_inode *mi;
++	struct ATTR_LIST_ENTRY *le;
+ 
+ 	/*
+ 	 * There are two possible ways to rename:
+@@ -3023,6 +3026,10 @@ int ni_rename(struct ntfs_inode *dir_ni, struct ntfs_inode *new_dir_ni,
+ 	/*
+ 	 * Way 1 - Add new + remove old.
+ 	 */
++	fname = ni_fname_name(ni, (struct le_str *)&de_name->name_len, &de_name->home, &mi, &le);
++	if (!fname)
++		return -ENOENT;
++
+ 	err = ni_add_name(new_dir_ni, ni, new_de);
+ 	if (!err) {
+ 		err = ni_remove_name(dir_ni, ni, de, &de2, &undo);

@@ -1,0 +1,128 @@
+{
+  "bug_id": "django__django-15731",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/manager.py",
+        "before": "import copy\nimport inspect\nfrom importlib import import_module",
+        "after": "import copy\nimport functools\nimport inspect\nfrom importlib import import_module",
+        "explanation": "classic_swe step 6 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/manager.py",
+        "before": "    @classmethod\n    def _get_queryset_methods(cls, queryset_class):\n        def create_method(name, method):\n            def manager_method(self, *args, **kwargs):\n                return getattr(self.get_queryset(), name)(*args, **kwargs)\n\n            manager_method.__name__ = method.__name__\n            manager_method.__doc__ = method.__doc__\n            return manager_method",
+        "after": "    @classmethod\n    def _get_queryset_methods(cls, queryset_class):\n        def create_method(name, method):\n            @functools.wraps(method)\n            def manager_method(self, *args, **kwargs):\n                return getattr(self.get_queryset(), name)(*args, **kwargs)\n\n            return manager_method",
+        "explanation": "classic_swe step 7 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/manager.py b/django/db/models/manager.py\nindex e37e56cd17..426c9c1092 100644\n--- a/django/db/models/manager.py\n+++ b/django/db/models/manager.py\n@@ -1,4 +1,5 @@\n import copy\n+import functools\n import inspect\n from importlib import import_module\n \n@@ -81,11 +82,10 @@ class BaseManager:\n     @classmethod\n     def _get_queryset_methods(cls, queryset_class):\n         def create_method(name, method):\n+            @functools.wraps(method)\n             def manager_method(self, *args, **kwargs):\n                 return getattr(self.get_queryset(), name)(*args, **kwargs)\n \n-            manager_method.__name__ = method.__name__\n-            manager_method.__doc__ = method.__doc__\n             return manager_method\n \n         new_methods = {}\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1,
+      2
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      1,
+      2
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/manager.py",
+          "before": "import copy\nimport inspect\nfrom importlib import import_module",
+          "after": "import copy\nimport functools\nimport inspect\nfrom importlib import import_module",
+          "explanation": "classic_swe step 6 #1"
+        },
+        {
+          "filename": "django/db/models/manager.py",
+          "before": "    @classmethod\n    def _get_queryset_methods(cls, queryset_class):\n        def create_method(name, method):\n            def manager_method(self, *args, **kwargs):\n                return getattr(self.get_queryset(), name)(*args, **kwargs)\n\n            manager_method.__name__ = method.__name__\n            manager_method.__doc__ = method.__doc__\n            return manager_method",
+          "after": "    @classmethod\n    def _get_queryset_methods(cls, queryset_class):\n        def create_method(name, method):\n            @functools.wraps(method)\n            def manager_method(self, *args, **kwargs):\n                return getattr(self.get_queryset(), name)(*args, **kwargs)\n\n            return manager_method",
+          "explanation": "classic_swe step 7 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 58,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 58,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/manager.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/manager.py"
+    ],
+    "gold_files": [
+      "django/db/models/manager.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 2,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

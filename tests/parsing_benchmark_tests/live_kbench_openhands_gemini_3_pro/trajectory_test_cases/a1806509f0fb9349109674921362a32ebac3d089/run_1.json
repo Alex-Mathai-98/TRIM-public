@@ -1,0 +1,126 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void xfrm_state_delete_tunnel(struct xfrm_state *x);\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/xfrm/xfrm_state.c\n+++ /linux/net/xfrm/xfrm_state.c\n@@ -40,0 +41,2 @@\n+static void xfrm_state_delete_tunnel(struct xfrm_state *x);\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 233",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 41,
+          "step_index": 233
+        },
+        {
+          "after": "static void xfrm_state_gc_destroy(struct xfrm_state *x)\n{\n\txfrm_state_delete_tunnel(x);\n\n\tif (x->mode_cbs && x->mode_cbs->destroy_state)\n\t\tx->mode_cbs->destroy_state(x);",
+          "before": "static void xfrm_state_gc_destroy(struct xfrm_state *x)\n{\n\tif (x->mode_cbs && x->mode_cbs->destroy_state)\n\t\tx->mode_cbs->destroy_state(x);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/xfrm/xfrm_state.c\n+++ /linux/net/xfrm/xfrm_state.c\n@@ -598,0 +599,2 @@\n+\txfrm_state_delete_tunnel(x);\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 237",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 237
+        }
+      ],
+      "end_step": 237,
+      "revision_index": 0,
+      "start_step": 233
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (x->tunnel) {\n\t\tstruct xfrm_state *t = x->tunnel;\n\t\tint users = atomic_dec_return(&t->tunnel_users);\n\n\t\tif (users == 1 || users == 0)\n\t\t\txfrm_state_delete(t);\n\t\txfrm_state_put(t);\n\t\tx->tunnel = NULL;\n\t}\n",
+          "before": "\n\tif (x->tunnel) {\n\t\tstruct xfrm_state *t = x->tunnel;\n\n\t\tif (atomic_dec_return(&t->tunnel_users) == 1)\n\t\t\txfrm_state_delete(t);\n\t\txfrm_state_put(t);\n\t\tx->tunnel = NULL;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/xfrm/xfrm_state.c\n+++ /linux/net/xfrm/xfrm_state.c\n@@ -3093,2 +3093,3 @@\n-\n-\t\tif (atomic_dec_return(&t->tunnel_users) == 1)\n+\t\tint users = atomic_dec_return(&t->tunnel_users);\n+\n+\t\tif (users == 1 || users == 0)",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 251",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 251
+        }
+      ],
+      "end_step": 251,
+      "revision_index": 1,
+      "start_step": 251
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tflush_work(&net->xfrm.state_hash_work);\n\n\t{\n\t\tstruct xfrm_state *x;\n\t\tint err;\n\n\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\t\twhile (!list_empty(&net->xfrm.state_all)) {\n\t\t\tx = list_first_entry(&net->xfrm.state_all, struct xfrm_state, km.all);\n\t\t\tif (x->km.state == XFRM_STATE_DEAD) {\n\t\t\t\tlist_del(&x->km.all);\n\t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\t\t\t\txfrm_state_put(x);\n\t\t\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\t\t\t\tcontinue;\n\t\t\t}\n\t\t\txfrm_state_hold(x);\n\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\n\t\t\terr = xfrm_state_delete(x);\n\t\t\txfrm_audit_state_delete(x, err ? 0 : 1, false);\n\t\t\txfrm_state_put(x);\n\n\t\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\t\t}\n\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\t}\n\n\tflush_work(&xfrm_state_gc_work);\n\n\tWARN_ON(!list_empty(&net->xfrm.state_all));\n",
+          "before": "\n\tflush_work(&net->xfrm.state_hash_work);\n\txfrm_state_flush(net, IPSEC_PROTO_ANY, false);\n\tflush_work(&xfrm_state_gc_work);\n\n\tWARN_ON(!list_empty(&net->xfrm.state_all));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/xfrm/xfrm_state.c\n+++ /linux/net/xfrm/xfrm_state.c\n@@ -3305 +3305,27 @@\n-\txfrm_state_flush(net, IPSEC_PROTO_ANY, false);\n+\n+\t{\n+\t\tstruct xfrm_state *x;\n+\t\tint err;\n+\n+\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n+\t\twhile (!list_empty(&net->xfrm.state_all)) {\n+\t\t\tx = list_first_entry(&net->xfrm.state_all, struct xfrm_state, km.all);\n+\t\t\tif (x->km.state == XFRM_STATE_DEAD) {\n+\t\t\t\tlist_del(&x->km.all);\n+\t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n+\t\t\t\txfrm_state_put(x);\n+\t\t\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n+\t\t\t\tcontinue;\n+\t\t\t}\n+\t\t\txfrm_state_hold(x);\n+\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n+\n+\t\t\terr = xfrm_state_delete(x);\n+\t\t\txfrm_audit_state_delete(x, err ? 0 : 1, false);\n+\t\t\txfrm_state_put(x);\n+\n+\t\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n+\t\t}\n+\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n+\t}\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 292",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 292
+        }
+      ],
+      "end_step": 292,
+      "revision_index": 2,
+      "start_step": 292
+    }
+  ],
+  "success_step": 292
+}

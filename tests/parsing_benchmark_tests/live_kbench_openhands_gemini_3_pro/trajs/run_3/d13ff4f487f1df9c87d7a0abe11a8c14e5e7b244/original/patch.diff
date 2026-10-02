@@ -1,0 +1,93 @@
+diff --git a/fs/bcachefs/bkey.h b/fs/bcachefs/bkey.h
+index 41df24a53d97..035ab7ae6c7a 100644
+--- a/fs/bcachefs/bkey.h
++++ b/fs/bcachefs/bkey.h
+@@ -14,6 +14,8 @@ enum bch_validate_flags {
+ 	BCH_VALIDATE_commit		= BIT(1),
+ 	BCH_VALIDATE_journal		= BIT(2),
+ 	BCH_VALIDATE_silent		= BIT(3),
++	/* internal: */
++	BCH_VALIDATE_SB_LOCKED		= BIT(4),
+ };
+ 
+ #if 0
+diff --git a/fs/bcachefs/disk_accounting.c b/fs/bcachefs/disk_accounting.c
+index 9f3133e3e7e5..86d3b8932691 100644
+--- a/fs/bcachefs/disk_accounting.c
++++ b/fs/bcachefs/disk_accounting.c
+@@ -682,7 +682,7 @@ int bch2_accounting_read(struct bch_fs *c)
+ 		 * If the replicas entry is invalid it'll get cleaned up by
+ 		 * check_allocations:
+ 		 */
+-		if (bch2_replicas_entry_validate(&r.e, c, &buf))
++		if (bch2_replicas_entry_validate(&r.e, c, 0, &buf))
+ 			continue;
+ 
+ 		struct disk_accounting_pos k;
+diff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c
+index 954f6a96e0f4..e39eff4fcb68 100644
+--- a/fs/bcachefs/journal_io.c
++++ b/fs/bcachefs/journal_io.c
+@@ -605,7 +605,7 @@ static int journal_entry_data_usage_validate(struct bch_fs *c,
+ 		goto out;
+ 	}
+ 
+-	if (journal_entry_err_on(bch2_replicas_entry_validate(&u->r, c, &err),
++	if (journal_entry_err_on(bch2_replicas_entry_validate(&u->r, c, flags, &err),
+ 				 c, version, jset, entry,
+ 				 journal_entry_data_usage_bad_size,
+ 				 "invalid journal entry usage: %s", err.buf)) {
+diff --git a/fs/bcachefs/replicas.c b/fs/bcachefs/replicas.c
+index bcb3276747e0..ce0af17a7771 100644
+--- a/fs/bcachefs/replicas.c
++++ b/fs/bcachefs/replicas.c
+@@ -96,11 +96,19 @@ static int bch2_replicas_entry_validate_locked(struct bch_replicas_entry_v1 *r,
+ 
+ int bch2_replicas_entry_validate(struct bch_replicas_entry_v1 *r,
+ 				 struct bch_fs *c,
++				 enum bch_validate_flags flags,
+ 				 struct printbuf *err)
+ {
+-	mutex_lock(&c->sb_lock);
+-	int ret = bch2_replicas_entry_validate_locked(r, c->disk_sb.sb, err);
+-	mutex_unlock(&c->sb_lock);
++	int ret;
++
++	if (!(flags & BCH_VALIDATE_SB_LOCKED))
++		mutex_lock(&c->sb_lock);
++
++	ret = bch2_replicas_entry_validate_locked(r, c->disk_sb.sb, err);
++
++	if (!(flags & BCH_VALIDATE_SB_LOCKED))
++		mutex_unlock(&c->sb_lock);
++
+ 	return ret;
+ }
+ 
+diff --git a/fs/bcachefs/replicas.h b/fs/bcachefs/replicas.h
+index 5aba2c1ce133..3d00d78f41cf 100644
+--- a/fs/bcachefs/replicas.h
++++ b/fs/bcachefs/replicas.h
+@@ -10,7 +10,8 @@ void bch2_replicas_entry_sort(struct bch_replicas_entry_v1 *);
+ void bch2_replicas_entry_to_text(struct printbuf *,
+ 				 struct bch_replicas_entry_v1 *);
+ int bch2_replicas_entry_validate(struct bch_replicas_entry_v1 *,
+-				 struct bch_fs *, struct printbuf *);
++				 struct bch_fs *, enum bch_validate_flags,
++				 struct printbuf *);
+ void bch2_cpu_replicas_to_text(struct printbuf *, struct bch_replicas_cpu *);
+ 
+ static inline struct bch_replicas_entry_v1 *
+diff --git a/fs/bcachefs/sb-clean.c b/fs/bcachefs/sb-clean.c
+index 005275281804..c1580a4b9498 100644
+--- a/fs/bcachefs/sb-clean.c
++++ b/fs/bcachefs/sb-clean.c
+@@ -40,7 +40,7 @@ int bch2_sb_clean_validate_late(struct bch_fs *c, struct bch_sb_field_clean *cle
+ 		ret = bch2_journal_entry_validate(c, NULL, entry,
+ 						  le16_to_cpu(c->disk_sb.sb->version),
+ 						  BCH_SB_BIG_ENDIAN(c->disk_sb.sb),
+-						  write);
++						  (write ? BCH_VALIDATE_write : 0)|BCH_VALIDATE_SB_LOCKED);
+ 		if (ret)
+ 			return ret;
+ 	}

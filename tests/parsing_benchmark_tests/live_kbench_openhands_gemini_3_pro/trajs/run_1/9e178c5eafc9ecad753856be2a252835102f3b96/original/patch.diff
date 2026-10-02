@@ -1,0 +1,50 @@
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 783c883d4d5e..b32d4e574968 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5885,9 +5885,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 		/* dquot_transfer() calls back ext4_get_inode_usage() which
+ 		 * counts xattr inode references.
+ 		 */
+-		down_read(&EXT4_I(inode)->xattr_sem);
+ 		error = dquot_transfer(idmap, inode, attr);
+-		up_read(&EXT4_I(inode)->xattr_sem);
+ 
+ 		if (error) {
+ 			ext4_journal_stop(handle);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 366a9b615bf0..8ad9efe6cf01 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -778,9 +778,7 @@ static int ext4_ioctl_setproject(struct inode *inode, __u32 projid)
+ 		/* __dquot_transfer() calls back ext4_get_inode_usage() which
+ 		 * counts xattr inode references.
+ 		 */
+-		down_read(&EXT4_I(inode)->xattr_sem);
+ 		err = __dquot_transfer(inode, transfer_to);
+-		up_read(&EXT4_I(inode)->xattr_sem);
+ 		dqput(transfer_to[PRJQUOTA]);
+ 		if (err)
+ 			goto out_dirty;
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 2e02efbddaac..08520ce330d3 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -862,8 +862,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
+ 	qsize_t ea_inode_refs = 0;
+ 	int ret;
+ 
+-	lockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);
+-
++	down_read(&EXT4_I(inode)->xattr_sem);
+ 	if (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {
+ 		ret = ext4_get_inode_loc(inode, &iloc);
+ 		if (ret)
+@@ -899,6 +898,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)
+ out:
+ 	brelse(iloc.bh);
+ 	brelse(bh);
++	up_read(&EXT4_I(inode)->xattr_sem);
+ 	return ret;
+ }
+ 

@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct atm_dev *atm_dev_lookup(int number)\n{\n\tstruct atm_dev *dev;\n\n\tmutex_lock(&atm_dev_mutex);\n\tdev = __atm_dev_lookup(number);\n\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n\t\tatm_dev_put(dev);\n\t\tdev = NULL;\n\t}\n\tmutex_unlock(&atm_dev_mutex);\n\treturn dev;\n}",
+          "before": "struct atm_dev *atm_dev_lookup(int number)\n{\n\tstruct atm_dev *dev;\n\n\tmutex_lock(&atm_dev_mutex);\n\tdev = __atm_dev_lookup(number);\n\tmutex_unlock(&atm_dev_mutex);\n\treturn dev;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..f44c025d06d1 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "net/atm/resources.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        },
+        {
+          "after": "\t/*\n\t * if we remove current device from atm_devs list, new device\n\t * with same number can appear, such we need deregister proc,\n\t * release async all vccs and remove them from vccs list too\n\t */\n\tatm_dev_release_vccs(dev);\n\tatm_unregister_sysfs(dev);\n\tatm_proc_dev_deregister(dev);\n\n\tmutex_lock(&atm_dev_mutex);\n\tlist_del(&dev->dev_list);\n\tmutex_unlock(&atm_dev_mutex);\n\n\tatm_dev_put(dev);",
+          "before": "\t/*\n\t * if we remove current device from atm_devs list, new device\n\t * with same number can appear, such we need deregister proc,\n\t * release async all vccs and remove them from vccs list too\n\t */\n\tmutex_lock(&atm_dev_mutex);\n\tlist_del(&dev->dev_list);\n\tmutex_unlock(&atm_dev_mutex);\n\n\tatm_dev_release_vccs(dev);\n\tatm_unregister_sysfs(dev);\n\tatm_proc_dev_deregister(dev);\n\n\tatm_dev_put(dev);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..108c64960f44 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }\n@@ -144,14 +148,14 @@ void atm_dev_deregister(struct atm_dev *dev)\n \t * with same number can appear, such we need deregister proc,\n \t * release async all vccs and remove them from vccs list too\n \t */\n-\tmutex_lock(&atm_dev_mutex);\n-\tlist_del(&dev->dev_list);\n-\tmutex_unlock(&atm_dev_mutex);\n-\n \tatm_dev_release_vccs(dev);\n \tatm_unregister_sysfs(dev);\n \tatm_proc_dev_deregister(dev);\n \n+\tmutex_lock(&atm_dev_mutex);\n+\tlist_del(&dev->dev_list);\n+\tmutex_unlock(&atm_dev_mutex);\n+\n \tatm_dev_put(dev);\n }\n EXPORT_SYMBOL(atm_dev_deregister);",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "net/atm/resources.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "\tatm_dev_deregister(dev);\n\tkfree(dev_data);\n\tatm_dev_put(dev);\n\treturn 0;\n}",
+          "before": "\tkfree(dev_data);\n\tatm_dev_put(dev);\n\tatm_dev_deregister(dev);\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..bef8e1385f14 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -444,9 +444,9 @@ static int atmtcp_remove_persistent(int itf)\n \t\tatm_dev_put(dev);\n \t\treturn 0;\n \t}\n+\tatm_dev_deregister(dev);\n \tkfree(dev_data);\n \tatm_dev_put(dev);\n-\tatm_dev_deregister(dev);\n \treturn 0;\n }\n \ndiff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..108c64960f44 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }\n@@ -144,14 +148,14 @@ void atm_dev_deregister(struct atm_dev *dev)\n \t * with same number can appear, such we need deregister proc,\n \t * release async all vccs and remove them from vccs list too\n \t */\n-\tmutex_lock(&atm_dev_mutex);\n-\tlist_del(&dev->dev_list);\n-\tmutex_unlock(&atm_dev_mutex);\n-\n \tatm_dev_release_vccs(dev);\n \tatm_unregister_sysfs(dev);\n \tatm_proc_dev_deregister(dev);\n \n+\tmutex_lock(&atm_dev_mutex);\n+\tlist_del(&dev->dev_list);\n+\tmutex_unlock(&atm_dev_mutex);\n+\n \tatm_dev_put(dev);\n }\n EXPORT_SYMBOL(atm_dev_deregister);",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 1,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "#include <linux/atomic.h>\n#include <linux/mutex.h>\n\nstatic DEFINE_MUTEX(atmtcp_ioctl_mutex);\n",
+          "before": "#include <linux/atomic.h>\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..d0fbd812d83e 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,9 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n+\n+static DEFINE_MUTEX(atmtcp_ioctl_mutex);\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -444,9 +447,9 @@ static int atmtcp_remove_persistent(int itf)\n \t\tatm_dev_put(dev);\n \t\treturn 0;\n \t}\n+\tatm_dev_deregister(dev);\n \tkfree(dev_data);\n \tatm_dev_put(dev);\n-\tatm_dev_deregister(dev);\n \treturn 0;\n }\n \ndiff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..108c64960f44 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }\n@@ -144,14 +148,14 @@ void atm_dev_deregister(struct atm_dev *dev)\n \t * with same number can appear, such we need deregister proc,\n \t * release async all vccs and remove them from vccs list too\n \t */\n-\tmutex_lock(&atm_dev_mutex);\n-\tlist_del(&dev->dev_list);\n-\tmutex_unlock(&atm_dev_mutex);\n-\n \tatm_dev_release_vccs(dev);\n \tatm_unregister_sysfs(dev);\n \tatm_proc_dev_deregister(dev);\n \n+\tmutex_lock(&atm_dev_mutex);\n+\tlist_del(&dev->dev_list);\n+\tmutex_unlock(&atm_dev_mutex);\n+\n \tatm_dev_put(dev);\n }\n EXPORT_SYMBOL(atm_dev_deregister);",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "\tif (!capable(CAP_NET_ADMIN))\n\t\treturn -EPERM;\n\n\tmutex_lock(&atmtcp_ioctl_mutex);\n\tswitch (cmd) {\n\t\tcase SIOCSIFATMTCP:\n\t\t\terr = atmtcp_attach(vcc, (int) arg);\n\t\t\tif (err >= 0) {\n\t\t\t\tsock->state = SS_CONNECTED;\n\t\t\t\t__module_get(THIS_MODULE);\n\t\t\t}\n\t\t\tbreak;\n\t\tcase ATMTCP_CREATE:\n\t\t\terr = atmtcp_create_persistent((int) arg);\n\t\t\tbreak;\n\t\tcase ATMTCP_REMOVE:\n\t\t\terr = atmtcp_remove_persistent((int) arg);\n\t\t\tbreak;\n\t}\n\tmutex_unlock(&atmtcp_ioctl_mutex);\n\treturn err;\n}",
+          "before": "\tif (!capable(CAP_NET_ADMIN))\n\t\treturn -EPERM;\n\n\tswitch (cmd) {\n\t\tcase SIOCSIFATMTCP:\n\t\t\terr = atmtcp_attach(vcc, (int) arg);\n\t\t\tif (err >= 0) {\n\t\t\t\tsock->state = SS_CONNECTED;\n\t\t\t\t__module_get(THIS_MODULE);\n\t\t\t}\n\t\t\tbreak;\n\t\tcase ATMTCP_CREATE:\n\t\t\terr = atmtcp_create_persistent((int) arg);\n\t\t\tbreak;\n\t\tcase ATMTCP_REMOVE:\n\t\t\terr = atmtcp_remove_persistent((int) arg);\n\t\t\tbreak;\n\t}\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..390d325b0ffa 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -13,6 +13,9 @@\n #include <linux/slab.h>\n #include <linux/uaccess.h>\n #include <linux/atomic.h>\n+#include <linux/mutex.h>\n+\n+static DEFINE_MUTEX(atmtcp_ioctl_mutex);\n \n \n extern int atm_init_aal5(struct atm_vcc *vcc); /* \"raw\" AAL5 transport */\n@@ -444,9 +447,9 @@ static int atmtcp_remove_persistent(int itf)\n \t\tatm_dev_put(dev);\n \t\treturn 0;\n \t}\n+\tatm_dev_deregister(dev);\n \tkfree(dev_data);\n \tatm_dev_put(dev);\n-\tatm_dev_deregister(dev);\n \treturn 0;\n }\n \n@@ -461,6 +464,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \tif (!capable(CAP_NET_ADMIN))\n \t\treturn -EPERM;\n \n+\tmutex_lock(&atmtcp_ioctl_mutex);\n \tswitch (cmd) {\n \t\tcase SIOCSIFATMTCP:\n \t\t\terr = atmtcp_attach(vcc, (int) arg);\n@@ -476,6 +480,7 @@ static int atmtcp_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg\n \t\t\terr = atmtcp_remove_persistent((int) arg);\n \t\t\tbreak;\n \t}\n+\tmutex_unlock(&atmtcp_ioctl_mutex);\n \treturn err;\n }\n \ndiff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..108c64960f44 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }\n@@ -144,14 +148,14 @@ void atm_dev_deregister(struct atm_dev *dev)\n \t * with same number can appear, such we need deregister proc,\n \t * release async all vccs and remove them from vccs list too\n \t */\n-\tmutex_lock(&atm_dev_mutex);\n-\tlist_del(&dev->dev_list);\n-\tmutex_unlock(&atm_dev_mutex);\n-\n \tatm_dev_release_vccs(dev);\n \tatm_unregister_sysfs(dev);\n \tatm_proc_dev_deregister(dev);\n \n+\tmutex_lock(&atm_dev_mutex);\n+\tlist_del(&dev->dev_list);\n+\tmutex_unlock(&atm_dev_mutex);\n+\n \tatm_dev_put(dev);\n }\n EXPORT_SYMBOL(atm_dev_deregister);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 2,
+      "start_step": 30
+    }
+  ],
+  "success_step": 31
+}

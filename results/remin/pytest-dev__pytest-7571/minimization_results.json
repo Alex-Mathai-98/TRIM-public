@@ -1,0 +1,184 @@
+{
+  "bug_id": "pytest-dev__pytest-7571",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/logging.py",
+        "before": "    def __init__(self, item: nodes.Node) -> None:\n        \"\"\"Creates a new funcarg.\"\"\"\n        self._item = item\n        # dict of log name -> log level\n        self._initial_logger_levels = {}  # type: Dict[Optional[str], int]",
+        "after": "    def __init__(self, item: nodes.Node) -> None:\n        \"\"\"Creates a new funcarg.\"\"\"\n        self._item = item\n        # dict of log name -> log level\n        self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n        self._initial_handler_level = None  # type: Optional[int]",
+        "explanation": "classic_swe step 9 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/logging.py",
+        "before": "    def _finalize(self) -> None:\n        \"\"\"Finalizes the fixture.\n\n        This restores the log levels changed by :meth:`set_level`.\n        \"\"\"\n        # restore log levels\n        for logger_name, level in self._initial_logger_levels.items():\n            logger = logging.getLogger(logger_name)\n            logger.setLevel(level)",
+        "after": "    def _finalize(self) -> None:\n        \"\"\"Finalizes the fixture.\n\n        This restores the log levels changed by :meth:`set_level`.\n        \"\"\"\n        # restore log levels\n        for logger_name, level in self._initial_logger_levels.items():\n            logger = logging.getLogger(logger_name)\n            logger.setLevel(level)\n        # restore handler level\n        if self._initial_handler_level is not None:\n            self.handler.setLevel(self._initial_handler_level)",
+        "explanation": "classic_swe step 10 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/logging.py",
+        "before": "    def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n        \"\"\"Sets the level for capturing of logs. The level will be restored to its previous value at the end of\n        the test.\n\n        :param int level: the logger to level.\n        :param str logger: the logger to update the level. If not given, the root logger level is updated.\n\n        .. versionchanged:: 3.4\n            The levels of the loggers changed by this function will be restored to their initial values at the\n            end of the test.\n        \"\"\"\n        logger_obj = logging.getLogger(logger)\n        # save the original log-level to restore it during teardown\n        self._initial_logger_levels.setdefault(logger, logger_obj.level)\n        logger_obj.setLevel(level)\n        self.handler.setLevel(level)",
+        "after": "    def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n        \"\"\"Sets the level for capturing of logs. The level will be restored to its previous value at the end of\n        the test.\n\n        :param int level: the logger to level.\n        :param str logger: the logger to update the level. If not given, the root logger level is updated.\n\n        .. versionchanged:: 3.4\n            The levels of the loggers changed by this function will be restored to their initial values at the\n            end of the test.\n        \"\"\"\n        logger_obj = logging.getLogger(logger)\n        # save the original log-level to restore it during teardown\n        self._initial_logger_levels.setdefault(logger, logger_obj.level)\n        logger_obj.setLevel(level)\n        # save the original handler level to restore it during teardown\n        if self._initial_handler_level is None:\n            self._initial_handler_level = self.handler.level\n        self.handler.setLevel(level)",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/logging/test_fixture.py",
+        "before": "    result = testdir.runpytest(\"--log-level=INFO\")\n    result.stdout.no_fnmatch_line(\"*Exception: caplog failed to capture DEBUG*\")\n    result.stdout.no_fnmatch_line(\"*DEBUG log message*\")\n    result.stdout.fnmatch_lines(\n        [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n    )\n    assert result.ret == 1",
+        "after": "    result = testdir.runpytest(\"--log-level=INFO\")\n    result.stdout.no_fnmatch_line(\"*Exception: caplog failed to capture DEBUG*\")\n    result.stdout.no_fnmatch_line(\"*DEBUG log message*\")\n    result.stdout.fnmatch_lines(\n        [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n    )\n    assert result.ret == 1\n\n\ndef test_handler_level_restored_between_tests(testdir):\n    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n    testdir.makepyfile(\n        \"\"\"\n        def test_foo(caplog):\n            caplog.set_level(42)\n\n        def test_bar(caplog):\n            assert caplog.handler.level == 0\n    \"\"\"\n    )\n    result = testdir.runpytest()\n    assert result.ret == 0",
+        "explanation": "classic_swe step 30 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/logging.py b/src/_pytest/logging.py\nindex 11031f2f2..1b4d9d385 100644\n--- a/src/_pytest/logging.py\n+++ b/src/_pytest/logging.py\n@@ -346,6 +346,7 @@ class LogCaptureFixture:\n         self._item = item\n         # dict of log name -> log level\n         self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n+        self._initial_handler_level = None  # type: Optional[int]\n \n     def _finalize(self) -> None:\n         \"\"\"Finalizes the fixture.\n@@ -356,6 +357,9 @@ class LogCaptureFixture:\n         for logger_name, level in self._initial_logger_levels.items():\n             logger = logging.getLogger(logger_name)\n             logger.setLevel(level)\n+        # restore handler level\n+        if self._initial_handler_level is not None:\n+            self.handler.setLevel(self._initial_handler_level)\n \n     @property\n     def handler(self) -> LogCaptureHandler:\n@@ -434,6 +438,9 @@ class LogCaptureFixture:\n         # save the original log-level to restore it during teardown\n         self._initial_logger_levels.setdefault(logger, logger_obj.level)\n         logger_obj.setLevel(level)\n+        # save the original handler level to restore it during teardown\n+        if self._initial_handler_level is None:\n+            self._initial_handler_level = self.handler.level\n         self.handler.setLevel(level)\n \n     @contextmanager\ndiff --git a/testing/logging/test_fixture.py b/testing/logging/test_fixture.py\nindex da5303302..e9dc35f8d 100644\n--- a/testing/logging/test_fixture.py\n+++ b/testing/logging/test_fixture.py\n@@ -274,3 +274,18 @@ def test_log_report_captures_according_to_config_option_upon_failure(testdir):\n         [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n     )\n     assert result.ret == 1\n+\n+\n+def test_handler_level_restored_between_tests(testdir):\n+    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n+    testdir.makepyfile(\n+        \"\"\"\n+        def test_foo(caplog):\n+            caplog.set_level(42)\n+\n+        def test_bar(caplog):\n+            assert caplog.handler.level == 0\n+    \"\"\"\n+    )\n+    result = testdir.runpytest()\n+    assert result.ret == 0\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 5,
+    "greedy_removal_edit_still_crashes": 3,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def __init__(self, item: nodes.Node) -> None:\n        \"\"\"Creates a new funcarg.\"\"\"\n        self._item = item\n        # dict of log name -> log level\n        self._initial_logger_levels = {}  # type: Dict[Optional[str], int]",
+          "after": "    def __init__(self, item: nodes.Node) -> None:\n        \"\"\"Creates a new funcarg.\"\"\"\n        self._item = item\n        # dict of log name -> log level\n        self._initial_logger_levels = {}  # type: Dict[Optional[str], int]\n        self._initial_handler_level = None  # type: Optional[int]",
+          "explanation": "classic_swe step 9 #1"
+        },
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def _finalize(self) -> None:\n        \"\"\"Finalizes the fixture.\n\n        This restores the log levels changed by :meth:`set_level`.\n        \"\"\"\n        # restore log levels\n        for logger_name, level in self._initial_logger_levels.items():\n            logger = logging.getLogger(logger_name)\n            logger.setLevel(level)",
+          "after": "    def _finalize(self) -> None:\n        \"\"\"Finalizes the fixture.\n\n        This restores the log levels changed by :meth:`set_level`.\n        \"\"\"\n        # restore log levels\n        for logger_name, level in self._initial_logger_levels.items():\n            logger = logging.getLogger(logger_name)\n            logger.setLevel(level)\n        # restore handler level\n        if self._initial_handler_level is not None:\n            self.handler.setLevel(self._initial_handler_level)",
+          "explanation": "classic_swe step 10 #1"
+        },
+        {
+          "filename": "src/_pytest/logging.py",
+          "before": "    def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n        \"\"\"Sets the level for capturing of logs. The level will be restored to its previous value at the end of\n        the test.\n\n        :param int level: the logger to level.\n        :param str logger: the logger to update the level. If not given, the root logger level is updated.\n\n        .. versionchanged:: 3.4\n            The levels of the loggers changed by this function will be restored to their initial values at the\n            end of the test.\n        \"\"\"\n        logger_obj = logging.getLogger(logger)\n        # save the original log-level to restore it during teardown\n        self._initial_logger_levels.setdefault(logger, logger_obj.level)\n        logger_obj.setLevel(level)\n        self.handler.setLevel(level)",
+          "after": "    def set_level(self, level: Union[int, str], logger: Optional[str] = None) -> None:\n        \"\"\"Sets the level for capturing of logs. The level will be restored to its previous value at the end of\n        the test.\n\n        :param int level: the logger to level.\n        :param str logger: the logger to update the level. If not given, the root logger level is updated.\n\n        .. versionchanged:: 3.4\n            The levels of the loggers changed by this function will be restored to their initial values at the\n            end of the test.\n        \"\"\"\n        logger_obj = logging.getLogger(logger)\n        # save the original log-level to restore it during teardown\n        self._initial_logger_levels.setdefault(logger, logger_obj.level)\n        logger_obj.setLevel(level)\n        # save the original handler level to restore it during teardown\n        if self._initial_handler_level is None:\n            self._initial_handler_level = self.handler.level\n        self.handler.setLevel(level)",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "testing/logging/test_fixture.py",
+          "before": "    result = testdir.runpytest(\"--log-level=INFO\")\n    result.stdout.no_fnmatch_line(\"*Exception: caplog failed to capture DEBUG*\")\n    result.stdout.no_fnmatch_line(\"*DEBUG log message*\")\n    result.stdout.fnmatch_lines(\n        [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n    )\n    assert result.ret == 1",
+          "after": "    result = testdir.runpytest(\"--log-level=INFO\")\n    result.stdout.no_fnmatch_line(\"*Exception: caplog failed to capture DEBUG*\")\n    result.stdout.no_fnmatch_line(\"*DEBUG log message*\")\n    result.stdout.fnmatch_lines(\n        [\"*Print message*\", \"*INFO log message*\", \"*WARNING log message*\"]\n    )\n    assert result.ret == 1\n\n\ndef test_handler_level_restored_between_tests(testdir):\n    \"\"\"Ensure that handler level is restored between tests (issue #7517)\"\"\"\n    testdir.makepyfile(\n        \"\"\"\n        def test_foo(caplog):\n            caplog.set_level(42)\n\n        def test_bar(caplog):\n            assert caplog.handler.level == 0\n    \"\"\"\n    )\n    result = testdir.runpytest()\n    assert result.ret == 0",
+          "explanation": "classic_swe step 30 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 14,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 14,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "src/_pytest/logging.py"
+    ],
+    "extra_files_in_minimized": [
+      "testing/logging/test_fixture.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/logging.py",
+      "testing/logging/test_fixture.py"
+    ],
+    "gold_files": [
+      "src/_pytest/logging.py"
+    ],
+    "minimized_hunks": 4,
+    "gold_hunks": 3,
+    "minimized_added_lines": 22,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

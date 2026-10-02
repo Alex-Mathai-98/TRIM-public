@@ -1,0 +1,48 @@
+diff --git a/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c b/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c
+index 931e5dc453b9..d4d4576d7097 100644
+--- a/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c
++++ b/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c
+@@ -2020,6 +2020,9 @@ void tpg_gen_text(const struct tpg_data *tpg, u8 *basep[TPG_MAX_PLANES][2],
+ 		x = tpg->compose.width - x - 8;
+ 	y += tpg->compose.top;
+ 	x += tpg->compose.left;
++	/* Ensure the text fits within the buffer */
++	if (y + 16 > tpg->buf_height)
++		return;
+ 	if (tpg->field == V4L2_FIELD_BOTTOM)
+ 		first = 1;
+ 	else if (tpg->field == V4L2_FIELD_SEQ_TB || tpg->field == V4L2_FIELD_SEQ_BT)
+@@ -2631,6 +2634,7 @@ void tpg_fill_plane_buffer(struct tpg_data *tpg, v4l2_std_id std,
+ {
+ 	struct tpg_draw_params params;
+ 	unsigned factor = V4L2_FIELD_HAS_T_OR_B(tpg->field) ? 2 : 1;
++	unsigned left = tpg_hdiv(tpg, p, tpg->compose.left);
+ 
+ 	/* Coarse scaling with Bresenham */
+ 	unsigned int_part = (tpg->crop.height / factor) / tpg->compose.height;
+@@ -2646,12 +2650,14 @@ void tpg_fill_plane_buffer(struct tpg_data *tpg, v4l2_std_id std,
+ 	params.twopixsize = tpg->twopixelsize[p];
+ 	params.img_width = tpg_hdiv(tpg, p, tpg->compose.width);
+ 	params.stride = tpg->bytesperline[p];
++	if (params.img_width + left > params.stride)
++		params.img_width = params.stride - left;
+ 	params.hmax = (tpg->compose.height * tpg->perc_fill) / 100;
+ 
+ 	tpg_fill_params_pattern(tpg, p, &params);
+ 	tpg_fill_params_extras(tpg, p, &params);
+ 
+-	vbuf += tpg_hdiv(tpg, p, tpg->compose.left);
++	vbuf += left;
+ 
+ 	for (h = 0; h < tpg->compose.height; h++) {
+ 		unsigned buf_line;
+@@ -2702,6 +2708,9 @@ void tpg_fill_plane_buffer(struct tpg_data *tpg, v4l2_std_id std,
+ 
+ 			buf_line /= tpg->vdownsampling[p];
+ 		}
++		/* Clamp buf_line to avoid writing out of bounds */
++		if (buf_line >= tpg->buf_height / tpg->vdownsampling[p])
++			break;
+ 		tpg_fill_plane_pattern(tpg, &params, p, h,
+ 				vbuf + buf_line * params.stride);
+ 		tpg_fill_plane_extras(tpg, &params, p, h,

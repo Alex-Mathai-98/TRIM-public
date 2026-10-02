@@ -1,0 +1,49 @@
+diff --git a/drivers/iommu/iommufd/device.c b/drivers/iommu/iommufd/device.c
+index dfd0898fb6c1..7e5a7e2e5343 100644
+--- a/drivers/iommu/iommufd/device.c
++++ b/drivers/iommu/iommufd/device.c
+@@ -1213,10 +1213,16 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)
+ 		data = NULL;
+ 	}
+ 
++	cmd->out_capabilities = 0;
++	if (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))
++		cmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;
++
++	iommufd_put_object(ucmd->ictx, &idev->obj);
++
+ 	copy_len = min(cmd->data_len, data_len);
+ 	if (copy_to_user(user_ptr, data, copy_len)) {
+-		rc = -EFAULT;
+-		goto out_free;
++		kfree(data);
++		return -EFAULT;
+ 	}
+ 
+ 	/*
+@@ -1225,8 +1231,8 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)
+ 	 */
+ 	if (copy_len < cmd->data_len) {
+ 		if (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {
+-			rc = -EFAULT;
+-			goto out_free;
++			kfree(data);
++			return -EFAULT;
+ 		}
+ 	}
+ 
+@@ -1236,11 +1242,10 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)
+ 	 */
+ 	cmd->data_len = data_len;
+ 
+-	cmd->out_capabilities = 0;
+-	if (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))
+-		cmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;
+-
+ 	rc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));
++	kfree(data);
++	return rc;
++
+ out_free:
+ 	kfree(data);
+ out_put:

@@ -1,0 +1,229 @@
+{
+  "bug_id": "sympy__sympy-12419",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/matrices/expressions/matexpr.py",
+        "before": "    def _entry(self, i, j):\n        if i == j:\n            return S.One\n        else:\n            return S.Zero",
+        "after": "    def _entry(self, i, j):\n        from sympy.functions.special.tensor_functions import KroneckerDelta\n        return KroneckerDelta(i, j)",
+        "explanation": "classic_swe step 39 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/concrete/summations.py",
+        "before": "    if f.has(KroneckerDelta) and _has_simple_delta(f, limits[0]):\n        return deltasummation(f, limits)",
+        "after": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    left_cond.lhs == a and left_cond.rhs == i and \n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(left_cond, (GreaterThan, StrictGreaterThan)) and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)\n\n    if f.has(KroneckerDelta) and _has_simple_delta(f, limits[0]):\n        return deltasummation(f, limits)",
+        "explanation": "classic_swe step 73 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/concrete/summations.py",
+        "before": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    left_cond.lhs == a and left_cond.rhs == i and \n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(left_cond, (GreaterThan, StrictGreaterThan)) and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+        "after": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                # The condition should be (a <= i) & (i <= b), which means:\n                # left_cond: a <= i  (i.e., i >= a)\n                # right_cond: i <= b\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    ((left_cond.lhs == i and left_cond.rhs == a and \n                      isinstance(left_cond, (GreaterThan, StrictGreaterThan))) or\n                     (left_cond.lhs == a and left_cond.rhs == i and \n                      isinstance(left_cond, (LessThan, StrictLessThan)))) and\n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+        "explanation": "classic_swe step 74 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/concrete/summations.py",
+        "before": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                # The condition should be (a <= i) & (i <= b), which means:\n                # left_cond: a <= i  (i.e., i >= a)\n                # right_cond: i <= b\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    ((left_cond.lhs == i and left_cond.rhs == a and \n                      isinstance(left_cond, (GreaterThan, StrictGreaterThan))) or\n                     (left_cond.lhs == a and left_cond.rhs == i and \n                      isinstance(left_cond, (LessThan, StrictLessThan)))) and\n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+        "after": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            from sympy.logic.boolalg import And\n            if isinstance(cond, And) and len(cond.args) == 2:\n                from sympy.core.relational import LessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                # We expect: (a <= i) & (i <= b)\n                # In SymPy, this becomes: LessThan(a, i) & LessThan(i, b)\n                if (isinstance(left_cond, LessThan) and isinstance(right_cond, LessThan) and\n                    left_cond.lhs == a and left_cond.rhs == i and\n                    right_cond.lhs == i and right_cond.rhs == b):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+        "explanation": "classic_swe step 79 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/concrete/summations.py b/sympy/concrete/summations.py\nindex 372487664c..a3c318712f 100644\n--- a/sympy/concrete/summations.py\n+++ b/sympy/concrete/summations.py\n@@ -867,6 +867,26 @@ def eval_sum(f, limits):\n                 newargs.append((newexpr, arg.cond))\n             return f.func(*newargs)\n \n+    # Special case for Piecewise expressions where the condition matches the summation bounds\n+    if isinstance(f, Piecewise):\n+        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n+        # where we're summing from a to b\n+        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n+            expr, cond = f.args[0]\n+            # Check if the condition is of the form (a <= i) & (i <= b)\n+            from sympy.logic.boolalg import And\n+            if isinstance(cond, And) and len(cond.args) == 2:\n+                from sympy.core.relational import LessThan\n+                left_cond, right_cond = cond.args\n+                # Check for (a <= i) & (i <= b) pattern\n+                # We expect: (a <= i) & (i <= b)\n+                # In SymPy, this becomes: LessThan(a, i) & LessThan(i, b)\n+                if (isinstance(left_cond, LessThan) and isinstance(right_cond, LessThan) and\n+                    left_cond.lhs == a and left_cond.rhs == i and\n+                    right_cond.lhs == i and right_cond.rhs == b):\n+                    # The condition matches the summation bounds, so we can simplify\n+                    return eval_sum(expr, limits)\n+\n     if f.has(KroneckerDelta) and _has_simple_delta(f, limits[0]):\n         return deltasummation(f, limits)\n \ndiff --git a/sympy/matrices/expressions/matexpr.py b/sympy/matrices/expressions/matexpr.py\nindex b4d759836e..1cb0cf4df5 100644\n--- a/sympy/matrices/expressions/matexpr.py\n+++ b/sympy/matrices/expressions/matexpr.py\n@@ -476,10 +476,8 @@ def conjugate(self):\n         return self\n \n     def _entry(self, i, j):\n-        if i == j:\n-            return S.One\n-        else:\n-            return S.Zero\n+        from sympy.functions.special.tensor_functions import KroneckerDelta\n+        return KroneckerDelta(i, j)\n \n     def _eval_determinant(self):\n         return S.One\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      8,
+      14,
+      15,
+      16,
+      19,
+      24
+    ],
+    "nodes_original_count": 5,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 3,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 2,
+    "find_minimum_subsequence_node_no_crash": 1,
+    "node_list_after_phase2": [
+      0,
+      2,
+      3,
+      4
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 2,
+    "greedy_removal_node_not_applicable": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "node_list_after_refinement": [
+      0,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      8,
+      15,
+      16,
+      19
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "edit_list_after_file_min": [
+      8,
+      15,
+      16,
+      19
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      8,
+      15,
+      16,
+      19
+    ],
+    "edit_list_after_refinement": [
+      8,
+      15,
+      16,
+      19
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 4,
+  "reduction": "6_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/matrices/expressions/matexpr.py",
+          "before": "    def _entry(self, i, j):\n        if i == j:\n            return S.One\n        else:\n            return S.Zero",
+          "after": "    def _entry(self, i, j):\n        from sympy.functions.special.tensor_functions import KroneckerDelta\n        return KroneckerDelta(i, j)",
+          "explanation": "classic_swe step 39 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/matrices/expressions/matexpr.py",
+          "before": "    def _entry(self, i, j):\n        from sympy.functions.special.tensor_functions import KroneckerDelta\n        return KroneckerDelta(i, j)",
+          "after": "    def _entry(self, i, j):\n        from sympy.functions.special.tensor_functions import KroneckerDelta\n        from sympy.core.relational import Eq\n        # For concrete indices, use the simple comparison\n        if i.is_number and j.is_number:\n            if i == j:\n                return S.One\n            else:\n                return S.Zero\n        # For symbolic indices, use KroneckerDelta which handles summation better\n        return KroneckerDelta(i, j)",
+          "explanation": "classic_swe step 70 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/summations.py",
+          "before": "    if f.has(KroneckerDelta) and _has_simple_delta(f, limits[0]):\n        return deltasummation(f, limits)",
+          "after": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    left_cond.lhs == a and left_cond.rhs == i and \n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(left_cond, (GreaterThan, StrictGreaterThan)) and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)\n\n    if f.has(KroneckerDelta) and _has_simple_delta(f, limits[0]):\n        return deltasummation(f, limits)",
+          "explanation": "classic_swe step 73 #1"
+        },
+        {
+          "filename": "sympy/concrete/summations.py",
+          "before": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    left_cond.lhs == a and left_cond.rhs == i and \n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(left_cond, (GreaterThan, StrictGreaterThan)) and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+          "after": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                # The condition should be (a <= i) & (i <= b), which means:\n                # left_cond: a <= i  (i.e., i >= a)\n                # right_cond: i <= b\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    ((left_cond.lhs == i and left_cond.rhs == a and \n                      isinstance(left_cond, (GreaterThan, StrictGreaterThan))) or\n                     (left_cond.lhs == a and left_cond.rhs == i and \n                      isinstance(left_cond, (LessThan, StrictLessThan)))) and\n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+          "explanation": "classic_swe step 74 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/summations.py",
+          "before": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            if cond.is_And and len(cond.args) == 2:\n                from sympy.core.relational import GreaterThan, LessThan, StrictGreaterThan, StrictLessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                # The condition should be (a <= i) & (i <= b), which means:\n                # left_cond: a <= i  (i.e., i >= a)\n                # right_cond: i <= b\n                if (left_cond.is_Relational and right_cond.is_Relational and\n                    ((left_cond.lhs == i and left_cond.rhs == a and \n                      isinstance(left_cond, (GreaterThan, StrictGreaterThan))) or\n                     (left_cond.lhs == a and left_cond.rhs == i and \n                      isinstance(left_cond, (LessThan, StrictLessThan)))) and\n                    right_cond.lhs == i and right_cond.rhs == b and\n                    isinstance(right_cond, (LessThan, StrictLessThan))):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+          "after": "    # Special case for Piecewise expressions where the condition matches the summation bounds\n    if isinstance(f, Piecewise):\n        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))\n        # where we're summing from a to b\n        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:\n            expr, cond = f.args[0]\n            # Check if the condition is of the form (a <= i) & (i <= b)\n            from sympy.logic.boolalg import And\n            if isinstance(cond, And) and len(cond.args) == 2:\n                from sympy.core.relational import LessThan\n                left_cond, right_cond = cond.args\n                # Check for (a <= i) & (i <= b) pattern\n                # We expect: (a <= i) & (i <= b)\n                # In SymPy, this becomes: LessThan(a, i) & LessThan(i, b)\n                if (isinstance(left_cond, LessThan) and isinstance(right_cond, LessThan) and\n                    left_cond.lhs == a and left_cond.rhs == i and\n                    right_cond.lhs == i and right_cond.rhs == b):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+          "explanation": "classic_swe step 79 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/summations.py",
+          "before": "                # Check for (a <= i) & (i <= b) pattern\n                # We expect: (a <= i) & (i <= b)\n                # In SymPy, this becomes: LessThan(a, i) & LessThan(i, b)\n                if (isinstance(left_cond, LessThan) and isinstance(right_cond, LessThan) and\n                    left_cond.lhs == a and left_cond.rhs == i and\n                    right_cond.lhs == i and right_cond.rhs == b):\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+          "after": "                # Check for (a <= i) & (i <= b) pattern\n                # This can appear as either:\n                # LessThan(a, i) & LessThan(i, b)  or  GreaterThan(i, a) & LessThan(i, b)\n                from sympy.core.relational import GreaterThan\n                \n                # Check if we have the pattern (a <= i) & (i <= b)\n                left_matches = ((isinstance(left_cond, LessThan) and \n                                left_cond.lhs == a and left_cond.rhs == i) or\n                               (isinstance(left_cond, GreaterThan) and \n                                left_cond.lhs == i and left_cond.rhs == a))\n                right_matches = (isinstance(right_cond, LessThan) and\n                                right_cond.lhs == i and right_cond.rhs == b)\n                \n                if left_matches and right_matches:\n                    # The condition matches the summation bounds, so we can simplify\n                    return eval_sum(expr, limits)",
+          "explanation": "classic_swe step 93 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 25,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 25,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "sympy/matrices/expressions/matexpr.py"
+    ],
+    "extra_files_in_minimized": [
+      "sympy/concrete/summations.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/concrete/summations.py",
+      "sympy/matrices/expressions/matexpr.py"
+    ],
+    "gold_files": [
+      "sympy/matrices/expressions/matexpr.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 3,
+    "minimized_added_lines": 22,
+    "minimized_deleted_lines": 4,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 4
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

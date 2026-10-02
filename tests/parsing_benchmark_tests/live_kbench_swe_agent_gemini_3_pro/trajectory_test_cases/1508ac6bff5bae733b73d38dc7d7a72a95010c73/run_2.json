@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (fopen_direct_io && fc->direct_io_allow_mmap) {\n\t\tres = filemap_write_and_wait_range(mapping, pos, pos + count - 1);\n\t\tif (res)\n\t\t\treturn res;\n\t}\n\tif (!cuse && fuse_range_is_writeback(inode, idx_from, idx_to)) {\n\t\tif (!write)\n\t\t\tinode_lock(inode);\n\t\tfuse_sync_writes(inode);\n\t\tif (!write)\n\t\t\tinode_unlock(inode);\n\t}\n\n\tif (fopen_direct_io && write) {\n\t\tres = invalidate_inode_pages2_range(mapping, idx_from, idx_to);\n\t\tif (res)\n\t\t\treturn res;\n\t}\n\n\tio->should_dirty = !write && user_backed_iter(iter);\n\twhile (count) {\n\t\tssize_t nres;\n\t\tfl_owner_t owner = current->files;\n\t\tsize_t nbytes = min(count, nmax);\n\n\t\tmax_pages = iov_iter_npages(iter, fc->max_pages);\n\t\tia = fuse_io_alloc(io, max_pages);\n\t\tif (!ia) {\n\t\t\terr = -ENOMEM;\n\t\t\tbreak;\n\t\t}\n\n\t\terr = fuse_get_user_pages(&ia->ap, iter, &nbytes, write,",
+          "before": "\tmax_pages = iov_iter_npages(iter, fc->max_pages);\n\tia = fuse_io_alloc(io, max_pages);\n\tif (!ia)\n\t\treturn -ENOMEM;\n\n\tif (fopen_direct_io && fc->direct_io_allow_mmap) {\n\t\tres = filemap_write_and_wait_range(mapping, pos, pos + count - 1);\n\t\tif (res) {\n\t\t\tfuse_io_free(ia);\n\t\t\treturn res;\n\t\t}\n\t}\n\tif (!cuse && fuse_range_is_writeback(inode, idx_from, idx_to)) {\n\t\tif (!write)\n\t\t\tinode_lock(inode);\n\t\tfuse_sync_writes(inode);\n\t\tif (!write)\n\t\t\tinode_unlock(inode);\n\t}\n\n\tif (fopen_direct_io && write) {\n\t\tres = invalidate_inode_pages2_range(mapping, idx_from, idx_to);\n\t\tif (res) {\n\t\t\tfuse_io_free(ia);\n\t\t\treturn res;\n\t\t}\n\t}\n\n\tio->should_dirty = !write && user_backed_iter(iter);\n\twhile (count) {\n\t\tssize_t nres;\n\t\tfl_owner_t owner = current->files;\n\t\tsize_t nbytes = min(count, nmax);\n\n\t\terr = fuse_get_user_pages(&ia->ap, iter, &nbytes, write,",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/fuse/file.c b/fs/fuse/file.c\nindex 15b08d6a5739..8f97a0f236c9 100644\n--- a/fs/fuse/file.c\n+++ b/fs/fuse/file.c\n@@ -1614,17 +1614,10 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,\n \tunsigned int max_pages;\n \tbool fopen_direct_io = ff->open_flags & FOPEN_DIRECT_IO;\n \n-\tmax_pages = iov_iter_npages(iter, fc->max_pages);\n-\tia = fuse_io_alloc(io, max_pages);\n-\tif (!ia)\n-\t\treturn -ENOMEM;\n-\n \tif (fopen_direct_io && fc->direct_io_allow_mmap) {\n \t\tres = filemap_write_and_wait_range(mapping, pos, pos + count - 1);\n-\t\tif (res) {\n-\t\t\tfuse_io_free(ia);\n+\t\tif (res)\n \t\t\treturn res;\n-\t\t}\n \t}\n \tif (!cuse && fuse_range_is_writeback(inode, idx_from, idx_to)) {\n \t\tif (!write)\n@@ -1636,10 +1629,8 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,\n \n \tif (fopen_direct_io && write) {\n \t\tres = invalidate_inode_pages2_range(mapping, idx_from, idx_to);\n-\t\tif (res) {\n-\t\t\tfuse_io_free(ia);\n+\t\tif (res)\n \t\t\treturn res;\n-\t\t}\n \t}\n \n \tio->should_dirty = !write && user_backed_iter(iter);\n@@ -1648,6 +1639,13 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,\n \t\tfl_owner_t owner = current->files;\n \t\tsize_t nbytes = min(count, nmax);\n \n+\t\tmax_pages = iov_iter_npages(iter, fc->max_pages);\n+\t\tia = fuse_io_alloc(io, max_pages);\n+\t\tif (!ia) {\n+\t\t\terr = -ENOMEM;\n+\t\t\tbreak;\n+\t\t}\n+\n \t\terr = fuse_get_user_pages(&ia->ap, iter, &nbytes, write,\n \t\t\t\t\t  max_pages, fc->use_pages_for_kvec_io);\n \t\tif (err && !nbytes)",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "fs/fuse/file.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        },
+        {
+          "after": "\t\terr = fuse_get_user_pages(&ia->ap, iter, &nbytes, write,\n\t\t\t\t\t  max_pages, fc->use_pages_for_kvec_io);\n\t\tif (err && !nbytes) {\n\t\t\tfuse_io_free(ia);\n\t\t\tbreak;\n\t\t}",
+          "before": "\t\terr = fuse_get_user_pages(&ia->ap, iter, &nbytes, write,\n\t\t\t\t\t  max_pages, fc->use_pages_for_kvec_io);\n\t\tif (err && !nbytes)\n\t\t\tbreak;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/fuse/file.c b/fs/fuse/file.c\nindex 15b08d6a5739..39413a065d67 100644\n--- a/fs/fuse/file.c\n+++ b/fs/fuse/file.c\n@@ -1614,17 +1614,10 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,\n \tunsigned int max_pages;\n \tbool fopen_direct_io = ff->open_flags & FOPEN_DIRECT_IO;\n \n-\tmax_pages = iov_iter_npages(iter, fc->max_pages);\n-\tia = fuse_io_alloc(io, max_pages);\n-\tif (!ia)\n-\t\treturn -ENOMEM;\n-\n \tif (fopen_direct_io && fc->direct_io_allow_mmap) {\n \t\tres = filemap_write_and_wait_range(mapping, pos, pos + count - 1);\n-\t\tif (res) {\n-\t\t\tfuse_io_free(ia);\n+\t\tif (res)\n \t\t\treturn res;\n-\t\t}\n \t}\n \tif (!cuse && fuse_range_is_writeback(inode, idx_from, idx_to)) {\n \t\tif (!write)\n@@ -1636,10 +1629,8 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,\n \n \tif (fopen_direct_io && write) {\n \t\tres = invalidate_inode_pages2_range(mapping, idx_from, idx_to);\n-\t\tif (res) {\n-\t\t\tfuse_io_free(ia);\n+\t\tif (res)\n \t\t\treturn res;\n-\t\t}\n \t}\n \n \tio->should_dirty = !write && user_backed_iter(iter);\n@@ -1648,10 +1639,19 @@ ssize_t fuse_direct_io(struct fuse_io_priv *io, struct iov_iter *iter,\n \t\tfl_owner_t owner = current->files;\n \t\tsize_t nbytes = min(count, nmax);\n \n+\t\tmax_pages = iov_iter_npages(iter, fc->max_pages);\n+\t\tia = fuse_io_alloc(io, max_pages);\n+\t\tif (!ia) {\n+\t\t\terr = -ENOMEM;\n+\t\t\tbreak;\n+\t\t}\n+\n \t\terr = fuse_get_user_pages(&ia->ap, iter, &nbytes, write,\n \t\t\t\t\t  max_pages, fc->use_pages_for_kvec_io);\n-\t\tif (err && !nbytes)\n+\t\tif (err && !nbytes) {\n+\t\t\tfuse_io_free(ia);\n \t\t\tbreak;\n+\t\t}\n \n \t\tif (write) {\n \t\t\tif (!capable(CAP_FSETID))",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "fs/fuse/file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 0,
+      "start_step": 40
+    }
+  ],
+  "success_step": 41
+}

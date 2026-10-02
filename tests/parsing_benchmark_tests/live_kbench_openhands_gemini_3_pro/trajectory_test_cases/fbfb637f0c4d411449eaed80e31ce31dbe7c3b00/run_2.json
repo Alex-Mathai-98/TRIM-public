@@ -1,0 +1,135 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n{\n\tunsigned root_level = 0;\n\n\tif (b->c.btree_id < BTREE_ID_NR ||\n\t    (b->c.btree_id - BTREE_ID_NR) < c->btree_roots_extra.nr)\n\t\troot_level = bch2_btree_id_root(c, b->c.btree_id)->level;\n\n\tprt_printf(out, \"%s level %u/%u\\n  \",\n\t       bch2_btree_id_str(b->c.btree_id),\n\t       b->c.level,\n\t       root_level);\n\tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n}",
+          "before": "void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n{\n\tprt_printf(out, \"%s level %u/%u\\n  \",\n\t       bch2_btree_id_str(b->c.btree_id),\n\t       b->c.level,\n\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n\tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/btree_cache.c\n+++ /linux/fs/bcachefs/btree_cache.c\n@@ -1377,0 +1378,6 @@\n+\tunsigned root_level = 0;\n+\n+\tif (b->c.btree_id < BTREE_ID_NR ||\n+\t    (b->c.btree_id - BTREE_ID_NR) < c->btree_roots_extra.nr)\n+\t\troot_level = bch2_btree_id_root(c, b->c.btree_id)->level;\n+\n@@ -1381 +1387 @@\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       root_level);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 43",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        }
+      ],
+      "end_step": 43,
+      "revision_index": 0,
+      "start_step": 43
+    },
+    {
+      "edits": [
+        {
+          "after": "\nstatic inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n{\n\tstruct bbpos pos = BBPOS(b->c.btree_id, b->key.k.p);\n\n\tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n\n\tif (b->c.btree_id >= BITS_PER_TYPE(mask))\n\t\treturn false;\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n\t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n\t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n}\n",
+          "before": "\nstatic inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n{\n\tstruct bbpos pos = BBPOS(b->c.btree_id, b->key.k.p);\n\n\tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n\t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n\t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/btree_cache.c\n+++ /linux/fs/bcachefs/btree_cache.c\n@@ -196,0 +197,3 @@\n+\n+\tif (b->c.btree_id >= BITS_PER_TYPE(mask))\n+\t\treturn false;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 57",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 1,
+      "start_step": 57
+    },
+    {
+      "edits": [
+        {
+          "after": "\nstatic inline bool btree_node_type_is_extents(enum btree_node_type type)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_EXTENTS)) << (nr + 1))\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\tif (type >= BITS_PER_TYPE(mask))\n\t\treturn false;\n\n\treturn BIT_ULL(type) & mask;\n}\n",
+          "before": "\nstatic inline bool btree_node_type_is_extents(enum btree_node_type type)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_EXTENTS)) << (nr + 1))\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(type) & mask;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/btree_types.h\n+++ /linux/fs/bcachefs/btree_types.h\n@@ -797,0 +798,3 @@\n+\tif (type >= BITS_PER_TYPE(mask))\n+\t\treturn false;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 73",
+          "filename": "fs/bcachefs/btree_types.h",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 73
+        }
+      ],
+      "end_step": 73,
+      "revision_index": 2,
+      "start_step": 73
+    },
+    {
+      "edits": [
+        {
+          "after": "\nstatic inline bool btree_type_has_snapshots(enum btree_id id)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_SNAPSHOTS)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\tif (id >= BITS_PER_TYPE(mask))\n\t\treturn false;\n\n\treturn BIT_ULL(id) & mask;\n}\n\nstatic inline bool btree_type_has_snapshot_field(enum btree_id id)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & (BTREE_ID_SNAPSHOT_FIELD|BTREE_ID_SNAPSHOTS))) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\tif (id >= BITS_PER_TYPE(mask))\n\t\treturn false;\n\n\treturn BIT_ULL(id) & mask;\n}\n\nstatic inline bool btree_type_has_ptrs(enum btree_id id)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_DATA)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\tif (id >= BITS_PER_TYPE(mask))\n\t\treturn false;\n\n\treturn BIT_ULL(id) & mask;\n}\n",
+          "before": "\nstatic inline bool btree_type_has_snapshots(enum btree_id id)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_SNAPSHOTS)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(id) & mask;\n}\n\nstatic inline bool btree_type_has_snapshot_field(enum btree_id id)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & (BTREE_ID_SNAPSHOT_FIELD|BTREE_ID_SNAPSHOTS))) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(id) & mask;\n}\n\nstatic inline bool btree_type_has_ptrs(enum btree_id id)\n{\n\tconst u64 mask = 0\n#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_DATA)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(id) & mask;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/btree_types.h\n+++ /linux/fs/bcachefs/btree_types.h\n@@ -816,0 +817,3 @@\n+\tif (id >= BITS_PER_TYPE(mask))\n+\t\treturn false;\n+\n@@ -827,0 +831,3 @@\n+\tif (id >= BITS_PER_TYPE(mask))\n+\t\treturn false;\n+\n@@ -837,0 +844,3 @@\n+\n+\tif (id >= BITS_PER_TYPE(mask))\n+\t\treturn false;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 89",
+          "filename": "fs/bcachefs/btree_types.h",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 89
+        }
+      ],
+      "end_step": 89,
+      "revision_index": 3,
+      "start_step": 89
+    }
+  ],
+  "success_step": 89
+}

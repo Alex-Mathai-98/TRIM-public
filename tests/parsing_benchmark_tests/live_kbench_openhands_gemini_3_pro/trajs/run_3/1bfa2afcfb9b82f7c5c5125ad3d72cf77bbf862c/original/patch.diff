@@ -1,0 +1,26 @@
+diff --git a/sound/usb/midi.c b/sound/usb/midi.c
+index 9ab746ba367d..479ddc0e4cfe 100644
+--- a/sound/usb/midi.c
++++ b/sound/usb/midi.c
+@@ -1318,9 +1318,11 @@ static void snd_usbmidi_in_endpoint_delete(struct snd_usb_midi_in_endpoint *ep)
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < INPUT_URBS; ++i)
+-		if (ep->urbs[i])
++		if (ep->urbs[i]) {
++			usb_kill_urb(ep->urbs[i]);
+ 			free_urb_and_buffer(ep->umidi, ep->urbs[i],
+ 					    ep->urbs[i]->transfer_buffer_length);
++		}
+ 	kfree(ep);
+ }
+ 
+@@ -1522,6 +1524,8 @@ static void snd_usbmidi_free(struct snd_usb_midi *umidi)
+ {
+ 	int i;
+ 
++	timer_shutdown_sync(&umidi->error_timer);
++
+ 	for (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {
+ 		struct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];
+ 		if (ep->out)

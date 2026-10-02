@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&buffer->mutex);\n\n\t/*\n\t * We need to make sure that the ring buffer is stable.\n\t * There could be a resize pending. Only the buffer->mutex\n\t * protects against ring_buffer_resize() but it releases it\n\t * before the work queue that does the actual resize is finished.\n\t */\n\tflush_work(&cpu_buffer->update_pages_work);\n\n\terr = rb_alloc_meta_page(cpu_buffer);\n",
+          "before": "\tmutex_lock(&buffer->mutex);\n\n\terr = rb_alloc_meta_page(cpu_buffer);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 7e257e855dd1..8469ed73d8e8 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7112,6 +7112,14 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t/* prevent another thread from changing buffer/sub-buffer sizes */\n \tmutex_lock(&buffer->mutex);\n \n+\t/*\n+\t * We need to make sure that the ring buffer is stable.\n+\t * There could be a resize pending. Only the buffer->mutex\n+\t * protects against ring_buffer_resize() but it releases it\n+\t * before the work queue that does the actual resize is finished.\n+\t */\n+\tflush_work(&cpu_buffer->update_pages_work);\n+\n \terr = rb_alloc_meta_page(cpu_buffer);\n \tif (err)\n \t\tgoto unlock;",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&buffer->mutex);\n\n\terr = rb_alloc_meta_page(cpu_buffer);\n",
+          "before": "\tmutex_lock(&buffer->mutex);\n\n\t/*\n\t * We need to make sure that the ring buffer is stable.\n\t * There could be a resize pending. Only the buffer->mutex\n\t * protects against ring_buffer_resize() but it releases it\n\t * before the work queue that does the actual resize is finished.\n\t */\n\tflush_work(&cpu_buffer->update_pages_work);\n\n\terr = rb_alloc_meta_page(cpu_buffer);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "\tnr_subbufs = cpu_buffer->nr_pages + 1; /* + reader-subbuf */\n\tnr_pages = ((nr_subbufs + 1) << subbuf_order); /* + meta-page */\n\tif (nr_pages <= pgoff)\n\t\treturn -EINVAL;\n\n\tnr_pages -= pgoff;\n",
+          "before": "\tnr_subbufs = cpu_buffer->nr_pages + 1; /* + reader-subbuf */\n\tnr_pages = ((nr_subbufs + 1) << subbuf_order) - pgoff; /* + meta-page */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 7e257e855dd1..60210fb5b211 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7019,7 +7019,11 @@ static int __rb_map_vma(struct ring_buffer_per_cpu *cpu_buffer,\n \tlockdep_assert_held(&cpu_buffer->mapping_lock);\n \n \tnr_subbufs = cpu_buffer->nr_pages + 1; /* + reader-subbuf */\n-\tnr_pages = ((nr_subbufs + 1) << subbuf_order) - pgoff; /* + meta-page */\n+\tnr_pages = ((nr_subbufs + 1) << subbuf_order); /* + meta-page */\n+\tif (nr_pages <= pgoff)\n+\t\treturn -EINVAL;\n+\n+\tnr_pages -= pgoff;\n \n \tnr_vma_pages = vma_pages(vma);\n \tif (!nr_vma_pages || nr_vma_pages > nr_pages)",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 1,
+      "start_step": 29
+    }
+  ],
+  "success_step": 31
+}

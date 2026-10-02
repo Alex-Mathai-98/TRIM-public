@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void media_devnode_unregister(struct media_devnode *devnode)\n{\n\tint minor;\n\n\tmutex_lock(&media_devnode_lock);\n\t/* Delete the cdev on this minor as well */\n\tcdev_device_del(&devnode->cdev, &devnode->dev);\n\tdevnode->media_dev = NULL;\n\tmutex_unlock(&media_devnode_lock);\n\n\tminor = devnode->minor;\n\tput_device(&devnode->dev);\n\n\tmutex_lock(&media_devnode_lock);\n\tclear_bit(minor, media_devnode_nums);\n\tmutex_unlock(&media_devnode_lock);\n}",
+          "before": "void media_devnode_unregister(struct media_devnode *devnode)\n{\n\tmutex_lock(&media_devnode_lock);\n\t/* Delete the cdev on this minor as well */\n\tcdev_device_del(&devnode->cdev, &devnode->dev);\n\tdevnode->media_dev = NULL;\n\tmutex_unlock(&media_devnode_lock);\n\n\tput_device(&devnode->dev);\n\n\tmutex_lock(&media_devnode_lock);\n\tclear_bit(devnode->minor, media_devnode_nums);\n\tmutex_unlock(&media_devnode_lock);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/mc/mc-devnode.c b/drivers/media/mc/mc-devnode.c\nindex 0d01cbae98f2..329514427566 100644\n--- a/drivers/media/mc/mc-devnode.c\n+++ b/drivers/media/mc/mc-devnode.c\n@@ -272,16 +272,19 @@ void media_devnode_unregister_prepare(struct media_devnode *devnode)\n \n void media_devnode_unregister(struct media_devnode *devnode)\n {\n+\tint minor;\n+\n \tmutex_lock(&media_devnode_lock);\n \t/* Delete the cdev on this minor as well */\n \tcdev_device_del(&devnode->cdev, &devnode->dev);\n \tdevnode->media_dev = NULL;\n \tmutex_unlock(&media_devnode_lock);\n \n+\tminor = devnode->minor;\n \tput_device(&devnode->dev);\n \n \tmutex_lock(&media_devnode_lock);\n-\tclear_bit(devnode->minor, media_devnode_nums);\n+\tclear_bit(minor, media_devnode_nums);\n \tmutex_unlock(&media_devnode_lock);\n }",
+          "explanation": "classic_swe step 6 #1",
+          "filename": "drivers/media/mc/mc-devnode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 6
+        }
+      ],
+      "end_step": 6,
+      "revision_index": 0,
+      "start_step": 6
+    },
+    {
+      "edits": [
+        {
+          "after": "static void em28xx_video_release(struct video_device *vdev)\n{\n\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vdev);\n\n\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n}\n\nstatic void em28xx_vbi_release(struct video_device *vdev)\n{\n\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vbi_dev);\n\n\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n}\n\nstatic void em28xx_radio_release(struct video_device *vdev)\n{\n\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, radio_dev);\n\n\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/mc/mc-devnode.c b/drivers/media/mc/mc-devnode.c\nindex 0d01cbae98f2..329514427566 100644\n--- a/drivers/media/mc/mc-devnode.c\n+++ b/drivers/media/mc/mc-devnode.c\n@@ -272,16 +272,19 @@ void media_devnode_unregister_prepare(struct media_devnode *devnode)\n \n void media_devnode_unregister(struct media_devnode *devnode)\n {\n+\tint minor;\n+\n \tmutex_lock(&media_devnode_lock);\n \t/* Delete the cdev on this minor as well */\n \tcdev_device_del(&devnode->cdev, &devnode->dev);\n \tdevnode->media_dev = NULL;\n \tmutex_unlock(&media_devnode_lock);\n \n+\tminor = devnode->minor;\n \tput_device(&devnode->dev);\n \n \tmutex_lock(&media_devnode_lock);\n-\tclear_bit(devnode->minor, media_devnode_nums);\n+\tclear_bit(minor, media_devnode_nums);\n \tmutex_unlock(&media_devnode_lock);\n }\n \ndiff --git a/drivers/media/usb/em28xx/em28xx-video.c b/drivers/media/usb/em28xx/em28xx-video.c\nindex 2dfa3242a7ab..d40a48fedab2 100644\n--- a/drivers/media/usb/em28xx/em28xx-video.c\n+++ b/drivers/media/usb/em28xx/em28xx-video.c\n@@ -2117,6 +2117,27 @@ static void em28xx_free_v4l2(struct kref *ref)\n \tv4l2->dev->v4l2 = NULL;\n \tkfree(v4l2);\n }\n+static void em28xx_video_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vdev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_vbi_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vbi_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_radio_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, radio_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n \n /*\n  * em28xx_v4l2_open()",
+          "explanation": "classic_swe step 25 insert #1",
+          "filename": "drivers/media/usb/em28xx/em28xx-video.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 2120,
+          "step_index": 25
+        },
+        {
+          "after": "\t/* register v4l2 video video_device */\n\tv4l2->vdev.release = em28xx_video_release;\n\tkref_get(&v4l2->ref);\n\tret = video_register_device(&v4l2->vdev, VFL_TYPE_VIDEO,\n\t\t\t\t    video_nr[dev->devno]);\n\tif (ret) {\n\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n\t\tdev_err(&dev->intf->dev,\n\t\t\t\"unable to register video device (error=%i).\\n\", ret);\n\t\tgoto unregister_dev;\n\t}",
+          "before": "\t/* register v4l2 video video_device */\n\tret = video_register_device(&v4l2->vdev, VFL_TYPE_VIDEO,\n\t\t\t\t    video_nr[dev->devno]);\n\tif (ret) {\n\t\tdev_err(&dev->intf->dev,\n\t\t\t\"unable to register video device (error=%i).\\n\", ret);\n\t\tgoto unregister_dev;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/mc/mc-devnode.c b/drivers/media/mc/mc-devnode.c\nindex 0d01cbae98f2..329514427566 100644\n--- a/drivers/media/mc/mc-devnode.c\n+++ b/drivers/media/mc/mc-devnode.c\n@@ -272,16 +272,19 @@ void media_devnode_unregister_prepare(struct media_devnode *devnode)\n \n void media_devnode_unregister(struct media_devnode *devnode)\n {\n+\tint minor;\n+\n \tmutex_lock(&media_devnode_lock);\n \t/* Delete the cdev on this minor as well */\n \tcdev_device_del(&devnode->cdev, &devnode->dev);\n \tdevnode->media_dev = NULL;\n \tmutex_unlock(&media_devnode_lock);\n \n+\tminor = devnode->minor;\n \tput_device(&devnode->dev);\n \n \tmutex_lock(&media_devnode_lock);\n-\tclear_bit(devnode->minor, media_devnode_nums);\n+\tclear_bit(minor, media_devnode_nums);\n \tmutex_unlock(&media_devnode_lock);\n }\n \ndiff --git a/drivers/media/usb/em28xx/em28xx-video.c b/drivers/media/usb/em28xx/em28xx-video.c\nindex 2dfa3242a7ab..d7faa9b96927 100644\n--- a/drivers/media/usb/em28xx/em28xx-video.c\n+++ b/drivers/media/usb/em28xx/em28xx-video.c\n@@ -2117,6 +2117,27 @@ static void em28xx_free_v4l2(struct kref *ref)\n \tv4l2->dev->v4l2 = NULL;\n \tkfree(v4l2);\n }\n+static void em28xx_video_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vdev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_vbi_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vbi_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_radio_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, radio_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n \n /*\n  * em28xx_v4l2_open()\n@@ -2779,9 +2800,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t}\n \n \t/* register v4l2 video video_device */\n+\tv4l2->vdev.release = em28xx_video_release;\n+\tkref_get(&v4l2->ref);\n \tret = video_register_device(&v4l2->vdev, VFL_TYPE_VIDEO,\n \t\t\t\t    video_nr[dev->devno]);\n \tif (ret) {\n+\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\tdev_err(&dev->intf->dev,\n \t\t\t\"unable to register video device (error=%i).\\n\", ret);\n \t\tgoto unregister_dev;",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "drivers/media/usb/em28xx/em28xx-video.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "\t\t/* register v4l2 vbi video_device */\n\t\tv4l2->vbi_dev.release = em28xx_vbi_release;\n\t\tkref_get(&v4l2->ref);\n\t\tret = video_register_device(&v4l2->vbi_dev, VFL_TYPE_VBI,\n\t\t\t\t\t    vbi_nr[dev->devno]);\n\t\tif (ret < 0) {\n\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n\t\t\tdev_err(&dev->intf->dev,\n\t\t\t\t\"unable to register vbi device\\n\");\n\t\t\tgoto unregister_dev;\n\t\t}",
+          "before": "\t\t/* register v4l2 vbi video_device */\n\t\tret = video_register_device(&v4l2->vbi_dev, VFL_TYPE_VBI,\n\t\t\t\t\t    vbi_nr[dev->devno]);\n\t\tif (ret < 0) {\n\t\t\tdev_err(&dev->intf->dev,\n\t\t\t\t\"unable to register vbi device\\n\");\n\t\t\tgoto unregister_dev;\n\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/mc/mc-devnode.c b/drivers/media/mc/mc-devnode.c\nindex 0d01cbae98f2..329514427566 100644\n--- a/drivers/media/mc/mc-devnode.c\n+++ b/drivers/media/mc/mc-devnode.c\n@@ -272,16 +272,19 @@ void media_devnode_unregister_prepare(struct media_devnode *devnode)\n \n void media_devnode_unregister(struct media_devnode *devnode)\n {\n+\tint minor;\n+\n \tmutex_lock(&media_devnode_lock);\n \t/* Delete the cdev on this minor as well */\n \tcdev_device_del(&devnode->cdev, &devnode->dev);\n \tdevnode->media_dev = NULL;\n \tmutex_unlock(&media_devnode_lock);\n \n+\tminor = devnode->minor;\n \tput_device(&devnode->dev);\n \n \tmutex_lock(&media_devnode_lock);\n-\tclear_bit(devnode->minor, media_devnode_nums);\n+\tclear_bit(minor, media_devnode_nums);\n \tmutex_unlock(&media_devnode_lock);\n }\n \ndiff --git a/drivers/media/usb/em28xx/em28xx-video.c b/drivers/media/usb/em28xx/em28xx-video.c\nindex 2dfa3242a7ab..b5e6daab234b 100644\n--- a/drivers/media/usb/em28xx/em28xx-video.c\n+++ b/drivers/media/usb/em28xx/em28xx-video.c\n@@ -2117,6 +2117,27 @@ static void em28xx_free_v4l2(struct kref *ref)\n \tv4l2->dev->v4l2 = NULL;\n \tkfree(v4l2);\n }\n+static void em28xx_video_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vdev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_vbi_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vbi_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_radio_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, radio_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n \n /*\n  * em28xx_v4l2_open()\n@@ -2779,9 +2800,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t}\n \n \t/* register v4l2 video video_device */\n+\tv4l2->vdev.release = em28xx_video_release;\n+\tkref_get(&v4l2->ref);\n \tret = video_register_device(&v4l2->vdev, VFL_TYPE_VIDEO,\n \t\t\t\t    video_nr[dev->devno]);\n \tif (ret) {\n+\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\tdev_err(&dev->intf->dev,\n \t\t\t\"unable to register video device (error=%i).\\n\", ret);\n \t\tgoto unregister_dev;\n@@ -2813,9 +2837,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t\t}\n \n \t\t/* register v4l2 vbi video_device */\n+\t\tv4l2->vbi_dev.release = em28xx_vbi_release;\n+\t\tkref_get(&v4l2->ref);\n \t\tret = video_register_device(&v4l2->vbi_dev, VFL_TYPE_VBI,\n \t\t\t\t\t    vbi_nr[dev->devno]);\n \t\tif (ret < 0) {\n+\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\t\tdev_err(&dev->intf->dev,\n \t\t\t\t\"unable to register vbi device\\n\");\n \t\t\tgoto unregister_dev;",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "drivers/media/usb/em28xx/em28xx-video.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "\t\tv4l2->radio_dev.release = em28xx_radio_release;\n\t\tkref_get(&v4l2->ref);\n\t\tret = video_register_device(&v4l2->radio_dev, VFL_TYPE_RADIO,\n\t\t\t\t\t    radio_nr[dev->devno]);\n\t\tif (ret < 0) {\n\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n\t\t\tdev_err(&dev->intf->dev,\n\t\t\t\t\"can't register radio device\\n\");\n\t\t\tgoto unregister_dev;\n\t\t}",
+          "before": "\t\tret = video_register_device(&v4l2->radio_dev, VFL_TYPE_RADIO,\n\t\t\t\t\t    radio_nr[dev->devno]);\n\t\tif (ret < 0) {\n\t\t\tdev_err(&dev->intf->dev,\n\t\t\t\t\"can't register radio device\\n\");\n\t\t\tgoto unregister_dev;\n\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/mc/mc-devnode.c b/drivers/media/mc/mc-devnode.c\nindex 0d01cbae98f2..329514427566 100644\n--- a/drivers/media/mc/mc-devnode.c\n+++ b/drivers/media/mc/mc-devnode.c\n@@ -272,16 +272,19 @@ void media_devnode_unregister_prepare(struct media_devnode *devnode)\n \n void media_devnode_unregister(struct media_devnode *devnode)\n {\n+\tint minor;\n+\n \tmutex_lock(&media_devnode_lock);\n \t/* Delete the cdev on this minor as well */\n \tcdev_device_del(&devnode->cdev, &devnode->dev);\n \tdevnode->media_dev = NULL;\n \tmutex_unlock(&media_devnode_lock);\n \n+\tminor = devnode->minor;\n \tput_device(&devnode->dev);\n \n \tmutex_lock(&media_devnode_lock);\n-\tclear_bit(devnode->minor, media_devnode_nums);\n+\tclear_bit(minor, media_devnode_nums);\n \tmutex_unlock(&media_devnode_lock);\n }\n \ndiff --git a/drivers/media/usb/em28xx/em28xx-video.c b/drivers/media/usb/em28xx/em28xx-video.c\nindex 2dfa3242a7ab..fbdf73a31a1f 100644\n--- a/drivers/media/usb/em28xx/em28xx-video.c\n+++ b/drivers/media/usb/em28xx/em28xx-video.c\n@@ -2117,6 +2117,27 @@ static void em28xx_free_v4l2(struct kref *ref)\n \tv4l2->dev->v4l2 = NULL;\n \tkfree(v4l2);\n }\n+static void em28xx_video_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vdev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_vbi_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vbi_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_radio_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, radio_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n \n /*\n  * em28xx_v4l2_open()\n@@ -2779,9 +2800,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t}\n \n \t/* register v4l2 video video_device */\n+\tv4l2->vdev.release = em28xx_video_release;\n+\tkref_get(&v4l2->ref);\n \tret = video_register_device(&v4l2->vdev, VFL_TYPE_VIDEO,\n \t\t\t\t    video_nr[dev->devno]);\n \tif (ret) {\n+\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\tdev_err(&dev->intf->dev,\n \t\t\t\"unable to register video device (error=%i).\\n\", ret);\n \t\tgoto unregister_dev;\n@@ -2813,9 +2837,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t\t}\n \n \t\t/* register v4l2 vbi video_device */\n+\t\tv4l2->vbi_dev.release = em28xx_vbi_release;\n+\t\tkref_get(&v4l2->ref);\n \t\tret = video_register_device(&v4l2->vbi_dev, VFL_TYPE_VBI,\n \t\t\t\t\t    vbi_nr[dev->devno]);\n \t\tif (ret < 0) {\n+\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\t\tdev_err(&dev->intf->dev,\n \t\t\t\t\"unable to register vbi device\\n\");\n \t\t\tgoto unregister_dev;\n@@ -2826,9 +2853,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t\tem28xx_vdev_init(dev, &v4l2->radio_dev, &em28xx_radio_template,\n \t\t\t\t \"radio\");\n \t\tv4l2->radio_dev.device_caps = V4L2_CAP_RADIO | V4L2_CAP_TUNER;\n+\t\tv4l2->radio_dev.release = em28xx_radio_release;\n+\t\tkref_get(&v4l2->ref);\n \t\tret = video_register_device(&v4l2->radio_dev, VFL_TYPE_RADIO,\n \t\t\t\t\t    radio_nr[dev->devno]);\n \t\tif (ret < 0) {\n+\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\t\tdev_err(&dev->intf->dev,\n \t\t\t\t\"can't register radio device\\n\");\n \t\t\tgoto unregister_dev;",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "drivers/media/usb/em28xx/em28xx-video.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 1,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (mutex_lock_interruptible(&dev->lock))\n\t\treturn -ERESTARTSYS;\n\n\tif (unlikely(!dev->v4l2)) {\n\t\tmutex_unlock(&dev->lock);\n\t\treturn -ENODEV;\n\t}\n\n\tret = v4l2_fh_open(filp);",
+          "before": "\tif (mutex_lock_interruptible(&dev->lock))\n\t\treturn -ERESTARTSYS;\n\n\tret = v4l2_fh_open(filp);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/mc/mc-devnode.c b/drivers/media/mc/mc-devnode.c\nindex 0d01cbae98f2..329514427566 100644\n--- a/drivers/media/mc/mc-devnode.c\n+++ b/drivers/media/mc/mc-devnode.c\n@@ -272,16 +272,19 @@ void media_devnode_unregister_prepare(struct media_devnode *devnode)\n \n void media_devnode_unregister(struct media_devnode *devnode)\n {\n+\tint minor;\n+\n \tmutex_lock(&media_devnode_lock);\n \t/* Delete the cdev on this minor as well */\n \tcdev_device_del(&devnode->cdev, &devnode->dev);\n \tdevnode->media_dev = NULL;\n \tmutex_unlock(&media_devnode_lock);\n \n+\tminor = devnode->minor;\n \tput_device(&devnode->dev);\n \n \tmutex_lock(&media_devnode_lock);\n-\tclear_bit(devnode->minor, media_devnode_nums);\n+\tclear_bit(minor, media_devnode_nums);\n \tmutex_unlock(&media_devnode_lock);\n }\n \ndiff --git a/drivers/media/usb/em28xx/em28xx-video.c b/drivers/media/usb/em28xx/em28xx-video.c\nindex 2dfa3242a7ab..96696ec081d0 100644\n--- a/drivers/media/usb/em28xx/em28xx-video.c\n+++ b/drivers/media/usb/em28xx/em28xx-video.c\n@@ -2117,6 +2117,27 @@ static void em28xx_free_v4l2(struct kref *ref)\n \tv4l2->dev->v4l2 = NULL;\n \tkfree(v4l2);\n }\n+static void em28xx_video_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vdev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_vbi_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, vbi_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n+static void em28xx_radio_release(struct video_device *vdev)\n+{\n+\tstruct em28xx_v4l2 *v4l2 = container_of(vdev, struct em28xx_v4l2, radio_dev);\n+\n+\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n+}\n+\n \n /*\n  * em28xx_v4l2_open()\n@@ -2150,6 +2171,11 @@ static int em28xx_v4l2_open(struct file *filp)\n \tif (mutex_lock_interruptible(&dev->lock))\n \t\treturn -ERESTARTSYS;\n \n+\tif (unlikely(!dev->v4l2)) {\n+\t\tmutex_unlock(&dev->lock);\n+\t\treturn -ENODEV;\n+\t}\n+\n \tret = v4l2_fh_open(filp);\n \tif (ret) {\n \t\tdev_err(&dev->intf->dev,\n@@ -2779,9 +2805,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t}\n \n \t/* register v4l2 video video_device */\n+\tv4l2->vdev.release = em28xx_video_release;\n+\tkref_get(&v4l2->ref);\n \tret = video_register_device(&v4l2->vdev, VFL_TYPE_VIDEO,\n \t\t\t\t    video_nr[dev->devno]);\n \tif (ret) {\n+\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\tdev_err(&dev->intf->dev,\n \t\t\t\"unable to register video device (error=%i).\\n\", ret);\n \t\tgoto unregister_dev;\n@@ -2813,9 +2842,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t\t}\n \n \t\t/* register v4l2 vbi video_device */\n+\t\tv4l2->vbi_dev.release = em28xx_vbi_release;\n+\t\tkref_get(&v4l2->ref);\n \t\tret = video_register_device(&v4l2->vbi_dev, VFL_TYPE_VBI,\n \t\t\t\t\t    vbi_nr[dev->devno]);\n \t\tif (ret < 0) {\n+\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\t\tdev_err(&dev->intf->dev,\n \t\t\t\t\"unable to register vbi device\\n\");\n \t\t\tgoto unregister_dev;\n@@ -2826,9 +2858,12 @@ static int em28xx_v4l2_init(struct em28xx *dev)\n \t\tem28xx_vdev_init(dev, &v4l2->radio_dev, &em28xx_radio_template,\n \t\t\t\t \"radio\");\n \t\tv4l2->radio_dev.device_caps = V4L2_CAP_RADIO | V4L2_CAP_TUNER;\n+\t\tv4l2->radio_dev.release = em28xx_radio_release;\n+\t\tkref_get(&v4l2->ref);\n \t\tret = video_register_device(&v4l2->radio_dev, VFL_TYPE_RADIO,\n \t\t\t\t\t    radio_nr[dev->devno]);\n \t\tif (ret < 0) {\n+\t\t\tkref_put(&v4l2->ref, em28xx_free_v4l2);\n \t\t\tdev_err(&dev->intf->dev,\n \t\t\t\t\"can't register radio device\\n\");\n \t\t\tgoto unregister_dev;",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "drivers/media/usb/em28xx/em28xx-video.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 2,
+      "start_step": 42
+    }
+  ],
+  "success_step": 42
+}

@@ -1,0 +1,67 @@
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 783c883d4d5e..a34c80466c0b 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -5871,6 +5871,38 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 	if (i_uid_needs_update(idmap, attr, inode) ||
+ 	    i_gid_needs_update(idmap, attr, inode)) {
+ 		handle_t *handle;
++		struct dquot *transfer_to[MAXQUOTAS] = {};
++		int qerror = 0;
++		int i;
++
++		if (i_uid_needs_update(idmap, attr, inode)) {
++			kuid_t kuid = from_vfsuid(idmap, i_user_ns(inode),
++						  attr->ia_vfsuid);
++			transfer_to[USRQUOTA] = dqget(inode->i_sb,
++						      make_kqid_uid(kuid));
++			if (IS_ERR(transfer_to[USRQUOTA])) {
++				if (PTR_ERR(transfer_to[USRQUOTA]) != -ESRCH)
++					qerror = PTR_ERR(transfer_to[USRQUOTA]);
++				transfer_to[USRQUOTA] = NULL;
++			}
++		}
++		if (!qerror && i_gid_needs_update(idmap, attr, inode)) {
++			kgid_t kgid = from_vfsgid(idmap, i_user_ns(inode),
++						  attr->ia_vfsgid);
++			transfer_to[GRPQUOTA] = dqget(inode->i_sb,
++						      make_kqid_gid(kgid));
++			if (IS_ERR(transfer_to[GRPQUOTA])) {
++				if (PTR_ERR(transfer_to[GRPQUOTA]) != -ESRCH)
++					qerror = PTR_ERR(transfer_to[GRPQUOTA]);
++				transfer_to[GRPQUOTA] = NULL;
++			}
++		}
++
++		if (qerror) {
++			for (i = 0; i < MAXQUOTAS; i++)
++				dqput(transfer_to[i]);
++			return qerror;
++		}
+ 
+ 		/* (user+group)*(old+new) structure, inode write (sb,
+ 		 * inode block, ? - but truncate inode update has it) */
+@@ -5879,16 +5911,21 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,
+ 			 EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb)) + 3);
+ 		if (IS_ERR(handle)) {
+ 			error = PTR_ERR(handle);
++			for (i = 0; i < MAXQUOTAS; i++)
++				dqput(transfer_to[i]);
+ 			goto err_out;
+ 		}
+ 
+-		/* dquot_transfer() calls back ext4_get_inode_usage() which
++		/* __dquot_transfer() calls back ext4_get_inode_usage() which
+ 		 * counts xattr inode references.
+ 		 */
+ 		down_read(&EXT4_I(inode)->xattr_sem);
+-		error = dquot_transfer(idmap, inode, attr);
++		error = __dquot_transfer(inode, transfer_to);
+ 		up_read(&EXT4_I(inode)->xattr_sem);
+ 
++		for (i = 0; i < MAXQUOTAS; i++)
++			dqput(transfer_to[i]);
++
+ 		if (error) {
+ 			ext4_journal_stop(handle);
+ 			return error;

@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)\n{\n\tint rc = 0;\n\n\t/* The clcsock_release_lock is not needed here because the caller usually holds\n\t * lock_sock/sk_lock, which prevents smc_release() from running (which is the\n\t * only path that releases clcsock).\n\t */\n\tif (!smc->clcsock) {\n\t\trc = -EBADF;\n\t\tgoto out;\n\t}\n\n\tsmc->use_fallback = true;\n",
+          "before": "static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)\n{\n\tint rc = 0;\n\n\tmutex_lock(&smc->clcsock_release_lock);\n\tif (!smc->clcsock) {\n\t\trc = -EBADF;\n\t\tgoto out;\n\t}\n\n\tsmc->use_fallback = true;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3e6cb35baf25..afd826328042 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -900,7 +900,10 @@ static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)\n {\n \tint rc = 0;\n \n-\tmutex_lock(&smc->clcsock_release_lock);\n+\t/* The clcsock_release_lock is not needed here because the caller usually holds\n+\t * lock_sock/sk_lock, which prevents smc_release() from running (which is the\n+\t * only path that releases clcsock).\n+\t */\n \tif (!smc->clcsock) {\n \t\trc = -EBADF;\n \t\tgoto out;",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "out:\n\treturn rc;\n}\n",
+          "before": "out:\n\tmutex_unlock(&smc->clcsock_release_lock);\n\treturn rc;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3e6cb35baf25..6103d9984f2b 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -900,7 +900,10 @@ static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)\n {\n \tint rc = 0;\n \n-\tmutex_lock(&smc->clcsock_release_lock);\n+\t/* The clcsock_release_lock is not needed here because the caller usually holds\n+\t * lock_sock/sk_lock, which prevents smc_release() from running (which is the\n+\t * only path that releases clcsock).\n+\t */\n \tif (!smc->clcsock) {\n \t\trc = -EBADF;\n \t\tgoto out;\n@@ -924,7 +927,6 @@ static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)\n \t\tsmc_fback_replace_callbacks(smc);\n \t}\n out:\n-\tmutex_unlock(&smc->clcsock_release_lock);\n \treturn rc;\n }",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 29
+    }
+  ],
+  "success_step": 32
+}

@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tbio_reset(bio, NULL, REQ_OP_READ|REQ_SYNC|REQ_META);\n\t\tbio->bi_iter.bi_sector\t= rb->pick.ptr.offset;\n\t\tbch2_bio_map(bio, b->data, btree_buf_bytes(b));\n",
+          "before": "\t\tbio_reset(bio, NULL, REQ_OP_READ|REQ_SYNC|REQ_META);\n\t\tbio->bi_iter.bi_sector\t= rb->pick.ptr.offset;\n\t\tbio->bi_iter.bi_size\t= btree_buf_bytes(b);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex d8f3c4c65e90..7d896c3dc031 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1387,7 +1387,7 @@ static void btree_node_read_work(struct work_struct *work)\n \t\trb->start_time\t\t= local_clock();\n \t\tbio_reset(bio, NULL, REQ_OP_READ|REQ_SYNC|REQ_META);\n \t\tbio->bi_iter.bi_sector\t= rb->pick.ptr.offset;\n-\t\tbio->bi_iter.bi_size\t= btree_buf_bytes(b);\n+\t\tbch2_bio_map(bio, b->data, btree_buf_bytes(b));\n \n \t\tif (rb->have_ioref) {\n \t\t\tbio_set_dev(bio, ca->disk_sb.bdev);",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct btree_node *sorted = NULL;\n\tstruct bkey_packed *k;\n\tstruct bset *i;\n\tbool used_mempool = false, blacklisted;\n\tbool swapped = false;\n",
+          "before": "\tstruct btree_node *sorted;\n\tstruct bkey_packed *k;\n\tstruct bset *i;\n\tbool used_mempool, blacklisted;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex d8f3c4c65e90..e6bbcf9b9d5f 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1065,10 +1065,11 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n {\n \tstruct btree_node_entry *bne;\n \tstruct sort_iter *iter;\n-\tstruct btree_node *sorted;\n+\tstruct btree_node *sorted = NULL;\n \tstruct bkey_packed *k;\n \tstruct bset *i;\n-\tbool used_mempool, blacklisted;\n+\tbool used_mempool = false, blacklisted;\n+\tbool swapped = false;\n \tbool updated_range = b->key.k.type == KEY_TYPE_btree_ptr_v2 &&\n \t\tBTREE_PTR_RANGE_UPDATED(&bkey_i_to_btree_ptr_v2(&b->key)->v);\n \tunsigned ptr_written = btree_ptr_sectors_written(bkey_i_to_s_c(&b->key));\n@@ -1387,7 +1388,7 @@ static void btree_node_read_work(struct work_struct *work)\n \t\trb->start_time\t\t= local_clock();\n \t\tbio_reset(bio, NULL, REQ_OP_READ|REQ_SYNC|REQ_META);\n \t\tbio->bi_iter.bi_sector\t= rb->pick.ptr.offset;\n-\t\tbio->bi_iter.bi_size\t= btree_buf_bytes(b);\n+\t\tbch2_bio_map(bio, b->data, btree_buf_bytes(b));\n \n \t\tif (rb->have_ioref) {\n \t\t\tbio_set_dev(bio, ca->disk_sb.bdev);",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "\tswap(sorted, b->data);\n\tswapped = true;\n\tset_btree_bset(b, b->set, &b->data->keys);\n\tb->nsets = 1;\n\tb->data->keys.journal_seq = cpu_to_le64(max_journal_seq);\n\n\tBUG_ON(b->nr.live_u64s != le16_to_cpu(b->data->keys.u64s));\n",
+          "before": "\tswap(sorted, b->data);\n\tset_btree_bset(b, b->set, &b->data->keys);\n\tb->nsets = 1;\n\tb->data->keys.journal_seq = cpu_to_le64(max_journal_seq);\n\n\tBUG_ON(b->nr.live_u64s != le16_to_cpu(b->data->keys.u64s));\n\n\tbtree_bounce_free(c, btree_buf_bytes(b), used_mempool, sorted);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex d8f3c4c65e90..05ff59fd6061 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1065,10 +1065,11 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n {\n \tstruct btree_node_entry *bne;\n \tstruct sort_iter *iter;\n-\tstruct btree_node *sorted;\n+\tstruct btree_node *sorted = NULL;\n \tstruct bkey_packed *k;\n \tstruct bset *i;\n-\tbool used_mempool, blacklisted;\n+\tbool used_mempool = false, blacklisted;\n+\tbool swapped = false;\n \tbool updated_range = b->key.k.type == KEY_TYPE_btree_ptr_v2 &&\n \t\tBTREE_PTR_RANGE_UPDATED(&bkey_i_to_btree_ptr_v2(&b->key)->v);\n \tunsigned ptr_written = btree_ptr_sectors_written(bkey_i_to_s_c(&b->key));\n@@ -1285,14 +1286,13 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n \tb->data->keys.u64s = sorted->keys.u64s;\n \t*sorted = *b->data;\n \tswap(sorted, b->data);\n+\tswapped = true;\n \tset_btree_bset(b, b->set, &b->data->keys);\n \tb->nsets = 1;\n \tb->data->keys.journal_seq = cpu_to_le64(max_journal_seq);\n \n \tBUG_ON(b->nr.live_u64s != le16_to_cpu(b->data->keys.u64s));\n \n-\tbtree_bounce_free(c, btree_buf_bytes(b), used_mempool, sorted);\n-\n \tif (updated_range)\n \t\tbch2_btree_node_drop_keys_outside_node(b);\n \n@@ -1387,7 +1387,7 @@ static void btree_node_read_work(struct work_struct *work)\n \t\trb->start_time\t\t= local_clock();\n \t\tbio_reset(bio, NULL, REQ_OP_READ|REQ_SYNC|REQ_META);\n \t\tbio->bi_iter.bi_sector\t= rb->pick.ptr.offset;\n-\t\tbio->bi_iter.bi_size\t= btree_buf_bytes(b);\n+\t\tbch2_bio_map(bio, b->data, btree_buf_bytes(b));\n \n \t\tif (rb->have_ioref) {\n \t\t\tbio_set_dev(bio, ca->disk_sb.bdev);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        },
+        {
+          "after": "\tbch2_time_stats_update(&c->times[BCH_TIME_btree_node_read_done], start_time);\n\n\tif (sorted) {\n\t\tif (ret && swapped)\n\t\t\tswap(sorted, b->data);\n\t\tbtree_bounce_free(c, btree_buf_bytes(b), used_mempool, sorted);\n\t}\n\n\treturn ret;\n",
+          "before": "\tbch2_time_stats_update(&c->times[BCH_TIME_btree_node_read_done], start_time);\n\treturn ret;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex d8f3c4c65e90..adeedb6b83c1 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1065,10 +1065,11 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n {\n \tstruct btree_node_entry *bne;\n \tstruct sort_iter *iter;\n-\tstruct btree_node *sorted;\n+\tstruct btree_node *sorted = NULL;\n \tstruct bkey_packed *k;\n \tstruct bset *i;\n-\tbool used_mempool, blacklisted;\n+\tbool used_mempool = false, blacklisted;\n+\tbool swapped = false;\n \tbool updated_range = b->key.k.type == KEY_TYPE_btree_ptr_v2 &&\n \t\tBTREE_PTR_RANGE_UPDATED(&bkey_i_to_btree_ptr_v2(&b->key)->v);\n \tunsigned ptr_written = btree_ptr_sectors_written(bkey_i_to_s_c(&b->key));\n@@ -1285,14 +1286,13 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n \tb->data->keys.u64s = sorted->keys.u64s;\n \t*sorted = *b->data;\n \tswap(sorted, b->data);\n+\tswapped = true;\n \tset_btree_bset(b, b->set, &b->data->keys);\n \tb->nsets = 1;\n \tb->data->keys.journal_seq = cpu_to_le64(max_journal_seq);\n \n \tBUG_ON(b->nr.live_u64s != le16_to_cpu(b->data->keys.u64s));\n \n-\tbtree_bounce_free(c, btree_buf_bytes(b), used_mempool, sorted);\n-\n \tif (updated_range)\n \t\tbch2_btree_node_drop_keys_outside_node(b);\n \n@@ -1351,6 +1351,13 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,\n \tmempool_free(iter, &c->fill_iter);\n \tprintbuf_exit(&buf);\n \tbch2_time_stats_update(&c->times[BCH_TIME_btree_node_read_done], start_time);\n+\n+\tif (sorted) {\n+\t\tif (ret && swapped)\n+\t\t\tswap(sorted, b->data);\n+\t\tbtree_bounce_free(c, btree_buf_bytes(b), used_mempool, sorted);\n+\t}\n+\n \treturn ret;\n }\n \n@@ -1387,7 +1394,7 @@ static void btree_node_read_work(struct work_struct *work)\n \t\trb->start_time\t\t= local_clock();\n \t\tbio_reset(bio, NULL, REQ_OP_READ|REQ_SYNC|REQ_META);\n \t\tbio->bi_iter.bi_sector\t= rb->pick.ptr.offset;\n-\t\tbio->bi_iter.bi_size\t= btree_buf_bytes(b);\n+\t\tbch2_bio_map(bio, b->data, btree_buf_bytes(b));\n \n \t\tif (rb->have_ioref) {\n \t\t\tbio_set_dev(bio, ca->disk_sb.bdev);",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 1,
+      "start_step": 29
+    }
+  ],
+  "success_step": 37
+}

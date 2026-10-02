@@ -1,0 +1,45 @@
+diff --git a/drivers/scsi/sg.c b/drivers/scsi/sg.c
+index 84334ab39c81..914566286a17 100644
+--- a/drivers/scsi/sg.c
++++ b/drivers/scsi/sg.c
+@@ -161,6 +161,7 @@ typedef struct sg_fd {		/* holds the state of a file descriptor */
+ 
+ typedef struct sg_device { /* holds the state of each scsi generic device */
+ 	struct scsi_device *device;
++	struct request_queue *rq;	/* request_queue for the device */
+ 	wait_queue_head_t open_wait;    /* queue open() when O_EXCL present */
+ 	struct mutex open_rel_lock;     /* held when in open() or release() */
+ 	int sg_tablesize;	/* adapter's max scatter-gather table size */
+@@ -385,6 +386,7 @@ sg_release(struct inode *inode, struct file *filp)
+ 		return -ENXIO;
+ 	SCSI_LOG_TIMEOUT(3, sg_printk(KERN_INFO, sdp, "sg_release\n"));
+ 
++	kref_get(&sdp->d_ref);
+ 	mutex_lock(&sdp->open_rel_lock);
+ 	kref_put(&sfp->f_ref, sg_remove_sfp);
+ 	sdp->open_cnt--;
+@@ -398,6 +400,7 @@ sg_release(struct inode *inode, struct file *filp)
+ 		wake_up_interruptible(&sdp->open_wait);
+ 	}
+ 	mutex_unlock(&sdp->open_rel_lock);
++	kref_put(&sdp->d_ref, sg_device_destroy);
+ 	return 0;
+ }
+ 
+@@ -1464,6 +1467,7 @@ sg_alloc(struct scsi_device *scsidp)
+ 					"sg_alloc: dev=%d \n", k));
+ 	sprintf(sdp->name, "sg%d", k);
+ 	sdp->device = scsidp;
++	sdp->rq = scsidp->request_queue;
+ 	mutex_init(&sdp->open_rel_lock);
+ 	INIT_LIST_HEAD(&sdp->sfds);
+ 	init_waitqueue_head(&sdp->open_wait);
+@@ -1564,7 +1568,7 @@ static void
+ sg_device_destroy(struct kref *kref)
+ {
+ 	struct sg_device *sdp = container_of(kref, struct sg_device, d_ref);
+-	struct request_queue *q = sdp->device->request_queue;
++	struct request_queue *q = sdp->rq;
+ 	unsigned long flags;
+ 
+ 	/* CAUTION!  Note that the device can still be found via idr_find()

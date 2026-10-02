@@ -1,0 +1,62 @@
+diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c
+index 91e0aa796e6b..b34dca25e6c9 100644
+--- a/fs/bcachefs/btree_cache.c
++++ b/fs/bcachefs/btree_cache.c
+@@ -209,6 +209,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)
+ 
+ 	u64 mask = bc->pinned_nodes_mask[!!b->c.level];
+ 
++	if (b->c.btree_id >= 64)
++		return false;
++
+ 	return ((mask & BIT_ULL(b->c.btree_id)) &&
+ 		bbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&
+ 		bbpos_cmp(bc->pinned_nodes_end, pos) >= 0);
+diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
+index bac108e93823..f7a2259433ad 100644
+--- a/fs/bcachefs/btree_gc.c
++++ b/fs/bcachefs/btree_gc.c
+@@ -598,6 +598,9 @@ int bch2_check_topology(struct bch_fs *c)
+ 		struct btree_root *r = bch2_btree_id_root(c, i);
+ 		struct btree *b = r->b;
+ 
++		if (!b)
++			continue;
++
+ 		btree_node_lock_nopath_nofail(trans, &b->c, SIX_LOCK_read);
+ 		ret = bch2_btree_repair_topology_recurse(trans, b, &pulled_from_scan);
+ 		six_unlock_read(&b->c.lock);
+diff --git a/fs/bcachefs/recovery.c b/fs/bcachefs/recovery.c
+index d0b7e3a36a54..aedec7110b0e 100644
+--- a/fs/bcachefs/recovery.c
++++ b/fs/bcachefs/recovery.c
+@@ -37,18 +37,25 @@ int bch2_btree_lost_data(struct bch_fs *c,
+ 			 struct printbuf *msg,
+ 			 enum btree_id btree)
+ {
+-	u64 b = BIT_ULL(btree);
+ 	int ret = 0;
+ 
+ 	mutex_lock(&c->sb_lock);
+ 	struct bch_sb_field_ext *ext = bch2_sb_field_get(c->disk_sb.sb, ext);
+ 
+-	if (!(c->sb.btrees_lost_data & b)) {
++	if (btree < 64) {
++		u64 b = BIT_ULL(btree);
++
++		if (!(c->sb.btrees_lost_data & b)) {
++			prt_printf(msg, "flagging btree ");
++			bch2_btree_id_to_text(msg, btree);
++			prt_printf(msg, " lost data\n");
++
++			ext->btrees_lost_data |= cpu_to_le64(b);
++		}
++	} else {
+ 		prt_printf(msg, "flagging btree ");
+ 		bch2_btree_id_to_text(msg, btree);
+ 		prt_printf(msg, " lost data\n");
+-
+-		ext->btrees_lost_data |= cpu_to_le64(b);
+ 	}
+ 
+ 	/* Once we have runtime self healing for topology errors we won't need this: */

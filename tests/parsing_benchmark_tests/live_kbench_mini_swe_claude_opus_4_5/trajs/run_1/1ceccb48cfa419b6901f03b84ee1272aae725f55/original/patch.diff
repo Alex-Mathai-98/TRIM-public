@@ -1,0 +1,41 @@
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index c419005a29dc..7bdd89d60819 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -19478,7 +19478,7 @@ static int convert_ctx_accesses(struct bpf_verifier_env *env)
+ 								(1ULL << size * 8) - 1);
+ 			}
+ 		}
+-		if (mode == BPF_MEMSX)
++		if (mode == BPF_MEMSX && size == target_size)
+ 			insn_buf[cnt++] = BPF_RAW_INSN(BPF_ALU64 | BPF_MOV | BPF_X,
+ 						       insn->dst_reg, insn->dst_reg,
+ 						       size * 8, 0);
+diff --git a/net/core/filter.c b/net/core/filter.c
+index f3c72cf86099..d2fda295f3a4 100644
+--- a/net/core/filter.c
++++ b/net/core/filter.c
+@@ -9672,6 +9672,7 @@ static u32 bpf_convert_ctx_access(enum bpf_access_type type,
+ 		*insn++ = BPF_LDX_MEM(BPF_FIELD_SIZEOF(struct sk_buff, data),
+ 				      si->dst_reg, si->src_reg,
+ 				      offsetof(struct sk_buff, data));
++		*target_size = sizeof(void *);
+ 		break;
+ 
+ 	case offsetof(struct __sk_buff, data_meta):
+@@ -9681,6 +9682,7 @@ static u32 bpf_convert_ctx_access(enum bpf_access_type type,
+ 		off += offsetof(struct bpf_skb_data_end, data_meta);
+ 		*insn++ = BPF_LDX_MEM(BPF_SIZEOF(void *), si->dst_reg,
+ 				      si->src_reg, off);
++		*target_size = sizeof(void *);
+ 		break;
+ 
+ 	case offsetof(struct __sk_buff, data_end):
+@@ -9690,6 +9692,7 @@ static u32 bpf_convert_ctx_access(enum bpf_access_type type,
+ 		off += offsetof(struct bpf_skb_data_end, data_end);
+ 		*insn++ = BPF_LDX_MEM(BPF_SIZEOF(void *), si->dst_reg,
+ 				      si->src_reg, off);
++		*target_size = sizeof(void *);
+ 		break;
+ 
+ 	case offsetof(struct __sk_buff, tc_index):

@@ -1,0 +1,48 @@
+diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c
+index 8da1b68821a0..f94122cb5018 100644
+--- a/fs/bcachefs/backpointers.c
++++ b/fs/bcachefs/backpointers.c
+@@ -784,7 +784,7 @@ enum alloc_sector_counter {
+ 	ALLOC_SECTORS_NR
+ };
+ 
+-static enum alloc_sector_counter data_type_to_alloc_counter(enum bch_data_type t)
++static int data_type_to_alloc_counter(enum bch_data_type t)
+ {
+ 	switch (t) {
+ 	case BCH_DATA_btree:
+@@ -796,7 +796,7 @@ static enum alloc_sector_counter data_type_to_alloc_counter(enum bch_data_type t
+ 	case BCH_DATA_parity:
+ 		return ALLOC_stripe;
+ 	default:
+-		BUG();
++		return -1;
+ 	}
+ }
+ 
+@@ -832,10 +832,12 @@ static int check_bucket_backpointer_mismatch(struct btree_trans *trans, struct b
+ 			continue;
+ 
+ 		struct bkey_s_c_backpointer bp = bkey_s_c_to_backpointer(bp_k);
++		int bucket_type = data_type_to_alloc_counter(bp.v->data_type);
+ 
+ 		if (c->sb.version_upgrade_complete >= bcachefs_metadata_version_backpointer_bucket_gen &&
+ 		    (bp.v->bucket_gen != a->gen ||
+-		     bp.v->pad)) {
++		     bp.v->pad ||
++		     bucket_type < 0)) {
+ 			ret = bch2_backpointer_del(trans, bp_k.k->p);
+ 			if (ret)
+ 				break;
+@@ -847,7 +849,10 @@ static int check_bucket_backpointer_mismatch(struct btree_trans *trans, struct b
+ 		if (bp.v->bucket_gen != a->gen)
+ 			continue;
+ 
+-		sectors[data_type_to_alloc_counter(bp.v->data_type)] += bp.v->bucket_len;
++		if (bucket_type < 0)
++			continue;
++
++		sectors[bucket_type] += bp.v->bucket_len;
+ 	};
+ 	bch2_trans_iter_exit(trans, &iter);
+ 	if (ret)

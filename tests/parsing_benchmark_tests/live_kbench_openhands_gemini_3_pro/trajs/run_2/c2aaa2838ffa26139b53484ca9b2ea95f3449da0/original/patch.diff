@@ -1,0 +1,37 @@
+diff --git a/drivers/net/wireless/virtual/mac80211_hwsim.c b/drivers/net/wireless/virtual/mac80211_hwsim.c
+index 74d037cfccca..a7e76025d64a 100644
+--- a/drivers/net/wireless/virtual/mac80211_hwsim.c
++++ b/drivers/net/wireless/virtual/mac80211_hwsim.c
+@@ -1233,10 +1233,16 @@ static void mac80211_hwsim_set_tsf(struct ieee80211_hw *hw,
+ 	/* adjust after beaconing with new timestamp at old TBTT */
+ 	if (tsf > now) {
+ 		data->tsf_offset += delta;
+-		data->bcn_delta = do_div(delta, bcn_int);
++		if (bcn_int)
++			data->bcn_delta = do_div(delta, bcn_int);
++		else
++			data->bcn_delta = 0;
+ 	} else {
+ 		data->tsf_offset -= delta;
+-		data->bcn_delta = -(s64)do_div(delta, bcn_int);
++		if (bcn_int)
++			data->bcn_delta = -(s64)do_div(delta, bcn_int);
++		else
++			data->bcn_delta = 0;
+ 	}
+ }
+ 
+diff --git a/net/mac80211/debugfs_netdev.c b/net/mac80211/debugfs_netdev.c
+index 54c479910d05..ceac6e9777a6 100644
+--- a/net/mac80211/debugfs_netdev.c
++++ b/net/mac80211/debugfs_netdev.c
+@@ -689,6 +689,9 @@ static ssize_t ieee80211_if_parse_tsf(
+ 		ret = kstrtoull(buf, 10, &tsf);
+ 		if (ret < 0)
+ 			return ret;
++		if (!(sdata->flags & IEEE80211_SDATA_IN_DRIVER))
++			return -ENODEV;
++
+ 		if (tsf_is_delta && local->ops->offset_tsf) {
+ 			drv_offset_tsf(local, sdata, tsf_is_delta * tsf);
+ 			wiphy_info(local->hw.wiphy,

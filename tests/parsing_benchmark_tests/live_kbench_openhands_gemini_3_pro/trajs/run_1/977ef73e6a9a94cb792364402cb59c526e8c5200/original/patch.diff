@@ -1,0 +1,22 @@
+diff --git a/fs/jfs/xattr.c b/fs/jfs/xattr.c
+index 24afbae87225..1fd2dda2b475 100644
+--- a/fs/jfs/xattr.c
++++ b/fs/jfs/xattr.c
+@@ -460,6 +460,8 @@ static int ea_get(struct inode *inode, struct ea_buffer *ea_buf, int min_size)
+ 		}
+ 		current_blocks = 0;
+ 	} else if (ji->ea.flag & DXD_INLINE) {
++		if (ea_size > sizeof(ji->i_inline_ea))
++			return -EIO;
+ 		if (min_size <= sizeof (ji->i_inline_ea)) {
+ 			ea_buf->flag = EA_INLINE;
+ 			ea_buf->max_size = sizeof (ji->i_inline_ea);
+@@ -559,7 +561,7 @@ static int ea_get(struct inode *inode, struct ea_buffer *ea_buf, int min_size)
+ 
+       size_check:
+ 	if (EALIST_SIZE(ea_buf->xattr) != ea_size) {
+-		int size = clamp_t(int, ea_size, 0, EALIST_SIZE(ea_buf->xattr));
++		int size = min_t(size_t, ea_size, EALIST_SIZE(ea_buf->xattr));
+ 
+ 		printk(KERN_ERR "ea_get: invalid extended attribute\n");
+ 		print_hex_dump(KERN_ERR, "", DUMP_PREFIX_ADDRESS, 16, 1,

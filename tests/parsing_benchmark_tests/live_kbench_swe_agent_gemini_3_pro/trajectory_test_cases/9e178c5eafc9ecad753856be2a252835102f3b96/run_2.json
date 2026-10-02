@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (i_uid_needs_update(idmap, attr, inode) ||\n\t    i_gid_needs_update(idmap, attr, inode)) {\n\t\thandle_t *handle;\n\t\tstruct dquot *transfer_to[MAXQUOTAS] = { };\n\t\tint i;\n\n\t\tif (i_uid_needs_update(idmap, attr, inode)) {\n\t\t\tkuid_t kuid = from_vfsuid(idmap, i_user_ns(inode),\n\t\t\t\t\t\t  attr->ia_vfsuid);\n\t\t\ttransfer_to[USRQUOTA] = dqget(inode->i_sb,\n\t\t\t\t\t\t      make_kqid_uid(kuid));\n\t\t\tif (IS_ERR(transfer_to[USRQUOTA])) {\n\t\t\t\terror = PTR_ERR(transfer_to[USRQUOTA]);\n\t\t\t\ttransfer_to[USRQUOTA] = NULL;\n\t\t\t\tif (error != -ESRCH && error != -ENOSYS) {\n\t\t\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n\t\t\t\t\t\tdqput(transfer_to[i]);\n\t\t\t\t\treturn error;\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t\tif (i_gid_needs_update(idmap, attr, inode)) {\n\t\t\tkgid_t kgid = from_vfsgid(idmap, i_user_ns(inode),\n\t\t\t\t\t\t  attr->ia_vfsgid);\n\t\t\ttransfer_to[GRPQUOTA] = dqget(inode->i_sb,\n\t\t\t\t\t\t      make_kqid_gid(kgid));\n\t\t\tif (IS_ERR(transfer_to[GRPQUOTA])) {\n\t\t\t\terror = PTR_ERR(transfer_to[GRPQUOTA]);\n\t\t\t\ttransfer_to[GRPQUOTA] = NULL;\n\t\t\t\tif (error != -ESRCH && error != -ENOSYS) {\n\t\t\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n\t\t\t\t\t\tdqput(transfer_to[i]);\n\t\t\t\t\treturn error;\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\n\t\t/* (user+group)*(old+new) structure, inode write (sb,\n\t\t * inode block, ? - but truncate inode update has it) */\n\t\thandle = ext4_journal_start(inode, EXT4_HT_QUOTA,\n\t\t\t(EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb) +\n\t\t\t EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb)) + 3);\n\t\tif (IS_ERR(handle)) {\n\t\t\terror = PTR_ERR(handle);\n\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n\t\t\t\tdqput(transfer_to[i]);\n\t\t\tgoto err_out;\n\t\t}\n\n\t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n\t\terror = dquot_transfer(idmap, inode, attr);\n\t\tup_read(&EXT4_I(inode)->xattr_sem);\n\n\t\tif (error) {\n\t\t\text4_journal_stop(handle);\n\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n\t\t\t\tdqput(transfer_to[i]);\n\t\t\treturn error;\n\t\t}\n\t\t/* Update corresponding info in inode so that everything is in\n\t\t * one transaction */\n\t\ti_uid_update(idmap, attr, inode);\n\t\ti_gid_update(idmap, attr, inode);\n\t\terror = ext4_mark_inode_dirty(handle, inode);\n\t\text4_journal_stop(handle);\n\t\tfor (i = 0; i < MAXQUOTAS; i++)\n\t\t\tdqput(transfer_to[i]);\n\n\t\tif (unlikely(error)) {\n\t\t\treturn error;\n\t\t}\n\t}",
+          "before": "\tif (i_uid_needs_update(idmap, attr, inode) ||\n\t    i_gid_needs_update(idmap, attr, inode)) {\n\t\thandle_t *handle;\n\n\t\t/* (user+group)*(old+new) structure, inode write (sb,\n\t\t * inode block, ? - but truncate inode update has it) */\n\t\thandle = ext4_journal_start(inode, EXT4_HT_QUOTA,\n\t\t\t(EXT4_MAXQUOTAS_INIT_BLOCKS(inode->i_sb) +\n\t\t\t EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb)) + 3);\n\t\tif (IS_ERR(handle)) {\n\t\t\terror = PTR_ERR(handle);\n\t\t\tgoto err_out;\n\t\t}\n\n\t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n\t\terror = dquot_transfer(idmap, inode, attr);\n\t\tup_read(&EXT4_I(inode)->xattr_sem);\n\n\t\tif (error) {\n\t\t\text4_journal_stop(handle);\n\t\t\treturn error;\n\t\t}\n\t\t/* Update corresponding info in inode so that everything is in\n\t\t * one transaction */\n\t\ti_uid_update(idmap, attr, inode);\n\t\ti_gid_update(idmap, attr, inode);\n\t\terror = ext4_mark_inode_dirty(handle, inode);\n\t\text4_journal_stop(handle);\n\t\tif (unlikely(error)) {\n\t\t\treturn error;\n\t\t}\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c\nindex 783c883d4d5e..72260d42f343 100644\n--- a/fs/ext4/inode.c\n+++ b/fs/ext4/inode.c\n@@ -5871,6 +5871,39 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,\n \tif (i_uid_needs_update(idmap, attr, inode) ||\n \t    i_gid_needs_update(idmap, attr, inode)) {\n \t\thandle_t *handle;\n+\t\tstruct dquot *transfer_to[MAXQUOTAS] = { };\n+\t\tint i;\n+\n+\t\tif (i_uid_needs_update(idmap, attr, inode)) {\n+\t\t\tkuid_t kuid = from_vfsuid(idmap, i_user_ns(inode),\n+\t\t\t\t\t\t  attr->ia_vfsuid);\n+\t\t\ttransfer_to[USRQUOTA] = dqget(inode->i_sb,\n+\t\t\t\t\t\t      make_kqid_uid(kuid));\n+\t\t\tif (IS_ERR(transfer_to[USRQUOTA])) {\n+\t\t\t\terror = PTR_ERR(transfer_to[USRQUOTA]);\n+\t\t\t\ttransfer_to[USRQUOTA] = NULL;\n+\t\t\t\tif (error != -ESRCH && error != -ENOSYS) {\n+\t\t\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n+\t\t\t\t\t\tdqput(transfer_to[i]);\n+\t\t\t\t\treturn error;\n+\t\t\t\t}\n+\t\t\t}\n+\t\t}\n+\t\tif (i_gid_needs_update(idmap, attr, inode)) {\n+\t\t\tkgid_t kgid = from_vfsgid(idmap, i_user_ns(inode),\n+\t\t\t\t\t\t  attr->ia_vfsgid);\n+\t\t\ttransfer_to[GRPQUOTA] = dqget(inode->i_sb,\n+\t\t\t\t\t\t      make_kqid_gid(kgid));\n+\t\t\tif (IS_ERR(transfer_to[GRPQUOTA])) {\n+\t\t\t\terror = PTR_ERR(transfer_to[GRPQUOTA]);\n+\t\t\t\ttransfer_to[GRPQUOTA] = NULL;\n+\t\t\t\tif (error != -ESRCH && error != -ENOSYS) {\n+\t\t\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n+\t\t\t\t\t\tdqput(transfer_to[i]);\n+\t\t\t\t\treturn error;\n+\t\t\t\t}\n+\t\t\t}\n+\t\t}\n \n \t\t/* (user+group)*(old+new) structure, inode write (sb,\n \t\t * inode block, ? - but truncate inode update has it) */\n@@ -5879,6 +5912,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,\n \t\t\t EXT4_MAXQUOTAS_DEL_BLOCKS(inode->i_sb)) + 3);\n \t\tif (IS_ERR(handle)) {\n \t\t\terror = PTR_ERR(handle);\n+\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n+\t\t\t\tdqput(transfer_to[i]);\n \t\t\tgoto err_out;\n \t\t}\n \n@@ -5891,6 +5926,8 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,\n \n \t\tif (error) {\n \t\t\text4_journal_stop(handle);\n+\t\t\tfor (i = 0; i < MAXQUOTAS; i++)\n+\t\t\t\tdqput(transfer_to[i]);\n \t\t\treturn error;\n \t\t}\n \t\t/* Update corresponding info in inode so that everything is in\n@@ -5899,6 +5936,9 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,\n \t\ti_gid_update(idmap, attr, inode);\n \t\terror = ext4_mark_inode_dirty(handle, inode);\n \t\text4_journal_stop(handle);\n+\t\tfor (i = 0; i < MAXQUOTAS; i++)\n+\t\t\tdqput(transfer_to[i]);\n+\n \t\tif (unlikely(error)) {\n \t\t\treturn error;\n \t\t}",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "fs/ext4/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 24
+    }
+  ],
+  "success_step": 24
+}

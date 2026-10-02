@@ -1,0 +1,38 @@
+diff --git a/fs/ocfs2/extent_map.c b/fs/ocfs2/extent_map.c
+index f7672472fa82..20c125738fc9 100644
+--- a/fs/ocfs2/extent_map.c
++++ b/fs/ocfs2/extent_map.c
+@@ -435,6 +435,16 @@ static int ocfs2_get_clusters_nocache(struct inode *inode,
+ 		}
+ 	}
+ 
++	if (le16_to_cpu(el->l_next_free_rec) > le16_to_cpu(el->l_count)) {
++		ocfs2_error(inode->i_sb,
++			    "Inode %lu has bad extent list (next free=%u, count=%u)\n",
++			    inode->i_ino,
++			    le16_to_cpu(el->l_next_free_rec),
++			    le16_to_cpu(el->l_count));
++		ret = -EROFS;
++		goto out;
++	}
++
+ 	i = ocfs2_search_extent_list(el, v_cluster);
+ 	if (i == -1) {
+ 		/*
+@@ -559,6 +569,16 @@ int ocfs2_xattr_get_clusters(struct inode *inode, u32 v_cluster,
+ 		}
+ 	}
+ 
++	if (le16_to_cpu(el->l_next_free_rec) > le16_to_cpu(el->l_count)) {
++		ocfs2_error(inode->i_sb,
++			    "Inode %lu has bad extent list (next free=%u, count=%u)\n",
++			    inode->i_ino,
++			    le16_to_cpu(el->l_next_free_rec),
++			    le16_to_cpu(el->l_count));
++		ret = -EROFS;
++		goto out;
++	}
++
+ 	i = ocfs2_search_extent_list(el, v_cluster);
+ 	if (i == -1) {
+ 		ret = -EROFS;

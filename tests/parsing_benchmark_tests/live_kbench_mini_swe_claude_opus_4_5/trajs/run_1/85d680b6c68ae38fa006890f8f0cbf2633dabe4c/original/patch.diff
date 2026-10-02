@@ -1,0 +1,48 @@
+diff --git a/net/core/link_watch.c b/net/core/link_watch.c
+index 864f3bbc3a4c..049bf27c1ef1 100644
+--- a/net/core/link_watch.c
++++ b/net/core/link_watch.c
+@@ -17,6 +17,7 @@
+ #include <linux/workqueue.h>
+ #include <linux/bitops.h>
+ #include <linux/types.h>
++#include <net/netdev_lock.h>
+ 
+ #include "dev.h"
+ 
+@@ -284,10 +285,21 @@ void __linkwatch_sync_dev(struct net_device *dev)
+ 
+ void linkwatch_sync_dev(struct net_device *dev)
+ {
+-	if (linkwatch_clean_dev(dev)) {
++	if (!linkwatch_clean_dev(dev))
++		return;
++
++	if (netdev_need_ops_lock(dev)) {
+ 		netdev_lock_ops(dev);
+ 		linkwatch_do_dev(dev);
+ 		netdev_unlock_ops(dev);
++	} else if (rtnl_is_locked()) {
++		linkwatch_do_dev(dev);
++	} else if (rtnl_trylock()) {
++		linkwatch_do_dev(dev);
++		rtnl_unlock();
++	} else {
++		/* Unable to acquire lock, re-add to pending list */
++		linkwatch_fire_event(dev);
+ 	}
+ }
+ 
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 0b2a4d0573b3..9b90c54aee7f 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -60,7 +60,7 @@ static struct devlink *netdev_to_devlink_get(struct net_device *dev)
+ u32 ethtool_op_get_link(struct net_device *dev)
+ {
+ 	/* Synchronize carrier state with link watch, see also rtnl_getlink() */
+-	__linkwatch_sync_dev(dev);
++	linkwatch_sync_dev(dev);
+ 
+ 	return netif_carrier_ok(dev) ? 1 : 0;
+ }

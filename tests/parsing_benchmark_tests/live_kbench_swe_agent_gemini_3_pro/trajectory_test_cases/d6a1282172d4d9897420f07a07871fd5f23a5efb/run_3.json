@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct xfs_dq_logitem\t*qlip = &dqp->q_logitem;\n\tstruct xfs_log_item\t*lip = &qlip->qli_item;\n\tstruct xfs_buf\t\t*bp_release = NULL;\n\tint\t\t\terror;\n\n\tspin_lock(&qlip->qli_lock);\n\tif (!lip->li_buf) {\n\t\tstruct xfs_buf\t*bp = NULL;\n\n\t\tspin_unlock(&qlip->qli_lock);\n\t\terror = xfs_dquot_read_buf(tp, dqp, &bp);\n\t\tif (error)\n\t\t\treturn error;\n\n\t\t/*\n\t\t * Attach the dquot to the buffer so that the AIL does not have\n\t\t * to read the dquot buffer to push this item.\n\t\t */\n\t\txfs_buf_hold(bp);\n\t\tspin_lock(&qlip->qli_lock);\n\t\tlip->li_buf = bp;\n\t\tbp_release = bp;\n\t}\n\tqlip->qli_dirty = true;\n\tspin_unlock(&qlip->qli_lock);\n\n\tif (bp_release)\n\t\txfs_trans_brelse(tp, bp_release);\n\n\treturn 0;",
+          "before": "\tstruct xfs_dq_logitem\t*qlip = &dqp->q_logitem;\n\tstruct xfs_log_item\t*lip = &qlip->qli_item;\n\tint\t\t\terror;\n\n\tspin_lock(&qlip->qli_lock);\n\tif (!lip->li_buf) {\n\t\tstruct xfs_buf\t*bp = NULL;\n\n\t\tspin_unlock(&qlip->qli_lock);\n\t\terror = xfs_dquot_read_buf(tp, dqp, &bp);\n\t\tif (error)\n\t\t\treturn error;\n\n\t\t/*\n\t\t * Attach the dquot to the buffer so that the AIL does not have\n\t\t * to read the dquot buffer to push this item.\n\t\t */\n\t\txfs_buf_hold(bp);\n\t\tspin_lock(&qlip->qli_lock);\n\t\tlip->li_buf = bp;\n\t\txfs_trans_brelse(tp, bp);\n\t}\n\tqlip->qli_dirty = true;\n\tspin_unlock(&qlip->qli_lock);\n\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/xfs/xfs_dquot.c b/fs/xfs/xfs_dquot.c\nindex f11d475898f2..afe4a3757c90 100644\n--- a/fs/xfs/xfs_dquot.c\n+++ b/fs/xfs/xfs_dquot.c\n@@ -1324,6 +1324,7 @@ xfs_dquot_attach_buf(\n {\n \tstruct xfs_dq_logitem\t*qlip = &dqp->q_logitem;\n \tstruct xfs_log_item\t*lip = &qlip->qli_item;\n+\tstruct xfs_buf\t\t*bp_release = NULL;\n \tint\t\t\terror;\n \n \tspin_lock(&qlip->qli_lock);\n@@ -1342,11 +1343,14 @@ xfs_dquot_attach_buf(\n \t\txfs_buf_hold(bp);\n \t\tspin_lock(&qlip->qli_lock);\n \t\tlip->li_buf = bp;\n-\t\txfs_trans_brelse(tp, bp);\n+\t\tbp_release = bp;\n \t}\n \tqlip->qli_dirty = true;\n \tspin_unlock(&qlip->qli_lock);\n \n+\tif (bp_release)\n+\t\txfs_trans_brelse(tp, bp_release);\n+\n \treturn 0;\n }",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "fs/xfs/xfs_dquot.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    }
+  ],
+  "success_step": 11
+}

@@ -1,0 +1,58 @@
+diff --git a/fs/bcachefs/alloc_background.c b/fs/bcachefs/alloc_background.c
+index 94ea9e49aec4..58ba28b2fdce 100644
+--- a/fs/bcachefs/alloc_background.c
++++ b/fs/bcachefs/alloc_background.c
+@@ -2644,6 +2644,21 @@ void bch2_dev_allocator_add(struct bch_fs *c, struct bch_dev *ca)
+ 
+ void bch2_dev_allocator_background_exit(struct bch_dev *ca)
+ {
++	struct bch_fs *c = ca->fs;
++
++	if (cancel_work_sync(&ca->discard_work)) {
++		percpu_ref_put(&ca->io_ref[WRITE]);
++		bch2_write_ref_put(c, BCH_WRITE_REF_discard);
++	}
++	if (cancel_work_sync(&ca->discard_fast_work)) {
++		percpu_ref_put(&ca->io_ref[WRITE]);
++		bch2_write_ref_put(c, BCH_WRITE_REF_discard_fast);
++	}
++	if (cancel_work_sync(&ca->invalidate_work)) {
++		percpu_ref_put(&ca->io_ref[WRITE]);
++		bch2_write_ref_put(c, BCH_WRITE_REF_invalidate);
++	}
++
+ 	darray_exit(&ca->discard_buckets_in_flight);
+ }
+ 
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index b79e80a435e0..c74387413db0 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -1216,8 +1216,17 @@ static void bch2_dev_release(struct kobject *kobj)
+ 
+ static void bch2_dev_free(struct bch_dev *ca)
+ {
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
++	bch2_dev_allocator_background_exit(ca);
++
++	if (ca->io_ref[WRITE].percpu_count_ptr)
++		bch2_dev_io_ref_stop(ca, WRITE);
++	if (ca->io_ref[READ].percpu_count_ptr)
++		bch2_dev_io_ref_stop(ca, READ);
++
++	if (ca->io_ref[WRITE].percpu_count_ptr)
++		WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
++	if (ca->io_ref[READ].percpu_count_ptr)
++		WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
+ 
+ 	cancel_work_sync(&ca->io_error_work);
+ 
+@@ -1227,7 +1236,6 @@ static void bch2_dev_free(struct bch_dev *ca)
+ 		kobject_del(&ca->kobj);
+ 
+ 	bch2_free_super(&ca->disk_sb);
+-	bch2_dev_allocator_background_exit(ca);
+ 	bch2_dev_journal_exit(ca);
+ 
+ 	free_percpu(ca->io_done);

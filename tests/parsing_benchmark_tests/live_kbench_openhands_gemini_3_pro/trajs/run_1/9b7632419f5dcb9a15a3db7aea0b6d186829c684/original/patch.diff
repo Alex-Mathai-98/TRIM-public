@@ -1,0 +1,34 @@
+diff --git a/net/core/gro_cells.c b/net/core/gro_cells.c
+index ff8e5b64bf6b..13fa9f7966c1 100644
+--- a/net/core/gro_cells.c
++++ b/net/core/gro_cells.c
+@@ -35,9 +35,11 @@ int gro_cells_receive(struct gro_cells *gcells, struct sk_buff *skb)
+ 		goto unlock;
+ 	}
+ 
++	spin_lock_bh(&cell->napi_skbs.lock);
+ 	__skb_queue_tail(&cell->napi_skbs, skb);
+ 	if (skb_queue_len(&cell->napi_skbs) == 1)
+ 		napi_schedule(&cell->napi);
++	spin_unlock_bh(&cell->napi_skbs.lock);
+ 
+ 	res = NET_RX_SUCCESS;
+ 
+@@ -55,7 +57,7 @@ static int gro_cell_poll(struct napi_struct *napi, int budget)
+ 	int work_done = 0;
+ 
+ 	while (work_done < budget) {
+-		skb = __skb_dequeue(&cell->napi_skbs);
++		skb = skb_dequeue(&cell->napi_skbs);
+ 		if (!skb)
+ 			break;
+ 		napi_gro_receive(napi, skb);
+@@ -78,7 +80,7 @@ int gro_cells_init(struct gro_cells *gcells, struct net_device *dev)
+ 	for_each_possible_cpu(i) {
+ 		struct gro_cell *cell = per_cpu_ptr(gcells->cells, i);
+ 
+-		__skb_queue_head_init(&cell->napi_skbs);
++		skb_queue_head_init(&cell->napi_skbs);
+ 
+ 		set_bit(NAPI_STATE_NO_BUSY_POLL, &cell->napi.state);
+ 

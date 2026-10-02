@@ -1,0 +1,145 @@
+{
+  "bug_id": "django__django-15930",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/expressions.py",
+        "before": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        connection.ops.check_expression_support(self)\n        template_params = extra_context\n        sql_params = []\n        condition_sql, condition_params = compiler.compile(self.condition)\n        template_params[\"condition\"] = condition_sql\n        sql_params.extend(condition_params)\n        result_sql, result_params = compiler.compile(self.result)\n        template_params[\"result\"] = result_sql\n        sql_params.extend(result_params)\n        template = template or self.template\n        return template % template_params, sql_params",
+        "after": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        connection.ops.check_expression_support(self)\n        template_params = extra_context\n        sql_params = []\n        condition_sql, condition_params = compiler.compile(self.condition)\n        # Handle the case where condition compiles to an empty string.\n        # This can happen with negated empty Q objects like ~Q(pk__in=[]).\n        # An empty condition means \"always true\", so we use a tautology.\n        if not condition_sql:\n            condition_sql = \"1=1\"\n        template_params[\"condition\"] = condition_sql\n        sql_params.extend(condition_params)\n        result_sql, result_params = compiler.compile(self.result)\n        template_params[\"result\"] = result_sql\n        sql_params.extend(result_params)\n        template = template or self.template\n        return template % template_params, sql_params",
+        "explanation": "classic_swe step 30 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/expressions_case/tests.py",
+        "before": "    def test_annotate_with_empty_when(self):\n        objects = CaseTestModel.objects.annotate(\n            selected=Case(\n                When(pk__in=[], then=Value(\"selected\")),\n                default=Value(\"not selected\"),\n            )\n        )\n        self.assertEqual(len(objects), CaseTestModel.objects.count())\n        self.assertTrue(all(obj.selected == \"not selected\" for obj in objects))\n\n    def test_combined_expression(self):",
+        "after": "    def test_annotate_with_empty_when(self):\n        objects = CaseTestModel.objects.annotate(\n            selected=Case(\n                When(pk__in=[], then=Value(\"selected\")),\n                default=Value(\"not selected\"),\n            )\n        )\n        self.assertEqual(len(objects), CaseTestModel.objects.count())\n        self.assertTrue(all(obj.selected == \"not selected\" for obj in objects))\n\n    def test_annotate_with_negated_empty_when(self):\n        \"\"\"\n        Test that ~Q(pk__in=[]) works correctly in Case/When expressions.\n        This is a regression test for a bug where ~Q(pk__in=[]) would\n        generate invalid SQL like \"CASE WHEN THEN value\".\n        \"\"\"\n        objects = CaseTestModel.objects.annotate(\n            selected=Case(\n                When(~Q(pk__in=[]), then=Value(\"selected\")),\n                default=Value(\"not selected\"),\n            )\n        )\n        self.assertEqual(len(objects), CaseTestModel.objects.count())\n        # ~Q(pk__in=[]) means \"not in empty set\" which matches everything\n        self.assertTrue(all(obj.selected == \"selected\" for obj in objects))\n\n    def test_combined_expression(self):",
+        "explanation": "classic_swe step 54 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/expressions.py b/django/db/models/expressions.py\nindex 822968ef56..5fa02aeb15 100644\n--- a/django/db/models/expressions.py\n+++ b/django/db/models/expressions.py\n@@ -1299,6 +1299,11 @@ class When(Expression):\n         template_params = extra_context\n         sql_params = []\n         condition_sql, condition_params = compiler.compile(self.condition)\n+        # Handle the case where condition compiles to an empty string.\n+        # This can happen with negated empty Q objects like ~Q(pk__in=[]).\n+        # An empty condition means \"always true\", so we use a tautology.\n+        if not condition_sql:\n+            condition_sql = \"1=1\"\n         template_params[\"condition\"] = condition_sql\n         sql_params.extend(condition_params)\n         result_sql, result_params = compiler.compile(self.result)\ndiff --git a/tests/expressions_case/tests.py b/tests/expressions_case/tests.py\nindex 9bad0b8747..acc36e55af 100644\n--- a/tests/expressions_case/tests.py\n+++ b/tests/expressions_case/tests.py\n@@ -415,6 +415,22 @@ class CaseExpressionTests(TestCase):\n         self.assertEqual(len(objects), CaseTestModel.objects.count())\n         self.assertTrue(all(obj.selected == \"not selected\" for obj in objects))\n \n+    def test_annotate_with_negated_empty_when(self):\n+        \"\"\"\n+        Test that ~Q(pk__in=[]) works correctly in Case/When expressions.\n+        This is a regression test for a bug where ~Q(pk__in=[]) would\n+        generate invalid SQL like \"CASE WHEN THEN value\".\n+        \"\"\"\n+        objects = CaseTestModel.objects.annotate(\n+            selected=Case(\n+                When(~Q(pk__in=[]), then=Value(\"selected\")),\n+                default=Value(\"not selected\"),\n+            )\n+        )\n+        self.assertEqual(len(objects), CaseTestModel.objects.count())\n+        # ~Q(pk__in=[]) means \"not in empty set\" which matches everything\n+        self.assertTrue(all(obj.selected == \"selected\" for obj in objects))\n+\n     def test_combined_expression(self):\n         self.assertQuerysetEqual(\n             CaseTestModel.objects.annotate(\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      7
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      3,
+      7
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      3,
+      7
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      3,
+      7
+    ],
+    "edit_list_after_refinement": [
+      3,
+      7
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/expressions.py",
+          "before": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        connection.ops.check_expression_support(self)\n        template_params = extra_context\n        sql_params = []\n        condition_sql, condition_params = compiler.compile(self.condition)\n        template_params[\"condition\"] = condition_sql\n        sql_params.extend(condition_params)\n        result_sql, result_params = compiler.compile(self.result)\n        template_params[\"result\"] = result_sql\n        sql_params.extend(result_params)\n        template = template or self.template\n        return template % template_params, sql_params",
+          "after": "    def as_sql(self, compiler, connection, template=None, **extra_context):\n        connection.ops.check_expression_support(self)\n        template_params = extra_context\n        sql_params = []\n        condition_sql, condition_params = compiler.compile(self.condition)\n        # Handle the case where condition compiles to an empty string.\n        # This can happen with negated empty Q objects like ~Q(pk__in=[]).\n        # An empty condition means \"always true\", so we use a tautology.\n        if not condition_sql:\n            condition_sql = \"1=1\"\n        template_params[\"condition\"] = condition_sql\n        sql_params.extend(condition_params)\n        result_sql, result_params = compiler.compile(self.result)\n        template_params[\"result\"] = result_sql\n        sql_params.extend(result_params)\n        template = template or self.template\n        return template % template_params, sql_params",
+          "explanation": "classic_swe step 30 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/expressions_case/tests.py",
+          "before": "    def test_annotate_with_empty_when(self):\n        objects = CaseTestModel.objects.annotate(\n            selected=Case(\n                When(pk__in=[], then=Value(\"selected\")),\n                default=Value(\"not selected\"),\n            )\n        )\n        self.assertEqual(len(objects), CaseTestModel.objects.count())\n        self.assertTrue(all(obj.selected == \"not selected\" for obj in objects))\n\n    def test_combined_expression(self):",
+          "after": "    def test_annotate_with_empty_when(self):\n        objects = CaseTestModel.objects.annotate(\n            selected=Case(\n                When(pk__in=[], then=Value(\"selected\")),\n                default=Value(\"not selected\"),\n            )\n        )\n        self.assertEqual(len(objects), CaseTestModel.objects.count())\n        self.assertTrue(all(obj.selected == \"not selected\" for obj in objects))\n\n    def test_annotate_with_negated_empty_when(self):\n        \"\"\"\n        Test that ~Q(pk__in=[]) works correctly in Case/When expressions.\n        This is a regression test for a bug where ~Q(pk__in=[]) would\n        generate invalid SQL like \"CASE WHEN THEN value\".\n        \"\"\"\n        objects = CaseTestModel.objects.annotate(\n            selected=Case(\n                When(~Q(pk__in=[]), then=Value(\"selected\")),\n                default=Value(\"not selected\"),\n            )\n        )\n        self.assertEqual(len(objects), CaseTestModel.objects.count())\n        # ~Q(pk__in=[]) means \"not in empty set\" which matches everything\n        self.assertTrue(all(obj.selected == \"selected\" for obj in objects))\n\n    def test_combined_expression(self):",
+          "explanation": "classic_swe step 54 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 88,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 88,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/models/expressions.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/expressions_case/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/expressions.py",
+      "tests/expressions_case/tests.py"
+    ],
+    "gold_files": [
+      "django/db/models/expressions.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 21,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 5,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

@@ -1,0 +1,34 @@
+diff --git a/drivers/block/loop.c b/drivers/block/loop.c
+index f8d136684109..077d4395522b 100644
+--- a/drivers/block/loop.c
++++ b/drivers/block/loop.c
+@@ -1219,6 +1219,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 	bool partscan = false;
+ 	bool size_changed = false;
+ 	unsigned int memflags;
++	loff_t new_size = 0;
+ 
+ 	err = mutex_lock_killable(&lo->lo_mutex);
+ 	if (err)
+@@ -1249,9 +1250,8 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 	lo->lo_flags |= (info->lo_flags & LOOP_SET_STATUS_SETTABLE_FLAGS);
+ 
+ 	if (size_changed) {
+-		loff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,
++		new_size = get_size(lo->lo_offset, lo->lo_sizelimit,
+ 					   lo->lo_backing_file);
+-		loop_set_size(lo, new_size);
+ 	}
+ 
+ 	/* update the direct I/O flag if lo_offset changed */
+@@ -1259,6 +1259,10 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)
+ 
+ out_unfreeze:
+ 	blk_mq_unfreeze_queue(lo->lo_queue, memflags);
++
++	if (size_changed && !err)
++		loop_set_size(lo, new_size);
++
+ 	if (partscan)
+ 		clear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);
+ out_unlock:

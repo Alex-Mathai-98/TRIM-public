@@ -1,0 +1,82 @@
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 88a8e554f7a1..c1527f16b73d 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -452,6 +452,7 @@ struct ipv6_txoptions *ipv6_renew_options(struct sock *sk,
+ 					  struct ipv6_txoptions *opt,
+ 					  int newtype,
+ 					  struct ipv6_opt_hdr *newopt);
++bool ipv6_hopopt_contains_jumbo(const struct ipv6_opt_hdr *hopopt);
+ struct ipv6_txoptions *__ipv6_fixup_options(struct ipv6_txoptions *opt_space,
+ 					    struct ipv6_txoptions *opt);
+ 
+diff --git a/net/ipv6/exthdrs.c b/net/ipv6/exthdrs.c
+index 6789623b2b0d..6832718449af 100644
+--- a/net/ipv6/exthdrs.c
++++ b/net/ipv6/exthdrs.c
+@@ -1239,6 +1239,45 @@ static void ipv6_renew_option(int renewtype,
+ 	*p += CMSG_ALIGN(ipv6_optlen(*dest));
+ }
+ 
++
++/**
++ * ipv6_hopopt_contains_jumbo - check if hop-by-hop options contain jumbo TLV
++ *
++ * @hopopt: hop-by-hop options header
++ *
++ * Returns true if the hop-by-hop options contain a jumbo payload TLV.
++ * The jumbo payload option (RFC 2675) should not be set by userspace
++ * as it is only used internally by the kernel for big TCP packets.
++ */
++bool ipv6_hopopt_contains_jumbo(const struct ipv6_opt_hdr *hopopt)
++{
++	const u8 *nh = (const u8 *)hopopt;
++	int len = ipv6_optlen(hopopt);
++	int off = 2;  /* skip nexthdr and hdrlen */
++
++	len -= 2;
++
++	while (len > 0) {
++		int optlen;
++
++		if (nh[off] == IPV6_TLV_PAD1) {
++			off++;
++			len--;
++			continue;
++		}
++		if (len < 2)
++			return false;
++		optlen = nh[off + 1] + 2;
++		if (optlen > len)
++			return false;
++		if (nh[off] == IPV6_TLV_JUMBO)
++			return true;
++		off += optlen;
++		len -= optlen;
++	}
++	return false;
++}
++
+ /**
+  * ipv6_renew_options - replace a specific ext hdr with a new one.
+  *
+diff --git a/net/ipv6/ipv6_sockglue.c b/net/ipv6/ipv6_sockglue.c
+index cd342d5015c6..92c9ae865087 100644
+--- a/net/ipv6/ipv6_sockglue.c
++++ b/net/ipv6/ipv6_sockglue.c
+@@ -347,6 +347,15 @@ static int ipv6_set_opt_hdr(struct sock *sk, int optname, sockptr_t optval,
+ 			kfree(new);
+ 			return -EINVAL;
+ 		}
++		/* Jumbo payload option (RFC 2675) is not allowed in
++		 * hop-by-hop options set by userspace. It is only used
++		 * internally by the kernel for big TCP packets.
++		 */
++		if (optname == IPV6_HOPOPTS &&
++		    ipv6_hopopt_contains_jumbo(new)) {
++			kfree(new);
++			return -EINVAL;
++		}
+ 	}
+ 
+ 	opt = rcu_dereference_protected(np->opt, lockdep_sock_is_held(sk));

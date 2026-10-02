@@ -1,0 +1,126 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\trcu_read_lock_bh();\n\tif (unlikely(!(dev->flags & IFF_UP)))\n\t\tgoto drop;\n\n\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n\n\tcell = this_cpu_ptr(gcells->cells);\n\n\tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\ndrop:\n\t\tdev_core_stats_rx_dropped_inc(dev);\n\t\tkfree_skb(skb);\n\t\tres = NET_RX_DROP;\n\t\tgoto unlock;\n\t}\n\n\t__skb_queue_tail(&cell->napi_skbs, skb);\n\tif (skb_queue_len(&cell->napi_skbs) == 1)\n\t\tnapi_schedule(&cell->napi);\n\n\tres = NET_RX_SUCCESS;\n\nunlock:\n\trcu_read_unlock_bh();\n",
+          "before": "\n\trcu_read_lock();\n\tif (unlikely(!(dev->flags & IFF_UP)))\n\t\tgoto drop;\n\n\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n\n\tcell = this_cpu_ptr(gcells->cells);\n\n\tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\ndrop:\n\t\tdev_core_stats_rx_dropped_inc(dev);\n\t\tkfree_skb(skb);\n\t\tres = NET_RX_DROP;\n\t\tgoto unlock;\n\t}\n\n\t__skb_queue_tail(&cell->napi_skbs, skb);\n\tif (skb_queue_len(&cell->napi_skbs) == 1)\n\t\tnapi_schedule(&cell->napi);\n\n\tres = NET_RX_SUCCESS;\n\nunlock:\n\trcu_read_unlock();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/core/gro_cells.c\n+++ /linux/net/core/gro_cells.c\n@@ -19 +19 @@\n-\trcu_read_lock();\n+\trcu_read_lock_bh();\n@@ -45 +45 @@\n-\trcu_read_unlock();\n+\trcu_read_unlock_bh();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "revision_index": 0,
+      "start_step": 59
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\trcu_read_lock();\n\tif (unlikely(!(dev->flags & IFF_UP)))\n\t\tgoto drop;\n\n\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n\n\tcell = this_cpu_ptr(gcells->cells);\n\n\tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\ndrop:\n\t\tdev_core_stats_rx_dropped_inc(dev);\n\t\tkfree_skb(skb);\n\t\tres = NET_RX_DROP;\n\t\tgoto unlock;\n\t}\n\n\tspin_lock_bh(&cell->napi_skbs.lock);\n\t__skb_queue_tail(&cell->napi_skbs, skb);\n\tif (skb_queue_len(&cell->napi_skbs) == 1)\n\t\tnapi_schedule(&cell->napi);\n\tspin_unlock_bh(&cell->napi_skbs.lock);\n\n\tres = NET_RX_SUCCESS;\n\nunlock:\n\trcu_read_unlock();\n\n",
+          "before": "\n\n\trcu_read_lock_bh();\n\tif (unlikely(!(dev->flags & IFF_UP)))\n\t\tgoto drop;\n\n\tif (!gcells->cells || skb_cloned(skb) || netif_elide_gro(dev)) {\n\t\tres = netif_rx(skb);\n\t\tgoto unlock;\n\t}\n\n\tcell = this_cpu_ptr(gcells->cells);\n\n\tif (skb_queue_len(&cell->napi_skbs) > READ_ONCE(net_hotdata.max_backlog)) {\ndrop:\n\t\tdev_core_stats_rx_dropped_inc(dev);\n\t\tkfree_skb(skb);\n\t\tres = NET_RX_DROP;\n\t\tgoto unlock;\n\t}\n\n\t__skb_queue_tail(&cell->napi_skbs, skb);\n\tif (skb_queue_len(&cell->napi_skbs) == 1)\n\t\tnapi_schedule(&cell->napi);\n\n\tres = NET_RX_SUCCESS;\n\nunlock:\n\trcu_read_unlock_bh();\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/core/gro_cells.c\n+++ /linux/net/core/gro_cells.c\n@@ -19 +19 @@\n-\trcu_read_lock_bh();\n+\trcu_read_lock();\n@@ -37,0 +38 @@\n+\tspin_lock_bh(&cell->napi_skbs.lock);\n@@ -40,0 +42 @@\n+\tspin_unlock_bh(&cell->napi_skbs.lock);\n@@ -45 +47 @@\n-\trcu_read_unlock_bh();\n+\trcu_read_unlock();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 67",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "\n\twhile (work_done < budget) {\n\t\tskb = skb_dequeue(&cell->napi_skbs);\n\t\tif (!skb)\n\t\t\tbreak;\n\t\tnapi_gro_receive(napi, skb);\n\t\twork_done++;\n\t}\n",
+          "before": "\n\twhile (work_done < budget) {\n\t\tskb = __skb_dequeue(&cell->napi_skbs);\n\t\tif (!skb)\n\t\t\tbreak;\n\t\tnapi_gro_receive(napi, skb);\n\t\twork_done++;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/core/gro_cells.c\n+++ /linux/net/core/gro_cells.c\n@@ -60 +60 @@\n-\t\tskb = __skb_dequeue(&cell->napi_skbs);\n+\t\tskb = skb_dequeue(&cell->napi_skbs);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 69",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "revision_index": 1,
+      "start_step": 67
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\tstruct gro_cell *cell = per_cpu_ptr(gcells->cells, i);\n\n\t\tskb_queue_head_init(&cell->napi_skbs);\n\n\t\tset_bit(NAPI_STATE_NO_BUSY_POLL, &cell->napi.state);\n",
+          "before": "\n\t\tstruct gro_cell *cell = per_cpu_ptr(gcells->cells, i);\n\n\t\t__skb_queue_head_init(&cell->napi_skbs);\n\n\t\tset_bit(NAPI_STATE_NO_BUSY_POLL, &cell->napi.state);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/core/gro_cells.c\n+++ /linux/net/core/gro_cells.c\n@@ -83 +83 @@\n-\t\t__skb_queue_head_init(&cell->napi_skbs);\n+\t\tskb_queue_head_init(&cell->napi_skbs);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 75",
+          "filename": "net/core/gro_cells.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 75
+        }
+      ],
+      "end_step": 75,
+      "revision_index": 2,
+      "start_step": 75
+    }
+  ],
+  "success_step": 75
+}

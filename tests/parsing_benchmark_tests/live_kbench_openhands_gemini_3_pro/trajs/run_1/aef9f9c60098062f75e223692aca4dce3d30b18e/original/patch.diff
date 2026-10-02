@@ -1,0 +1,105 @@
+diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c
+index eeae160c898d..788b3bbd9b4f 100644
+--- a/drivers/atm/atmtcp.c
++++ b/drivers/atm/atmtcp.c
+@@ -40,6 +40,26 @@ struct atmtcp_dev_data {
+  */
+ 
+ 
++static struct atm_vcc *find_vcc(struct atm_dev *dev, short vpi, int vci)
++{
++	struct hlist_head *head;
++	struct atm_vcc *vcc;
++	struct sock *s;
++
++	head = &vcc_hash[vci & (VCC_HTABLE_SIZE -1)];
++
++	sk_for_each(s, head) {
++		vcc = atm_sk(s);
++		if (vcc->dev == dev &&
++		    vcc->vci == vci && vcc->vpi == vpi &&
++		    vcc->qos.rxtp.traffic_class != ATM_NONE) {
++				return vcc;
++		}
++	}
++	return NULL;
++}
++
++
+ static int atmtcp_send_control(struct atm_vcc *vcc,int type,
+     const struct atmtcp_control *msg,int flag)
+ {
+@@ -86,12 +106,16 @@ static int atmtcp_send_control(struct atm_vcc *vcc,int type,
+ }
+ 
+ 
+-static int atmtcp_recv_control(const struct atmtcp_control *msg)
++static int atmtcp_recv_control(struct atm_dev *dev, const struct atmtcp_control *msg)
+ {
+-	struct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;
++	struct atm_vcc *vcc;
+ 
+-	vcc->vpi = msg->addr.sap_addr.vpi;
+-	vcc->vci = msg->addr.sap_addr.vci;
++	read_lock(&vcc_sklist_lock);
++	vcc = find_vcc(dev, msg->addr.sap_addr.vpi, msg->addr.sap_addr.vci);
++	if (!vcc) {
++		read_unlock(&vcc_sklist_lock);
++		return -EUNATCH;
++	}
+ 	vcc->qos = msg->qos;
+ 	sk_atm(vcc)->sk_err = -msg->result;
+ 	switch (msg->type) {
+@@ -102,11 +126,13 @@ static int atmtcp_recv_control(const struct atmtcp_control *msg)
+ 		change_bit(ATM_VF_ADDR,&vcc->flags);
+ 		break;
+ 	    default:
++		read_unlock(&vcc_sklist_lock);
+ 		printk(KERN_ERR "atmtcp_recv_control: unknown type %d\n",
+ 		    msg->type);
+ 		return -EINVAL;
+ 	}
+ 	wake_up(sk_sleep(sk_atm(vcc)));
++	read_unlock(&vcc_sklist_lock);
+ 	return 0;
+ }
+ 
+@@ -260,25 +286,6 @@ static void atmtcp_c_close(struct atm_vcc *vcc)
+ }
+ 
+ 
+-static struct atm_vcc *find_vcc(struct atm_dev *dev, short vpi, int vci)
+-{
+-        struct hlist_head *head;
+-        struct atm_vcc *vcc;
+-        struct sock *s;
+-
+-        head = &vcc_hash[vci & (VCC_HTABLE_SIZE -1)];
+-
+-	sk_for_each(s, head) {
+-                vcc = atm_sk(s);
+-                if (vcc->dev == dev &&
+-                    vcc->vci == vci && vcc->vpi == vpi &&
+-                    vcc->qos.rxtp.traffic_class != ATM_NONE) {
+-                                return vcc;
+-                }
+-        }
+-        return NULL;
+-}
+-
+ 
+ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)
+ {
+@@ -294,7 +301,11 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)
+ 	dev = vcc->dev_data;
+ 	hdr = (struct atmtcp_hdr *) skb->data;
+ 	if (hdr->length == ATMTCP_HDR_MAGIC) {
+-		result = atmtcp_recv_control(
++		if (skb->len < sizeof(struct atmtcp_control)) {
++			result = -EINVAL;
++			goto done;
++		}
++		result = atmtcp_recv_control(dev,
+ 		    (struct atmtcp_control *) skb->data);
+ 		goto done;
+ 	}

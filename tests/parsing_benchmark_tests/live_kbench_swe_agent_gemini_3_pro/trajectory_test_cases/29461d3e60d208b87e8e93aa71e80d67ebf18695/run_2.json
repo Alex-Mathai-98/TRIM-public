@@ -1,0 +1,259 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      7,
+      8
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tWRITE_ONCE(ousk->oob_skb, skb);\n\tsmp_wmb();\n\t__skb_queue_tail(&other->sk_receive_queue, skb);\n",
+          "before": "\tWRITE_ONCE(ousk->oob_skb, skb);\n\t__skb_queue_tail(&other->sk_receive_queue, skb);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..2d16e0086f1d 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2227,6 +2227,7 @@ static int queue_oob(struct socket *sock, struct msghdr *msg, struct sock *other\n \n \tspin_lock(&other->sk_receive_queue.lock);\n \tWRITE_ONCE(ousk->oob_skb, skb);\n+\tsmp_wmb();\n \t__skb_queue_tail(&other->sk_receive_queue, skb);\n \tspin_unlock(&other->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        },
+        {
+          "after": "\tif (likely(unix_skb_len(skb))) {\n\t\tsmp_rmb();\n\t\tif (skb != READ_ONCE(u->oob_skb))\n\t\t\treturn skb;\n\t}\n",
+          "before": "\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n\t\treturn skb;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..b388f6ade820 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2227,6 +2227,7 @@ static int queue_oob(struct socket *sock, struct msghdr *msg, struct sock *other\n \n \tspin_lock(&other->sk_receive_queue.lock);\n \tWRITE_ONCE(ousk->oob_skb, skb);\n+\tsmp_wmb();\n \t__skb_queue_tail(&other->sk_receive_queue, skb);\n \tspin_unlock(&other->sk_receive_queue.lock);\n \n@@ -2657,8 +2658,11 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n+\tif (likely(unix_skb_len(skb))) {\n+\t\tsmp_rmb();\n+\t\tif (skb != READ_ONCE(u->oob_skb))\n+\t\t\treturn skb;\n+\t}\n \n \tspin_lock(&sk->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 13
+    },
+    {
+      "edits": [
+        {
+          "after": "\tWRITE_ONCE(ousk->oob_skb, skb);\n\t__skb_queue_tail(&other->sk_receive_queue, skb);\n",
+          "before": "\tWRITE_ONCE(ousk->oob_skb, skb);\n\tsmp_wmb();\n\t__skb_queue_tail(&other->sk_receive_queue, skb);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..7cdb9c252fc3 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2657,8 +2657,11 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n+\tif (likely(unix_skb_len(skb))) {\n+\t\tsmp_rmb();\n+\t\tif (skb != READ_ONCE(u->oob_skb))\n+\t\t\treturn skb;\n+\t}\n \n \tspin_lock(&sk->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "",
+          "before": "\tif (likely(unix_skb_len(skb))) {\n\t\tsmp_rmb();\n\t\tif (skb != READ_ONCE(u->oob_skb))\n\t\t\treturn skb;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..5a3b42d3c703 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2657,8 +2657,6 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n \n \tspin_lock(&sk->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 1,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t} else {\n\t\t\tif (skb == u->oob_skb)\n\t\t\t\tWRITE_ONCE(u->oob_skb, NULL);\n\t\t\tread_skb = skb;\n\t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n\t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);\n\t\t}\n",
+          "before": "\t\t} else {\n\t\t\tread_skb = skb;\n\t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n\t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..539f3e2f43b4 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2657,8 +2657,6 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n \n \tspin_lock(&sk->sk_receive_queue.lock);\n \n@@ -2668,6 +2666,8 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \t\t} else if (flags & MSG_PEEK) {\n \t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n \t\t} else {\n+\t\t\tif (skb == u->oob_skb)\n+\t\t\t\tWRITE_ONCE(u->oob_skb, NULL);\n \t\t\tread_skb = skb;\n \t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n \t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 2,
+      "start_step": 21
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t} else {\n\t\t\tread_skb = skb;\n\t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n\t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);\n\t\t}\n",
+          "before": "\t\t} else {\n\t\t\tif (skb == u->oob_skb)\n\t\t\t\tWRITE_ONCE(u->oob_skb, NULL);\n\t\t\tread_skb = skb;\n\t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n\t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..5a3b42d3c703 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2657,8 +2657,6 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n \n \tspin_lock(&sk->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "\toob_skb = u->oob_skb;\n\tskb_get(oob_skb);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tWRITE_ONCE(u->oob_skb, NULL);\n\n\tspin_unlock(&sk->sk_receive_queue.lock);\n\tunix_state_unlock(sk);\n\n\tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tUNIXCB(oob_skb).consumed += 1;\n\n\tconsume_skb(oob_skb);\n\n\tmutex_unlock(&u->iolock);\n",
+          "before": "\toob_skb = u->oob_skb;\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tWRITE_ONCE(u->oob_skb, NULL);\n\n\tspin_unlock(&sk->sk_receive_queue.lock);\n\tunix_state_unlock(sk);\n\n\tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tUNIXCB(oob_skb).consumed += 1;\n\n\tmutex_unlock(&u->iolock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..b63cbcef464b 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2630,6 +2630,7 @@ static int unix_stream_recv_urg(struct unix_stream_read_state *state)\n \t}\n \n \toob_skb = u->oob_skb;\n+\tskb_get(oob_skb);\n \n \tif (!(state->flags & MSG_PEEK))\n \t\tWRITE_ONCE(u->oob_skb, NULL);\n@@ -2642,6 +2643,8 @@ static int unix_stream_recv_urg(struct unix_stream_read_state *state)\n \tif (!(state->flags & MSG_PEEK))\n \t\tUNIXCB(oob_skb).consumed += 1;\n \n+\tconsume_skb(oob_skb);\n+\n \tmutex_unlock(&u->iolock);\n \n \tif (chunk < 0)\n@@ -2657,8 +2660,6 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n \n \tspin_lock(&sk->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 3,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\toob_skb = u->oob_skb;\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tWRITE_ONCE(u->oob_skb, NULL);\n\n\tspin_unlock(&sk->sk_receive_queue.lock);\n\tunix_state_unlock(sk);\n\n\tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tUNIXCB(oob_skb).consumed += 1;\n\n\tmutex_unlock(&u->iolock);\n",
+          "before": "\toob_skb = u->oob_skb;\n\tskb_get(oob_skb);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tWRITE_ONCE(u->oob_skb, NULL);\n\n\tspin_unlock(&sk->sk_receive_queue.lock);\n\tunix_state_unlock(sk);\n\n\tchunk = state->recv_actor(oob_skb, 0, chunk, state);\n\n\tif (!(state->flags & MSG_PEEK))\n\t\tUNIXCB(oob_skb).consumed += 1;\n\n\tconsume_skb(oob_skb);\n\n\tmutex_unlock(&u->iolock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..5a3b42d3c703 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2657,8 +2657,6 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n \n \tspin_lock(&sk->sk_receive_queue.lock);",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "\t\t} else {\n\t\t\tif (skb == u->oob_skb)\n\t\t\t\tWRITE_ONCE(u->oob_skb, NULL);\n\t\t\tread_skb = skb;\n\t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n\t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);\n\t\t}\n",
+          "before": "\t\t} else {\n\t\t\tread_skb = skb;\n\t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n\t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c\nindex 159d78fc3d14..539f3e2f43b4 100644\n--- a/net/unix/af_unix.c\n+++ b/net/unix/af_unix.c\n@@ -2657,8 +2657,6 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \tstruct sk_buff *read_skb = NULL, *unread_skb = NULL;\n \tstruct unix_sock *u = unix_sk(sk);\n \n-\tif (likely(unix_skb_len(skb) && skb != READ_ONCE(u->oob_skb)))\n-\t\treturn skb;\n \n \tspin_lock(&sk->sk_receive_queue.lock);\n \n@@ -2668,6 +2666,8 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,\n \t\t} else if (flags & MSG_PEEK) {\n \t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n \t\t} else {\n+\t\t\tif (skb == u->oob_skb)\n+\t\t\t\tWRITE_ONCE(u->oob_skb, NULL);\n \t\t\tread_skb = skb;\n \t\t\tskb = skb_peek_next(skb, &sk->sk_receive_queue);\n \t\t\t__skb_unlink(read_skb, &sk->sk_receive_queue);",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "net/unix/af_unix.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "revision_index": 4,
+      "start_step": 29
+    }
+  ],
+  "success_step": 33
+}

@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#define _GNU_SOURCE\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <unistd.h>\n#include <sys/syscall.h>\n#include <linux/io_uring.h>\n\nint main() {\n    struct io_uring_params p;\n    memset(&p, 0, sizeof(p));\n    p.flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;\n    p.sq_thread_cpu = 4096; // A large value likely >= nr_cpu_ids\n\n    int ret = syscall(__NR_io_uring_setup, 1, &p);\n    if (ret < 0) {\n        perror(\"io_uring_setup\");\n    } else {\n        printf(\"io_uring_setup succeeeded (unexpected)\\n\");\n        close(ret);\n    }\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/reproduce_crash.c\n+++ /linux/reproduce_crash.c\n@@ -1,0 +2,24 @@\n+#define _GNU_SOURCE\n+#include <stdio.h>\n+#include <stdlib.h>\n+#include <string.h>\n+#include <unistd.h>\n+#include <sys/syscall.h>\n+#include <linux/io_uring.h>\n+\n+int main() {\n+    struct io_uring_params p;\n+    memset(&p, 0, sizeof(p));\n+    p.flags = IORING_SETUP_SQPOLL | IORING_SETUP_SQ_AFF;\n+    p.sq_thread_cpu = 4096; // A large value likely >= nr_cpu_ids\n+\n+    int ret = syscall(__NR_io_uring_setup, 1, &p);\n+    if (ret < 0) {\n+        perror(\"io_uring_setup\");\n+    } else {\n+        printf(\"io_uring_setup succeeeded (unexpected)\\n\");\n+        close(ret);\n+    }\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 22",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "\t\t\tret = -EINVAL;\n\t\t\tif (p->sq_thread_cpu >= nr_cpu_ids)\n\t\t\t\tgoto err_sqpoll;\n\t\t\tcpuset_cpus_allowed(current, &allowed_mask);\n\t\t\tif (!cpumask_test_cpu(cpu, &allowed_mask))\n\t\t\t\tgoto err_sqpoll;\n\t\t\tsqd->sq_cpu = cpu;",
+          "before": "\t\t\tret = -EINVAL;\n\t\t\tcpuset_cpus_allowed(current, &allowed_mask);\n\t\t\tif (!cpumask_test_cpu(cpu, &allowed_mask))\n\t\t\t\tgoto err_sqpoll;\n\t\t\tsqd->sq_cpu = cpu;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/sqpoll.c\n+++ /linux/io_uring/sqpoll.c\n@@ -467,0 +468,2 @@\n+\t\t\tif (p->sq_thread_cpu >= nr_cpu_ids)\n+\t\t\t\tgoto err_sqpoll;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 38",
+          "filename": "io_uring/sqpoll.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 0,
+      "start_step": 22
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 42 rm #1",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 1,
+      "start_step": 42
+    }
+  ],
+  "success_step": 42
+}

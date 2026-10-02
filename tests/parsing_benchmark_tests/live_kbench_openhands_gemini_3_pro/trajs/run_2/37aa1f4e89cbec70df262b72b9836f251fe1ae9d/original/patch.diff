@@ -1,0 +1,66 @@
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index 8867fe687888..d21b8d9ad608 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -2909,10 +2909,27 @@ static void set_xfrm_gro_udp_encap_rcv(__u16 encap_type, unsigned short family,
+ {
+ #ifdef CONFIG_XFRM
+ 	if (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {
++		struct udp_sock *up = udp_sk(sk);
++		void *old_gro = READ_ONCE(up->gro_receive);
++
+ 		if (family == AF_INET)
+-			WRITE_ONCE(udp_sk(sk)->gro_receive, xfrm4_gro_udp_encap_rcv);
++			WRITE_ONCE(up->gro_receive, xfrm4_gro_udp_encap_rcv);
+ 		else if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)
+-			WRITE_ONCE(udp_sk(sk)->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);
++			WRITE_ONCE(up->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);
++
++		if (udp_test_bit(ENCAP_ENABLED, sk) &&
++		    old_gro != READ_ONCE(up->gro_receive)) {
++			if (old_gro) {
++				WRITE_ONCE(up->gro_receive, old_gro);
++				udp_tunnel_update_gro_rcv(sk, false);
++				if (family == AF_INET)
++					WRITE_ONCE(up->gro_receive, xfrm4_gro_udp_encap_rcv);
++				else if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)
++					WRITE_ONCE(up->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);
++			}
++			if (up->gro_receive)
++				udp_tunnel_update_gro_rcv(sk, true);
++		}
+ 	}
+ #endif
+ }
+@@ -2966,7 +2983,30 @@ int udp_lib_setsockopt(struct sock *sk, int level, int optname,
+ 		case 0:
+ #ifdef CONFIG_XFRM
+ 		case UDP_ENCAP_ESPINUDP:
+-			set_xfrm_gro_udp_encap_rcv(val, sk->sk_family, sk);
++
++			if (udp_test_bit(ENCAP_ENABLED, sk)) {
++				typeof(up->gro_receive) old_gro = READ_ONCE(up->gro_receive);
++				pr_err("DEBUG: ENCAP_ENABLED set. old_gro=%p\n", old_gro);
++
++				set_xfrm_gro_udp_encap_rcv(val, sk->sk_family, sk);
++				pr_err("DEBUG: new_gro=%p\n", up->gro_receive);
++
++				if (old_gro != READ_ONCE(up->gro_receive)) {
++					pr_err("DEBUG: GRO changed!\n");
++					if (old_gro) {
++						WRITE_ONCE(up->gro_receive, old_gro);
++						udp_tunnel_update_gro_rcv(sk, false);
++					}
++					set_xfrm_gro_udp_encap_rcv(val, sk->sk_family, sk);
++					if (up->gro_receive) {
++						pr_err("DEBUG: calling update_gro_rcv(true)\n");
++						udp_tunnel_update_gro_rcv(sk, true);
++					}
++				}
++			} else {
++				pr_err("DEBUG: ENCAP_ENABLED NOT set\n");
++				set_xfrm_gro_udp_encap_rcv(val, sk->sk_family, sk);
++			}
+ #if IS_ENABLED(CONFIG_IPV6)
+ 			if (sk->sk_family == AF_INET6)
+ 				WRITE_ONCE(up->encap_rcv,

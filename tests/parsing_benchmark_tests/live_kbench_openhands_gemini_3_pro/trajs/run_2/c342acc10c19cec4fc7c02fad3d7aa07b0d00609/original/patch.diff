@@ -1,0 +1,29 @@
+diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c
+index 5713994328cb..cdc9a4835b82 100644
+--- a/fs/jfs/jfs_dmap.c
++++ b/fs/jfs/jfs_dmap.c
+@@ -1962,6 +1962,9 @@ dbAllocDmapLev(struct bmap * bmp,
+ 	/* can't be more than a dmaps worth of blocks */
+ 	assert(l2nb <= L2BPERDMAP);
+ 
++	if (dp->tree.leafidx != cpu_to_le32(LEAFIND))
++		return -EIO;
++
+ 	/* search the tree within the dmap page for sufficient
+ 	 * free space.  if sufficient free space is found, dbFindLeaf()
+ 	 * returns the index of the leaf at which free space was found.
+@@ -3022,9 +3025,13 @@ static int dbFindBits(u32 word, int l2nb)
+ 
+ 	/* scan the word for nb free bits at nb alignments.
+ 	 */
+-	for (bitno = 0; mask != 0; bitno += nb, mask >>= nb) {
++	for (bitno = 0; mask != 0; bitno += nb) {
+ 		if ((mask & word) == mask)
+ 			break;
++		if (nb < 32)
++			mask >>= nb;
++		else
++			mask = 0;
+ 	}
+ 
+ 	ASSERT(bitno < 32);

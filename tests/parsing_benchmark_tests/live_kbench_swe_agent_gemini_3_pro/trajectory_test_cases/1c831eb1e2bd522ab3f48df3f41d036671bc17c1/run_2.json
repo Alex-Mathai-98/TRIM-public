@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct erofs_buf {\n\tstruct address_space *mapping;\n\tstruct file *file;\n\tstruct page *page;\n\tvoid *base;\n\tenum erofs_kmap_type kmap_type;\n};\n",
+          "before": "struct erofs_buf {\n\tstruct address_space *mapping;\n\tstruct page *page;\n\tvoid *base;\n\tenum erofs_kmap_type kmap_type;\n};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/internal.h b/fs/erofs/internal.h\nindex 9aa4cb3d0b65..f0b867652539 100644\n--- a/fs/erofs/internal.h\n+++ b/fs/erofs/internal.h\n@@ -209,6 +209,7 @@ enum erofs_kmap_type {\n \n struct erofs_buf {\n \tstruct address_space *mapping;\n+\tstruct file *file;\n \tstruct page *page;\n \tvoid *base;\n \tenum erofs_kmap_type kmap_type;",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "fs/erofs/internal.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        },
+        {
+          "after": "\t\tfolio = read_mapping_folio(buf->mapping, index, buf->file);\n",
+          "before": "\t\tfolio = read_mapping_folio(buf->mapping, index, NULL);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6355866220ff..1af2c3952159 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -38,7 +38,7 @@ void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset,\n \t}\n \tif (!folio || !folio_contains(folio, index)) {\n \t\terofs_put_metabuf(buf);\n-\t\tfolio = read_mapping_folio(buf->mapping, index, NULL);\n+\t\tfolio = read_mapping_folio(buf->mapping, index, buf->file);\n \t\tif (IS_ERR(folio))\n \t\t\treturn folio;\n \t}\ndiff --git a/fs/erofs/internal.h b/fs/erofs/internal.h\nindex 9aa4cb3d0b65..f0b867652539 100644\n--- a/fs/erofs/internal.h\n+++ b/fs/erofs/internal.h\n@@ -209,6 +209,7 @@ enum erofs_kmap_type {\n \n struct erofs_buf {\n \tstruct address_space *mapping;\n+\tstruct file *file;\n \tstruct page *page;\n \tvoid *base;\n \tenum erofs_kmap_type kmap_type;",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "\tbuf->file = NULL;\n\tif (erofs_is_fileio_mode(sbi)) {\n\t\tbuf->mapping = file_inode(sbi->fdev)->i_mapping;\n\t\tbuf->file = sbi->fdev;\n\t} else if (erofs_is_fscache_mode(sb)) {\n\t\tbuf->mapping = sbi->s_fscache->inode->i_mapping;\n\t} else {\n\t\tbuf->mapping = sb->s_bdev->bd_mapping;\n\t}\n",
+          "before": "\tif (erofs_is_fileio_mode(sbi))\n\t\tbuf->mapping = file_inode(sbi->fdev)->i_mapping;\n\telse if (erofs_is_fscache_mode(sb))\n\t\tbuf->mapping = sbi->s_fscache->inode->i_mapping;\n\telse\n\t\tbuf->mapping = sb->s_bdev->bd_mapping;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6355866220ff..654d0eb13098 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -38,7 +38,7 @@ void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset,\n \t}\n \tif (!folio || !folio_contains(folio, index)) {\n \t\terofs_put_metabuf(buf);\n-\t\tfolio = read_mapping_folio(buf->mapping, index, NULL);\n+\t\tfolio = read_mapping_folio(buf->mapping, index, buf->file);\n \t\tif (IS_ERR(folio))\n \t\t\treturn folio;\n \t}\n@@ -61,12 +61,15 @@ void erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb)\n {\n \tstruct erofs_sb_info *sbi = EROFS_SB(sb);\n \n-\tif (erofs_is_fileio_mode(sbi))\n+\tbuf->file = NULL;\n+\tif (erofs_is_fileio_mode(sbi)) {\n \t\tbuf->mapping = file_inode(sbi->fdev)->i_mapping;\n-\telse if (erofs_is_fscache_mode(sb))\n+\t\tbuf->file = sbi->fdev;\n+\t} else if (erofs_is_fscache_mode(sb)) {\n \t\tbuf->mapping = sbi->s_fscache->inode->i_mapping;\n-\telse\n+\t} else {\n \t\tbuf->mapping = sb->s_bdev->bd_mapping;\n+\t}\n }\n \n void *erofs_read_metabuf(struct erofs_buf *buf, struct super_block *sb,\ndiff --git a/fs/erofs/internal.h b/fs/erofs/internal.h\nindex 9aa4cb3d0b65..f0b867652539 100644\n--- a/fs/erofs/internal.h\n+++ b/fs/erofs/internal.h\n@@ -209,6 +209,7 @@ enum erofs_kmap_type {\n \n struct erofs_buf {\n \tstruct address_space *mapping;\n+\tstruct file *file;\n \tstruct page *page;\n \tvoid *base;\n \tenum erofs_kmap_type kmap_type;",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 15
+    }
+  ],
+  "success_step": 19
+}

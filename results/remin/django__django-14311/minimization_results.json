@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-14311",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/autoreload.py",
+        "before": "    # __spec__ is set when the server was started with the `-m` option,\n    # see https://docs.python.org/3/reference/import.html#main-spec\n    # __spec__ may not exist, e.g. when running in a Conda env.\n    if getattr(__main__, '__spec__', None) is not None and __main__.__spec__.parent:\n        args += ['-m', __main__.__spec__.parent]\n        args += sys.argv[1:]",
+        "after": "    # __spec__ is set when the server was started with the `-m` option,\n    # see https://docs.python.org/3/reference/import.html#main-spec\n    # __spec__ may not exist, e.g. when running in a Conda env.\n    if getattr(__main__, '__spec__', None) is not None:\n        spec = __main__.__spec__\n        # If the spec name ends with __main__, it's a package with __main__.py\n        # and we should use the parent. Otherwise, it's a direct module and we\n        # should use the full name.\n        if spec.name and spec.name.endswith('.__main__') and spec.parent:\n            args += ['-m', spec.parent]\n        elif spec.name:\n            args += ['-m', spec.name]\n        else:\n            # Fallback to the old behavior if spec.name is None\n            args += sys.argv\n            return args\n        args += sys.argv[1:]",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/utils/autoreload.py b/django/utils/autoreload.py\nindex b6af5f5491..ebb6b17d90 100644\n--- a/django/utils/autoreload.py\n+++ b/django/utils/autoreload.py\n@@ -223,8 +223,19 @@ def get_child_arguments():\n     # __spec__ is set when the server was started with the `-m` option,\n     # see https://docs.python.org/3/reference/import.html#main-spec\n     # __spec__ may not exist, e.g. when running in a Conda env.\n-    if getattr(__main__, '__spec__', None) is not None and __main__.__spec__.parent:\n-        args += ['-m', __main__.__spec__.parent]\n+    if getattr(__main__, '__spec__', None) is not None:\n+        spec = __main__.__spec__\n+        # If the spec name ends with __main__, it's a package with __main__.py\n+        # and we should use the parent. Otherwise, it's a direct module and we\n+        # should use the full name.\n+        if spec.name and spec.name.endswith('.__main__') and spec.parent:\n+            args += ['-m', spec.parent]\n+        elif spec.name:\n+            args += ['-m', spec.name]\n+        else:\n+            # Fallback to the old behavior if spec.name is None\n+            args += sys.argv\n+            return args\n         args += sys.argv[1:]\n     elif not py_script.exists():\n         # sys.argv[0] may not exist for several reasons on Windows.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/autoreload.py",
+          "before": "    # __spec__ is set when the server was started with the `-m` option,\n    # see https://docs.python.org/3/reference/import.html#main-spec\n    # __spec__ may not exist, e.g. when running in a Conda env.\n    if getattr(__main__, '__spec__', None) is not None and __main__.__spec__.parent:\n        args += ['-m', __main__.__spec__.parent]\n        args += sys.argv[1:]",
+          "after": "    # __spec__ is set when the server was started with the `-m` option,\n    # see https://docs.python.org/3/reference/import.html#main-spec\n    # __spec__ may not exist, e.g. when running in a Conda env.\n    if getattr(__main__, '__spec__', None) is not None:\n        spec = __main__.__spec__\n        # If the spec name ends with __main__, it's a package with __main__.py\n        # and we should use the parent. Otherwise, it's a direct module and we\n        # should use the full name.\n        if spec.name and spec.name.endswith('.__main__') and spec.parent:\n            args += ['-m', spec.parent]\n        elif spec.name:\n            args += ['-m', spec.name]\n        else:\n            # Fallback to the old behavior if spec.name is None\n            args += sys.argv\n            return args\n        args += sys.argv[1:]",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 59,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 59,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/utils/autoreload.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/utils/autoreload.py"
+    ],
+    "gold_files": [
+      "django/utils/autoreload.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 13,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 7,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

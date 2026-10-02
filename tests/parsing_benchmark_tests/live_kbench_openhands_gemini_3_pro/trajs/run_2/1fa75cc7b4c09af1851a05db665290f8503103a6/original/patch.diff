@@ -1,0 +1,38 @@
+diff --git a/drivers/media/test-drivers/vivid/vivid-vid-cap.c b/drivers/media/test-drivers/vivid/vivid-vid-cap.c
+index e74d73d370e0..79836e81b332 100644
+--- a/drivers/media/test-drivers/vivid/vivid-vid-cap.c
++++ b/drivers/media/test-drivers/vivid/vivid-vid-cap.c
+@@ -369,6 +369,7 @@ void vivid_update_format_cap(struct vivid_dev *dev, bool keep_controls)
+ 	u32 dims[V4L2_CTRL_MAX_DIMS] = {};
+ 	unsigned size;
+ 	u64 pixelclock;
++unsigned int i;
+ 
+ 	switch (dev->input_type[dev->input]) {
+ 	case WEBCAM:
+@@ -451,8 +452,12 @@ void vivid_update_format_cap(struct vivid_dev *dev, bool keep_controls)
+ 	if (keep_controls)
+ 		return;
+ 
++        for (i = 0; i < dev->pixel_array->nr_of_dims; i++)
++                dims[i] = dev->pixel_array->dims[i];
++
+ 	dims[0] = roundup(dev->src_rect.width, PIXEL_ARRAY_DIV);
+ 	dims[1] = roundup(dev->src_rect.height, PIXEL_ARRAY_DIV);
++printk(KERN_ERR "DEBUG: dims: %u %u %u %u, nr: %u\n", dims[0], dims[1], dims[2], dims[3], dev->pixel_array->nr_of_dims);
+ 	v4l2_ctrl_modify_dimensions(dev->pixel_array, dims);
+ }
+ 
+diff --git a/drivers/media/v4l2-core/v4l2-ctrls-api.c b/drivers/media/v4l2-core/v4l2-ctrls-api.c
+index e5a364efd5e6..818bbc89c0a4 100644
+--- a/drivers/media/v4l2-core/v4l2-ctrls-api.c
++++ b/drivers/media/v4l2-core/v4l2-ctrls-api.c
+@@ -996,6 +996,8 @@ int __v4l2_ctrl_modify_dimensions(struct v4l2_ctrl *ctrl,
+ 		elems *= dims[i];
+ 	if (elems == 0)
+ 		return -EINVAL;
++	if (elems > INT_MAX / (2 * ctrl->elem_size))
++		return -EINVAL;
+ 	p_array = kvzalloc(2 * elems * ctrl->elem_size, GFP_KERNEL);
+ 	if (!p_array)
+ 		return -ENOMEM;

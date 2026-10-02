@@ -1,0 +1,15 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index dece27d9db04..d8fe371309ba 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1111,6 +1111,10 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 					      bch2_csum_err_msg(&buf, BSET_CSUM_TYPE(i), b->data->csum, csum),
+ 					      buf.buf));
+ 
++				if (bch2_fs_fatal_err_on(i->u64s < 3 || (void *)vstruct_end(i) > (void *)b->data + (btree_sectors(c) << 9),
++							 c, "corrupted btree node: bset u64s %u", i->u64s))
++					goto fsck_err;
++
+ 				ret = bset_encrypt(c, i, b->written << 9);
+ 				if (bch2_fs_fatal_err_on(ret, c,
+ 							 "decrypting btree node: %s", bch2_err_str(ret)))

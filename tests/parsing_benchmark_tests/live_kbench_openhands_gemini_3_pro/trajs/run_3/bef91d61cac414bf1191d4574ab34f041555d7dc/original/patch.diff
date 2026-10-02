@@ -1,0 +1,94 @@
+diff --git a/net/ipv4/igmp.c b/net/ipv4/igmp.c
+index d1769034b643..4668a463f8fb 100644
+--- a/net/ipv4/igmp.c
++++ b/net/ipv4/igmp.c
+@@ -593,9 +593,10 @@ static int igmpv3_send_report(struct in_device *in_dev, struct ip_mc_list *pmc)
+ 	struct sk_buff *skb = NULL;
+ 	struct net *net = dev_net(in_dev->dev);
+ 	int type;
++	int ret;
+ 
++	rcu_read_lock();
+ 	if (!pmc) {
+-		rcu_read_lock();
+ 		for_each_pmc_rcu(in_dev, pmc) {
+ 			if (pmc->multiaddr == IGMP_ALL_HOSTS)
+ 				continue;
+@@ -610,7 +611,6 @@ static int igmpv3_send_report(struct in_device *in_dev, struct ip_mc_list *pmc)
+ 			skb = add_grec(skb, pmc, type, 0, 0);
+ 			spin_unlock_bh(&pmc->lock);
+ 		}
+-		rcu_read_unlock();
+ 	} else {
+ 		spin_lock_bh(&pmc->lock);
+ 		if (pmc->sfcount[MCAST_EXCLUDE])
+@@ -620,9 +620,13 @@ static int igmpv3_send_report(struct in_device *in_dev, struct ip_mc_list *pmc)
+ 		skb = add_grec(skb, pmc, type, 0, 0);
+ 		spin_unlock_bh(&pmc->lock);
+ 	}
+-	if (!skb)
++	if (!skb) {
++		rcu_read_unlock();
+ 		return 0;
+-	return igmpv3_sendpack(skb);
++	}
++	ret = igmpv3_sendpack(skb);
++	rcu_read_unlock();
++	return ret;
+ }
+ 
+ /*
+@@ -739,13 +743,20 @@ static int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,
+ 	struct flowi4 fl4;
+ 	__be32	dst;
+ 	int hlen, tlen;
++	int ret;
+ 
+-	if (type == IGMPV3_HOST_MEMBERSHIP_REPORT)
+-		return igmpv3_send_report(in_dev, pmc);
++	rcu_read_lock();
++	if (type == IGMPV3_HOST_MEMBERSHIP_REPORT) {
++		ret = igmpv3_send_report(in_dev, pmc);
++		rcu_read_unlock();
++		return ret;
++	}
+ 
+ 	if (ipv4_is_local_multicast(group) &&
+-	    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports))
++	    !READ_ONCE(net->ipv4.sysctl_igmp_llm_reports)) {
++		rcu_read_unlock();
+ 		return 0;
++	}
+ 
+ 	if (type == IGMP_HOST_LEAVE_MESSAGE)
+ 		dst = IGMP_ALL_ROUTER;
+@@ -755,14 +766,17 @@ static int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,
+ 	rt = ip_route_output_ports(net, &fl4, NULL, dst, 0,
+ 				   0, 0,
+ 				   IPPROTO_IGMP, 0, dev->ifindex);
+-	if (IS_ERR(rt))
++	if (IS_ERR(rt)) {
++		rcu_read_unlock();
+ 		return -1;
++	}
+ 
+ 	hlen = LL_RESERVED_SPACE(dev);
+ 	tlen = dev->needed_tailroom;
+ 	skb = alloc_skb(IGMP_SIZE + hlen + tlen, GFP_ATOMIC);
+ 	if (!skb) {
+ 		ip_rt_put(rt);
++		rcu_read_unlock();
+ 		return -1;
+ 	}
+ 	skb->priority = TC_PRIO_CONTROL;
+@@ -796,7 +810,9 @@ static int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,
+ 	ih->group = group;
+ 	ih->csum = ip_compute_csum((void *)ih, sizeof(struct igmphdr));
+ 
+-	return ip_local_out(net, skb->sk, skb);
++	ret = ip_local_out(net, skb->sk, skb);
++	rcu_read_unlock();
++	return ret;
+ }
+ 
+ static void igmp_gq_timer_expire(struct timer_list *t)

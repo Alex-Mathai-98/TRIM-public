@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi)\n{\n\tstruct f2fs_gc_kthread *gc_th;\n\n\tspin_lock(&sbi->cp_lock);\n\tgc_th = sbi->gc_thread;\n\tsbi->gc_thread = NULL;\n\tspin_unlock(&sbi->cp_lock);\n\n\tif (!gc_th)\n\t\treturn;\n\n\tkthread_stop(gc_th->f2fs_gc_task);\n\twake_up_all(&gc_th->fggc_wq);\n\tkfree(gc_th);\n}",
+          "before": "void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi)\n{\n\tstruct f2fs_gc_kthread *gc_th = sbi->gc_thread;\n\n\tif (!gc_th)\n\t\treturn;\n\tkthread_stop(gc_th->f2fs_gc_task);\n\twake_up_all(&gc_th->fggc_wq);\n\tkfree(gc_th);\n\tsbi->gc_thread = NULL;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c\nindex 724bbcb447d3..c02331364221 100644\n--- a/fs/f2fs/gc.c\n+++ b/fs/f2fs/gc.c\n@@ -203,14 +203,19 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)\n \n void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi)\n {\n-\tstruct f2fs_gc_kthread *gc_th = sbi->gc_thread;\n+\tstruct f2fs_gc_kthread *gc_th;\n+\n+\tspin_lock(&sbi->cp_lock);\n+\tgc_th = sbi->gc_thread;\n+\tsbi->gc_thread = NULL;\n+\tspin_unlock(&sbi->cp_lock);\n \n \tif (!gc_th)\n \t\treturn;\n+\n \tkthread_stop(gc_th->f2fs_gc_task);\n \twake_up_all(&gc_th->fggc_wq);\n \tkfree(gc_th);\n-\tsbi->gc_thread = NULL;\n }\n \n static int select_gc_type(struct f2fs_sb_info *sbi, int gc_type)",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/f2fs/gc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    },
+    {
+      "edits": [
+        {
+          "after": "\tinit_waitqueue_head(&gc_th->gc_wait_queue_head);\n\tinit_waitqueue_head(&gc_th->fggc_wq);\n\n\tgc_th->f2fs_gc_task = kthread_create(gc_thread_func, sbi,\n\t\t\t\"f2fs_gc-%u:%u\", MAJOR(dev), MINOR(dev));\n\tif (IS_ERR(gc_th->f2fs_gc_task)) {\n\t\tint err = PTR_ERR(gc_th->f2fs_gc_task);\n\n\t\tkfree(gc_th);\n\t\treturn err;\n\t}\n\n\tspin_lock(&sbi->cp_lock);\n\tsbi->gc_thread = gc_th;\n\tspin_unlock(&sbi->cp_lock);\n\n\twake_up_process(gc_th->f2fs_gc_task);",
+          "before": "\tsbi->gc_thread = gc_th;\n\tinit_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);\n\tinit_waitqueue_head(&sbi->gc_thread->fggc_wq);\n\tsbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,\n\t\t\t\"f2fs_gc-%u:%u\", MAJOR(dev), MINOR(dev));\n\tif (IS_ERR(gc_th->f2fs_gc_task)) {\n\t\tint err = PTR_ERR(gc_th->f2fs_gc_task);\n\n\t\tkfree(gc_th);\n\t\tsbi->gc_thread = NULL;\n\t\treturn err;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c\nindex 724bbcb447d3..610d39e96368 100644\n--- a/fs/f2fs/gc.c\n+++ b/fs/f2fs/gc.c\n@@ -185,32 +185,42 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)\n \n \tgc_th->gc_wake = false;\n \n-\tsbi->gc_thread = gc_th;\n-\tinit_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);\n-\tinit_waitqueue_head(&sbi->gc_thread->fggc_wq);\n-\tsbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,\n+\tinit_waitqueue_head(&gc_th->gc_wait_queue_head);\n+\tinit_waitqueue_head(&gc_th->fggc_wq);\n+\n+\tgc_th->f2fs_gc_task = kthread_create(gc_thread_func, sbi,\n \t\t\t\"f2fs_gc-%u:%u\", MAJOR(dev), MINOR(dev));\n \tif (IS_ERR(gc_th->f2fs_gc_task)) {\n \t\tint err = PTR_ERR(gc_th->f2fs_gc_task);\n \n \t\tkfree(gc_th);\n-\t\tsbi->gc_thread = NULL;\n \t\treturn err;\n \t}\n \n+\tspin_lock(&sbi->cp_lock);\n+\tsbi->gc_thread = gc_th;\n+\tspin_unlock(&sbi->cp_lock);\n+\n+\twake_up_process(gc_th->f2fs_gc_task);\n+\n \treturn 0;\n }\n \n void f2fs_stop_gc_thread(struct f2fs_sb_info *sbi)\n {\n-\tstruct f2fs_gc_kthread *gc_th = sbi->gc_thread;\n+\tstruct f2fs_gc_kthread *gc_th;\n+\n+\tspin_lock(&sbi->cp_lock);\n+\tgc_th = sbi->gc_thread;\n+\tsbi->gc_thread = NULL;\n+\tspin_unlock(&sbi->cp_lock);\n \n \tif (!gc_th)\n \t\treturn;\n+\n \tkthread_stop(gc_th->f2fs_gc_task);\n \twake_up_all(&gc_th->fggc_wq);\n \tkfree(gc_th);\n-\tsbi->gc_thread = NULL;\n }\n \n static int select_gc_type(struct f2fs_sb_info *sbi, int gc_type)",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "fs/f2fs/gc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 1,
+      "start_step": 30
+    }
+  ],
+  "success_step": 30
+}

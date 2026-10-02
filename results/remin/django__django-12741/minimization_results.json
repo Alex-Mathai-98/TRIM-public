@@ -1,0 +1,131 @@
+{
+  "bug_id": "django__django-12741",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/base/operations.py",
+        "before": "    def execute_sql_flush(self, using, sql_list):\n        \"\"\"Execute a list of SQL statements to flush the database.\"\"\"\n        with transaction.atomic(using=using, savepoint=self.connection.features.can_rollback_ddl):\n            with self.connection.cursor() as cursor:\n                for sql in sql_list:\n                    cursor.execute(sql)",
+        "after": "    def execute_sql_flush(self, sql_list):\n        \"\"\"Execute a list of SQL statements to flush the database.\"\"\"\n        with transaction.atomic(using=self.connection.alias, savepoint=self.connection.features.can_rollback_ddl):\n            with self.connection.cursor() as cursor:\n                for sql in sql_list:\n                    cursor.execute(sql)",
+        "explanation": "classic_swe step 14 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/core/management/commands/flush.py",
+        "before": "                connection.ops.execute_sql_flush(database, sql_list)",
+        "after": "                connection.ops.execute_sql_flush(sql_list)",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/core/management/commands/flush.py b/django/core/management/commands/flush.py\nindex e8ed3967f7..bc8021cf4e 100644\n--- a/django/core/management/commands/flush.py\n+++ b/django/core/management/commands/flush.py\n@@ -60,7 +60,7 @@ Are you sure you want to do this?\n \n         if confirm == 'yes':\n             try:\n-                connection.ops.execute_sql_flush(database, sql_list)\n+                connection.ops.execute_sql_flush(sql_list)\n             except Exception as exc:\n                 raise CommandError(\n                     \"Database %s couldn't be flushed. Possible reasons:\\n\"\ndiff --git a/django/db/backends/base/operations.py b/django/db/backends/base/operations.py\nindex 70ac07ae09..f07580c18b 100644\n--- a/django/db/backends/base/operations.py\n+++ b/django/db/backends/base/operations.py\n@@ -400,9 +400,9 @@ class BaseDatabaseOperations:\n         \"\"\"\n         raise NotImplementedError('subclasses of BaseDatabaseOperations must provide a sql_flush() method')\n \n-    def execute_sql_flush(self, using, sql_list):\n+    def execute_sql_flush(self, sql_list):\n         \"\"\"Execute a list of SQL statements to flush the database.\"\"\"\n-        with transaction.atomic(using=using, savepoint=self.connection.features.can_rollback_ddl):\n+        with transaction.atomic(using=self.connection.alias, savepoint=self.connection.features.can_rollback_ddl):\n             with self.connection.cursor() as cursor:\n                 for sql in sql_list:\n                     cursor.execute(sql)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1,
+      2
+    ],
+    "greedy_removal_file_no_crash": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      1,
+      2
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/base/operations.py",
+          "before": "    def execute_sql_flush(self, using, sql_list):\n        \"\"\"Execute a list of SQL statements to flush the database.\"\"\"\n        with transaction.atomic(using=using, savepoint=self.connection.features.can_rollback_ddl):\n            with self.connection.cursor() as cursor:\n                for sql in sql_list:\n                    cursor.execute(sql)",
+          "after": "    def execute_sql_flush(self, sql_list):\n        \"\"\"Execute a list of SQL statements to flush the database.\"\"\"\n        with transaction.atomic(using=self.connection.alias, savepoint=self.connection.features.can_rollback_ddl):\n            with self.connection.cursor() as cursor:\n                for sql in sql_list:\n                    cursor.execute(sql)",
+          "explanation": "classic_swe step 14 #1"
+        },
+        {
+          "filename": "django/core/management/commands/flush.py",
+          "before": "                connection.ops.execute_sql_flush(database, sql_list)",
+          "after": "                connection.ops.execute_sql_flush(sql_list)",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 67,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 67,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/core/management/commands/flush.py",
+      "django/db/backends/base/operations.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/core/management/commands/flush.py",
+      "django/db/backends/base/operations.py"
+    ],
+    "gold_files": [
+      "django/core/management/commands/flush.py",
+      "django/db/backends/base/operations.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 3,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

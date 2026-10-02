@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nvoid key_put(struct key *key)\n{\n\tif (key) {\n\t\tstruct key_user *user;\n\t\tunsigned int quotalen;\n\t\tbool in_quota;\n\n\t\tkey_check(key);\n\n\t\tuser = key->user;\n\t\tquotalen = key->quotalen;\n\t\tin_quota = test_bit(KEY_FLAG_IN_QUOTA, &key->flags);\n\n\t\trefcount_inc(&user->usage);\n\n\t\tif (refcount_dec_and_test(&key->usage)) {\n\t\t\tunsigned long flags;\n\n\t\t\t/* deal with the user's key tracking and quota */\n\t\t\tif (in_quota) {\n\t\t\t\tspin_lock_irqsave(&user->lock, flags);\n\t\t\t\tuser->qnkeys--;\n\t\t\t\tuser->qnbytes -= quotalen;\n\t\t\t\tspin_unlock_irqrestore(&user->lock, flags);\n\t\t\t}\n\t\t\tschedule_work(&key_gc_work);\n\t\t}\n\t\tkey_user_put(user);\n\t}\n}\n",
+          "before": "\nvoid key_put(struct key *key)\n{\n\tif (key) {\n\t\tkey_check(key);\n\n\t\tif (refcount_dec_and_test(&key->usage)) {\n\t\t\tunsigned long flags;\n\n\t\t\t/* deal with the user's key tracking and quota */\n\t\t\tif (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {\n\t\t\t\tspin_lock_irqsave(&key->user->lock, flags);\n\t\t\t\tkey->user->qnkeys--;\n\t\t\t\tkey->user->qnbytes -= key->quotalen;\n\t\t\t\tspin_unlock_irqrestore(&key->user->lock, flags);\n\t\t\t}\n\t\t\tschedule_work(&key_gc_work);\n\t\t}\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/keys/key.c\n+++ /linux/security/keys/key.c\n@@ -648,0 +649,4 @@\n+\t\tstruct key_user *user;\n+\t\tunsigned int quotalen;\n+\t\tbool in_quota;\n+\n@@ -649,0 +654,6 @@\n+\n+\t\tuser = key->user;\n+\t\tquotalen = key->quotalen;\n+\t\tin_quota = test_bit(KEY_FLAG_IN_QUOTA, &key->flags);\n+\n+\t\trefcount_inc(&user->usage);\n@@ -655,5 +665,5 @@\n-\t\t\tif (test_bit(KEY_FLAG_IN_QUOTA, &key->flags)) {\n-\t\t\t\tspin_lock_irqsave(&key->user->lock, flags);\n-\t\t\t\tkey->user->qnkeys--;\n-\t\t\t\tkey->user->qnbytes -= key->quotalen;\n-\t\t\t\tspin_unlock_irqrestore(&key->user->lock, flags);\n+\t\t\tif (in_quota) {\n+\t\t\t\tspin_lock_irqsave(&user->lock, flags);\n+\t\t\t\tuser->qnkeys--;\n+\t\t\t\tuser->qnbytes -= quotalen;\n+\t\t\t\tspin_unlock_irqrestore(&user->lock, flags);\n@@ -662,0 +673 @@\n+\t\tkey_user_put(user);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 67",
+          "filename": "security/keys/key.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        }
+      ],
+      "end_step": 67,
+      "revision_index": 0,
+      "start_step": 67
+    }
+  ],
+  "success_step": 67
+}

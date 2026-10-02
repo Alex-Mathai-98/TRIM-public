@@ -1,0 +1,33 @@
+diff --git a/mm/mmap_lock.c b/mm/mmap_lock.c
+index 1854850b4b89..bd8c8e0bc011 100644
+--- a/mm/mmap_lock.c
++++ b/mm/mmap_lock.c
+@@ -153,9 +153,18 @@ static inline void put_memcg_path_buf(void)
+ 	rcu_read_unlock();
+ }
+ 
++static DEFINE_PER_CPU(int, mmap_lock_recursion);
++
+ #define TRACE_MMAP_LOCK_EVENT(type, mm, ...)                                   \
+ 	do {                                                                   \
+ 		const char *memcg_path;                                        \
++		preempt_disable();                                             \
++		if (unlikely(__this_cpu_read(mmap_lock_recursion))) {          \
++			preempt_enable();                                      \
++			break;                                                 \
++		}                                                              \
++		__this_cpu_inc(mmap_lock_recursion);                           \
++		preempt_enable();                                              \
+ 		local_lock(&memcg_paths.lock);                                 \
+ 		memcg_path = get_mm_memcg_path(mm);                            \
+ 		trace_mmap_lock_##type(mm,                                     \
+@@ -164,6 +173,9 @@ static inline void put_memcg_path_buf(void)
+ 		if (likely(memcg_path != NULL))                                \
+ 			put_memcg_path_buf();                                  \
+ 		local_unlock(&memcg_paths.lock);                               \
++		preempt_disable();                                             \
++		__this_cpu_dec(mmap_lock_recursion);                           \
++		preempt_enable();                                              \
+ 	} while (0)
+ 
+ #else /* !CONFIG_MEMCG */

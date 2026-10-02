@@ -1,0 +1,24 @@
+diff --git a/arch/x86/kernel/ioport.c b/arch/x86/kernel/ioport.c
+index 6290dd120f5e..be003ef77759 100644
+--- a/arch/x86/kernel/ioport.c
++++ b/arch/x86/kernel/ioport.c
+@@ -42,10 +42,15 @@ static void task_update_io_bitmap(struct task_struct *tsk)
+ 		set_tsk_thread_flag(tsk, TIF_IO_BITMAP);
+ 	} else {
+ 		clear_tsk_thread_flag(tsk, TIF_IO_BITMAP);
+-		/* Invalidate TSS */
+-		preempt_disable();
+-		tss_update_io_bitmap();
+-		preempt_enable();
++		/*
++		 * Invalidate TSS. tss_update_io_bitmap() operates on the
++		 * current task, so only call it when updating current.
++		 */
++		if (tsk == current) {
++			preempt_disable();
++			tss_update_io_bitmap();
++			preempt_enable();
++		}
+ 	}
+ }
+ 

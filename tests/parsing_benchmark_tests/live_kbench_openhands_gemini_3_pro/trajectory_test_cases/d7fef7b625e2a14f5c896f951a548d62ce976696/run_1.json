@@ -1,0 +1,135 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\tfat_msg(sb, KERN_WARNING, \"clusters badly computed (%d != %llu)\",\n\t\t\tnew_fclus,\n\t\t\t(llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n\t\tfat_cache_inval_inode(inode);\n\t\tinode->i_blocks = (loff_t)new_fclus << (sbi->cluster_bits - 9);\n\t}",
+          "before": "\n\tif (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\tfat_fs_error(sb, \"clusters badly computed (%d != %llu)\",\n\t\t\t     new_fclus,\n\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n\t\tfat_cache_inval_inode(inode);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/fat/misc.c\n+++ /linux/fs/fat/misc.c\n@@ -161,3 +161,3 @@\n-\t\tfat_fs_error(sb, \"clusters badly computed (%d != %llu)\",\n-\t\t\t     new_fclus,\n-\t\t\t     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n+\t\tfat_msg(sb, KERN_WARNING, \"clusters badly computed (%d != %llu)\",\n+\t\t\tnew_fclus,\n+\t\t\t(llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));\n@@ -164,0 +165 @@\n+\t\tinode->i_blocks = (loff_t)new_fclus << (sbi->cluster_bits - 9);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 32",
+          "filename": "fs/fat/misc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 0,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (mode & FALLOC_FL_KEEP_SIZE) {\n\t\tondisksize = inode->i_blocks << 9;\n\t\tif ((offset + len) <= ondisksize)\n\t\t\tgoto error;\n\n\t\tif (MSDOS_I(inode)->i_start != 0) {\n\t\t\tint fclus, dclus;\n\t\t\tif (fat_get_cluster(inode, FAT_ENT_EOF, &fclus, &dclus) == 0) {\n\t\t\t\tint num_clus = fclus + 1;\n\t\t\t\tif (num_clus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n\t\t\t\t\tinode->i_blocks = (loff_t)num_clus << (sbi->cluster_bits - 9);\n\t\t\t\t\tondisksize = inode->i_blocks << 9;\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\n\t\tif ((offset + len) <= ondisksize)\n\t\t\tgoto error;\n\n\t\t/* First compute the number of clusters to be allocated */\n",
+          "before": "\n\tif (mode & FALLOC_FL_KEEP_SIZE) {\n\t\tondisksize = inode->i_blocks << 9;\n\t\tif ((offset + len) <= ondisksize)\n\t\t\tgoto error;\n\n\t\t/* First compute the number of clusters to be allocated */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/fat/file.c\n+++ /linux/fs/fat/file.c\n@@ -281,0 +282,14 @@\n+\t\tif ((offset + len) <= ondisksize)\n+\t\t\tgoto error;\n+\n+\t\tif (MSDOS_I(inode)->i_start != 0) {\n+\t\t\tint fclus, dclus;\n+\t\t\tif (fat_get_cluster(inode, FAT_ENT_EOF, &fclus, &dclus) == 0) {\n+\t\t\t\tint num_clus = fclus + 1;\n+\t\t\t\tif (num_clus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {\n+\t\t\t\t\tinode->i_blocks = (loff_t)num_clus << (sbi->cluster_bits - 9);\n+\t\t\t\t\tondisksize = inode->i_blocks << 9;\n+\t\t\t\t}\n+\t\t\t}\n+\t\t}\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 49",
+          "filename": "fs/fat/file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        }
+      ],
+      "end_step": 49,
+      "revision_index": 1,
+      "start_step": 49
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\t\t/* First compute the number of clusters to be allocated */\n\t\tmm_bytes = offset + len - ondisksize;\n\t\tnr_cluster = (mm_bytes + (sbi->cluster_size - 1)) >>\n\t\t\tsbi->cluster_bits;\n\n\t\t/* Start the allocation.We are not zeroing out the clusters */\n\t\twhile (nr_cluster > 0) {\n\t\t\t/*\n\t\t\t * allocation O(N) where N is the number of clusters.\n\t\t\t * So, batch the allocation to reduce the sync overhead.\n\t\t\t */\n\t\t\tint cluster[64];\n\t\t\tint nr = min(nr_cluster, 64);\n\n\t\t\terr = fat_alloc_clusters(inode, cluster, nr);\n\t\t\tif (err)\n\t\t\t\tgoto error;\n\t\t\terr = fat_chain_add(inode, cluster[0], nr);\n\t\t\tif (err) {\n\t\t\t\tfat_free_clusters(inode, cluster[0]);\n\t\t\t\tgoto error;\n\t\t\t}\n\t\t\tnr_cluster -= nr;\n\t\t}\n\n",
+          "before": "\n\n\t\t/* First compute the number of clusters to be allocated */\n\t\tmm_bytes = offset + len - ondisksize;\n\t\tnr_cluster = (mm_bytes + (sbi->cluster_size - 1)) >>\n\t\t\tsbi->cluster_bits;\n\n\t\t/* Start the allocation.We are not zeroing out the clusters */\n\t\twhile (nr_cluster-- > 0) {\n\t\t\terr = fat_add_cluster(inode);\n\t\t\tif (err)\n\t\t\t\tgoto error;\n\t\t}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/fat/file.c\n+++ /linux/fs/fat/file.c\n@@ -305,2 +305,9 @@\n-\t\twhile (nr_cluster-- > 0) {\n-\t\t\terr = fat_add_cluster(inode);\n+\t\twhile (nr_cluster > 0) {\n+\t\t\t/*\n+\t\t\t * allocation O(N) where N is the number of clusters.\n+\t\t\t * So, batch the allocation to reduce the sync overhead.\n+\t\t\t */\n+\t\t\tint cluster[64];\n+\t\t\tint nr = min(nr_cluster, 64);\n+\n+\t\t\terr = fat_alloc_clusters(inode, cluster, nr);\n@@ -308,0 +316,6 @@\n+\t\t\terr = fat_chain_add(inode, cluster[0], nr);\n+\t\t\tif (err) {\n+\t\t\t\tfat_free_clusters(inode, cluster[0]);\n+\t\t\t\tgoto error;\n+\t\t\t}\n+\t\t\tnr_cluster -= nr;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 59",
+          "filename": "fs/fat/file.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "revision_index": 2,
+      "start_step": 59
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\t\t/*\n\t\t\t * allocation O(N) where N is the number of clusters.\n\t\t\t * So, batch the allocation to reduce the sync overhead.\n\t\t\t */\n\t\t\t#define FAT_BATCH_SIZE (MAX_BUF_PER_PAGE / 2)\n\t\t\tint cluster[FAT_BATCH_SIZE];\n\t\t\tint nr = min_t(int, nr_cluster, FAT_BATCH_SIZE);\n\n\t\t\terr = fat_alloc_clusters(inode, cluster, nr);\n",
+          "before": "\n\t\t\t/*\n\t\t\t * allocation O(N) where N is the number of clusters.\n\t\t\t * So, batch the allocation to reduce the sync overhead.\n\t\t\t */\n\t\t\tint cluster[64];\n\t\t\tint nr = min(nr_cluster, 64);\n\n\t\t\terr = fat_alloc_clusters(inode, cluster, nr);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/fat/file.c\n+++ /linux/fs/fat/file.c\n@@ -310,2 +310,3 @@\n-\t\t\tint cluster[64];\n-\t\t\tint nr = min(nr_cluster, 64);\n+\t\t\t#define FAT_BATCH_SIZE (MAX_BUF_PER_PAGE / 2)\n+\t\t\tint cluster[FAT_BATCH_SIZE];\n+\t\t\tint nr = min_t(int, nr_cluster, FAT_BATCH_SIZE);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 71",
+          "filename": "fs/fat/file.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 71
+        }
+      ],
+      "end_step": 71,
+      "revision_index": 3,
+      "start_step": 71
+    }
+  ],
+  "success_step": 71
+}

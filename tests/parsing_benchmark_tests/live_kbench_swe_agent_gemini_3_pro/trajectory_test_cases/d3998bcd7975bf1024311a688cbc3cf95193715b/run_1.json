@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache;\n\t\tstruct qlist_node *next;\n\n\t\tif (unlikely(!virt_addr_valid(qlink))) {\n\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", qlink);\n\t\t\tbreak;\n\t\t}\n\n\t\tobj_cache = cache ? cache : qlink_to_cache(qlink);\n\t\tnext = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}\n",
+          "before": "\tqlink = q->head;\n\twhile (qlink) {\n\t\tstruct kmem_cache *obj_cache =\n\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n\t\tstruct qlist_node *next = qlink->next;\n\n\t\tqlink_free(qlink, obj_cache);\n\t\tqlink = next;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/kasan/quarantine.c b/mm/kasan/quarantine.c\nindex 6958aa713c67..af490f42c29e 100644\n--- a/mm/kasan/quarantine.c\n+++ b/mm/kasan/quarantine.c\n@@ -172,9 +172,16 @@ static void qlist_free_all(struct qlist_head *q, struct kmem_cache *cache)\n \n \tqlink = q->head;\n \twhile (qlink) {\n-\t\tstruct kmem_cache *obj_cache =\n-\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n-\t\tstruct qlist_node *next = qlink->next;\n+\t\tstruct kmem_cache *obj_cache;\n+\t\tstruct qlist_node *next;\n+\n+\t\tif (unlikely(!virt_addr_valid(qlink))) {\n+\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", qlink);\n+\t\t\tbreak;\n+\t\t}\n+\n+\t\tobj_cache = cache ? cache : qlink_to_cache(qlink);\n+\t\tnext = qlink->next;\n \n \t\tqlink_free(qlink, obj_cache);\n \t\tqlink = next;",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "\tcurr = from->head;\n\tqlist_init(from);\n\twhile (curr) {\n\t\tstruct qlist_node *next = curr->next;\n\t\tstruct kmem_cache *obj_cache;\n\n\t\tif (unlikely(!virt_addr_valid(curr))) {\n\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", curr);\n\t\t\tbreak;\n\t\t}\n\n\t\tobj_cache = qlink_to_cache(curr);\n\n\t\tif (obj_cache == cache)\n\t\t\tqlist_put(to, curr, obj_cache->size);\n\t\telse\n\t\t\tqlist_put(from, curr, obj_cache->size);\n\n\t\tcurr = next;\n\t}\n",
+          "before": "\tcurr = from->head;\n\tqlist_init(from);\n\twhile (curr) {\n\t\tstruct qlist_node *next = curr->next;\n\t\tstruct kmem_cache *obj_cache = qlink_to_cache(curr);\n\n\t\tif (obj_cache == cache)\n\t\t\tqlist_put(to, curr, obj_cache->size);\n\t\telse\n\t\t\tqlist_put(from, curr, obj_cache->size);\n\n\t\tcurr = next;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/kasan/quarantine.c b/mm/kasan/quarantine.c\nindex 6958aa713c67..c0d6ac0ce70f 100644\n--- a/mm/kasan/quarantine.c\n+++ b/mm/kasan/quarantine.c\n@@ -172,9 +172,16 @@ static void qlist_free_all(struct qlist_head *q, struct kmem_cache *cache)\n \n \tqlink = q->head;\n \twhile (qlink) {\n-\t\tstruct kmem_cache *obj_cache =\n-\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n-\t\tstruct qlist_node *next = qlink->next;\n+\t\tstruct kmem_cache *obj_cache;\n+\t\tstruct qlist_node *next;\n+\n+\t\tif (unlikely(!virt_addr_valid(qlink))) {\n+\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", qlink);\n+\t\t\tbreak;\n+\t\t}\n+\n+\t\tobj_cache = cache ? cache : qlink_to_cache(qlink);\n+\t\tnext = qlink->next;\n \n \t\tqlink_free(qlink, obj_cache);\n \t\tqlink = next;\n@@ -300,7 +307,14 @@ static void qlist_move_cache(struct qlist_head *from,\n \tqlist_init(from);\n \twhile (curr) {\n \t\tstruct qlist_node *next = curr->next;\n-\t\tstruct kmem_cache *obj_cache = qlink_to_cache(curr);\n+\t\tstruct kmem_cache *obj_cache;\n+\n+\t\tif (unlikely(!virt_addr_valid(curr))) {\n+\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", curr);\n+\t\t\tbreak;\n+\t\t}\n+\n+\t\tobj_cache = qlink_to_cache(curr);\n \n \t\tif (obj_cache == cache)\n \t\t\tqlist_put(to, curr, obj_cache->size);",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "\twhile (curr) {\n\t\tstruct qlist_node *next;\n\t\tstruct kmem_cache *obj_cache;\n\n\t\tif (unlikely(!virt_addr_valid(curr))) {\n\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", curr);\n\t\t\tbreak;\n\t\t}\n\n\t\tnext = curr->next;\n\t\tobj_cache = qlink_to_cache(curr);\n\n\t\tif (obj_cache == cache)\n\t\t\tqlist_put(to, curr, obj_cache->size);\n\t\telse\n\t\t\tqlist_put(from, curr, obj_cache->size);\n\n\t\tcurr = next;\n\t}\n",
+          "before": "\twhile (curr) {\n\t\tstruct qlist_node *next = curr->next;\n\t\tstruct kmem_cache *obj_cache;\n\n\t\tif (unlikely(!virt_addr_valid(curr))) {\n\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", curr);\n\t\t\tbreak;\n\t\t}\n\n\t\tobj_cache = qlink_to_cache(curr);\n\n\t\tif (obj_cache == cache)\n\t\t\tqlist_put(to, curr, obj_cache->size);\n\t\telse\n\t\t\tqlist_put(from, curr, obj_cache->size);\n\n\t\tcurr = next;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/kasan/quarantine.c b/mm/kasan/quarantine.c\nindex 6958aa713c67..cb6a62581655 100644\n--- a/mm/kasan/quarantine.c\n+++ b/mm/kasan/quarantine.c\n@@ -172,9 +172,16 @@ static void qlist_free_all(struct qlist_head *q, struct kmem_cache *cache)\n \n \tqlink = q->head;\n \twhile (qlink) {\n-\t\tstruct kmem_cache *obj_cache =\n-\t\t\tcache ? cache :\tqlink_to_cache(qlink);\n-\t\tstruct qlist_node *next = qlink->next;\n+\t\tstruct kmem_cache *obj_cache;\n+\t\tstruct qlist_node *next;\n+\n+\t\tif (unlikely(!virt_addr_valid(qlink))) {\n+\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", qlink);\n+\t\t\tbreak;\n+\t\t}\n+\n+\t\tobj_cache = cache ? cache : qlink_to_cache(qlink);\n+\t\tnext = qlink->next;\n \n \t\tqlink_free(qlink, obj_cache);\n \t\tqlink = next;\n@@ -299,8 +306,16 @@ static void qlist_move_cache(struct qlist_head *from,\n \tcurr = from->head;\n \tqlist_init(from);\n \twhile (curr) {\n-\t\tstruct qlist_node *next = curr->next;\n-\t\tstruct kmem_cache *obj_cache = qlink_to_cache(curr);\n+\t\tstruct qlist_node *next;\n+\t\tstruct kmem_cache *obj_cache;\n+\n+\t\tif (unlikely(!virt_addr_valid(curr))) {\n+\t\t\tWARN_ONCE(1, \"kasan: corrupted quarantine list: %px\\n\", curr);\n+\t\t\tbreak;\n+\t\t}\n+\n+\t\tnext = curr->next;\n+\t\tobj_cache = qlink_to_cache(curr);\n \n \t\tif (obj_cache == cache)\n \t\t\tqlist_put(to, curr, obj_cache->size);",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "mm/kasan/quarantine.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 20
+}

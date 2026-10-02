@@ -1,0 +1,46 @@
+diff --git a/fs/ocfs2/resize.c b/fs/ocfs2/resize.c
+index c4a4016d3866..e14b77cf7c58 100644
+--- a/fs/ocfs2/resize.c
++++ b/fs/ocfs2/resize.c
+@@ -504,6 +504,13 @@ int ocfs2_group_add(struct inode *inode, struct ocfs2_new_group_input *input)
+ 		goto out_unlock;
+ 	}
+ 
++	if (ocfs2_buffer_cached(INODE_CACHE(inode), group_bh)) {
++		ret = -EINVAL;
++		mlog(ML_ERROR, "Group descriptor # %llu is already in cache.\n",
++		     (unsigned long long)input->group);
++		goto out_free_group_bh;
++	}
++
+ 	ocfs2_set_new_buffer_uptodate(INODE_CACHE(inode), group_bh);
+ 
+ 	ret = ocfs2_verify_group_and_input(main_bm_inode, fe, input, group_bh);
+diff --git a/fs/ocfs2/uptodate.c b/fs/ocfs2/uptodate.c
+index 09854925fa5c..19f59b158a67 100644
+--- a/fs/ocfs2/uptodate.c
++++ b/fs/ocfs2/uptodate.c
+@@ -224,8 +224,8 @@ ocfs2_search_cache_tree(struct ocfs2_caching_info *ci,
+ 	return NULL;
+ }
+ 
+-static int ocfs2_buffer_cached(struct ocfs2_caching_info *ci,
+-			       struct buffer_head *bh)
++int ocfs2_buffer_cached(struct ocfs2_caching_info *ci,
++			    struct buffer_head *bh)
+ {
+ 	int index = -1;
+ 	struct ocfs2_meta_cache_item *item = NULL;
+diff --git a/fs/ocfs2/uptodate.h b/fs/ocfs2/uptodate.h
+index 85d94134001b..c48fce8538e1 100644
+--- a/fs/ocfs2/uptodate.h
++++ b/fs/ocfs2/uptodate.h
+@@ -51,6 +51,8 @@ u64 ocfs2_metadata_cache_owner(struct ocfs2_caching_info *ci);
+ void ocfs2_metadata_cache_io_lock(struct ocfs2_caching_info *ci);
+ void ocfs2_metadata_cache_io_unlock(struct ocfs2_caching_info *ci);
+ 
++int ocfs2_buffer_cached(struct ocfs2_caching_info *ci,
++			struct buffer_head *bh);
+ int ocfs2_buffer_uptodate(struct ocfs2_caching_info *ci,
+ 			  struct buffer_head *bh);
+ void ocfs2_set_buffer_uptodate(struct ocfs2_caching_info *ci,

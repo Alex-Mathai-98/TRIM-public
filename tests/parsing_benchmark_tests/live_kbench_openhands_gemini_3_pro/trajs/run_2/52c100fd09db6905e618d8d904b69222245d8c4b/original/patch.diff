@@ -1,0 +1,57 @@
+diff --git a/fs/erofs/inode.c b/fs/erofs/inode.c
+index 9a2f59721522..363f14ed1ef2 100644
+--- a/fs/erofs/inode.c
++++ b/fs/erofs/inode.c
+@@ -65,6 +65,20 @@ static int erofs_read_inode(struct inode *inode)
+ 		goto err_out;
+ 	}
+ 
++	if (vi->datalayout == EROFS_INODE_CHUNK_BASED) {
++		erofs_err(sb, "chunk-based inodes are disabled for testing (nid %llu)",
++			  vi->nid);
++		err = -EOPNOTSUPP;
++		goto err_out;
++	}
++
++	if (in_mbox && vi->datalayout == EROFS_INODE_CHUNK_BASED) {
++		erofs_err(sb, "chunk-based inode in metabox is not supported (nid %llu)",
++			  vi->nid);
++		err = -EOPNOTSUPP;
++		goto err_out;
++	}
++
+ 	switch (erofs_inode_version(ifmt)) {
+ 	case EROFS_INODE_LAYOUT_EXTENDED:
+ 		vi->inode_isize = sizeof(struct erofs_inode_extended);
+@@ -139,6 +153,12 @@ static int erofs_read_inode(struct inode *inode)
+ 	switch (inode->i_mode & S_IFMT) {
+ 	case S_IFDIR:
+ 		vi->dot_omitted = (ifmt >> EROFS_I_DOT_OMITTED_BIT) & 1;
++		if (erofs_inode_is_data_compressed(vi->datalayout)) {
++			erofs_err(sb, "compressed dirs are not supported (nid %llu)",
++				  vi->nid);
++			err = -EOPNOTSUPP;
++			goto err_out;
++		}
+ 		fallthrough;
+ 	case S_IFREG:
+ 	case S_IFLNK:
+diff --git a/fs/erofs/super.c b/fs/erofs/super.c
+index db13b40a78e0..ae34a0b6c7f3 100644
+--- a/fs/erofs/super.c
++++ b/fs/erofs/super.c
+@@ -709,6 +709,14 @@ static int erofs_fc_fill_super(struct super_block *sb, struct fs_context *fc)
+ 		if (IS_ERR(inode))
+ 			return PTR_ERR(inode);
+ 		sbi->metabox_inode = inode;
++
++		if (EROFS_I(inode)->datalayout == EROFS_INODE_CHUNK_BASED) {
++			erofs_err(sb, "metabox inode (nid %llu) cannot be chunk-based",
++				  sbi->metabox_nid);
++			iput(inode);
++			sbi->metabox_inode = NULL;
++			return -EFSCORRUPTED;
++		}
+ 	}
+ 
+ 	inode = erofs_iget(sb, sbi->root_nid);

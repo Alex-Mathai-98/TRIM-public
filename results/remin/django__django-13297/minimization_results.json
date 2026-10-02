@@ -1,0 +1,130 @@
+{
+  "bug_id": "django__django-13297",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/functional.py",
+        "before": "import copy\nimport itertools\nimport operator\nfrom functools import total_ordering, wraps",
+        "after": "import copy\nimport itertools\nimport operator\nimport sqlite3\nfrom functools import total_ordering, wraps",
+        "explanation": "classic_swe step 33 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/utils/functional.py",
+        "before": "    def __deepcopy__(self, memo):\n        if self._wrapped is empty:\n            # We have to use SimpleLazyObject, not self.__class__, because the\n            # latter is proxied.\n            result = SimpleLazyObject(self._setupfunc)\n            memo[id(self)] = result\n            return result\n        return copy.deepcopy(self._wrapped, memo)",
+        "after": "    def __deepcopy__(self, memo):\n        if self._wrapped is empty:\n            # We have to use SimpleLazyObject, not self.__class__, because the\n            # latter is proxied.\n            result = SimpleLazyObject(self._setupfunc)\n            memo[id(self)] = result\n            return result\n        return copy.deepcopy(self._wrapped, memo)\n\n    def __conform__(self, protocol):\n        # Support for SQLite's parameter binding protocol\n        if protocol is sqlite3.PrepareProtocol:\n            if self._wrapped is empty:\n                self._setup()\n            return self._wrapped\n        return None",
+        "explanation": "classic_swe step 34 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/utils/functional.py b/django/utils/functional.py\nindex 6d38f932f9..16a5841d2e 100644\n--- a/django/utils/functional.py\n+++ b/django/utils/functional.py\n@@ -1,6 +1,7 @@\n import copy\n import itertools\n import operator\n+import sqlite3\n from functools import total_ordering, wraps\n \n \n@@ -402,6 +403,14 @@ class SimpleLazyObject(LazyObject):\n             return result\n         return copy.deepcopy(self._wrapped, memo)\n \n+    def __conform__(self, protocol):\n+        # Support for SQLite's parameter binding protocol\n+        if protocol is sqlite3.PrepareProtocol:\n+            if self._wrapped is empty:\n+                self._setup()\n+            return self._wrapped\n+        return None\n+\n \n def partition(predicate, values):\n     \"\"\"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      5
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      4,
+      5
+    ],
+    "edit_list_after_file_min": [
+      4,
+      5
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      4,
+      5
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      4,
+      5
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/functional.py",
+          "before": "import copy\nimport itertools\nimport operator\nfrom functools import total_ordering, wraps",
+          "after": "import copy\nimport itertools\nimport operator\nimport sqlite3\nfrom functools import total_ordering, wraps",
+          "explanation": "classic_swe step 33 #1"
+        },
+        {
+          "filename": "django/utils/functional.py",
+          "before": "    def __deepcopy__(self, memo):\n        if self._wrapped is empty:\n            # We have to use SimpleLazyObject, not self.__class__, because the\n            # latter is proxied.\n            result = SimpleLazyObject(self._setupfunc)\n            memo[id(self)] = result\n            return result\n        return copy.deepcopy(self._wrapped, memo)",
+          "after": "    def __deepcopy__(self, memo):\n        if self._wrapped is empty:\n            # We have to use SimpleLazyObject, not self.__class__, because the\n            # latter is proxied.\n            result = SimpleLazyObject(self._setupfunc)\n            memo[id(self)] = result\n            return result\n        return copy.deepcopy(self._wrapped, memo)\n\n    def __conform__(self, protocol):\n        # Support for SQLite's parameter binding protocol\n        if protocol is sqlite3.PrepareProtocol:\n            if self._wrapped is empty:\n                self._setup()\n            return self._wrapped\n        return None",
+          "explanation": "classic_swe step 34 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 52,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 52,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [],
+    "extra_files_in_minimized": [
+      "django/utils/functional.py"
+    ],
+    "missing_files_vs_gold": [
+      "django/views/generic/base.py"
+    ],
+    "minimized_files": [
+      "django/utils/functional.py"
+    ],
+    "gold_files": [
+      "django/views/generic/base.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 3,
+    "minimized_added_lines": 9,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "no_overlap"
+}

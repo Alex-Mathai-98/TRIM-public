@@ -1,0 +1,51 @@
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 8c4eafe9ffac..2c0075704c0d 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -993,6 +993,36 @@ void f2fs_evict_inode(struct inode *inode)
+ 		 */
+ 	}
+ out_clear:
++	if (inode->i_data.nrpages) {
++		struct folio *folio;
++		unsigned long index;
++		int i;
++
++		for (i = 0; i < 1000; i++) {
++			struct folio *found_folio = NULL;
++
++			index = 0;
++			xa_lock_irq(&inode->i_data.i_pages);
++			xa_for_each(&inode->i_data.i_pages, index, folio) {
++				if (!xa_is_value(folio)) {
++					folio_get(folio);
++					found_folio = folio;
++					break;
++				}
++			}
++			xa_unlock_irq(&inode->i_data.i_pages);
++
++			if (!found_folio)
++				break;
++
++			folio = found_folio;
++			folio_lock(folio);
++			if (folio->mapping == &inode->i_data)
++				filemap_remove_folio(folio);
++			folio_unlock(folio);
++			folio_put(folio);
++		}
++	}
+ 	fscrypt_put_encryption_info(inode);
+ 	fsverity_cleanup_inode(inode);
+ 	clear_inode(inode);
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..e15db674bd16
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "7daff104e6f71e7dd9aa016f37e7efe0ffb63a6b": 90714
++}
+\ No newline at end of file

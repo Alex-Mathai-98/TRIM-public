@@ -1,0 +1,42 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 4414743b638e..228c222e57f4 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -1803,6 +1803,27 @@ static int __ocfs2_find_path(struct ocfs2_caching_info *ci,
+ 
+ 	el = root_el;
+ 	while (el->l_tree_depth) {
++		if (le16_to_cpu(el->l_next_free_rec) > le16_to_cpu(el->l_count)) {
++			ocfs2_error(ocfs2_metadata_cache_get_super(ci),
++				    "Owner %llu has bad count in extent list at depth %u (next free=%u, count=%u)\n",
++				    (unsigned long long)ocfs2_metadata_cache_owner(ci),
++				    le16_to_cpu(el->l_tree_depth),
++				    le16_to_cpu(el->l_next_free_rec),
++				    le16_to_cpu(el->l_count));
++			ret = -EROFS;
++			goto out;
++		}
++
++		if (le16_to_cpu(el->l_next_free_rec) * sizeof(struct ocfs2_extent_rec) >
++		    ocfs2_metadata_cache_get_super(ci)->s_blocksize) {
++			ocfs2_error(ocfs2_metadata_cache_get_super(ci),
++				    "Owner %llu has extent list records which exceed block size (next free=%u)\n",
++				    (unsigned long long)ocfs2_metadata_cache_owner(ci),
++				    le16_to_cpu(el->l_next_free_rec));
++			ret = -EROFS;
++			goto out;
++		}
++
+ 		if (le16_to_cpu(el->l_next_free_rec) == 0) {
+ 			ocfs2_error(ocfs2_metadata_cache_get_super(ci),
+ 				    "Owner %llu has empty extent list at depth %u\n",
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..6f6584ad372e
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "5a98a5e80b999c664fa6908c85ca68ee4b158551": 92897
++}
+\ No newline at end of file

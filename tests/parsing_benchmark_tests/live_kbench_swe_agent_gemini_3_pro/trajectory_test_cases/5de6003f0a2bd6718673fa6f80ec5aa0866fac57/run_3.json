@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (stat_data_v1(ih)) {\n\t\tstruct stat_data_v1 *sd;\n\t\tunsigned long blocks;\n\n\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n\t\t\tpathrelse(path);\n\t\t\treiserfs_make_bad_inode(inode);\n\t\t\treturn;\n\t\t}\n\n\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);",
+          "before": "\tif (stat_data_v1(ih)) {\n\t\tstruct stat_data_v1 *sd =\n\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n\t\tunsigned long blocks;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..3df98f2130b7 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1246,10 +1246,17 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \treiserfs_init_xattr_rwsem(inode);\n \n \tif (stat_data_v1(ih)) {\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n \t\tunsigned long blocks;\n \n+\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\n \t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);\n \t\tset_inode_sd_version(inode, STAT_DATA_V1);\n \t\tinode->i_mode = sd_v1_mode(sd);",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\t} else {\n\t\tstruct stat_data *sd;\n\n\t\tif (ih_item_len(ih) < SD_V2_SIZE) {\n\t\t\tpathrelse(path);\n\t\t\treiserfs_make_bad_inode(inode);\n\t\t\treturn;\n\t\t}\n\n\t\t/*\n\t\t * new stat data found, but object may have old items\n\t\t * (directories and symlinks)\n\t\t */\n\t\tsd = (struct stat_data *)ih_item_body(bh, ih);",
+          "before": "\t} else {\n\t\t/*\n\t\t * new stat data found, but object may have old items\n\t\t * (directories and symlinks)\n\t\t */\n\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..363bad28b6c5 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1246,10 +1246,17 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \treiserfs_init_xattr_rwsem(inode);\n \n \tif (stat_data_v1(ih)) {\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n \t\tunsigned long blocks;\n \n+\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\n \t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);\n \t\tset_inode_sd_version(inode, STAT_DATA_V1);\n \t\tinode->i_mode = sd_v1_mode(sd);\n@@ -1298,11 +1305,19 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\t */\n \t\tREISERFS_I(inode)->i_flags &= ~i_nopack_mask;\n \t} else {\n+\t\tstruct stat_data *sd;\n+\n+\t\tif (ih_item_len(ih) < SD_V2_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n \t\t/*\n \t\t * new stat data found, but object may have old items\n \t\t * (directories and symlinks)\n \t\t */\n-\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n+\t\tsd = (struct stat_data *)ih_item_body(bh, ih);\n \n \t\tinode->i_mode = sd_v2_mode(sd);\n \t\tset_nlink(inode, sd_v2_nlink(sd));",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "static void reiserfs_make_bad_inode(struct inode *inode);\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..ce7264e33c8a 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1227,6 +1227,8 @@ static inline ulong to_fake_used_blocks(struct inode *inode, int sd_size)\n \n /* called by read_locked_inode */\n static void init_inode(struct inode *inode, struct treepath *path)\n+static void reiserfs_make_bad_inode(struct inode *inode);\n+\n {\n \tstruct buffer_head *bh;\n \tstruct item_head *ih;\n@@ -1246,10 +1248,17 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \treiserfs_init_xattr_rwsem(inode);\n \n \tif (stat_data_v1(ih)) {\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n \t\tunsigned long blocks;\n \n+\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\n \t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);\n \t\tset_inode_sd_version(inode, STAT_DATA_V1);\n \t\tinode->i_mode = sd_v1_mode(sd);\n@@ -1298,11 +1307,19 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\t */\n \t\tREISERFS_I(inode)->i_flags &= ~i_nopack_mask;\n \t} else {\n+\t\tstruct stat_data *sd;\n+\n+\t\tif (ih_item_len(ih) < SD_V2_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n \t\t/*\n \t\t * new stat data found, but object may have old items\n \t\t * (directories and symlinks)\n \t\t */\n-\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n+\t\tsd = (struct stat_data *)ih_item_body(bh, ih);\n \n \t\tinode->i_mode = sd_v2_mode(sd);\n \t\tset_nlink(inode, sd_v2_nlink(sd));",
+          "explanation": "classic_swe step 29 insert #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1230,
+          "step_index": 29
+        },
+        {
+          "after": "static void reiserfs_make_bad_inode(struct inode *inode);\n\n/* called by read_locked_inode */\nstatic void init_inode(struct inode *inode, struct treepath *path)\n{",
+          "before": "/* called by read_locked_inode */\nstatic void init_inode(struct inode *inode, struct treepath *path)\nstatic void reiserfs_make_bad_inode(struct inode *inode);\n\n{",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..62951facbfd4 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1225,6 +1225,8 @@ static inline ulong to_fake_used_blocks(struct inode *inode, int sd_size)\n  * item version directly\n  */\n \n+static void reiserfs_make_bad_inode(struct inode *inode);\n+\n /* called by read_locked_inode */\n static void init_inode(struct inode *inode, struct treepath *path)\n {\n@@ -1246,10 +1248,17 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \treiserfs_init_xattr_rwsem(inode);\n \n \tif (stat_data_v1(ih)) {\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n \t\tunsigned long blocks;\n \n+\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\n \t\tset_inode_item_key_version(inode, KEY_FORMAT_3_5);\n \t\tset_inode_sd_version(inode, STAT_DATA_V1);\n \t\tinode->i_mode = sd_v1_mode(sd);\n@@ -1298,11 +1307,19 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\t */\n \t\tREISERFS_I(inode)->i_flags &= ~i_nopack_mask;\n \t} else {\n+\t\tstruct stat_data *sd;\n+\n+\t\tif (ih_item_len(ih) < SD_V2_SIZE) {\n+\t\t\tpathrelse(path);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\n \t\t/*\n \t\t * new stat data found, but object may have old items\n \t\t * (directories and symlinks)\n \t\t */\n-\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n+\t\tsd = (struct stat_data *)ih_item_body(bh, ih);\n \n \t\tinode->i_mode = sd_v2_mode(sd);\n \t\tset_nlink(inode, sd_v2_nlink(sd));",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 1,
+      "start_step": 29
+    }
+  ],
+  "success_step": 32
+}

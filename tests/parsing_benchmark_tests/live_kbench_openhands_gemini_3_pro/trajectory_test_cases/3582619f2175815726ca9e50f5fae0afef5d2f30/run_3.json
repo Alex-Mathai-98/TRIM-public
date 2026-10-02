@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#define _GNU_SOURCE\n#include <unistd.h>\n#include <stdlib.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <string.h>\n#include <sys/syscall.h>\n#include <linux/bpf.h>\n#include <errno.h>\n\n/* Wrapper for bpf syscall */\nstatic int bpf(int cmd, union bpf_attr *attr, unsigned int size)\n{\n    return syscall(__NR_bpf, cmd, attr, size);\n}\n\nint main(void)\n{\n    /* 1. Create a map */\n    union bpf_attr map_attr = {\n        .map_type = BPF_MAP_TYPE_ARRAY,\n        .key_size = 4,\n        .value_size = 8,\n        .max_entries = 1,\n    };\n    int map_fd = bpf(BPF_MAP_CREATE, &map_attr, sizeof(map_attr));\n    if (map_fd < 0) {\n        perror(\"map_create\");\n        // exit(1);\n    }\n\n    /* 2. Load program */\n    /*\n     * Instructions from reproducer:\n     * 18 00 00 00 00 00 00 00  -- ld_imm64 r0, 0\n     * 00 00 00 00 00 00 00 00  -- (part 2)\n     * b7 08 00 00 00 00 00 00  -- mov r8, 0\n     * 7b 8a f8 ff 00 00 00 00  -- *(u64*)(r10 - 8) = r8\n     * 95 00 00 00 00 00 00 00  -- exit\n     */\n    \n    /* SYZ reproducer instructions seem truncated in description, but let's try to reconstruct/guess.\n       syzbot: r0 = bpf$MAP_CREATE_CONST_STR(...)\n       bpf$PROG_LOAD(0x5, ...\n       Instructions:\n       0: 18 00 00 00 00 00 00 00\n       1: 00 00 00 00 00 00 00 00\n       2: b7 08 00 00 00 00 00 00\n       3: 7b 8a f8 ff 00 00 00 00\n       \n       We should add an exit instruction.\n       4: 95 00 00 00 00 00 00 00\n    */\n\n    struct bpf_insn insns[] = {\n        { .code = BPF_LD | BPF_IMM | BPF_DW, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },\n        { .code = 0, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },\n        { .code = BPF_ALU64 | BPF_MOV | BPF_K, .dst_reg = 8, .src_reg = 0, .off = 0, .imm = 0 },\n        { .code = BPF_STX | BPF_MEM | BPF_DW, .dst_reg = 10, .src_reg = 8, .off = -8, .imm = 0 },\n        { .code = BPF_JMP | BPF_EXIT, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },\n    };\n\n    union bpf_attr prog_attr = {\n        .prog_type = BPF_PROG_TYPE_TRACEPOINT, // 5\n        .insns = (uint64_t)insns,\n        .insn_cnt = sizeof(insns) / sizeof(insns[0]),\n        .license = (uint64_t)\"GPL\",\n    };\n    \n    // Note: syzbot sets log_level=0, but I might want to see logs if it fails without crashing\n    prog_attr.log_level = 1;\n    char log_buf[65535];\n    prog_attr.log_buf = (uint64_t)log_buf;\n    prog_attr.log_size = sizeof(log_buf);\n\n    int prog_fd = bpf(BPF_PROG_LOAD, &prog_attr, sizeof(prog_attr));\n    if (prog_fd < 0) {\n        printf(\"prog_load failed: %s\\n\", strerror(errno));\n        printf(\"Log:\\n%s\\n\", log_buf);\n    } else {\n        printf(\"prog_load success\\n\");\n    }\n\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/reproduce_crash.c\n+++ /linux/reproduce_crash.c\n@@ -1,0 +2,86 @@\n+#define _GNU_SOURCE\n+#include <unistd.h>\n+#include <stdlib.h>\n+#include <stdint.h>\n+#include <stdio.h>\n+#include <string.h>\n+#include <sys/syscall.h>\n+#include <linux/bpf.h>\n+#include <errno.h>\n+\n+/* Wrapper for bpf syscall */\n+static int bpf(int cmd, union bpf_attr *attr, unsigned int size)\n+{\n+    return syscall(__NR_bpf, cmd, attr, size);\n+}\n+\n+int main(void)\n+{\n+    /* 1. Create a map */\n+    union bpf_attr map_attr = {\n+        .map_type = BPF_MAP_TYPE_ARRAY,\n+        .key_size = 4,\n+        .value_size = 8,\n+        .max_entries = 1,\n+    };\n+    int map_fd = bpf(BPF_MAP_CREATE, &map_attr, sizeof(map_attr));\n+    if (map_fd < 0) {\n+        perror(\"map_create\");\n+        // exit(1);\n+    }\n+\n+    /* 2. Load program */\n+    /*\n+     * Instructions from reproducer:\n+     * 18 00 00 00 00 00 00 00  -- ld_imm64 r0, 0\n+     * 00 00 00 00 00 00 00 00  -- (part 2)\n+     * b7 08 00 00 00 00 00 00  -- mov r8, 0\n+     * 7b 8a f8 ff 00 00 00 00  -- *(u64*)(r10 - 8) = r8\n+     * 95 00 00 00 00 00 00 00  -- exit\n+     */\n+\n+    /* SYZ reproducer instructions seem truncated in description, but let's try to reconstruct/guess.\n+       syzbot: r0 = bpf$MAP_CREATE_CONST_STR(...)\n+       bpf$PROG_LOAD(0x5, ...\n+       Instructions:\n+       0: 18 00 00 00 00 00 00 00\n+       1: 00 00 00 00 00 00 00 00\n+       2: b7 08 00 00 00 00 00 00\n+       3: 7b 8a f8 ff 00 00 00 00\n+\n+       We should add an exit instruction.\n+       4: 95 00 00 00 00 00 00 00\n+    */\n+\n+    struct bpf_insn insns[] = {\n+        { .code = BPF_LD | BPF_IMM | BPF_DW, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },\n+        { .code = 0, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },\n+        { .code = BPF_ALU64 | BPF_MOV | BPF_K, .dst_reg = 8, .src_reg = 0, .off = 0, .imm = 0 },\n+        { .code = BPF_STX | BPF_MEM | BPF_DW, .dst_reg = 10, .src_reg = 8, .off = -8, .imm = 0 },\n+        { .code = BPF_JMP | BPF_EXIT, .dst_reg = 0, .src_reg = 0, .off = 0, .imm = 0 },\n+    };\n+\n+    union bpf_attr prog_attr = {\n+        .prog_type = BPF_PROG_TYPE_TRACEPOINT, // 5\n+        .insns = (uint64_t)insns,\n+        .insn_cnt = sizeof(insns) / sizeof(insns[0]),\n+        .license = (uint64_t)\"GPL\",\n+    };\n+\n+    // Note: syzbot sets log_level=0, but I might want to see logs if it fails without crashing\n+    prog_attr.log_level = 1;\n+    char log_buf[65535];\n+    prog_attr.log_buf = (uint64_t)log_buf;\n+    prog_attr.log_size = sizeof(log_buf);\n+\n+    int prog_fd = bpf(BPF_PROG_LOAD, &prog_attr, sizeof(prog_attr));\n+    if (prog_fd < 0) {\n+        printf(\"prog_load failed: %s\\n\", strerror(errno));\n+        printf(\"Log:\\n%s\\n\", log_buf);\n+    } else {\n+        printf(\"prog_load success\\n\");\n+    }\n+\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 50",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 64,
+      "revision_index": 0,
+      "start_step": 50
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\t\tif (env->insn_idx != prev_insn_idx + 1) {\n\t\t\t\tstruct bpf_insn *prev_insn = &env->prog->insnsi[prev_insn_idx];\n\n\t\t\t\tWARN_ON_ONCE(env->insn_idx != prev_insn_idx + 2 ||\n\t\t\t\t\t     prev_insn->code != (BPF_LD | BPF_IMM | BPF_DW));\n\t\t\t}\n",
+          "before": "\n                        WARN_ON_ONCE(env->insn_idx != prev_insn_idx + 1);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/verifier.c\n+++ /linux/kernel/bpf/verifier.c\n@@ -20076 +20076,6 @@\n-\t\t\tWARN_ON_ONCE(env->insn_idx != prev_insn_idx + 1);\n+\t\t\tif (env->insn_idx != prev_insn_idx + 1) {\n+\t\t\t\tstruct bpf_insn *prev_insn = &env->prog->insnsi[prev_insn_idx];\n+\n+\t\t\t\tWARN_ON_ONCE(env->insn_idx != prev_insn_idx + 2 ||\n+\t\t\t\t\t     prev_insn->code != (BPF_LD | BPF_IMM | BPF_DW));\n+\t\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 96",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 96
+        }
+      ],
+      "end_step": 96,
+      "revision_index": 1,
+      "start_step": 96
+    }
+  ],
+  "success_step": 96
+}

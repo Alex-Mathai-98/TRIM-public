@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct dentry *kernfs_node_dentry(struct kernfs_node *kn,\n\t\t\t\t  struct super_block *sb)\n{\n\tstruct dentry *dentry;\n\tstruct kernfs_node *knparent;\n\tstruct kernfs_root *root;\n\n\tBUG_ON(sb->s_op != &kernfs_sops);\n\n\tdentry = dget(sb->s_root);\n\n\t/* Check if this is the root kernfs_node */\n\tif (!rcu_access_pointer(kn->__parent))\n\t\treturn dentry;\n\n\troot = kernfs_root(kn);\n\tknparent = kernfs_dentry_node(dentry);\n\n\tdo {\n\t\tstruct dentry *dtmp;\n\t\tstruct kernfs_node *kntmp;\n\t\tconst char *name;\n\t\tchar *name_copy;\n\n\t\tdown_read(&root->kernfs_rwsem);\n\t\tif (kn == knparent) {\n\t\t\tup_read(&root->kernfs_rwsem);\n\t\t\treturn dentry;\n\t\t}\n\n\t\tkntmp = find_next_ancestor(kn, knparent);\n\t\tif (WARN_ON(!kntmp)) {\n\t\t\tup_read(&root->kernfs_rwsem);\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\n\t\tname = kernfs_rcu_name(kntmp);\n\t\tname_copy = kstrdup(name, GFP_KERNEL);\n\t\tup_read(&root->kernfs_rwsem);\n\n\t\tif (!name_copy) {\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t\t}\n\n\t\tdtmp = lookup_positive_unlocked(name_copy, dentry,\n\t\t\t\t\t\tstrlen(name_copy));\n\t\tkfree(name_copy);\n\t\tdput(dentry);\n\t\tif (IS_ERR(dtmp))\n\t\t\treturn dtmp;\n\t\tknparent = kernfs_dentry_node(dtmp);\n\t\tdentry = dtmp;\n\t} while (true);\n}",
+          "before": "struct dentry *kernfs_node_dentry(struct kernfs_node *kn,\n\t\t\t\t  struct super_block *sb)\n{\n\tstruct dentry *dentry;\n\tstruct kernfs_node *knparent;\n\tstruct kernfs_root *root;\n\n\tBUG_ON(sb->s_op != &kernfs_sops);\n\n\tdentry = dget(sb->s_root);\n\n\t/* Check if this is the root kernfs_node */\n\tif (!rcu_access_pointer(kn->__parent))\n\t\treturn dentry;\n\n\troot = kernfs_root(kn);\n\tguard(rwsem_read)(&root->kernfs_rwsem);\n\n\tknparent = find_next_ancestor(kn, NULL);\n\tif (WARN_ON(!knparent)) {\n\t\tdput(dentry);\n\t\treturn ERR_PTR(-EINVAL);\n\t}\n\n\tdo {\n\t\tstruct dentry *dtmp;\n\t\tstruct kernfs_node *kntmp;\n\t\tconst char *name;\n\n\t\tif (kn == knparent)\n\t\t\treturn dentry;\n\t\tkntmp = find_next_ancestor(kn, knparent);\n\t\tif (WARN_ON(!kntmp)) {\n\t\t\tdput(dentry);\n\t\t\treturn ERR_PTR(-EINVAL);\n\t\t}\n\t\tname = rcu_dereference(kntmp->name);\n\t\tdtmp = lookup_positive_unlocked(name, dentry, strlen(name));\n\t\tdput(dentry);\n\t\tif (IS_ERR(dtmp))\n\t\t\treturn dtmp;\n\t\tknparent = kntmp;\n\t\tdentry = dtmp;\n\t} while (true);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/kernfs/mount.c b/fs/kernfs/mount.c\nindex d1f512b7bf86..27be8b853450 100644\n--- a/fs/kernfs/mount.c\n+++ b/fs/kernfs/mount.c\n@@ -220,32 +220,43 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,\n \t\treturn dentry;\n \n \troot = kernfs_root(kn);\n-\tguard(rwsem_read)(&root->kernfs_rwsem);\n-\n-\tknparent = find_next_ancestor(kn, NULL);\n-\tif (WARN_ON(!knparent)) {\n-\t\tdput(dentry);\n-\t\treturn ERR_PTR(-EINVAL);\n-\t}\n+\tknparent = kernfs_dentry_node(dentry);\n \n \tdo {\n \t\tstruct dentry *dtmp;\n \t\tstruct kernfs_node *kntmp;\n \t\tconst char *name;\n+\t\tchar *name_copy;\n \n-\t\tif (kn == knparent)\n+\t\tdown_read(&root->kernfs_rwsem);\n+\t\tif (kn == knparent) {\n+\t\t\tup_read(&root->kernfs_rwsem);\n \t\t\treturn dentry;\n+\t\t}\n+\n \t\tkntmp = find_next_ancestor(kn, knparent);\n \t\tif (WARN_ON(!kntmp)) {\n+\t\t\tup_read(&root->kernfs_rwsem);\n \t\t\tdput(dentry);\n \t\t\treturn ERR_PTR(-EINVAL);\n \t\t}\n-\t\tname = rcu_dereference(kntmp->name);\n-\t\tdtmp = lookup_positive_unlocked(name, dentry, strlen(name));\n+\n+\t\tname = kernfs_rcu_name(kntmp);\n+\t\tname_copy = kstrdup(name, GFP_KERNEL);\n+\t\tup_read(&root->kernfs_rwsem);\n+\n+\t\tif (!name_copy) {\n+\t\t\tdput(dentry);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\n+\t\tdtmp = lookup_positive_unlocked(name_copy, dentry,\n+\t\t\t\t\t\tstrlen(name_copy));\n+\t\tkfree(name_copy);\n \t\tdput(dentry);\n \t\tif (IS_ERR(dtmp))\n \t\t\treturn dtmp;\n-\t\tknparent = kntmp;\n+\t\tknparent = kernfs_dentry_node(dtmp);\n \t\tdentry = dtmp;\n \t} while (true);\n }",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "fs/kernfs/mount.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 14
+    }
+  ],
+  "success_step": 14
+}

@@ -1,0 +1,109 @@
+diff --git a/drivers/mtd/mtdcore.c b/drivers/mtd/mtdcore.c
+index 724f917f91ba..ea3ff717b4d1 100644
+--- a/drivers/mtd/mtdcore.c
++++ b/drivers/mtd/mtdcore.c
+@@ -662,12 +662,16 @@ int add_mtd_device(struct mtd_info *mtd)
+ 	 * ->_{write,read}_oob(), but not both.
+ 	 */
+ 	if (WARN_ON((mtd->_write && mtd->_write_oob) ||
+-		    (mtd->_read && mtd->_read_oob)))
+-		return -EINVAL;
++		    (mtd->_read && mtd->_read_oob))) {
++		error = -EINVAL;
++		goto fail_early;
++	}
+ 
+ 	if (WARN_ON((!mtd->erasesize || !master->_erase) &&
+-		    !(mtd->flags & MTD_NO_ERASE)))
+-		return -EINVAL;
++		    !(mtd->flags & MTD_NO_ERASE))) {
++		error = -EINVAL;
++		goto fail_early;
++	}
+ 
+ 	/*
+ 	 * MTD_SLC_ON_MLC_EMULATION can only be set on partitions, when the
+@@ -679,8 +683,10 @@ int add_mtd_device(struct mtd_info *mtd)
+ 	 */
+ 	if (mtd->flags & MTD_SLC_ON_MLC_EMULATION &&
+ 	    (!mtd_is_partition(mtd) || master->type != MTD_MLCNANDFLASH ||
+-	     !master->pairing || master->_writev))
+-		return -EINVAL;
++	     !master->pairing || master->_writev)) {
++		error = -EINVAL;
++		goto fail_early;
++	}
+ 
+ 	mutex_lock(&mtd_table_mutex);
+ 
+@@ -789,10 +795,16 @@ int add_mtd_device(struct mtd_info *mtd)
+ fail_nvmem_add:
+ 	device_unregister(&mtd->dev);
+ fail_added:
+-	of_node_put(mtd_get_of_node(mtd));
++	of_node_put(np);
+ 	idr_remove(&mtd_idr, i);
++	mutex_unlock(&mtd_table_mutex);
++	return error;
++
+ fail_locked:
+ 	mutex_unlock(&mtd_table_mutex);
++fail_early:
++	if (mtd_is_partition(mtd))
++		release_mtd_partition(mtd);
+ 	return error;
+ }
+ 
+diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c
+index 6811a714349d..a5ba6a04c64f 100644
+--- a/drivers/mtd/mtdpart.c
++++ b/drivers/mtd/mtdpart.c
+@@ -92,6 +92,7 @@ static struct mtd_info *allocate_partition(struct mtd_info *parent,
+ 	child->parent = parent;
+ 	child->part.offset = part->offset;
+ 	INIT_LIST_HEAD(&child->partitions);
++	INIT_LIST_HEAD(&child->part.node);
+ 
+ 	if (child->part.offset == MTDPART_OFS_APPEND)
+ 		child->part.offset = cur_offset;
+@@ -272,26 +273,17 @@ int mtd_add_partition(struct mtd_info *parent, const char *name,
+ 	if (IS_ERR(child))
+ 		return PTR_ERR(child);
+ 
+-	mutex_lock(&master->master.partitions_lock);
+-	list_add_tail(&child->part.node, &parent->partitions);
+-	mutex_unlock(&master->master.partitions_lock);
+-
+ 	ret = add_mtd_device(child);
+ 	if (ret)
+-		goto err_remove_part;
+-
+-	mtd_add_partition_attrs(child);
+-
+-	return 0;
++		return ret;
+ 
+-err_remove_part:
+ 	mutex_lock(&master->master.partitions_lock);
+-	list_del(&child->part.node);
++	list_add_tail(&child->part.node, &parent->partitions);
+ 	mutex_unlock(&master->master.partitions_lock);
+ 
+-	free_partition(child);
++	mtd_add_partition_attrs(child);
+ 
+-	return ret;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(mtd_add_partition);
+ 
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..b10e7cb05b39
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "e8eda7c7b7a999684d5e57f1f949451e39f9cf51": 93295
++}
+\ No newline at end of file

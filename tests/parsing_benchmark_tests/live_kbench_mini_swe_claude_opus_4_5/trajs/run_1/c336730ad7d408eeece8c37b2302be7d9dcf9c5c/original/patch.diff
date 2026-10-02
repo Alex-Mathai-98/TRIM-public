@@ -1,0 +1,41 @@
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 7743d81b2f21..938120c00462 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -1033,24 +1033,27 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,
+ 	ext4_xattr_inode_set_ref(ea_inode, ref_count);
+ 
+ 	if (ref_change > 0) {
+-		WARN_ONCE(ref_count <= 0, "EA inode %lu ref_count=%lld",
+-			  ea_inode->i_ino, ref_count);
++		if (ref_count <= 0)
++			ext4_warning_inode(ea_inode, "ref_count=%lld",
++					   ref_count);
+ 
+ 		if (ref_count == 1) {
+-			WARN_ONCE(ea_inode->i_nlink, "EA inode %lu i_nlink=%u",
+-				  ea_inode->i_ino, ea_inode->i_nlink);
++			if (ea_inode->i_nlink)
++				ext4_warning_inode(ea_inode, "i_nlink=%u",
++						   ea_inode->i_nlink);
+ 
+ 			set_nlink(ea_inode, 1);
+ 			ext4_orphan_del(handle, ea_inode);
+ 		}
+ 	} else {
+-		WARN_ONCE(ref_count < 0, "EA inode %lu ref_count=%lld",
+-			  ea_inode->i_ino, ref_count);
++		if (ref_count < 0)
++			ext4_warning_inode(ea_inode, "ref_count=%lld",
++					   ref_count);
+ 
+ 		if (ref_count == 0) {
+-			WARN_ONCE(ea_inode->i_nlink != 1,
+-				  "EA inode %lu i_nlink=%u",
+-				  ea_inode->i_ino, ea_inode->i_nlink);
++			if (ea_inode->i_nlink != 1)
++				ext4_warning_inode(ea_inode, "i_nlink=%u",
++						   ea_inode->i_nlink);
+ 
+ 			clear_nlink(ea_inode);
+ 			ext4_orphan_add(handle, ea_inode);

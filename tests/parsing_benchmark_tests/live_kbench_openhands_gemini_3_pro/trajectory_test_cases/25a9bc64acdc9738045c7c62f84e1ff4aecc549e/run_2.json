@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {\n\t\tret = afs_dynroot_readdir_cells(net, ctx);\n\t}",
+          "before": "\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {\n\t\trcu_read_lock();\n\t\tret = afs_dynroot_readdir_cells(net, ctx);\n\t\trcu_read_unlock();\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/afs/dynroot.c\n+++ /linux/fs/afs/dynroot.c\n@@ -351 +350,0 @@\n-\t\trcu_read_lock();\n@@ -353 +351,0 @@\n-\t\trcu_read_unlock();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 50",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        },
+        {
+          "after": "\n\tfor (;;) {\n\t\tunsigned int ix = ctx->pos >> 1;\n\n\t\trcu_read_lock();\n\t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n\t\tif (!cell) {\n\t\t\trcu_read_unlock();\n\t\t\treturn 0;\n\t\t}\n\t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD ||\n\t\t    !refcount_inc_not_zero(&cell->ref)) {\n\t\t\trcu_read_unlock();\n\t\t\tctx->pos += 2;\n\t\t\tctx->pos &= ~1;\n\t\t\tcontinue;\n\t\t}\n\t\trcu_read_unlock();\n\n\t\tnewpos = ix << 1;\n\t\tif (newpos > ctx->pos)\n\t\t\tctx->pos = newpos;\n\n\t\t_debug(\"pos %llu -> cell %u\", ctx->pos, cell->dynroot_ino);\n\n\t\tif ((ctx->pos & 1) == 0) {\n\t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n\t\t\t\t      cell->dynroot_ino, DT_DIR))\n\t\t\t\tgoto out;\n\t\t\tctx->pos++;\n\t\t}\n\t\tif ((ctx->pos & 1) == 1) {\n\t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n\t\t\t\t      cell->dynroot_ino + 1, DT_DIR))\n\t\t\t\tgoto out;\n\t\t\tctx->pos++;\n\t\t}\n\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\t}\n\nout:\n\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\treturn 0;\n",
+          "before": "\n\tfor (;;) {\n\t\tunsigned int ix = ctx->pos >> 1;\n\n\t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n\t\tif (!cell)\n\t\t\treturn 0;\n\t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD) {\n\t\t\tctx->pos += 2;\n\t\t\tctx->pos &= ~1;\n\t\t\tcontinue;\n\t\t}\n\n\t\tnewpos = ix << 1;\n\t\tif (newpos > ctx->pos)\n\t\t\tctx->pos = newpos;\n\n\t\t_debug(\"pos %llu -> cell %u\", ctx->pos, cell->dynroot_ino);\n\n\t\tif ((ctx->pos & 1) == 0) {\n\t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n\t\t\t\t      cell->dynroot_ino, DT_DIR))\n\t\t\t\treturn 0;\n\t\t\tctx->pos++;\n\t\t}\n\t\tif ((ctx->pos & 1) == 1) {\n\t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n\t\t\t\t      cell->dynroot_ino + 1, DT_DIR))\n\t\t\t\treturn 0;\n\t\t\tctx->pos++;\n\t\t}\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/afs/dynroot.c\n+++ /linux/fs/afs/dynroot.c\n@@ -292,0 +293 @@\n+\t\trcu_read_lock();\n@@ -294 +295,2 @@\n-\t\tif (!cell)\n+\t\tif (!cell) {\n+\t\t\trcu_read_unlock();\n@@ -295,0 +298 @@\n+\t\t}\n@@ -297 +300,3 @@\n-\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD) {\n+\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD ||\n+\t\t    !refcount_inc_not_zero(&cell->ref)) {\n+\t\t\trcu_read_unlock();\n@@ -301,0 +307 @@\n+\t\trcu_read_unlock();\n@@ -312 +318 @@\n-\t\t\t\treturn 0;\n+\t\t\t\tgoto out;\n@@ -318 +324 @@\n-\t\t\t\treturn 0;\n+\t\t\t\tgoto out;\n@@ -321 +327,6 @@\n-\t}\n+\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n+\t}\n+\n+out:\n+\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n+\treturn 0;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 56",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 56
+        },
+        {
+          "after": "\nout:\n\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\treturn 0;\n}\n\n/*\n",
+          "before": "\nout:\n\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\treturn 0;\n\treturn 0;\n}\n\n/*\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/afs/dynroot.c\n+++ /linux/fs/afs/dynroot.c\n@@ -333 +332,0 @@\n-\treturn 0;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 58",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 58
+        }
+      ],
+      "end_step": 58,
+      "revision_index": 0,
+      "start_step": 50
+    }
+  ],
+  "success_step": 58
+}

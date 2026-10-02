@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\trcu_read_lock();\n\n\tif (IP6CB(skb)->flags & IP6SKB_FORWARDED)\n\t\tgoto ip6_output;\n\tif (!(IP6CB(skb)->flags & IP6SKB_MCROUTE))\n\t\tgoto ip6_output;\n\n\terr = ip6mr_fib_lookup(net, &fl6, &mrt);\n\tif (err < 0) {\n\t\tkfree_skb(skb);\n\t\trcu_read_unlock();\n\t\treturn err;\n\t}\n",
+          "before": "\n\tWARN_ON_ONCE(!rcu_read_lock_held());\n\n\tif (IP6CB(skb)->flags & IP6SKB_FORWARDED)\n\t\tgoto ip6_output;\n\tif (!(IP6CB(skb)->flags & IP6SKB_MCROUTE))\n\t\tgoto ip6_output;\n\n\terr = ip6mr_fib_lookup(net, &fl6, &mrt);\n\tif (err < 0) {\n\t\tkfree_skb(skb);\n\t\treturn err;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv6/ip6mr.c\n+++ /linux/net/ipv6/ip6mr.c\n@@ -2376 +2376 @@\n-\tWARN_ON_ONCE(!rcu_read_lock_held());\n+\trcu_read_lock();\n@@ -2385,0 +2386 @@\n+\t\trcu_read_unlock();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 55",
+          "filename": "net/ipv6/ip6mr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 55
+        },
+        {
+          "after": "\n\t/* No usable cache entry */\n\tif (!cache) {\n\t\tvif = ip6mr_find_vif(mrt, dev);\n\t\tif (vif >= 0) {\n\t\t\terr = ip6mr_cache_unresolved(mrt, vif, skb, dev);\n\t\t\trcu_read_unlock();\n\t\t\treturn err;\n\t\t}\n\t\tgoto ip6_output;\n\t}\n\n\t/* Wrong interface */\n\tvif = cache->_c.mfc_parent;\n\tif (rcu_access_pointer(mrt->vif_table[vif].dev) != dev)\n\t\tgoto ip6_output;\n\n\tip6_mr_output_finish(net, mrt, dev, skb, cache);\n\trcu_read_unlock();\n\treturn 0;\n\nip6_output:\n\trcu_read_unlock();\n\treturn ip6_output(net, sk, skb);\n}\n",
+          "before": "\n\t/* No usable cache entry */\n\tif (!cache) {\n\t\tvif = ip6mr_find_vif(mrt, dev);\n\t\tif (vif >= 0)\n\t\t\treturn ip6mr_cache_unresolved(mrt, vif, skb, dev);\n\t\tgoto ip6_output;\n\t}\n\n\t/* Wrong interface */\n\tvif = cache->_c.mfc_parent;\n\tif (rcu_access_pointer(mrt->vif_table[vif].dev) != dev)\n\t\tgoto ip6_output;\n\n\tip6_mr_output_finish(net, mrt, dev, skb, cache);\n\treturn 0;\n\nip6_output:\n\treturn ip6_output(net, sk, skb);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv6/ip6mr.c\n+++ /linux/net/ipv6/ip6mr.c\n@@ -2403,2 +2403,5 @@\n-\t\tif (vif >= 0)\n-\t\t\treturn ip6mr_cache_unresolved(mrt, vif, skb, dev);\n+\t\tif (vif >= 0) {\n+\t\t\terr = ip6mr_cache_unresolved(mrt, vif, skb, dev);\n+\t\t\trcu_read_unlock();\n+\t\t\treturn err;\n+\t\t}\n@@ -2413,0 +2417 @@\n+\trcu_read_unlock();\n@@ -2416,0 +2421 @@\n+\trcu_read_unlock();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 57",
+          "filename": "net/ipv6/ip6mr.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 0,
+      "start_step": 55
+    }
+  ],
+  "success_step": 57
+}

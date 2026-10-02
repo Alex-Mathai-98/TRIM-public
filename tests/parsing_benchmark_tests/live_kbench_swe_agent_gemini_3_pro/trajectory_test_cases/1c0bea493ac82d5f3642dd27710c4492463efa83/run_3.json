@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tset_current_in_page_owner();\n\n\t/*\n\t * kmalloc() on PREEMPT_RT takes a sleeping lock, and cannot be called\n\t * from atomic context.\n\t */\n\tif ((IS_ENABLED(CONFIG_PREEMPT_RT) && (in_atomic() || irqs_disabled())) ||\n\t    in_nmi()) {\n\t\tunset_current_in_page_owner();\n\t\treturn;\n\t}\n\n\tstack = kmalloc(sizeof(*stack), gfp_nested_mask(gfp_mask));",
+          "before": "\tset_current_in_page_owner();\n\tstack = kmalloc(sizeof(*stack), gfp_nested_mask(gfp_mask));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/page_owner.c b/mm/page_owner.c\nindex c3ca21132c2c..0e7c7d6eb64e 100644\n--- a/mm/page_owner.c\n+++ b/mm/page_owner.c\n@@ -169,6 +169,17 @@ static void add_stack_record_to_list(struct stack_record *stack_record,\n \tstruct stack *stack;\n \n \tset_current_in_page_owner();\n+\n+\t/*\n+\t * kmalloc() on PREEMPT_RT takes a sleeping lock, and cannot be called\n+\t * from atomic context.\n+\t */\n+\tif ((IS_ENABLED(CONFIG_PREEMPT_RT) && (in_atomic() || irqs_disabled())) ||\n+\t    in_nmi()) {\n+\t\tunset_current_in_page_owner();\n+\t\treturn;\n+\t}\n+\n \tstack = kmalloc(sizeof(*stack), gfp_nested_mask(gfp_mask));\n \tif (!stack) {\n \t\tunset_current_in_page_owner();",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "mm/page_owner.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "#include <linux/hardirq.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/page_owner.c b/mm/page_owner.c\nindex c3ca21132c2c..e7448e0c56ff 100644\n--- a/mm/page_owner.c\n+++ b/mm/page_owner.c\n@@ -13,6 +13,7 @@\n #include <linux/memcontrol.h>\n #include <linux/sched/clock.h>\n \n+#include <linux/hardirq.h>\n #include \"internal.h\"\n \n /*\n@@ -169,6 +170,17 @@ static void add_stack_record_to_list(struct stack_record *stack_record,\n \tstruct stack *stack;\n \n \tset_current_in_page_owner();\n+\n+\t/*\n+\t * kmalloc() on PREEMPT_RT takes a sleeping lock, and cannot be called\n+\t * from atomic context.\n+\t */\n+\tif ((IS_ENABLED(CONFIG_PREEMPT_RT) && (in_atomic() || irqs_disabled())) ||\n+\t    in_nmi()) {\n+\t\tunset_current_in_page_owner();\n+\t\treturn;\n+\t}\n+\n \tstack = kmalloc(sizeof(*stack), gfp_nested_mask(gfp_mask));\n \tif (!stack) {\n \t\tunset_current_in_page_owner();",
+          "explanation": "classic_swe step 23 insert #1",
+          "filename": "mm/page_owner.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 16,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 1,
+      "start_step": 23
+    }
+  ],
+  "success_step": 23
+}

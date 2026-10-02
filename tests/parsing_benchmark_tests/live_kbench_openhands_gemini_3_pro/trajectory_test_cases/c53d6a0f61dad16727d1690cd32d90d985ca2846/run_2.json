@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (sk_listener(sk))\n\t\t\t/* if the socket is the listening state then this\n\t\t\t * packet is a SYN-ACK packet which means it needs to\n\t\t\t * be labeled based on the connection/request_sock and\n\t\t\t * not the parent socket.  unfortunately, we can't\n\t\t\t * lookup the request_sock yet as it isn't queued on\n\t\t\t * the parent socket until after the SYN-ACK is sent.\n\t\t\t * the \"solution\" is to simply pass the packet as-is\n\t\t\t * as any IP option based labeling should be copied\n\t\t\t * from the initial connection request (in the IP\n\t\t\t * layer).  it is far from ideal, but until we get a\n\t\t\t * security label in the packet itself this is the\n\t\t\t * best we can do. */\n\t\t\treturn NF_ACCEPT;\n\n\t\tif (sk->sk_state == TCP_TIME_WAIT) {\n\t\t\tsid = SECINITSID_KERNEL;\n\t\t} else {\n\t\t\t/* standard practice, label using the parent socket */\n\t\t\tsksec = selinux_sock(sk);\n\t\t\tsid = sksec->sid;\n\t\t}\n\t} else",
+          "before": "\t\tif (sk_listener(sk))\n\t\t\t/* if the socket is the listening state then this\n\t\t\t * packet is a SYN-ACK packet which means it needs to\n\t\t\t * be labeled based on the connection/request_sock and\n\t\t\t * not the parent socket.  unfortunately, we can't\n\t\t\t * lookup the request_sock yet as it isn't queued on\n\t\t\t * the parent socket until after the SYN-ACK is sent.\n\t\t\t * the \"solution\" is to simply pass the packet as-is\n\t\t\t * as any IP option based labeling should be copied\n\t\t\t * from the initial connection request (in the IP\n\t\t\t * layer).  it is far from ideal, but until we get a\n\t\t\t * security label in the packet itself this is the\n\t\t\t * best we can do. */\n\t\t\treturn NF_ACCEPT;\n\n\t\t/* standard practice, label using the parent socket */\n\t\tsksec = selinux_sock(sk);\n\t\tsid = sksec->sid;\n\t} else",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/selinux/hooks.c\n+++ /linux/security/selinux/hooks.c\n@@ -5760,3 +5760,7 @@\n-\t\t/* standard practice, label using the parent socket */\n-\t\tsksec = selinux_sock(sk);\n-\t\tsid = sksec->sid;\n+\t\tif (sk->sk_state == TCP_TIME_WAIT) {\n+\t\t\tsid = SECINITSID_KERNEL;\n+\t\t} else {\n+\t\t\t/* standard practice, label using the parent socket */\n+\t\t\tsksec = selinux_sock(sk);\n+\t\t\tsid = sksec->sid;\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 65",
+          "filename": "security/selinux/hooks.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 65
+        }
+      ],
+      "end_step": 65,
+      "revision_index": 0,
+      "start_step": 65
+    }
+  ],
+  "success_step": 65
+}

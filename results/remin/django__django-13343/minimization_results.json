@@ -1,0 +1,128 @@
+{
+  "bug_id": "django__django-13343",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/fields/files.py",
+        "before": "    def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):\n        self._primary_key_set_explicitly = 'primary_key' in kwargs\n\n        self.storage = storage or default_storage\n        if callable(self.storage):\n            self.storage = self.storage()\n            if not isinstance(self.storage, Storage):\n                raise TypeError(\n                    \"%s.storage must be a subclass/instance of %s.%s\"\n                    % (self.__class__.__qualname__, Storage.__module__, Storage.__qualname__)\n                )\n        self.upload_to = upload_to\n\n        kwargs.setdefault('max_length', 100)\n        super().__init__(verbose_name, name, **kwargs)",
+        "after": "    def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):\n        self._primary_key_set_explicitly = 'primary_key' in kwargs\n\n        # Store the original storage parameter for deconstruction\n        self._storage_parameter = storage\n        \n        self.storage = storage or default_storage\n        if callable(self.storage):\n            self.storage = self.storage()\n            if not isinstance(self.storage, Storage):\n                raise TypeError(\n                    \"%s.storage must be a subclass/instance of %s.%s\"\n                    % (self.__class__.__qualname__, Storage.__module__, Storage.__qualname__)\n                )\n        self.upload_to = upload_to\n\n        kwargs.setdefault('max_length', 100)\n        super().__init__(verbose_name, name, **kwargs)",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/files.py",
+        "before": "    def deconstruct(self):\n        name, path, args, kwargs = super().deconstruct()\n        if kwargs.get(\"max_length\") == 100:\n            del kwargs[\"max_length\"]\n        kwargs['upload_to'] = self.upload_to\n        if self.storage is not default_storage:\n            kwargs['storage'] = self.storage\n        return name, path, args, kwargs",
+        "after": "    def deconstruct(self):\n        name, path, args, kwargs = super().deconstruct()\n        if kwargs.get(\"max_length\") == 100:\n            del kwargs[\"max_length\"]\n        kwargs['upload_to'] = self.upload_to\n        # Use the original storage parameter if it was provided, not the evaluated storage\n        if self._storage_parameter is not None and (\n            callable(self._storage_parameter) or self._storage_parameter is not default_storage\n        ):\n            kwargs['storage'] = self._storage_parameter\n        return name, path, args, kwargs",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/fields/files.py b/django/db/models/fields/files.py\nindex e10a5bb6d9..82772b128d 100644\n--- a/django/db/models/fields/files.py\n+++ b/django/db/models/fields/files.py\n@@ -227,6 +227,9 @@ class FileField(Field):\n     def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):\n         self._primary_key_set_explicitly = 'primary_key' in kwargs\n \n+        # Store the original storage parameter for deconstruction\n+        self._storage_parameter = storage\n+        \n         self.storage = storage or default_storage\n         if callable(self.storage):\n             self.storage = self.storage()\n@@ -278,8 +281,11 @@ class FileField(Field):\n         if kwargs.get(\"max_length\") == 100:\n             del kwargs[\"max_length\"]\n         kwargs['upload_to'] = self.upload_to\n-        if self.storage is not default_storage:\n-            kwargs['storage'] = self.storage\n+        # Use the original storage parameter if it was provided, not the evaluated storage\n+        if self._storage_parameter is not None and (\n+            callable(self._storage_parameter) or self._storage_parameter is not default_storage\n+        ):\n+            kwargs['storage'] = self._storage_parameter\n         return name, path, args, kwargs\n \n     def get_internal_type(self):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2,
+      3
+    ],
+    "edit_list_after_file_min": [
+      2,
+      3
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      2,
+      3
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      2,
+      3
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/files.py",
+          "before": "    def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):\n        self._primary_key_set_explicitly = 'primary_key' in kwargs\n\n        self.storage = storage or default_storage\n        if callable(self.storage):\n            self.storage = self.storage()\n            if not isinstance(self.storage, Storage):\n                raise TypeError(\n                    \"%s.storage must be a subclass/instance of %s.%s\"\n                    % (self.__class__.__qualname__, Storage.__module__, Storage.__qualname__)\n                )\n        self.upload_to = upload_to\n\n        kwargs.setdefault('max_length', 100)\n        super().__init__(verbose_name, name, **kwargs)",
+          "after": "    def __init__(self, verbose_name=None, name=None, upload_to='', storage=None, **kwargs):\n        self._primary_key_set_explicitly = 'primary_key' in kwargs\n\n        # Store the original storage parameter for deconstruction\n        self._storage_parameter = storage\n        \n        self.storage = storage or default_storage\n        if callable(self.storage):\n            self.storage = self.storage()\n            if not isinstance(self.storage, Storage):\n                raise TypeError(\n                    \"%s.storage must be a subclass/instance of %s.%s\"\n                    % (self.__class__.__qualname__, Storage.__module__, Storage.__qualname__)\n                )\n        self.upload_to = upload_to\n\n        kwargs.setdefault('max_length', 100)\n        super().__init__(verbose_name, name, **kwargs)",
+          "explanation": "classic_swe step 19 #1"
+        },
+        {
+          "filename": "django/db/models/fields/files.py",
+          "before": "    def deconstruct(self):\n        name, path, args, kwargs = super().deconstruct()\n        if kwargs.get(\"max_length\") == 100:\n            del kwargs[\"max_length\"]\n        kwargs['upload_to'] = self.upload_to\n        if self.storage is not default_storage:\n            kwargs['storage'] = self.storage\n        return name, path, args, kwargs",
+          "after": "    def deconstruct(self):\n        name, path, args, kwargs = super().deconstruct()\n        if kwargs.get(\"max_length\") == 100:\n            del kwargs[\"max_length\"]\n        kwargs['upload_to'] = self.upload_to\n        # Use the original storage parameter if it was provided, not the evaluated storage\n        if self._storage_parameter is not None and (\n            callable(self._storage_parameter) or self._storage_parameter is not default_storage\n        ):\n            kwargs['storage'] = self._storage_parameter\n        return name, path, args, kwargs",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 130,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 130,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/fields/files.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/fields/files.py"
+    ],
+    "gold_files": [
+      "django/db/models/fields/files.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

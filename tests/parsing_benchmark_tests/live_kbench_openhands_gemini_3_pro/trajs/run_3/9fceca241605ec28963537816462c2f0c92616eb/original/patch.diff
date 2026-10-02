@@ -1,0 +1,70 @@
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 9b6a3f8d2e7c..47a4de85cf5e 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -100,7 +100,8 @@ int ntfs_fileattr_set(struct mnt_idmap *idmap, struct dentry *dentry,
+ 
+ 	/* Allowed to change compression for empty files and for directories only. */
+ 	if (!is_dedup(ni) && !is_encrypted(ni) &&
+-	    (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode))) {
++	    ((S_ISREG(inode->i_mode) && !i_size_read(inode)) ||
++	     S_ISDIR(inode->i_mode))) {
+ 		int err = 0;
+ 		struct address_space *mapping = inode->i_mapping;
+ 
+diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
+index 3e2957a1e360..54fb5a341307 100644
+--- a/fs/ntfs3/inode.c
++++ b/fs/ntfs3/inode.c
+@@ -806,6 +806,12 @@ static ssize_t ntfs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+ 		goto out;
+ 	}
+ 
++	if (is_compressed(ni) || is_encrypted(ni)) {
++		ret = -EOPNOTSUPP;
++		goto out;
++	}
++
++
+ 	ret = blockdev_direct_IO(iocb, inode, iter,
+ 				 wr ? ntfs_get_block_direct_IO_W :
+ 				      ntfs_get_block_direct_IO_R);
+@@ -2067,6 +2073,7 @@ const struct address_space_operations ntfs_aops = {
+ const struct address_space_operations ntfs_aops_cmpr = {
+ 	.read_folio	= ntfs_read_folio,
+ 	.readahead	= ntfs_readahead,
++	.direct_IO	= ntfs_direct_IO,
+ 	.dirty_folio	= block_dirty_folio,
+ };
+ // clang-format on
+diff --git a/print_flags.c b/print_flags.c
+new file mode 100644
+index 000000000000..748dbf35253c
+--- /dev/null
++++ b/print_flags.c
+@@ -0,0 +1,25 @@
++
++#define _GNU_SOURCE
++#include <stdio.h>
++#include <fcntl.h>
++
++int main() {
++    printf("O_RDWR: 0x%x\n", O_RDWR);
++    printf("O_CREAT: 0x%x\n", O_CREAT);
++    printf("O_DIRECT: 0x%x\n", O_DIRECT);
++    printf("O_DIRECTORY: 0x%x\n", O_DIRECTORY);
++    printf("O_EXCL: 0x%x\n", O_EXCL);
++    printf("O_NOCTTY: 0x%x\n", O_NOCTTY);
++    printf("O_TRUNC: 0x%x\n", O_TRUNC);
++    printf("O_APPEND: 0x%x\n", O_APPEND);
++    printf("O_NONBLOCK: 0x%x\n", O_NONBLOCK);
++    printf("O_DSYNC: 0x%x\n", O_DSYNC);
++    printf("O_SYNC: 0x%x\n", O_SYNC);
++    printf("O_RSYNC: 0x%x\n", O_RSYNC);
++    printf("O_LARGEFILE: 0x%x\n", O_LARGEFILE);
++    printf("O_NOFOLLOW: 0x%x\n", O_NOFOLLOW);
++    printf("O_NOATIME: 0x%x\n", O_NOATIME);
++    printf("O_CLOEXEC: 0x%x\n", O_CLOEXEC);
++    printf("__O_TMPFILE: 0x%x\n", __O_TMPFILE);
++    return 0;
++}

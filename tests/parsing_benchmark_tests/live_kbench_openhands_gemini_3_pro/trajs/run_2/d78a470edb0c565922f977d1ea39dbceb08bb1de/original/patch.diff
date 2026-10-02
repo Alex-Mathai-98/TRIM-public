@@ -1,0 +1,30 @@
+diff --git a/net/ipv4/tcp.c b/net/ipv4/tcp.c
+index 6edc441b3702..1dd635fb2df2 100644
+--- a/net/ipv4/tcp.c
++++ b/net/ipv4/tcp.c
+@@ -3886,6 +3886,10 @@ int do_tcp_setsockopt(struct sock *sk, int level, int optname,
+ 		if (!tcp_can_repair_sock(sk))
+ 			err = -EPERM;
+ 		else if (val == TCP_REPAIR_ON) {
++			if (inet_csk(sk)->icsk_ulp_ops) {
++				err = -EPERM;
++				break;
++			}
+ 			tp->repair = 1;
+ 			sk->sk_reuse = SK_FORCE_REUSE;
+ 			tp->repair_queue = TCP_NO_QUEUE;
+diff --git a/net/ipv4/tcp_ulp.c b/net/ipv4/tcp_ulp.c
+index 2aa442128630..7f14e8a182fd 100644
+--- a/net/ipv4/tcp_ulp.c
++++ b/net/ipv4/tcp_ulp.c
+@@ -136,6 +136,10 @@ static int __tcp_set_ulp(struct sock *sk, const struct tcp_ulp_ops *ulp_ops)
+ 	if (icsk->icsk_ulp_ops)
+ 		goto out_err;
+ 
++	err = -EPERM;
++	if (tcp_sk(sk)->repair)
++		goto out_err;
++
+ 	if (sk->sk_socket)
+ 		clear_bit(SOCK_SUPPORT_ZC, &sk->sk_socket->flags);
+ 

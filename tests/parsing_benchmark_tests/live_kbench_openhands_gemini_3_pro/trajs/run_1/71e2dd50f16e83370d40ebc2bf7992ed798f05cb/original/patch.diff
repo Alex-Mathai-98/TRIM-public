@@ -1,0 +1,65 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 5cf698785fae..5cf18f08b94d 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -921,6 +921,25 @@ static int ocfs2_validate_extent_block(struct super_block *sb,
+ 				 "Extent block #%llu has an invalid h_fs_generation of #%u\n",
+ 				 (unsigned long long)bh->b_blocknr,
+ 				 le32_to_cpu(eb->h_fs_generation));
++
++	if (le16_to_cpu(eb->h_list.l_next_free_rec) >
++	    le16_to_cpu(eb->h_list.l_count))
++		rc = ocfs2_error(sb,
++				 "Extent block #%llu has next free rec %u > count %u\n",
++				 (unsigned long long)bh->b_blocknr,
++				 le16_to_cpu(eb->h_list.l_next_free_rec),
++				 le16_to_cpu(eb->h_list.l_count));
++
++	if (le16_to_cpu(eb->h_list.l_count) > (sb->s_blocksize -
++			offsetof(struct ocfs2_extent_block, h_list.l_recs)) /
++			sizeof(struct ocfs2_extent_rec))
++		rc = ocfs2_error(sb,
++				 "Extent block #%llu has count %u > max %lu\n",
++				 (unsigned long long)bh->b_blocknr,
++				 le16_to_cpu(eb->h_list.l_count),
++				 (sb->s_blocksize - offsetof(struct ocfs2_extent_block,
++							     h_list.l_recs)) /
++				 sizeof(struct ocfs2_extent_rec));
+ bail:
+ 	return rc;
+ }
+diff --git a/fs/ocfs2/extent_map.c b/fs/ocfs2/extent_map.c
+index f7672472fa82..17f5f9807b85 100644
+--- a/fs/ocfs2/extent_map.c
++++ b/fs/ocfs2/extent_map.c
+@@ -414,6 +414,30 @@ static int ocfs2_get_clusters_nocache(struct inode *inode,
+ 	el = &di->id2.i_list;
+ 	tree_height = le16_to_cpu(el->l_tree_depth);
+ 
++	if (le16_to_cpu(el->l_next_free_rec) > le16_to_cpu(el->l_count)) {
++		ocfs2_error(inode->i_sb,
++			    "Inode %lu has bad extent list (next_free_rec %u > count %u)\n",
++			    inode->i_ino,
++			    le16_to_cpu(el->l_next_free_rec),
++			    le16_to_cpu(el->l_count));
++		ret = -EROFS;
++		goto out;
++	}
++
++	if (le16_to_cpu(el->l_count) > (inode->i_sb->s_blocksize -
++			offsetof(struct ocfs2_dinode, id2.i_list.l_recs)) /
++			sizeof(struct ocfs2_extent_rec)) {
++		ocfs2_error(inode->i_sb,
++			    "Inode %lu has bad extent list (count %u > max %lu)\n",
++			    inode->i_ino,
++			    le16_to_cpu(el->l_count),
++			    (inode->i_sb->s_blocksize - offsetof(struct ocfs2_dinode,
++								 id2.i_list.l_recs)) /
++			    sizeof(struct ocfs2_extent_rec));
++		ret = -EROFS;
++		goto out;
++	}
++
+ 	if (tree_height > 0) {
+ 		ret = ocfs2_find_leaf(INODE_CACHE(inode), el, v_cluster,
+ 				      &eb_bh);

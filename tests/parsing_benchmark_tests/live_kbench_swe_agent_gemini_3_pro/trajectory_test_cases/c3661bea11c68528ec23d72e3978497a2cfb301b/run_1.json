@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void release_mdev(struct device *dev)\n{\n\tstruct most_dev *mdev = to_mdev_from_dev(dev);\n\n\tkfree(mdev->busy_urbs);\n\tkfree(mdev->cap);\n\tkfree(mdev->conf);\n\tkfree(mdev->ep_address);\n\tkfree(mdev);\n}\n",
+          "before": "static void release_mdev(struct device *dev)\n{\n\tstruct most_dev *mdev = to_mdev_from_dev(dev);\n\n\tkfree(mdev);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/most/most_usb.c b/drivers/most/most_usb.c\nindex cf5be9c449a5..d6c5d9e94f65 100644\n--- a/drivers/most/most_usb.c\n+++ b/drivers/most/most_usb.c\n@@ -929,6 +929,10 @@ static void release_mdev(struct device *dev)\n {\n \tstruct most_dev *mdev = to_mdev_from_dev(dev);\n \n+\tkfree(mdev->busy_urbs);\n+\tkfree(mdev->cap);\n+\tkfree(mdev->conf);\n+\tkfree(mdev->ep_address);\n \tkfree(mdev);\n }\n /**",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "\t\tif (!mdev->dci) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\treturn -ENOMEM;\n\t\t}\n",
+          "before": "\t\tif (!mdev->dci) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\tret = -ENOMEM;\n\t\t\tgoto err_free_busy_urbs;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/most/most_usb.c b/drivers/most/most_usb.c\nindex cf5be9c449a5..9778df089221 100644\n--- a/drivers/most/most_usb.c\n+++ b/drivers/most/most_usb.c\n@@ -929,6 +929,10 @@ static void release_mdev(struct device *dev)\n {\n \tstruct most_dev *mdev = to_mdev_from_dev(dev);\n \n+\tkfree(mdev->busy_urbs);\n+\tkfree(mdev->cap);\n+\tkfree(mdev->conf);\n+\tkfree(mdev->ep_address);\n \tkfree(mdev);\n }\n /**\n@@ -1064,8 +1068,7 @@ hdm_probe(struct usb_interface *interface, const struct usb_device_id *id)\n \t\tif (!mdev->dci) {\n \t\t\tmutex_unlock(&mdev->io_mutex);\n \t\t\tmost_deregister_interface(&mdev->iface);\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_busy_urbs;\n+\t\t\treturn -ENOMEM;\n \t\t}\n \n \t\tmdev->dci->dev.init_name = \"dci\";",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "\t\tif (device_register(&mdev->dci->dev)) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\tput_device(&mdev->dci->dev);\n\t\t\treturn -ENOMEM;\n\t\t}\n",
+          "before": "\t\tif (device_register(&mdev->dci->dev)) {\n\t\t\tmutex_unlock(&mdev->io_mutex);\n\t\t\tmost_deregister_interface(&mdev->iface);\n\t\t\tret = -ENOMEM;\n\t\t\tgoto err_free_dci;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/most/most_usb.c b/drivers/most/most_usb.c\nindex cf5be9c449a5..a7f5c3fd7243 100644\n--- a/drivers/most/most_usb.c\n+++ b/drivers/most/most_usb.c\n@@ -929,6 +929,10 @@ static void release_mdev(struct device *dev)\n {\n \tstruct most_dev *mdev = to_mdev_from_dev(dev);\n \n+\tkfree(mdev->busy_urbs);\n+\tkfree(mdev->cap);\n+\tkfree(mdev->conf);\n+\tkfree(mdev->ep_address);\n \tkfree(mdev);\n }\n /**\n@@ -1064,8 +1068,7 @@ hdm_probe(struct usb_interface *interface, const struct usb_device_id *id)\n \t\tif (!mdev->dci) {\n \t\t\tmutex_unlock(&mdev->io_mutex);\n \t\t\tmost_deregister_interface(&mdev->iface);\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_busy_urbs;\n+\t\t\treturn -ENOMEM;\n \t\t}\n \n \t\tmdev->dci->dev.init_name = \"dci\";\n@@ -1075,8 +1078,8 @@ hdm_probe(struct usb_interface *interface, const struct usb_device_id *id)\n \t\tif (device_register(&mdev->dci->dev)) {\n \t\t\tmutex_unlock(&mdev->io_mutex);\n \t\t\tmost_deregister_interface(&mdev->iface);\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_dci;\n+\t\t\tput_device(&mdev->dci->dev);\n+\t\t\treturn -ENOMEM;\n \t\t}\n \t\tmdev->dci->usb_device = mdev->usb_device;\n \t}",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "",
+          "before": "\tkfree(mdev->busy_urbs);\n\tkfree(mdev->cap);\n\tkfree(mdev->conf);\n\tkfree(mdev->ep_address);\n\tput_device(&mdev->dci->dev);\n\tput_device(&mdev->dev);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/most/most_usb.c b/drivers/most/most_usb.c\nindex cf5be9c449a5..9479aad54dbe 100644\n--- a/drivers/most/most_usb.c\n+++ b/drivers/most/most_usb.c\n@@ -929,6 +929,10 @@ static void release_mdev(struct device *dev)\n {\n \tstruct most_dev *mdev = to_mdev_from_dev(dev);\n \n+\tkfree(mdev->busy_urbs);\n+\tkfree(mdev->cap);\n+\tkfree(mdev->conf);\n+\tkfree(mdev->ep_address);\n \tkfree(mdev);\n }\n /**\n@@ -1064,8 +1068,7 @@ hdm_probe(struct usb_interface *interface, const struct usb_device_id *id)\n \t\tif (!mdev->dci) {\n \t\t\tmutex_unlock(&mdev->io_mutex);\n \t\t\tmost_deregister_interface(&mdev->iface);\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_busy_urbs;\n+\t\t\treturn -ENOMEM;\n \t\t}\n \n \t\tmdev->dci->dev.init_name = \"dci\";\n@@ -1075,8 +1078,8 @@ hdm_probe(struct usb_interface *interface, const struct usb_device_id *id)\n \t\tif (device_register(&mdev->dci->dev)) {\n \t\t\tmutex_unlock(&mdev->io_mutex);\n \t\t\tmost_deregister_interface(&mdev->iface);\n-\t\t\tret = -ENOMEM;\n-\t\t\tgoto err_free_dci;\n+\t\t\tput_device(&mdev->dci->dev);\n+\t\t\treturn -ENOMEM;\n \t\t}\n \t\tmdev->dci->usb_device = mdev->usb_device;\n \t}\n@@ -1122,12 +1125,6 @@ static void hdm_disconnect(struct usb_interface *interface)\n \t\tdevice_unregister(&mdev->dci->dev);\n \tmost_deregister_interface(&mdev->iface);\n \n-\tkfree(mdev->busy_urbs);\n-\tkfree(mdev->cap);\n-\tkfree(mdev->conf);\n-\tkfree(mdev->ep_address);\n-\tput_device(&mdev->dci->dev);\n-\tput_device(&mdev->dev);\n }\n \n static int hdm_suspend(struct usb_interface *interface, pm_message_t message)",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "drivers/most/most_usb.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 21
+}

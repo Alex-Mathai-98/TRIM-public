@@ -1,0 +1,48 @@
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index f26286e3713e..b855e5f5ed5c 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -1077,6 +1077,8 @@ static int get_ref_desc_olocked(struct binder_proc *proc,
+ 	/* 0 is reserved for the context manager */
+ 	if (node == proc->context->binder_context_mgr_node) {
+ 		*desc = 0;
++		if (binder_get_ref_olocked(proc, 0, false))
++			return -EEXIST;
+ 		return 0;
+ 	}
+ 
+@@ -1130,6 +1132,7 @@ static struct binder_ref *binder_get_ref_for_node_olocked(
+ 	struct rb_node *parent;
+ 	struct rb_node **p;
+ 	u32 desc;
++	int ret;
+ 
+ retry:
+ 	p = &proc->refs_by_node.rb_node;
+@@ -1149,8 +1152,12 @@ static struct binder_ref *binder_get_ref_for_node_olocked(
+ 		return NULL;
+ 
+ 	/* might release the proc->outer_lock */
+-	if (get_ref_desc_olocked(proc, node, &desc) == -EAGAIN)
+-		goto retry;
++	ret = get_ref_desc_olocked(proc, node, &desc);
++	if (ret) {
++		if (ret == -EAGAIN)
++			goto retry;
++		return NULL;
++	}
+ 
+ 	binder_stats_created(BINDER_STAT_REF);
+ 	new_ref->data.debug_id = atomic_inc_return(&binder_last_id);
+@@ -1475,6 +1482,11 @@ static int binder_inc_ref_for_node(struct binder_proc *proc,
+ 		binder_proc_lock(proc);
+ 		ref = binder_get_ref_for_node_olocked(proc, node, new_ref);
+ 	}
++	if (!ref) {
++		binder_proc_unlock(proc);
++		kfree(new_ref);
++		return -EINVAL;
++	}
+ 	ret = binder_inc_ref_olocked(ref, strong, target_list);
+ 	*rdata = ref->data;
+ 	if (ret && ref == new_ref) {

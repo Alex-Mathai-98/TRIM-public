@@ -1,0 +1,165 @@
+{
+  "bug_id": "pydata__xarray-6721",
+  "short_path": [
+    [
+      {
+        "filename": "xarray/core/variable.py",
+        "before": "    @property\n    def chunksizes(self) -> Mapping[Any, tuple[int, ...]]:\n        \"\"\"\n        Mapping from dimension names to block lengths for this variable's data, or None if\n        the underlying data is not a dask array.\n        Cannot be modified directly, but can be modified by calling .chunk().\n\n        Differs from variable.chunks because it returns a mapping of dimensions to chunk shapes\n        instead of a tuple of chunk shapes.\n\n        See Also\n        --------\n        Variable.chunk\n        Variable.chunks\n        xarray.unify_chunks\n        \"\"\"\n        if hasattr(self._data, \"chunks\"):\n            return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n        else:\n            return {}",
+        "after": "    @property\n    def chunksizes(self) -> Mapping[Any, tuple[int, ...]]:\n        \"\"\"\n        Mapping from dimension names to block lengths for this variable's data, or None if\n        the underlying data is not a dask array.\n        Cannot be modified directly, but can be modified by calling .chunk().\n\n        Differs from variable.chunks because it returns a mapping of dimensions to chunk shapes\n        instead of a tuple of chunk shapes.\n\n        See Also\n        --------\n        Variable.chunk\n        Variable.chunks\n        xarray.unify_chunks\n        \"\"\"\n        # Check for dask chunks first\n        if hasattr(self._data, \"chunks\"):\n            return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n        \n        # Check for zarr chunks in encoding (without loading data)\n        if \"preferred_chunks\" in self.encoding:\n            preferred_chunks = self.encoding[\"preferred_chunks\"]\n            # Only return chunks for dimensions that exist in this variable\n            return Frozen({dim: (preferred_chunks[dim],) for dim in self.dims if dim in preferred_chunks})\n        \n        return {}",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ],
+    [
+      {
+        "filename": "xarray/core/common.py",
+        "before": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        if hasattr(v.data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n    return Frozen(chunks)",
+        "after": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        # Check for chunks without accessing data (which could load the array)\n        # First check if there are zarr chunks in encoding\n        if \"preferred_chunks\" in v.encoding:\n            preferred_chunks = v.encoding[\"preferred_chunks\"]\n            for dim in v.dims:\n                if dim in preferred_chunks:\n                    c = (preferred_chunks[dim],)\n                    if dim in chunks and c != chunks[dim]:\n                        raise ValueError(\n                            f\"Object has inconsistent chunks along dimension {dim}. \"\n                            \"This can be fixed by calling unify_chunks().\"\n                        )\n                    chunks[dim] = c\n        # Then check for dask chunks (this may access data but only for dask arrays)\n        elif hasattr(v._data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n    return Frozen(chunks)",
+        "explanation": "classic_swe step 44 #1"
+      }
+    ],
+    [
+      {
+        "filename": "xarray/core/common.py",
+        "before": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        # Check for chunks without accessing data (which could load the array)\n        # First check if there are zarr chunks in encoding\n        if \"preferred_chunks\" in v.encoding:\n            preferred_chunks = v.encoding[\"preferred_chunks\"]\n            for dim in v.dims:\n                if dim in preferred_chunks:\n                    c = (preferred_chunks[dim],)\n                    if dim in chunks and c != chunks[dim]:\n                        raise ValueError(\n                            f\"Object has inconsistent chunks along dimension {dim}. \"\n                            \"This can be fixed by calling unify_chunks().\"\n                        )\n                    chunks[dim] = c\n        # Then check for dask chunks (this may access data but only for dask arrays)\n        elif hasattr(v._data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n    return Frozen(chunks)",
+        "after": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        # Check for dask chunks first (these take priority)\n        if hasattr(v._data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n        # Fall back to zarr chunks in encoding (without loading data)\n        elif \"preferred_chunks\" in v.encoding:\n            preferred_chunks = v.encoding[\"preferred_chunks\"]\n            for dim in v.dims:\n                if dim in preferred_chunks:\n                    c = (preferred_chunks[dim],)\n                    if dim in chunks and c != chunks[dim]:\n                        raise ValueError(\n                            f\"Object has inconsistent chunks along dimension {dim}. \"\n                            \"This can be fixed by calling unify_chunks().\"\n                        )\n                    chunks[dim] = c\n    return Frozen(chunks)",
+        "explanation": "classic_swe step 62 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/xarray/core/common.py b/xarray/core/common.py\nindex 3c328f42..a37326f0 100644\n--- a/xarray/core/common.py\n+++ b/xarray/core/common.py\n@@ -2023,7 +2023,8 @@ def get_chunksizes(\n \n     chunks: dict[Any, tuple[int, ...]] = {}\n     for v in variables:\n-        if hasattr(v.data, \"chunks\"):\n+        # Check for dask chunks first (these take priority)\n+        if hasattr(v._data, \"chunks\"):\n             for dim, c in v.chunksizes.items():\n                 if dim in chunks and c != chunks[dim]:\n                     raise ValueError(\n@@ -2031,6 +2032,18 @@ def get_chunksizes(\n                         \"This can be fixed by calling unify_chunks().\"\n                     )\n                 chunks[dim] = c\n+        # Fall back to zarr chunks in encoding (without loading data)\n+        elif \"preferred_chunks\" in v.encoding:\n+            preferred_chunks = v.encoding[\"preferred_chunks\"]\n+            for dim in v.dims:\n+                if dim in preferred_chunks:\n+                    c = (preferred_chunks[dim],)\n+                    if dim in chunks and c != chunks[dim]:\n+                        raise ValueError(\n+                            f\"Object has inconsistent chunks along dimension {dim}. \"\n+                            \"This can be fixed by calling unify_chunks().\"\n+                        )\n+                    chunks[dim] = c\n     return Frozen(chunks)\n \n \ndiff --git a/xarray/core/variable.py b/xarray/core/variable.py\nindex 2d115ff0..a4b73cff 100644\n--- a/xarray/core/variable.py\n+++ b/xarray/core/variable.py\n@@ -1014,10 +1014,17 @@ class Variable(AbstractArray, NdimSizeLenMixin, VariableArithmetic):\n         Variable.chunks\n         xarray.unify_chunks\n         \"\"\"\n+        # Check for dask chunks first\n         if hasattr(self._data, \"chunks\"):\n             return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n-        else:\n-            return {}\n+        \n+        # Check for zarr chunks in encoding (without loading data)\n+        if \"preferred_chunks\" in self.encoding:\n+            preferred_chunks = self.encoding[\"preferred_chunks\"]\n+            # Only return chunks for dimensions that exist in this variable\n+            return Frozen({dim: (preferred_chunks[dim],) for dim in self.dims if dim in preferred_chunks})\n+        \n+        return {}\n \n     _array_counter = itertools.count()\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      7,
+      8,
+      13
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      7,
+      8,
+      13
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      7,
+      8,
+      13
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      7,
+      8,
+      13
+    ],
+    "edit_list_after_refinement": [
+      7,
+      8,
+      13
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/variable.py",
+          "before": "    @property\n    def chunksizes(self) -> Mapping[Any, tuple[int, ...]]:\n        \"\"\"\n        Mapping from dimension names to block lengths for this variable's data, or None if\n        the underlying data is not a dask array.\n        Cannot be modified directly, but can be modified by calling .chunk().\n\n        Differs from variable.chunks because it returns a mapping of dimensions to chunk shapes\n        instead of a tuple of chunk shapes.\n\n        See Also\n        --------\n        Variable.chunk\n        Variable.chunks\n        xarray.unify_chunks\n        \"\"\"\n        if hasattr(self._data, \"chunks\"):\n            return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n        else:\n            return {}",
+          "after": "    @property\n    def chunksizes(self) -> Mapping[Any, tuple[int, ...]]:\n        \"\"\"\n        Mapping from dimension names to block lengths for this variable's data, or None if\n        the underlying data is not a dask array.\n        Cannot be modified directly, but can be modified by calling .chunk().\n\n        Differs from variable.chunks because it returns a mapping of dimensions to chunk shapes\n        instead of a tuple of chunk shapes.\n\n        See Also\n        --------\n        Variable.chunk\n        Variable.chunks\n        xarray.unify_chunks\n        \"\"\"\n        # Check for dask chunks first\n        if hasattr(self._data, \"chunks\"):\n            return Frozen({dim: c for dim, c in zip(self.dims, self.data.chunks)})\n        \n        # Check for zarr chunks in encoding (without loading data)\n        if \"preferred_chunks\" in self.encoding:\n            preferred_chunks = self.encoding[\"preferred_chunks\"]\n            # Only return chunks for dimensions that exist in this variable\n            return Frozen({dim: (preferred_chunks[dim],) for dim in self.dims if dim in preferred_chunks})\n        \n        return {}",
+          "explanation": "classic_swe step 43 #1"
+        },
+        {
+          "filename": "xarray/core/common.py",
+          "before": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        if hasattr(v.data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n    return Frozen(chunks)",
+          "after": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        # Check for chunks without accessing data (which could load the array)\n        # First check if there are zarr chunks in encoding\n        if \"preferred_chunks\" in v.encoding:\n            preferred_chunks = v.encoding[\"preferred_chunks\"]\n            for dim in v.dims:\n                if dim in preferred_chunks:\n                    c = (preferred_chunks[dim],)\n                    if dim in chunks and c != chunks[dim]:\n                        raise ValueError(\n                            f\"Object has inconsistent chunks along dimension {dim}. \"\n                            \"This can be fixed by calling unify_chunks().\"\n                        )\n                    chunks[dim] = c\n        # Then check for dask chunks (this may access data but only for dask arrays)\n        elif hasattr(v._data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n    return Frozen(chunks)",
+          "explanation": "classic_swe step 44 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/common.py",
+          "before": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        # Check for chunks without accessing data (which could load the array)\n        # First check if there are zarr chunks in encoding\n        if \"preferred_chunks\" in v.encoding:\n            preferred_chunks = v.encoding[\"preferred_chunks\"]\n            for dim in v.dims:\n                if dim in preferred_chunks:\n                    c = (preferred_chunks[dim],)\n                    if dim in chunks and c != chunks[dim]:\n                        raise ValueError(\n                            f\"Object has inconsistent chunks along dimension {dim}. \"\n                            \"This can be fixed by calling unify_chunks().\"\n                        )\n                    chunks[dim] = c\n        # Then check for dask chunks (this may access data but only for dask arrays)\n        elif hasattr(v._data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n    return Frozen(chunks)",
+          "after": "def get_chunksizes(\n    variables: Iterable[Variable],\n) -> Mapping[Any, tuple[int, ...]]:\n\n    chunks: dict[Any, tuple[int, ...]] = {}\n    for v in variables:\n        # Check for dask chunks first (these take priority)\n        if hasattr(v._data, \"chunks\"):\n            for dim, c in v.chunksizes.items():\n                if dim in chunks and c != chunks[dim]:\n                    raise ValueError(\n                        f\"Object has inconsistent chunks along dimension {dim}. \"\n                        \"This can be fixed by calling unify_chunks().\"\n                    )\n                chunks[dim] = c\n        # Fall back to zarr chunks in encoding (without loading data)\n        elif \"preferred_chunks\" in v.encoding:\n            preferred_chunks = v.encoding[\"preferred_chunks\"]\n            for dim in v.dims:\n                if dim in preferred_chunks:\n                    c = (preferred_chunks[dim],)\n                    if dim in chunks and c != chunks[dim]:\n                        raise ValueError(\n                            f\"Object has inconsistent chunks along dimension {dim}. \"\n                            \"This can be fixed by calling unify_chunks().\"\n                        )\n                    chunks[dim] = c\n    return Frozen(chunks)",
+          "explanation": "classic_swe step 62 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 1405,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 1405,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "xarray/core/common.py"
+    ],
+    "extra_files_in_minimized": [
+      "xarray/core/variable.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "xarray/core/common.py",
+      "xarray/core/variable.py"
+    ],
+    "gold_files": [
+      "xarray/core/common.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 1,
+    "minimized_added_lines": 23,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

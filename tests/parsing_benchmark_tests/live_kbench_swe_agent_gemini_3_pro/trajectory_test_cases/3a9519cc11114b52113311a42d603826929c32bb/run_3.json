@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void xsk_flush(struct xdp_sock *xs)\n{\n\trcu_read_lock();\n\tif (READ_ONCE(xs->state) == XSK_BOUND) {\n\t\txskq_prod_submit(xs->rx);\n\t\t__xskq_cons_release(xs->pool->fq);\n\t\tsock_def_readable(&xs->sk);\n\t}\n\trcu_read_unlock();\n}",
+          "before": "static void xsk_flush(struct xdp_sock *xs)\n{\n\txskq_prod_submit(xs->rx);\n\t__xskq_cons_release(xs->pool->fq);\n\tsock_def_readable(&xs->sk);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xdp/xsk.c b/net/xdp/xsk.c\nindex 7e16336044b2..92d98175dc36 100644\n--- a/net/xdp/xsk.c\n+++ b/net/xdp/xsk.c\n@@ -328,9 +328,13 @@ static int xsk_rcv_check(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)\n \n static void xsk_flush(struct xdp_sock *xs)\n {\n-\txskq_prod_submit(xs->rx);\n-\t__xskq_cons_release(xs->pool->fq);\n-\tsock_def_readable(&xs->sk);\n+\trcu_read_lock();\n+\tif (READ_ONCE(xs->state) == XSK_BOUND) {\n+\t\txskq_prod_submit(xs->rx);\n+\t\t__xskq_cons_release(xs->pool->fq);\n+\t\tsock_def_readable(&xs->sk);\n+\t}\n+\trcu_read_unlock();\n }\n \n int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "net/xdp/xsk.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "void __cpu_map_flush(struct list_head *flush_list)\n{\n\tstruct xdp_bulk_queue *bq, *tmp;\n\n\trcu_read_lock();\n\tlist_for_each_entry_safe(bq, tmp, flush_list, flush_node) {\n\t\tbq_flush_to_queue(bq);\n\n\t\t/* If already running, costs spin_lock_irqsave + smb_mb */\n\t\twake_up_process(bq->obj->kthread);\n\t}\n\trcu_read_unlock();\n}",
+          "before": "void __cpu_map_flush(struct list_head *flush_list)\n{\n\tstruct xdp_bulk_queue *bq, *tmp;\n\n\tlist_for_each_entry_safe(bq, tmp, flush_list, flush_node) {\n\t\tbq_flush_to_queue(bq);\n\n\t\t/* If already running, costs spin_lock_irqsave + smb_mb */\n\t\twake_up_process(bq->obj->kthread);\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/cpumap.c b/kernel/bpf/cpumap.c\nindex fbdf5a1aabfe..c30000284265 100644\n--- a/kernel/bpf/cpumap.c\n+++ b/kernel/bpf/cpumap.c\n@@ -763,10 +763,12 @@ void __cpu_map_flush(struct list_head *flush_list)\n {\n \tstruct xdp_bulk_queue *bq, *tmp;\n \n+\trcu_read_lock();\n \tlist_for_each_entry_safe(bq, tmp, flush_list, flush_node) {\n \t\tbq_flush_to_queue(bq);\n \n \t\t/* If already running, costs spin_lock_irqsave + smb_mb */\n \t\twake_up_process(bq->obj->kthread);\n \t}\n+\trcu_read_unlock();\n }\ndiff --git a/net/xdp/xsk.c b/net/xdp/xsk.c\nindex 7e16336044b2..92d98175dc36 100644\n--- a/net/xdp/xsk.c\n+++ b/net/xdp/xsk.c\n@@ -328,9 +328,13 @@ static int xsk_rcv_check(struct xdp_sock *xs, struct xdp_buff *xdp, u32 len)\n \n static void xsk_flush(struct xdp_sock *xs)\n {\n-\txskq_prod_submit(xs->rx);\n-\t__xskq_cons_release(xs->pool->fq);\n-\tsock_def_readable(&xs->sk);\n+\trcu_read_lock();\n+\tif (READ_ONCE(xs->state) == XSK_BOUND) {\n+\t\txskq_prod_submit(xs->rx);\n+\t\t__xskq_cons_release(xs->pool->fq);\n+\t\tsock_def_readable(&xs->sk);\n+\t}\n+\trcu_read_unlock();\n }\n \n int xsk_generic_rcv(struct xdp_sock *xs, struct xdp_buff *xdp)",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "kernel/bpf/cpumap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 1,
+      "start_step": 25
+    }
+  ],
+  "success_step": 25
+}

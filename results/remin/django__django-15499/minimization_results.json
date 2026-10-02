@@ -1,0 +1,145 @@
+{
+  "bug_id": "django__django-15499",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/migrations/operations/models.py",
+        "before": "        elif (\n            isinstance(operation, AlterOrderWithRespectTo)\n            and self.name_lower == operation.name_lower\n        ):\n            return [\n                CreateModel(\n                    self.name,\n                    fields=self.fields,\n                    options={\n                        **self.options,\n                        \"order_with_respect_to\": operation.order_with_respect_to,\n                    },\n                    bases=self.bases,\n                    managers=self.managers,\n                ),\n            ]",
+        "after": "        elif (\n            isinstance(operation, AlterOrderWithRespectTo)\n            and self.name_lower == operation.name_lower\n        ):\n            return [\n                CreateModel(\n                    self.name,\n                    fields=self.fields,\n                    options={\n                        **self.options,\n                        \"order_with_respect_to\": operation.order_with_respect_to,\n                    },\n                    bases=self.bases,\n                    managers=self.managers,\n                ),\n            ]\n        elif (\n            isinstance(operation, AlterModelManagers)\n            and self.name_lower == operation.name_lower\n        ):\n            return [\n                CreateModel(\n                    self.name,\n                    fields=self.fields,\n                    options=self.options,\n                    bases=self.bases,\n                    managers=operation.managers,\n                ),\n            ]",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/migrations/test_optimizer.py",
+        "before": "    def test_create_alter_model_options(self):\n        self.assertOptimizesTo(\n            [\n                migrations.CreateModel(\"Foo\", fields=[]),\n                migrations.AlterModelOptions(\n                    name=\"Foo\", options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n            [\n                migrations.CreateModel(\n                    \"Foo\", fields=[], options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n        )",
+        "after": "    def test_create_alter_model_options(self):\n        self.assertOptimizesTo(\n            [\n                migrations.CreateModel(\"Foo\", fields=[]),\n                migrations.AlterModelOptions(\n                    name=\"Foo\", options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n            [\n                migrations.CreateModel(\n                    \"Foo\", fields=[], options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n        )\n\n    def test_create_alter_model_managers(self):\n        \"\"\"\n        CreateModel should absorb AlterModelManagers.\n        \"\"\"\n        managers = [(\"objects\", EmptyManager())]\n        self.assertOptimizesTo(\n            [\n                migrations.CreateModel(\"Foo\", fields=[]),\n                migrations.AlterModelManagers(name=\"Foo\", managers=managers),\n            ],\n            [\n                migrations.CreateModel(\"Foo\", fields=[], managers=managers),\n            ],\n        )",
+        "explanation": "classic_swe step 25 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/migrations/operations/models.py b/django/db/migrations/operations/models.py\nindex 90fc31bee5..b69c431971 100644\n--- a/django/db/migrations/operations/models.py\n+++ b/django/db/migrations/operations/models.py\n@@ -202,6 +202,19 @@ class CreateModel(ModelOperation):\n                     managers=self.managers,\n                 ),\n             ]\n+        elif (\n+            isinstance(operation, AlterModelManagers)\n+            and self.name_lower == operation.name_lower\n+        ):\n+            return [\n+                CreateModel(\n+                    self.name,\n+                    fields=self.fields,\n+                    options=self.options,\n+                    bases=self.bases,\n+                    managers=operation.managers,\n+                ),\n+            ]\n         elif (\n             isinstance(operation, FieldOperation)\n             and self.name_lower == operation.model_name_lower\ndiff --git a/tests/migrations/test_optimizer.py b/tests/migrations/test_optimizer.py\nindex 59dd401a3c..b743fecc6c 100644\n--- a/tests/migrations/test_optimizer.py\n+++ b/tests/migrations/test_optimizer.py\n@@ -129,6 +129,21 @@ class OptimizerTests(SimpleTestCase):\n             ],\n         )\n \n+    def test_create_alter_model_managers(self):\n+        \"\"\"\n+        CreateModel should absorb AlterModelManagers.\n+        \"\"\"\n+        managers = [(\"objects\", EmptyManager())]\n+        self.assertOptimizesTo(\n+            [\n+                migrations.CreateModel(\"Foo\", fields=[]),\n+                migrations.AlterModelManagers(name=\"Foo\", managers=managers),\n+            ],\n+            [\n+                migrations.CreateModel(\"Foo\", fields=[], managers=managers),\n+            ],\n+        )\n+\n     def test_create_model_and_remove_model_options(self):\n         self.assertOptimizesTo(\n             [\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      1,
+      2
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/operations/models.py",
+          "before": "        elif (\n            isinstance(operation, AlterOrderWithRespectTo)\n            and self.name_lower == operation.name_lower\n        ):\n            return [\n                CreateModel(\n                    self.name,\n                    fields=self.fields,\n                    options={\n                        **self.options,\n                        \"order_with_respect_to\": operation.order_with_respect_to,\n                    },\n                    bases=self.bases,\n                    managers=self.managers,\n                ),\n            ]",
+          "after": "        elif (\n            isinstance(operation, AlterOrderWithRespectTo)\n            and self.name_lower == operation.name_lower\n        ):\n            return [\n                CreateModel(\n                    self.name,\n                    fields=self.fields,\n                    options={\n                        **self.options,\n                        \"order_with_respect_to\": operation.order_with_respect_to,\n                    },\n                    bases=self.bases,\n                    managers=self.managers,\n                ),\n            ]\n        elif (\n            isinstance(operation, AlterModelManagers)\n            and self.name_lower == operation.name_lower\n        ):\n            return [\n                CreateModel(\n                    self.name,\n                    fields=self.fields,\n                    options=self.options,\n                    bases=self.bases,\n                    managers=operation.managers,\n                ),\n            ]",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/migrations/test_optimizer.py",
+          "before": "    def test_create_alter_model_options(self):\n        self.assertOptimizesTo(\n            [\n                migrations.CreateModel(\"Foo\", fields=[]),\n                migrations.AlterModelOptions(\n                    name=\"Foo\", options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n            [\n                migrations.CreateModel(\n                    \"Foo\", fields=[], options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n        )",
+          "after": "    def test_create_alter_model_options(self):\n        self.assertOptimizesTo(\n            [\n                migrations.CreateModel(\"Foo\", fields=[]),\n                migrations.AlterModelOptions(\n                    name=\"Foo\", options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n            [\n                migrations.CreateModel(\n                    \"Foo\", fields=[], options={\"verbose_name_plural\": \"Foozes\"}\n                ),\n            ],\n        )\n\n    def test_create_alter_model_managers(self):\n        \"\"\"\n        CreateModel should absorb AlterModelManagers.\n        \"\"\"\n        managers = [(\"objects\", EmptyManager())]\n        self.assertOptimizesTo(\n            [\n                migrations.CreateModel(\"Foo\", fields=[]),\n                migrations.AlterModelManagers(name=\"Foo\", managers=managers),\n            ],\n            [\n                migrations.CreateModel(\"Foo\", fields=[], managers=managers),\n            ],\n        )",
+          "explanation": "classic_swe step 25 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 35,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 35,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/migrations/test_optimizer.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/migrations/operations/models.py",
+      "tests/migrations/test_optimizer.py"
+    ],
+    "gold_files": [
+      "django/db/migrations/operations/models.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 28,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 13,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

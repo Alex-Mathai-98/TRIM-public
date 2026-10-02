@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (rc) {\n\t\tsk->sk_prot->unhash(sk);\n\t\tsk_common_release(sk);\n\t\tsock->sk = NULL;\n\t}\n",
+          "before": "\tif (rc) {\n\t\tsk_common_release(sk);\n\t\tsock->sk = NULL;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3760131f1484..1935f8b98291 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -3379,6 +3379,7 @@ static int __smc_create(struct net *net, struct socket *sock, int protocol,\n \t\trc = smc_create_clcsk(net, sk, family);\n \n \tif (rc) {\n+\t\tsk->sk_prot->unhash(sk);\n \t\tsk_common_release(sk);\n \t\tsock->sk = NULL;\n \t}",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (!queue_work(smc_hs_wq, &new_smc->smc_listen_work))\n\t\t\tsmc_listen_out_err(new_smc);\n",
+          "before": "\t\tif (!queue_work(smc_hs_wq, &new_smc->smc_listen_work))\n\t\t\tsock_put(&new_smc->sk);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3760131f1484..30d9bfccb7bd 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -2595,7 +2595,7 @@ static void smc_tcp_listen_work(struct work_struct *work)\n \t\tsmc_copy_sock_settings_to_smc(new_smc);\n \t\tsock_hold(&new_smc->sk); /* sock_put in passive closing */\n \t\tif (!queue_work(smc_hs_wq, &new_smc->smc_listen_work))\n-\t\t\tsock_put(&new_smc->sk);\n+\t\t\tsmc_listen_out_err(new_smc);\n \t}\n \n out:\n@@ -3379,6 +3379,7 @@ static int __smc_create(struct net *net, struct socket *sock, int protocol,\n \t\trc = smc_create_clcsk(net, sk, family);\n \n \tif (rc) {\n+\t\tsk->sk_prot->unhash(sk);\n \t\tsk_common_release(sk);\n \t\tsock->sk = NULL;\n \t}",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 1,
+      "start_step": 42
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct socket *clcsock;\n\n\tmemset(r, 0, sizeof(*r));\n\tr->diag_family = sk->sk_family;\n\tsock_diag_save_cookie(sk, r->id.idiag_cookie);\n\tclcsock = READ_ONCE(smc->clcsock);\n\tif (!clcsock)\n\t\treturn;\n\tr->id.idiag_sport = htons(clcsock->sk->sk_num);\n\tr->id.idiag_dport = clcsock->sk->sk_dport;\n\tr->id.idiag_if = clcsock->sk->sk_bound_dev_if;\n\tif (sk->sk_protocol == SMCPROTO_SMC) {\n\t\tr->id.idiag_src[0] = clcsock->sk->sk_rcv_saddr;\n\t\tr->id.idiag_dst[0] = clcsock->sk->sk_daddr;\n#if IS_ENABLED(CONFIG_IPV6)\n\t} else if (sk->sk_protocol == SMCPROTO_SMC6) {\n\t\tmemcpy(&r->id.idiag_src, &clcsock->sk->sk_v6_rcv_saddr,\n\t\t       sizeof(clcsock->sk->sk_v6_rcv_saddr));\n\t\tmemcpy(&r->id.idiag_dst, &clcsock->sk->sk_v6_daddr,\n\t\t       sizeof(clcsock->sk->sk_v6_daddr));\n#endif\n\t}\n",
+          "before": "\tmemset(r, 0, sizeof(*r));\n\tr->diag_family = sk->sk_family;\n\tsock_diag_save_cookie(sk, r->id.idiag_cookie);\n\tif (!smc->clcsock)\n\t\treturn;\n\tr->id.idiag_sport = htons(smc->clcsock->sk->sk_num);\n\tr->id.idiag_dport = smc->clcsock->sk->sk_dport;\n\tr->id.idiag_if = smc->clcsock->sk->sk_bound_dev_if;\n\tif (sk->sk_protocol == SMCPROTO_SMC) {\n\t\tr->id.idiag_src[0] = smc->clcsock->sk->sk_rcv_saddr;\n\t\tr->id.idiag_dst[0] = smc->clcsock->sk->sk_daddr;\n#if IS_ENABLED(CONFIG_IPV6)\n\t} else if (sk->sk_protocol == SMCPROTO_SMC6) {\n\t\tmemcpy(&r->id.idiag_src, &smc->clcsock->sk->sk_v6_rcv_saddr,\n\t\t       sizeof(smc->clcsock->sk->sk_v6_rcv_saddr));\n\t\tmemcpy(&r->id.idiag_dst, &smc->clcsock->sk->sk_v6_daddr,\n\t\t       sizeof(smc->clcsock->sk->sk_v6_daddr));\n#endif\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3760131f1484..30d9bfccb7bd 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -2595,7 +2595,7 @@ static void smc_tcp_listen_work(struct work_struct *work)\n \t\tsmc_copy_sock_settings_to_smc(new_smc);\n \t\tsock_hold(&new_smc->sk); /* sock_put in passive closing */\n \t\tif (!queue_work(smc_hs_wq, &new_smc->smc_listen_work))\n-\t\t\tsock_put(&new_smc->sk);\n+\t\t\tsmc_listen_out_err(new_smc);\n \t}\n \n out:\n@@ -3379,6 +3379,7 @@ static int __smc_create(struct net *net, struct socket *sock, int protocol,\n \t\trc = smc_create_clcsk(net, sk, family);\n \n \tif (rc) {\n+\t\tsk->sk_prot->unhash(sk);\n \t\tsk_common_release(sk);\n \t\tsock->sk = NULL;\n \t}\ndiff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c\nindex 6fdb2d96777a..35a8cf20251f 100644\n--- a/net/smc/smc_diag.c\n+++ b/net/smc/smc_diag.c\n@@ -36,23 +36,26 @@ static void smc_diag_msg_common_fill(struct smc_diag_msg *r, struct sock *sk)\n {\n \tstruct smc_sock *smc = smc_sk(sk);\n \n+\tstruct socket *clcsock;\n+\n \tmemset(r, 0, sizeof(*r));\n \tr->diag_family = sk->sk_family;\n \tsock_diag_save_cookie(sk, r->id.idiag_cookie);\n-\tif (!smc->clcsock)\n+\tclcsock = READ_ONCE(smc->clcsock);\n+\tif (!clcsock)\n \t\treturn;\n-\tr->id.idiag_sport = htons(smc->clcsock->sk->sk_num);\n-\tr->id.idiag_dport = smc->clcsock->sk->sk_dport;\n-\tr->id.idiag_if = smc->clcsock->sk->sk_bound_dev_if;\n+\tr->id.idiag_sport = htons(clcsock->sk->sk_num);\n+\tr->id.idiag_dport = clcsock->sk->sk_dport;\n+\tr->id.idiag_if = clcsock->sk->sk_bound_dev_if;\n \tif (sk->sk_protocol == SMCPROTO_SMC) {\n-\t\tr->id.idiag_src[0] = smc->clcsock->sk->sk_rcv_saddr;\n-\t\tr->id.idiag_dst[0] = smc->clcsock->sk->sk_daddr;\n+\t\tr->id.idiag_src[0] = clcsock->sk->sk_rcv_saddr;\n+\t\tr->id.idiag_dst[0] = clcsock->sk->sk_daddr;\n #if IS_ENABLED(CONFIG_IPV6)\n \t} else if (sk->sk_protocol == SMCPROTO_SMC6) {\n-\t\tmemcpy(&r->id.idiag_src, &smc->clcsock->sk->sk_v6_rcv_saddr,\n-\t\t       sizeof(smc->clcsock->sk->sk_v6_rcv_saddr));\n-\t\tmemcpy(&r->id.idiag_dst, &smc->clcsock->sk->sk_v6_daddr,\n-\t\t       sizeof(smc->clcsock->sk->sk_v6_daddr));\n+\t\tmemcpy(&r->id.idiag_src, &clcsock->sk->sk_v6_rcv_saddr,\n+\t\t       sizeof(clcsock->sk->sk_v6_rcv_saddr));\n+\t\tmemcpy(&r->id.idiag_dst, &clcsock->sk->sk_v6_daddr,\n+\t\t       sizeof(clcsock->sk->sk_v6_daddr));\n #endif\n \t}\n }",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "net/smc/smc_diag.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        }
+      ],
+      "end_step": 45,
+      "revision_index": 2,
+      "start_step": 45
+    }
+  ],
+  "success_step": 45
+}

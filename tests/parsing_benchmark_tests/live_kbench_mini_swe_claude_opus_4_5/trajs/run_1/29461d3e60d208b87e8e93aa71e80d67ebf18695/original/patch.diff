@@ -1,0 +1,19 @@
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index 159d78fc3d14..7477e93b5d83 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -2913,6 +2913,14 @@ static int unix_stream_read_generic(struct unix_stream_read_state *state,
+ 			if (unix_skb_len(skb))
+ 				break;
+ 
++#if IS_ENABLED(CONFIG_AF_UNIX_OOB)
++			if (skb == u->oob_skb) {
++				spin_lock(&sk->sk_receive_queue.lock);
++				if (skb == u->oob_skb)
++					WRITE_ONCE(u->oob_skb, NULL);
++				spin_unlock(&sk->sk_receive_queue.lock);
++			}
++#endif
+ 			skb_unlink(skb, &sk->sk_receive_queue);
+ 			consume_skb(skb);
+ 

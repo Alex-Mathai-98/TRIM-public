@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static bool io_kill_timeout(struct io_kiocb *req, int status,\n\t\t\t    struct io_wq_work_list *list)\n\t__must_hold(&req->ctx->timeout_lock)\n{\n\tstruct io_timeout_data *io = req->async_data;\n\n\tif (hrtimer_try_to_cancel(&io->timer) != -1) {\n\t\tstruct io_timeout *timeout = io_kiocb_to_cmd(req, struct io_timeout);\n\n\t\tif (status)\n\t\t\treq_set_fail(req);\n\t\tatomic_set(&req->ctx->cq_timeouts,\n\t\t\tatomic_read(&req->ctx->cq_timeouts) + 1);\n\t\tlist_del_init(&timeout->list);\n\t\tio_req_set_res(req, status, 0);\n\t\treq->io_task_work.func = io_req_task_complete;\n\t\tif (list) {\n\t\t\twq_list_add_head(&req->comp_list, list);\n\t\t} else {\n\t\t\tio_req_task_work_add(req);\n\t\t}\n\t\treturn true;\n\t}\n\treturn false;\n}",
+          "before": "static bool io_kill_timeout(struct io_kiocb *req, int status)\n\t__must_hold(&req->ctx->timeout_lock)\n{\n\tstruct io_timeout_data *io = req->async_data;\n\n\tif (hrtimer_try_to_cancel(&io->timer) != -1) {\n\t\tstruct io_timeout *timeout = io_kiocb_to_cmd(req, struct io_timeout);\n\n\t\tif (status)\n\t\t\treq_set_fail(req);\n\t\tatomic_set(&req->ctx->cq_timeouts,\n\t\t\tatomic_read(&req->ctx->cq_timeouts) + 1);\n\t\tlist_del_init(&timeout->list);\n\t\tio_req_queue_tw_complete(req, status);\n\t\treturn true;\n\t}\n\treturn false;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/timeout.c\n+++ /linux/io_uring/timeout.c\n@@ -88 +88,2 @@\n-static bool io_kill_timeout(struct io_kiocb *req, int status)\n+static bool io_kill_timeout(struct io_kiocb *req, int status,\n+\t\t\t    struct io_wq_work_list *list)\n@@ -101 +102,7 @@\n-\t\tio_req_queue_tw_complete(req, status);\n+\t\tio_req_set_res(req, status, 0);\n+\t\treq->io_task_work.func = io_req_task_complete;\n+\t\tif (list) {\n+\t\t\twq_list_add_head(&req->comp_list, list);\n+\t\t} else {\n+\t\t\tio_req_task_work_add(req);\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 55",
+          "filename": "io_uring/timeout.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 55
+        },
+        {
+          "after": "\n\tlist_for_each_entry_safe(timeout, tmp, &ctx->timeout_list, list) {\n\t\tstruct io_kiocb *req = cmd_to_io_kiocb(timeout);\n\t\tu32 events_needed, events_got;\n\n\t\tif (io_is_timeout_noseq(req))\n\t\t\tbreak;\n\n\t\t/*\n\t\t * Since seq can easily wrap around over time, subtract\n\t\t * the last seq at which timeouts were flushed before comparing.\n\t\t * Assuming not more than 2^31-1 events have happened since,\n\t\t * these subtractions won't have wrapped, so we can check if\n\t\t * target is in [last_seq, current_seq] by comparing the two.\n\t\t */\n\t\tevents_needed = timeout->target_seq - ctx->cq_last_tm_flush;\n\t\tevents_got = seq - ctx->cq_last_tm_flush;\n\t\tif (events_got < events_needed)\n\t\t\tbreak;\n\n\t\tio_kill_timeout(req, 0, &list);\n\t}\n\tctx->cq_last_tm_flush = seq;\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\n\twhile (!wq_list_empty(&list)) {\n\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n\t\t\t\t\t\t    struct io_kiocb, comp_list);\n\n\t\tio_req_task_work_add(req);\n\t}\n}\n",
+          "before": "\n\tlist_for_each_entry_safe(timeout, tmp, &ctx->timeout_list, list) {\n\t\tstruct io_kiocb *req = cmd_to_io_kiocb(timeout);\n\t\tu32 events_needed, events_got;\n\n\t\tif (io_is_timeout_noseq(req))\n\t\t\tbreak;\n\n\t\t/*\n\t\t * Since seq can easily wrap around over time, subtract\n\t\t * the last seq at which timeouts were flushed before comparing.\n\t\t * Assuming not more than 2^31-1 events have happened since,\n\t\t * these subtractions won't have wrapped, so we can check if\n\t\t * target is in [last_seq, current_seq] by comparing the two.\n\t\t */\n\t\tevents_needed = timeout->target_seq - ctx->cq_last_tm_flush;\n\t\tevents_got = seq - ctx->cq_last_tm_flush;\n\t\tif (events_got < events_needed)\n\t\t\tbreak;\n\n\t\tio_kill_timeout(req, 0);\n\t}\n\tctx->cq_last_tm_flush = seq;\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/timeout.c\n+++ /linux/io_uring/timeout.c\n@@ -141 +141 @@\n-\t\tio_kill_timeout(req, 0);\n+\t\tio_kill_timeout(req, 0, &list);\n@@ -144,0 +145,7 @@\n+\n+\twhile (!wq_list_empty(&list)) {\n+\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n+\t\t\t\t\t\t    struct io_kiocb, comp_list);\n+\n+\t\tio_req_task_work_add(req);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 63",
+          "filename": "io_uring/timeout.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 63
+        },
+        {
+          "after": "__cold void io_flush_timeouts(struct io_ring_ctx *ctx)\n{\n\tstruct io_wq_work_list list;\n\tu32 seq;\n\tstruct io_timeout *timeout, *tmp;\n\n\tINIT_WQ_LIST(&list);\n\traw_spin_lock_irq(&ctx->timeout_lock);",
+          "before": "__cold void io_flush_timeouts(struct io_ring_ctx *ctx)\n{\n\tu32 seq;\n\tstruct io_timeout *timeout, *tmp;\n\n\traw_spin_lock_irq(&ctx->timeout_lock);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/timeout.c\n+++ /linux/io_uring/timeout.c\n@@ -115,0 +116 @@\n+\tstruct io_wq_work_list list;\n@@ -118,0 +120 @@\n+\tINIT_WQ_LIST(&list);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 65",
+          "filename": "io_uring/timeout.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 65
+        },
+        {
+          "after": "\n__cold bool io_kill_timeouts(struct io_ring_ctx *ctx, struct io_uring_task *tctx,\n\t\t\t     bool cancel_all)\n{\n\tstruct io_wq_work_list list;\n\tstruct io_timeout *timeout, *tmp;\n\tint canceled = 0;\n\n\tINIT_WQ_LIST(&list);\n\t/*\n\t * completion_lock is needed for io_match_task(). Take it before\n\t * timeout_lockfirst to keep locking ordering.\n\t */\n\tspin_lock(&ctx->completion_lock);\n\traw_spin_lock_irq(&ctx->timeout_lock);\n\tlist_for_each_entry_safe(timeout, tmp, &ctx->timeout_list, list) {\n\t\tstruct io_kiocb *req = cmd_to_io_kiocb(timeout);\n\n\t\tif (io_match_task(req, tctx, cancel_all) &&\n\t\t    io_kill_timeout(req, -ECANCELED, &list))\n\t\t\tcanceled++;\n\t}\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\tspin_unlock(&ctx->completion_lock);\n\n\twhile (!wq_list_empty(&list)) {\n\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n\t\t\t\t\t\t    struct io_kiocb, comp_list);\n\n\t\tio_req_task_work_add(req);\n\t}\n\treturn canceled != 0;\n}\n",
+          "before": "\n__cold bool io_kill_timeouts(struct io_ring_ctx *ctx, struct io_uring_task *tctx,\n\t\t\t     bool cancel_all)\n{\n\tstruct io_timeout *timeout, *tmp;\n\tint canceled = 0;\n\n\t/*\n\t * completion_lock is needed for io_match_task(). Take it before\n\t * timeout_lockfirst to keep locking ordering.\n\t */\n\tspin_lock(&ctx->completion_lock);\n\traw_spin_lock_irq(&ctx->timeout_lock);\n\tlist_for_each_entry_safe(timeout, tmp, &ctx->timeout_list, list) {\n\t\tstruct io_kiocb *req = cmd_to_io_kiocb(timeout);\n\n\t\tif (io_match_task(req, tctx, cancel_all) &&\n\t\t    io_kill_timeout(req, -ECANCELED))\n\t\t\tcanceled++;\n\t}\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\tspin_unlock(&ctx->completion_lock);\n\treturn canceled != 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/timeout.c\n+++ /linux/io_uring/timeout.c\n@@ -678,0 +679 @@\n+\tstruct io_wq_work_list list;\n@@ -681,0 +683 @@\n+\tINIT_WQ_LIST(&list);\n@@ -692 +694 @@\n-\t\t    io_kill_timeout(req, -ECANCELED))\n+\t\t    io_kill_timeout(req, -ECANCELED, &list))\n@@ -696,0 +699,7 @@\n+\n+\twhile (!wq_list_empty(&list)) {\n+\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n+\t\t\t\t\t\t    struct io_kiocb, comp_list);\n+\n+\t\tio_req_task_work_add(req);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 71",
+          "filename": "io_uring/timeout.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 71
+        }
+      ],
+      "end_step": 71,
+      "revision_index": 0,
+      "start_step": 55
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tctx->cq_last_tm_flush = seq;\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\n\twhile (!wq_list_empty(&list)) {\n\t\tstruct io_wq_work_node *node = list.first;\n\t\tstruct io_kiocb *req = container_of(node, struct io_kiocb, comp_list);\n\n\t\twq_list_del(&list, node, NULL);\n\t\tio_req_task_work_add(req);\n\t}\n}\n",
+          "before": "\n\tctx->cq_last_tm_flush = seq;\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\n\twhile (!wq_list_empty(&list)) {\n\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n\t\t\t\t\t\t    struct io_kiocb, comp_list);\n\n\t\tio_req_task_work_add(req);\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/timeout.c\n+++ /linux/io_uring/timeout.c\n@@ -149,3 +149,4 @@\n-\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n-\t\t\t\t\t\t    struct io_kiocb, comp_list);\n-\n+\t\tstruct io_wq_work_node *node = list.first;\n+\t\tstruct io_kiocb *req = container_of(node, struct io_kiocb, comp_list);\n+\n+\t\twq_list_del(&list, node, NULL);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 99",
+          "filename": "io_uring/timeout.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 99
+        },
+        {
+          "after": "\n\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\tspin_unlock(&ctx->completion_lock);\n\n\twhile (!wq_list_empty(&list)) {\n\t\tstruct io_wq_work_node *node = list.first;\n\t\tstruct io_kiocb *req = container_of(node, struct io_kiocb, comp_list);\n\n\t\twq_list_del(&list, node, NULL);\n\t\tio_req_task_work_add(req);\n\t}\n\treturn canceled != 0;\n}\n\n",
+          "before": "\n\n\traw_spin_unlock_irq(&ctx->timeout_lock);\n\tspin_unlock(&ctx->completion_lock);\n\n\twhile (!wq_list_empty(&list)) {\n\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n\t\t\t\t\t\t    struct io_kiocb, comp_list);\n\n\t\tio_req_task_work_add(req);\n\t}\n\treturn canceled != 0;\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/timeout.c\n+++ /linux/io_uring/timeout.c\n@@ -702,3 +702,4 @@\n-\t\tstruct io_kiocb *req = container_of(wq_list_pop(&list),\n-\t\t\t\t\t\t    struct io_kiocb, comp_list);\n-\n+\t\tstruct io_wq_work_node *node = list.first;\n+\t\tstruct io_kiocb *req = container_of(node, struct io_kiocb, comp_list);\n+\n+\t\twq_list_del(&list, node, NULL);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 102",
+          "filename": "io_uring/timeout.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 102
+        }
+      ],
+      "end_step": 102,
+      "revision_index": 1,
+      "start_step": 99
+    }
+  ],
+  "success_step": 102
+}

@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tspin_lock_irqsave(&dum->lock, flags);\n\tlist_for_each_entry(iter, &ep->queue, queue) {\n\t\tif (&iter->req != _req)\n\t\t\tcontinue;\n\t\tlist_del_init(&iter->queue);\n\t\t_req->status = -ECONNRESET;\n\t\treq = iter;\n\t\tretval = 0;\n\t\tbreak;\n\t}\n\tspin_unlock_irqrestore(&dum->lock, flags);\n\n\tif (retval == 0) {\n\t\tdev_dbg(udc_dev(dum),\n\t\t\t\t\"dequeued req %p from %s, len %d buf %p\\n\",\n\t\t\t\treq, _ep->name, _req->length, _req->buf);\n\t\tusb_gadget_giveback_request(_ep, _req);\n\t}",
+          "before": "\tlocal_irq_save(flags);\n\tspin_lock(&dum->lock);\n\tlist_for_each_entry(iter, &ep->queue, queue) {\n\t\tif (&iter->req != _req)\n\t\t\tcontinue;\n\t\tlist_del_init(&iter->queue);\n\t\t_req->status = -ECONNRESET;\n\t\treq = iter;\n\t\tretval = 0;\n\t\tbreak;\n\t}\n\tspin_unlock(&dum->lock);\n\n\tif (retval == 0) {\n\t\tdev_dbg(udc_dev(dum),\n\t\t\t\t\"dequeued req %p from %s, len %d buf %p\\n\",\n\t\t\t\treq, _ep->name, _req->length, _req->buf);\n\t\tusb_gadget_giveback_request(_ep, _req);\n\t}\n\tlocal_irq_restore(flags);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/usb/gadget/udc/dummy_hcd.c b/drivers/usb/gadget/udc/dummy_hcd.c\nindex 21dbfb0b3bac..57655b7591a8 100644\n--- a/drivers/usb/gadget/udc/dummy_hcd.c\n+++ b/drivers/usb/gadget/udc/dummy_hcd.c\n@@ -765,8 +765,7 @@ static int dummy_dequeue(struct usb_ep *_ep, struct usb_request *_req)\n \tif (!dum->driver)\n \t\treturn -ESHUTDOWN;\n \n-\tlocal_irq_save(flags);\n-\tspin_lock(&dum->lock);\n+\tspin_lock_irqsave(&dum->lock, flags);\n \tlist_for_each_entry(iter, &ep->queue, queue) {\n \t\tif (&iter->req != _req)\n \t\t\tcontinue;\n@@ -776,7 +775,7 @@ static int dummy_dequeue(struct usb_ep *_ep, struct usb_request *_req)\n \t\tretval = 0;\n \t\tbreak;\n \t}\n-\tspin_unlock(&dum->lock);\n+\tspin_unlock_irqrestore(&dum->lock, flags);\n \n \tif (retval == 0) {\n \t\tdev_dbg(udc_dev(dum),\n@@ -784,7 +783,6 @@ static int dummy_dequeue(struct usb_ep *_ep, struct usb_request *_req)\n \t\t\t\treq, _ep->name, _req->length, _req->buf);\n \t\tusb_gadget_giveback_request(_ep, _req);\n \t}\n-\tlocal_irq_restore(flags);\n \treturn retval;\n }",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "drivers/usb/gadget/udc/dummy_hcd.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        }
+      ],
+      "end_step": 10,
+      "revision_index": 0,
+      "start_step": 10
+    }
+  ],
+  "success_step": 10
+}

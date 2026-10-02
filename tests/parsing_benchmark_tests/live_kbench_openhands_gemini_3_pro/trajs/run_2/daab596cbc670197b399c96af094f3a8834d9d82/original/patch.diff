@@ -1,0 +1,25 @@
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index b79e80a435e0..0a9184e24e40 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -680,6 +680,7 @@ void bch2_fs_free(struct bch_fs *c)
+ 		if (ca) {
+ 			EBUG_ON(atomic_long_read(&ca->ref) != 1);
+ 			bch2_dev_io_ref_stop(ca, READ);
++			bch2_dev_io_ref_stop(ca, WRITE);
+ 			bch2_free_super(&ca->disk_sb);
+ 			bch2_dev_free(ca);
+ 		}
+@@ -1216,8 +1217,10 @@ static void bch2_dev_release(struct kobject *kobj)
+ 
+ static void bch2_dev_free(struct bch_dev *ca)
+ {
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
++	if (ca->io_done) {
++		WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
++		WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
++	}
+ 
+ 	cancel_work_sync(&ca->io_error_work);
+ 

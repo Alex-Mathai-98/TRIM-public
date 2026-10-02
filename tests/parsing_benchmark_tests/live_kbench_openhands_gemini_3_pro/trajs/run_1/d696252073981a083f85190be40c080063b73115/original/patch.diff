@@ -1,0 +1,64 @@
+diff --git a/sound/usb/midi.c b/sound/usb/midi.c
+index acb3bf92857c..ada77c07a5de 100644
+--- a/sound/usb/midi.c
++++ b/sound/usb/midi.c
+@@ -1318,9 +1318,11 @@ static void snd_usbmidi_in_endpoint_delete(struct snd_usb_midi_in_endpoint *ep)
+ 	unsigned int i;
+ 
+ 	for (i = 0; i < INPUT_URBS; ++i)
+-		if (ep->urbs[i])
++		if (ep->urbs[i]) {
++			usb_kill_urb(ep->urbs[i]);
+ 			free_urb_and_buffer(ep->umidi, ep->urbs[i],
+ 					    ep->urbs[i]->transfer_buffer_length);
++		}
+ 	kfree(ep);
+ }
+ 
+@@ -1407,6 +1409,7 @@ static void snd_usbmidi_out_endpoint_clear(struct snd_usb_midi_out_endpoint *ep)
+ 
+ static void snd_usbmidi_out_endpoint_delete(struct snd_usb_midi_out_endpoint *ep)
+ {
++	cancel_work_sync(&ep->work);
+ 	snd_usbmidi_out_endpoint_clear(ep);
+ 	kfree(ep);
+ }
+@@ -1430,6 +1433,10 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
+ 		return -ENOMEM;
+ 	ep->umidi = umidi;
+ 
++	spin_lock_init(&ep->buffer_lock);
++	INIT_WORK(&ep->work, snd_usbmidi_out_work);
++	init_waitqueue_head(&ep->drain_wait);
++
+ 	for (i = 0; i < OUTPUT_URBS; ++i) {
+ 		ep->urbs[i].urb = usb_alloc_urb(0, GFP_KERNEL);
+ 		if (!ep->urbs[i].urb) {
+@@ -1494,10 +1501,6 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
+ 		ep->urbs[i].urb->transfer_flags = URB_NO_TRANSFER_DMA_MAP;
+ 	}
+ 
+-	spin_lock_init(&ep->buffer_lock);
+-	INIT_WORK(&ep->work, snd_usbmidi_out_work);
+-	init_waitqueue_head(&ep->drain_wait);
+-
+ 	for (i = 0; i < 0x10; ++i)
+ 		if (ep_info->out_cables & (1 << i)) {
+ 			ep->ports[i].ep = ep;
+@@ -1522,6 +1525,8 @@ static void snd_usbmidi_free(struct snd_usb_midi *umidi)
+ {
+ 	int i;
+ 
++	timer_shutdown_sync(&umidi->error_timer);
++
+ 	for (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {
+ 		struct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];
+ 		if (ep->out)
+@@ -1530,7 +1535,6 @@ static void snd_usbmidi_free(struct snd_usb_midi *umidi)
+ 			snd_usbmidi_in_endpoint_delete(ep->in);
+ 	}
+ 	mutex_destroy(&umidi->mutex);
+-	timer_shutdown_sync(&umidi->error_timer);
+ 	kfree(umidi);
+ }
+ 

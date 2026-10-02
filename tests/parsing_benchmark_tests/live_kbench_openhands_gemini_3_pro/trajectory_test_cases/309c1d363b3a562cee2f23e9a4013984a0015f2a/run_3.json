@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tbool new_is_reject = false;\n\tbool new_is_fdb = false;\n\tstruct nh_grp_entry *nhge;\n\tint err;\n\n\t/* check that existing FIB entries are ok with the\n\t * new nexthop definition\n\t */\n\terr = fib_check_nh_list(old, new, extack);\n\tif (err)\n\t\treturn err;\n\n\terr = fib6_check_nh_list(old, new, extack);\n\tif (err)\n\t\treturn err;\n\n\tif (new->is_group) {\n\t\tstruct nh_group *nhg = rtnl_dereference(new->nh_grp);\n\n\t\tnew_is_fdb = nhg->fdb_nh;\n\t} else {\n\t\tstruct nh_info *nhi = rtnl_dereference(new->nh_info);\n\n\t\tnew_is_reject = nhi->reject_nh;\n\t\tnew_is_fdb = nhi->fdb_nh;\n\t}\n\n\tlist_for_each_entry(nhge, &old->grp_list, nh_list) {\n\t\tstruct nh_group *nhg = rtnl_dereference(nhge->nh_parent->nh_grp);\n\n\t\t/* if new nexthop is a blackhole, any groups using this\n\t\t * nexthop cannot have more than 1 path\n\t\t */\n\t\tif (new_is_reject &&\n\t\t    nexthop_num_path(nhge->nh_parent) > 1) {\n\t\t\tNL_SET_ERR_MSG(extack, \"Blackhole nexthop can not be a member of a group with more than one path\");\n\t\t\treturn -EINVAL;\n\t\t}\n\n\t\tif (new_is_fdb != nhg->fdb_nh) {\n\t\t\tNL_SET_ERR_MSG(extack, \"FDB nexthop group status cannot be changed\");\n\t\t\treturn -EINVAL;\n\t\t}\n\n\t\terr = fib_check_nh_list(nhge->nh_parent, new, extack);\n",
+          "before": "\n\tbool new_is_reject = false;\n\tstruct nh_grp_entry *nhge;\n\tint err;\n\n\t/* check that existing FIB entries are ok with the\n\t * new nexthop definition\n\t */\n\terr = fib_check_nh_list(old, new, extack);\n\tif (err)\n\t\treturn err;\n\n\terr = fib6_check_nh_list(old, new, extack);\n\tif (err)\n\t\treturn err;\n\n\tif (!new->is_group) {\n\t\tstruct nh_info *nhi = rtnl_dereference(new->nh_info);\n\n\t\tnew_is_reject = nhi->reject_nh;\n\t}\n\n\tlist_for_each_entry(nhge, &old->grp_list, nh_list) {\n\t\t/* if new nexthop is a blackhole, any groups using this\n\t\t * nexthop cannot have more than 1 path\n\t\t */\n\t\tif (new_is_reject &&\n\t\t    nexthop_num_path(nhge->nh_parent) > 1) {\n\t\t\tNL_SET_ERR_MSG(extack, \"Blackhole nexthop can not be a member of a group with more than one path\");\n\t\t\treturn -EINVAL;\n\t\t}\n\n\t\terr = fib_check_nh_list(nhge->nh_parent, new, extack);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv4/nexthop.c\n+++ /linux/net/ipv4/nexthop.c\n@@ -2511,0 +2512 @@\n+\tbool new_is_fdb = false;\n@@ -2526 +2527,5 @@\n-\tif (!new->is_group) {\n+\tif (new->is_group) {\n+\t\tstruct nh_group *nhg = rtnl_dereference(new->nh_grp);\n+\n+\t\tnew_is_fdb = nhg->fdb_nh;\n+\t} else {\n@@ -2529,0 +2535 @@\n+\t\tnew_is_fdb = nhi->fdb_nh;\n@@ -2532,0 +2539,2 @@\n+\t\tstruct nh_group *nhg = rtnl_dereference(nhge->nh_parent->nh_grp);\n+\n@@ -2538,0 +2547,5 @@\n+\t\t\treturn -EINVAL;\n+\t\t}\n+\n+\t\tif (new_is_fdb != nhg->fdb_nh) {\n+\t\t\tNL_SET_ERR_MSG(extack, \"FDB nexthop group status cannot be changed\");",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 73",
+          "filename": "net/ipv4/nexthop.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 73
+        }
+      ],
+      "end_step": 73,
+      "revision_index": 0,
+      "start_step": 73
+    }
+  ],
+  "success_step": 73
+}

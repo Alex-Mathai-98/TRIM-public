@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,\n\t\t\t       int size, gfp_t gfp, void (*destroy)(void *))\n{\n\tunsigned long flags;\n\tvoid ***queues;\n\tvoid **cleanup = NULL;\n\tint max_cleanup_size = 0;\n\tint cleanup_cnt = 0;\n\tint i;\n\n\tqueues = kcalloc(nrings, sizeof(*queues), gfp);\n\tif (!queues)\n\t\treturn -ENOMEM;\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tif (size > KMALLOC_MAX_SIZE / sizeof(void *))\n\t\t\tgoto nomem;\n\t\tqueues[i] = kvmalloc_array(size, sizeof(void *), gfp | __GFP_ZERO);\n\t\tif (!queues[i])\n\t\t\tgoto nomem;\n\t\tif (rings[i]->size > max_cleanup_size)\n\t\t\tmax_cleanup_size = rings[i]->size;\n\t}\n\n\tif (max_cleanup_size > 0) {\n\t\tcleanup = kvmalloc_array(max_cleanup_size, sizeof(void *), gfp);\n\t\tif (!cleanup)\n\t\t\tgoto nomem;\n\t}\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tint producer = 0;\n\t\tvoid **old_queue;\n\t\tvoid *ptr;\n\n\t\tcleanup_cnt = 0;\n\n\t\tspin_lock_irqsave(&(rings[i])->consumer_lock, flags);\n\t\tspin_lock(&(rings[i])->producer_lock);\n\n\t\twhile ((ptr = __ptr_ring_consume(rings[i]))) {\n\t\t\tif (producer < size) {\n\t\t\t\tqueues[i][producer++] = ptr;\n\t\t\t} else {\n\t\t\t\tif (cleanup)\n\t\t\t\t\tcleanup[cleanup_cnt++] = ptr;\n\t\t\t\telse if (destroy)\n\t\t\t\t\tdestroy(ptr);\n\t\t\t}\n\t\t}\n\n\t\tif (producer >= size)\n\t\t\tproducer = 0;\n\t\t__ptr_ring_set_size(rings[i], size);\n\t\trings[i]->producer = producer;\n\t\trings[i]->consumer_head = 0;\n\t\trings[i]->consumer_tail = 0;\n\t\told_queue = rings[i]->queue;\n\t\trings[i]->queue = queues[i];\n\n\t\tspin_unlock(&(rings[i])->producer_lock);\n\t\tspin_unlock_irqrestore(&(rings[i])->consumer_lock, flags);\n\n\t\tkvfree(old_queue);\n\n\t\tif (cleanup && destroy) {\n\t\t\tint j;\n\t\t\tfor (j = 0; j < cleanup_cnt; j++)\n\t\t\t\tdestroy(cleanup[j]);\n\t\t}\n\t}\n\n\tif (cleanup)\n\t\tkvfree(cleanup);\n\tkfree(queues);\n\n\treturn 0;\n\nnomem:\n\tif (cleanup)\n\t\tkvfree(cleanup);\n\tfor (i = 0; i < nrings; ++i)\n\t\tkvfree(queues[i]);\n\tkfree(queues);\n\treturn -ENOMEM;\n}",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3684,0 +3685,86 @@\n+static int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,\n+\t\t\t       int size, gfp_t gfp, void (*destroy)(void *))\n+{\n+\tunsigned long flags;\n+\tvoid ***queues;\n+\tvoid **cleanup = NULL;\n+\tint max_cleanup_size = 0;\n+\tint cleanup_cnt = 0;\n+\tint i;\n+\n+\tqueues = kcalloc(nrings, sizeof(*queues), gfp);\n+\tif (!queues)\n+\t\treturn -ENOMEM;\n+\n+\tfor (i = 0; i < nrings; ++i) {\n+\t\tif (size > KMALLOC_MAX_SIZE / sizeof(void *))\n+\t\t\tgoto nomem;\n+\t\tqueues[i] = kvmalloc_array(size, sizeof(void *), gfp | __GFP_ZERO);\n+\t\tif (!queues[i])\n+\t\t\tgoto nomem;\n+\t\tif (rings[i]->size > max_cleanup_size)\n+\t\t\tmax_cleanup_size = rings[i]->size;\n+\t}\n+\n+\tif (max_cleanup_size > 0) {\n+\t\tcleanup = kvmalloc_array(max_cleanup_size, sizeof(void *), gfp);\n+\t\tif (!cleanup)\n+\t\t\tgoto nomem;\n+\t}\n+\n+\tfor (i = 0; i < nrings; ++i) {\n+\t\tint producer = 0;\n+\t\tvoid **old_queue;\n+\t\tvoid *ptr;\n+\n+\t\tcleanup_cnt = 0;\n+\n+\t\tspin_lock_irqsave(&(rings[i])->consumer_lock, flags);\n+\t\tspin_lock(&(rings[i])->producer_lock);\n+\n+\t\twhile ((ptr = __ptr_ring_consume(rings[i]))) {\n+\t\t\tif (producer < size) {\n+\t\t\t\tqueues[i][producer++] = ptr;\n+\t\t\t} else {\n+\t\t\t\tif (cleanup)\n+\t\t\t\t\tcleanup[cleanup_cnt++] = ptr;\n+\t\t\t\telse if (destroy)\n+\t\t\t\t\tdestroy(ptr);\n+\t\t\t}\n+\t\t}\n+\n+\t\tif (producer >= size)\n+\t\t\tproducer = 0;\n+\t\t__ptr_ring_set_size(rings[i], size);\n+\t\trings[i]->producer = producer;\n+\t\trings[i]->consumer_head = 0;\n+\t\trings[i]->consumer_tail = 0;\n+\t\told_queue = rings[i]->queue;\n+\t\trings[i]->queue = queues[i];\n+\n+\t\tspin_unlock(&(rings[i])->producer_lock);\n+\t\tspin_unlock_irqrestore(&(rings[i])->consumer_lock, flags);\n+\n+\t\tkvfree(old_queue);\n+\n+\t\tif (cleanup && destroy) {\n+\t\t\tint j;\n+\t\t\tfor (j = 0; j < cleanup_cnt; j++)\n+\t\t\t\tdestroy(cleanup[j]);\n+\t\t}\n+\t}\n+\n+\tif (cleanup)\n+\t\tkvfree(cleanup);\n+\tkfree(queues);\n+\n+\treturn 0;\n+\n+nomem:\n+\tif (cleanup)\n+\t\tkvfree(cleanup);\n+\tfor (i = 0; i < nrings; ++i)\n+\t\tkvfree(queues[i]);\n+\tkfree(queues);\n+\treturn -ENOMEM;\n+}",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 36",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 3685,
+          "step_index": 36
+        },
+        {
+          "after": "\tret = tun_ptr_ring_resize(rings, n,\n\t\t\t\t  dev->tx_queue_len, GFP_KERNEL,\n\t\t\t\t  tun_ptr_free);",
+          "before": "\tret = ptr_ring_resize_multiple(rings, n,\n\t\t\t\t       dev->tx_queue_len, GFP_KERNEL,\n\t\t\t\t       tun_ptr_free);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3790,3 +3790,3 @@\n-\tret = ptr_ring_resize_multiple(rings, n,\n-\t\t\t\t       dev->tx_queue_len, GFP_KERNEL,\n-\t\t\t\t       tun_ptr_free);\n+\tret = tun_ptr_ring_resize(rings, n,\n+\t\t\t\t  dev->tx_queue_len, GFP_KERNEL,\n+\t\t\t\t  tun_ptr_free);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 40",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 0,
+      "start_step": 36
+    }
+  ],
+  "success_step": 40
+}

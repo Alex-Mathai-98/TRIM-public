@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n{\n\tstruct ext4_iloc iloc = { .bh = NULL };\n\tstruct buffer_head *bh = NULL;\n\tstruct ext4_inode *raw_inode;\n\tstruct ext4_xattr_ibody_header *header;\n\tstruct ext4_xattr_entry *entry;\n\tqsize_t ea_inode_refs = 0;\n\tint ret;\n\n\tdown_read(&EXT4_I(inode)->xattr_sem);\n\tif (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {",
+          "before": "int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n{\n\tstruct ext4_iloc iloc = { .bh = NULL };\n\tstruct buffer_head *bh = NULL;\n\tstruct ext4_inode *raw_inode;\n\tstruct ext4_xattr_ibody_header *header;\n\tstruct ext4_xattr_entry *entry;\n\tqsize_t ea_inode_refs = 0;\n\tint ret;\n\n\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n\n\tif (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/xattr.c\n+++ /linux/fs/ext4/xattr.c\n@@ -865,2 +865 @@\n-\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n-\n+\tdown_read(&EXT4_I(inode)->xattr_sem);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 46",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        },
+        {
+          "after": "\nout:\n\tbrelse(iloc.bh);\n\tbrelse(bh);\n\tup_read(&EXT4_I(inode)->xattr_sem);\n\treturn ret;\n}\n",
+          "before": "\nout:\n\tbrelse(iloc.bh);\n\tbrelse(bh);\n\treturn ret;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/xattr.c\n+++ /linux/fs/ext4/xattr.c\n@@ -900,0 +901 @@\n+\tup_read(&EXT4_I(inode)->xattr_sem);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 50",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        },
+        {
+          "after": "\n\t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\terror = dquot_transfer(idmap, inode, attr);\n\n\t\tif (error) {\n",
+          "before": "\n\t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n\t\terror = dquot_transfer(idmap, inode, attr);\n\t\tup_read(&EXT4_I(inode)->xattr_sem);\n\n\t\tif (error) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/inode.c\n+++ /linux/fs/ext4/inode.c\n@@ -5888 +5887,0 @@\n-\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n@@ -5890 +5888,0 @@\n-\t\tup_read(&EXT4_I(inode)->xattr_sem);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 52",
+          "filename": "fs/ext4/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        },
+        {
+          "after": "\n\n\t\t/* __dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\terr = __dquot_transfer(inode, transfer_to);\n\t\tdqput(transfer_to[PRJQUOTA]);\n\n",
+          "before": "\n\n\t\t/* __dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n\t\terr = __dquot_transfer(inode, transfer_to);\n\t\tup_read(&EXT4_I(inode)->xattr_sem);\n\t\tdqput(transfer_to[PRJQUOTA]);\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/ioctl.c\n+++ /linux/fs/ext4/ioctl.c\n@@ -781 +780,0 @@\n-\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n@@ -783 +781,0 @@\n-\t\tup_read(&EXT4_I(inode)->xattr_sem);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 54",
+          "filename": "fs/ext4/ioctl.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        }
+      ],
+      "end_step": 54,
+      "revision_index": 0,
+      "start_step": 46
+    }
+  ],
+  "success_step": 54
+}

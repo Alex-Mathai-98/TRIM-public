@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3,
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n{\n\tunsigned id = b->c.btree_id;\n\tstruct btree_root *r = NULL;\n\n\tif (id < BTREE_ID_NR)\n\t\tr = &c->btree_roots_known[id];\n\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n\n\tprt_printf(out, \"%s level %u/%u\\n  \",\n\t       bch2_btree_id_str(b->c.btree_id),\n\t       b->c.level,\n\t       r ? r->level : 0);\n\tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n}",
+          "before": "void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n{\n\tprt_printf(out, \"%s level %u/%u\\n  \",\n\t       bch2_btree_id_str(b->c.btree_id),\n\t       b->c.level,\n\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n\tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 6e4afb2b5441..d813927b63d7 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -1375,10 +1375,18 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)\n \n void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n {\n+\tunsigned id = b->c.btree_id;\n+\tstruct btree_root *r = NULL;\n+\n+\tif (id < BTREE_ID_NR)\n+\t\tr = &c->btree_roots_known[id];\n+\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n+\n \tprt_printf(out, \"%s level %u/%u\\n  \",\n \t       bch2_btree_id_str(b->c.btree_id),\n \t       b->c.level,\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       r ? r->level : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "\tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n\n\tif (b->c.btree_id >= 64)\n\t\treturn false;\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n\t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n\t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);",
+          "before": "\tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n\t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n\t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 6e4afb2b5441..b9da2e6f3c31 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -195,6 +195,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id >= 64)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n@@ -1375,10 +1378,18 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)\n \n void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n {\n+\tunsigned id = b->c.btree_id;\n+\tstruct btree_root *r = NULL;\n+\n+\tif (id < BTREE_ID_NR)\n+\t\tr = &c->btree_roots_known[id];\n+\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n+\n \tprt_printf(out, \"%s level %u/%u\\n  \",\n \t       bch2_btree_id_str(b->c.btree_id),\n \t       b->c.level,\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       r ? r->level : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\treturn type < 64 ? BIT_ULL(type) & mask : false;",
+          "before": "\treturn BIT_ULL(type) & mask;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 6e4afb2b5441..b9da2e6f3c31 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -195,6 +195,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id >= 64)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n@@ -1375,10 +1378,18 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)\n \n void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n {\n+\tunsigned id = b->c.btree_id;\n+\tstruct btree_root *r = NULL;\n+\n+\tif (id < BTREE_ID_NR)\n+\t\tr = &c->btree_roots_known[id];\n+\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n+\n \tprt_printf(out, \"%s level %u/%u\\n  \",\n \t       bch2_btree_id_str(b->c.btree_id),\n \t       b->c.level,\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       r ? r->level : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }\n \ndiff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h\nindex 4568a41fefaf..05093d439306 100644\n--- a/fs/bcachefs/btree_types.h\n+++ b/fs/bcachefs/btree_types.h\n@@ -795,7 +795,7 @@ static inline bool btree_node_type_is_extents(enum btree_node_type type)\n #undef x\n \t;\n \n-\treturn BIT_ULL(type) & mask;\n+\treturn type < 64 ? BIT_ULL(type) & mask : false;\n }\n \n static inline bool btree_id_is_extents(enum btree_id btree)",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/bcachefs/btree_types.h",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_SNAPSHOTS)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn id < 64 ? BIT_ULL(id) & mask : false;\n}",
+          "before": "#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_SNAPSHOTS)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(id) & mask;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 6e4afb2b5441..b9da2e6f3c31 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -195,6 +195,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id >= 64)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n@@ -1375,10 +1378,18 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)\n \n void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n {\n+\tunsigned id = b->c.btree_id;\n+\tstruct btree_root *r = NULL;\n+\n+\tif (id < BTREE_ID_NR)\n+\t\tr = &c->btree_roots_known[id];\n+\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n+\n \tprt_printf(out, \"%s level %u/%u\\n  \",\n \t       bch2_btree_id_str(b->c.btree_id),\n \t       b->c.level,\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       r ? r->level : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }\n \ndiff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h\nindex 4568a41fefaf..68182ebd627f 100644\n--- a/fs/bcachefs/btree_types.h\n+++ b/fs/bcachefs/btree_types.h\n@@ -795,7 +795,7 @@ static inline bool btree_node_type_is_extents(enum btree_node_type type)\n #undef x\n \t;\n \n-\treturn BIT_ULL(type) & mask;\n+\treturn type < 64 ? BIT_ULL(type) & mask : false;\n }\n \n static inline bool btree_id_is_extents(enum btree_id btree)\n@@ -811,7 +811,7 @@ static inline bool btree_type_has_snapshots(enum btree_id id)\n #undef x\n \t;\n \n-\treturn BIT_ULL(id) & mask;\n+\treturn id < 64 ? BIT_ULL(id) & mask : false;\n }\n \n static inline bool btree_type_has_snapshot_field(enum btree_id id)",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "fs/bcachefs/btree_types.h",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "#define x(name, nr, flags, ...)\t|((!!((flags) & (BTREE_ID_SNAPSHOT_FIELD|BTREE_ID_SNAPSHOTS))) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn id < 64 ? BIT_ULL(id) & mask : false;\n}",
+          "before": "#define x(name, nr, flags, ...)\t|((!!((flags) & (BTREE_ID_SNAPSHOT_FIELD|BTREE_ID_SNAPSHOTS))) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(id) & mask;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 6e4afb2b5441..b9da2e6f3c31 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -195,6 +195,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id >= 64)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n@@ -1375,10 +1378,18 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)\n \n void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n {\n+\tunsigned id = b->c.btree_id;\n+\tstruct btree_root *r = NULL;\n+\n+\tif (id < BTREE_ID_NR)\n+\t\tr = &c->btree_roots_known[id];\n+\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n+\n \tprt_printf(out, \"%s level %u/%u\\n  \",\n \t       bch2_btree_id_str(b->c.btree_id),\n \t       b->c.level,\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       r ? r->level : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }\n \ndiff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h\nindex 4568a41fefaf..e385dd401215 100644\n--- a/fs/bcachefs/btree_types.h\n+++ b/fs/bcachefs/btree_types.h\n@@ -795,7 +795,7 @@ static inline bool btree_node_type_is_extents(enum btree_node_type type)\n #undef x\n \t;\n \n-\treturn BIT_ULL(type) & mask;\n+\treturn type < 64 ? BIT_ULL(type) & mask : false;\n }\n \n static inline bool btree_id_is_extents(enum btree_id btree)\n@@ -811,7 +811,7 @@ static inline bool btree_type_has_snapshots(enum btree_id id)\n #undef x\n \t;\n \n-\treturn BIT_ULL(id) & mask;\n+\treturn id < 64 ? BIT_ULL(id) & mask : false;\n }\n \n static inline bool btree_type_has_snapshot_field(enum btree_id id)\n@@ -822,7 +822,7 @@ static inline bool btree_type_has_snapshot_field(enum btree_id id)\n #undef x\n \t;\n \n-\treturn BIT_ULL(id) & mask;\n+\treturn id < 64 ? BIT_ULL(id) & mask : false;\n }\n \n static inline bool btree_type_has_ptrs(enum btree_id id)",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "fs/bcachefs/btree_types.h",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_DATA)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn id < 64 ? BIT_ULL(id) & mask : false;\n}",
+          "before": "#define x(name, nr, flags, ...)\t|((!!((flags) & BTREE_ID_DATA)) << nr)\n\tBCH_BTREE_IDS()\n#undef x\n\t;\n\n\treturn BIT_ULL(id) & mask;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 6e4afb2b5441..b9da2e6f3c31 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -195,6 +195,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id >= 64)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n@@ -1375,10 +1378,18 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)\n \n void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n {\n+\tunsigned id = b->c.btree_id;\n+\tstruct btree_root *r = NULL;\n+\n+\tif (id < BTREE_ID_NR)\n+\t\tr = &c->btree_roots_known[id];\n+\telse if (id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\tr = &c->btree_roots_extra.data[id - BTREE_ID_NR];\n+\n \tprt_printf(out, \"%s level %u/%u\\n  \",\n \t       bch2_btree_id_str(b->c.btree_id),\n \t       b->c.level,\n-\t       bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t       r ? r->level : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }\n \ndiff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h\nindex 4568a41fefaf..4595cd9daade 100644\n--- a/fs/bcachefs/btree_types.h\n+++ b/fs/bcachefs/btree_types.h\n@@ -795,7 +795,7 @@ static inline bool btree_node_type_is_extents(enum btree_node_type type)\n #undef x\n \t;\n \n-\treturn BIT_ULL(type) & mask;\n+\treturn type < 64 ? BIT_ULL(type) & mask : false;\n }\n \n static inline bool btree_id_is_extents(enum btree_id btree)\n@@ -811,7 +811,7 @@ static inline bool btree_type_has_snapshots(enum btree_id id)\n #undef x\n \t;\n \n-\treturn BIT_ULL(id) & mask;\n+\treturn id < 64 ? BIT_ULL(id) & mask : false;\n }\n \n static inline bool btree_type_has_snapshot_field(enum btree_id id)\n@@ -822,7 +822,7 @@ static inline bool btree_type_has_snapshot_field(enum btree_id id)\n #undef x\n \t;\n \n-\treturn BIT_ULL(id) & mask;\n+\treturn id < 64 ? BIT_ULL(id) & mask : false;\n }\n \n static inline bool btree_type_has_ptrs(enum btree_id id)\n@@ -833,7 +833,7 @@ static inline bool btree_type_has_ptrs(enum btree_id id)\n #undef x\n \t;\n \n-\treturn BIT_ULL(id) & mask;\n+\treturn id < 64 ? BIT_ULL(id) & mask : false;\n }\n \n struct btree_root {",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "fs/bcachefs/btree_types.h",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 2,
+      "start_step": 34
+    }
+  ],
+  "success_step": 37
+}

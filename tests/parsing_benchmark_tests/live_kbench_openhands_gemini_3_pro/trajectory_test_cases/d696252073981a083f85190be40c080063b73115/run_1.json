@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void snd_usbmidi_free(struct snd_usb_midi *umidi)\n{\n\tint i;\n\n\ttimer_shutdown_sync(&umidi->error_timer);\n\n\tfor (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {\n\t\tstruct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];\n\t\tif (ep->out)\n\t\t\tsnd_usbmidi_out_endpoint_delete(ep->out);\n\t\tif (ep->in)\n\t\t\tsnd_usbmidi_in_endpoint_delete(ep->in);\n\t}\n\tmutex_destroy(&umidi->mutex);\n\tkfree(umidi);\n}",
+          "before": "static void snd_usbmidi_free(struct snd_usb_midi *umidi)\n{\n\tint i;\n\n\tfor (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {\n\t\tstruct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];\n\t\tif (ep->out)\n\t\t\tsnd_usbmidi_out_endpoint_delete(ep->out);\n\t\tif (ep->in)\n\t\t\tsnd_usbmidi_in_endpoint_delete(ep->in);\n\t}\n\tmutex_destroy(&umidi->mutex);\n\ttimer_shutdown_sync(&umidi->error_timer);\n\tkfree(umidi);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/sound/usb/midi.c\n+++ /linux/sound/usb/midi.c\n@@ -1524,0 +1525,2 @@\n+\ttimer_shutdown_sync(&umidi->error_timer);\n+\n@@ -1533 +1534,0 @@\n-\ttimer_shutdown_sync(&umidi->error_timer);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 73",
+          "filename": "sound/usb/midi.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 73
+        },
+        {
+          "after": "static void snd_usbmidi_out_endpoint_delete(struct snd_usb_midi_out_endpoint *ep)\n{\n\tcancel_work_sync(&ep->work);\n\tsnd_usbmidi_out_endpoint_clear(ep);\n\tkfree(ep);\n}",
+          "before": "static void snd_usbmidi_out_endpoint_delete(struct snd_usb_midi_out_endpoint *ep)\n{\n\tsnd_usbmidi_out_endpoint_clear(ep);\n\tkfree(ep);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/sound/usb/midi.c\n+++ /linux/sound/usb/midi.c\n@@ -1409,0 +1410 @@\n+\tcancel_work_sync(&ep->work);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 75",
+          "filename": "sound/usb/midi.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 75
+        }
+      ],
+      "end_step": 75,
+      "revision_index": 0,
+      "start_step": 73
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tep = kzalloc(sizeof(*ep), GFP_KERNEL);\n\tif (!ep)\n\t\treturn -ENOMEM;\n\tep->umidi = umidi;\n\n\tspin_lock_init(&ep->buffer_lock);\n\tINIT_WORK(&ep->work, snd_usbmidi_out_work);\n\tinit_waitqueue_head(&ep->drain_wait);\n\n\tfor (i = 0; i < OUTPUT_URBS; ++i) {\n",
+          "before": "\n\tep = kzalloc(sizeof(*ep), GFP_KERNEL);\n\tif (!ep)\n\t\treturn -ENOMEM;\n\tep->umidi = umidi;\n\n\tfor (i = 0; i < OUTPUT_URBS; ++i) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/sound/usb/midi.c\n+++ /linux/sound/usb/midi.c\n@@ -1432,0 +1433,4 @@\n+\n+\tspin_lock_init(&ep->buffer_lock);\n+\tINIT_WORK(&ep->work, snd_usbmidi_out_work);\n+\tinit_waitqueue_head(&ep->drain_wait);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 87",
+          "filename": "sound/usb/midi.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 87
+        },
+        {
+          "after": "\n\t\tep->urbs[i].urb->transfer_flags = URB_NO_TRANSFER_DMA_MAP;\n\t}\n\n\tfor (i = 0; i < 0x10; ++i)\n",
+          "before": "\n\t\tep->urbs[i].urb->transfer_flags = URB_NO_TRANSFER_DMA_MAP;\n\t}\n\n\tspin_lock_init(&ep->buffer_lock);\n\tINIT_WORK(&ep->work, snd_usbmidi_out_work);\n\tinit_waitqueue_head(&ep->drain_wait);\n\n\tfor (i = 0; i < 0x10; ++i)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/sound/usb/midi.c\n+++ /linux/sound/usb/midi.c\n@@ -1501,4 +1500,0 @@\n-\n-\tspin_lock_init(&ep->buffer_lock);\n-\tINIT_WORK(&ep->work, snd_usbmidi_out_work);\n-\tinit_waitqueue_head(&ep->drain_wait);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 89",
+          "filename": "sound/usb/midi.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 89
+        }
+      ],
+      "end_step": 89,
+      "revision_index": 1,
+      "start_step": 87
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tfor (i = 0; i < INPUT_URBS; ++i)\n\t\tif (ep->urbs[i]) {\n\t\t\tusb_kill_urb(ep->urbs[i]);\n\t\t\tfree_urb_and_buffer(ep->umidi, ep->urbs[i],\n\t\t\t\t\t    ep->urbs[i]->transfer_buffer_length);\n\t\t}\n\tkfree(ep);\n}\n",
+          "before": "\n\tfor (i = 0; i < INPUT_URBS; ++i)\n\t\tif (ep->urbs[i])\n\t\t\tfree_urb_and_buffer(ep->umidi, ep->urbs[i],\n\t\t\t\t\t    ep->urbs[i]->transfer_buffer_length);\n\tkfree(ep);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/sound/usb/midi.c\n+++ /linux/sound/usb/midi.c\n@@ -1321 +1321,2 @@\n-\t\tif (ep->urbs[i])\n+\t\tif (ep->urbs[i]) {\n+\t\t\tusb_kill_urb(ep->urbs[i]);\n@@ -1323,0 +1325 @@\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 104",
+          "filename": "sound/usb/midi.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 104
+        }
+      ],
+      "end_step": 104,
+      "revision_index": 2,
+      "start_step": 104
+    }
+  ],
+  "success_step": 104
+}

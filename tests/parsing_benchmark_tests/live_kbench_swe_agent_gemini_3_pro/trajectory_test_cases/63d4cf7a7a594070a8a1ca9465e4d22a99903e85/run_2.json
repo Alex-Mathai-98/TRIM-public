@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!dentry) {\n\t\t/* We're in RCU-pathwalk. */\n\t\tcell = rcu_dereference(net->ws_cell);\n\t\tif (!cell)\n\t\t\treturn ERR_PTR(-ENOENT);\n\t\tif (dotted)\n\t\t\tname = cell->name - 1;\n\t\telse\n\t\t\tname = cell->name;\n\t\t/* Shouldn't need to set a delayed call. */\n\t\treturn name;\n\t}\n\n\tif (!rcu_access_pointer(net->ws_cell))\n\t\treturn ERR_PTR(-ENOENT);\n\n\tdown_read(&net->cells_lock);\n\n\tcell = rcu_dereference_protected(net->ws_cell, lockdep_is_held(&net->cells_lock));\n\tif (!cell) {\n\t\tup_read(&net->cells_lock);\n\t\treturn ERR_PTR(-ENOENT);\n\t}\n\tif (dotted)\n\t\tname = cell->name - 1;\n\telse\n\t\tname = cell->name;\n\tafs_get_cell(cell, afs_cell_trace_get_atcell);\n\tset_delayed_call(done, afs_atcell_delayed_put_cell, cell);\n\n\tup_read(&net->cells_lock);\n\treturn name;",
+          "before": "\tif (!dentry) {\n\t\t/* We're in RCU-pathwalk. */\n\t\tcell = rcu_dereference(net->ws_cell);\n\t\tif (dotted)\n\t\t\tname = cell->name - 1;\n\t\telse\n\t\t\tname = cell->name;\n\t\t/* Shouldn't need to set a delayed call. */\n\t\treturn name;\n\t}\n\n\tif (!rcu_access_pointer(net->ws_cell))\n\t\treturn ERR_PTR(-ENOENT);\n\n\tdown_read(&net->cells_lock);\n\n\tcell = rcu_dereference_protected(net->ws_cell, lockdep_is_held(&net->cells_lock));\n\tif (dotted)\n\t\tname = cell->name - 1;\n\telse\n\t\tname = cell->name;\n\tafs_get_cell(cell, afs_cell_trace_get_atcell);\n\tset_delayed_call(done, afs_atcell_delayed_put_cell, cell);\n\n\tup_read(&net->cells_lock);\n\treturn name;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/afs/dynroot.c b/fs/afs/dynroot.c\nindex 008698d706ca..ce223bed92d9 100644\n--- a/fs/afs/dynroot.c\n+++ b/fs/afs/dynroot.c\n@@ -317,6 +317,8 @@ static const char *afs_atcell_get_link(struct dentry *dentry, struct inode *inod\n \tif (!dentry) {\n \t\t/* We're in RCU-pathwalk. */\n \t\tcell = rcu_dereference(net->ws_cell);\n+\t\tif (!cell)\n+\t\t\treturn ERR_PTR(-ENOENT);\n \t\tif (dotted)\n \t\t\tname = cell->name - 1;\n \t\telse\n@@ -331,6 +333,10 @@ static const char *afs_atcell_get_link(struct dentry *dentry, struct inode *inod\n \tdown_read(&net->cells_lock);\n \n \tcell = rcu_dereference_protected(net->ws_cell, lockdep_is_held(&net->cells_lock));\n+\tif (!cell) {\n+\t\tup_read(&net->cells_lock);\n+\t\treturn ERR_PTR(-ENOENT);\n+\t}\n \tif (dotted)\n \t\tname = cell->name - 1;\n \telse",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 23
+}

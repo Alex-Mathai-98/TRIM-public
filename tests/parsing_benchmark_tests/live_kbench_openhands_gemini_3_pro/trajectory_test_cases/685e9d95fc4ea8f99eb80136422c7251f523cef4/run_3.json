@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\thwprov = rcu_dereference_rtnl(dev->hwprov);\n\t/* No provider specified, use default behavior */\n\tif (!hwprov) {\n\t\tconst struct ethtool_ops *ops = dev->ethtool_ops;\n\t\tstruct phy_device *phydev = dev->phydev;\n\t\tint err = 0;\n\n\t\tethtool_init_tsinfo(info);\n\t\tif (phy_is_default_hwtstamp(phydev) &&\n\t\t    phy_has_tsinfo(phydev))\n\t\t\terr = phy_ts_info(phydev, info);\n\t\telse if (ops->get_ts_info)\n\t\t\terr = ops->get_ts_info(dev, info);\n\n\t\tinfo->so_timestamping |= SOF_TIMESTAMPING_RX_SOFTWARE |\n\t\t\t\t\t SOF_TIMESTAMPING_SOFTWARE;\n\n\t\treturn err;\n\t}\n\n\treturn ethtool_get_ts_info_by_phc(dev, info, &hwprov->desc);\n}\n\nbool net_support_hwtstamp_qualifier(struct net_device *dev,\n\t\t\t\t    enum hwtstamp_provider_qualifier qualifier)\n{\n\tconst struct ethtool_ops *ops = dev->ethtool_ops;\n\n\tif (!ops)\n\t\treturn false;\n\n\t/* Return true with precise qualifier and with NIC without\n\t * qualifier description to not break the old behavior.\n\t */\n\tif (!ops->supported_hwtstamp_qualifiers &&\n\t    qualifier == HWTSTAMP_PROVIDER_QUALIFIER_PRECISE)\n\t\treturn true;\n\n\tif (ops->supported_hwtstamp_qualifiers & BIT(qualifier))\n\t\treturn true;\n\n\treturn false;\n}\n\nint ethtool_get_phc_vclocks(struct net_device *dev, int **vclock_index)\n{\n\tstruct kernel_ethtool_ts_info info = { };\n\tint num = 0;\n\tint ret;\n\n\trcu_read_lock();\n\tret = __ethtool_get_ts_info(dev, &info);\n\trcu_read_unlock();\n\n\tif (!ret)\n\t\tnum = ptp_get_vclocks_index(info.phc_index, vclock_index);\n\n\treturn num;\n}\n",
+          "before": "\n\thwprov = rtnl_dereference(dev->hwprov);\n\t/* No provider specified, use default behavior */\n\tif (!hwprov) {\n\t\tconst struct ethtool_ops *ops = dev->ethtool_ops;\n\t\tstruct phy_device *phydev = dev->phydev;\n\t\tint err = 0;\n\n\t\tethtool_init_tsinfo(info);\n\t\tif (phy_is_default_hwtstamp(phydev) &&\n\t\t    phy_has_tsinfo(phydev))\n\t\t\terr = phy_ts_info(phydev, info);\n\t\telse if (ops->get_ts_info)\n\t\t\terr = ops->get_ts_info(dev, info);\n\n\t\tinfo->so_timestamping |= SOF_TIMESTAMPING_RX_SOFTWARE |\n\t\t\t\t\t SOF_TIMESTAMPING_SOFTWARE;\n\n\t\treturn err;\n\t}\n\n\treturn ethtool_get_ts_info_by_phc(dev, info, &hwprov->desc);\n}\n\nbool net_support_hwtstamp_qualifier(struct net_device *dev,\n\t\t\t\t    enum hwtstamp_provider_qualifier qualifier)\n{\n\tconst struct ethtool_ops *ops = dev->ethtool_ops;\n\n\tif (!ops)\n\t\treturn false;\n\n\t/* Return true with precise qualifier and with NIC without\n\t * qualifier description to not break the old behavior.\n\t */\n\tif (!ops->supported_hwtstamp_qualifiers &&\n\t    qualifier == HWTSTAMP_PROVIDER_QUALIFIER_PRECISE)\n\t\treturn true;\n\n\tif (ops->supported_hwtstamp_qualifiers & BIT(qualifier))\n\t\treturn true;\n\n\treturn false;\n}\n\nint ethtool_get_phc_vclocks(struct net_device *dev, int **vclock_index)\n{\n\tstruct kernel_ethtool_ts_info info = { };\n\tint num = 0;\n\n\tif (!__ethtool_get_ts_info(dev, &info))\n\t\tnum = ptp_get_vclocks_index(info.phc_index, vclock_index);\n\n\treturn num;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ethtool/common.c\n+++ /linux/net/ethtool/common.c\n@@ -873 +873 @@\n-\thwprov = rtnl_dereference(dev->hwprov);\n+\thwprov = rcu_dereference_rtnl(dev->hwprov);\n@@ -921,2 +921,7 @@\n-\n-\tif (!__ethtool_get_ts_info(dev, &info))\n+\tint ret;\n+\n+\trcu_read_lock();\n+\tret = __ethtool_get_ts_info(dev, &info);\n+\trcu_read_unlock();\n+\n+\tif (!ret)",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 70",
+          "filename": "net/ethtool/common.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        }
+      ],
+      "end_step": 70,
+      "revision_index": 0,
+      "start_step": 70
+    }
+  ],
+  "success_step": 70
+}

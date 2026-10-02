@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tclean = kmemdup(sb_clean, vstruct_bytes(&sb_clean->field),\n\t\t\tGFP_KERNEL);\n\tmutex_unlock(&c->sb_lock);\n\n\tif (!clean)\n\t\treturn ERR_PTR(-BCH_ERR_ENOMEM_read_superblock_clean);\n\n\tret = bch2_sb_clean_validate_late(c, clean, READ);\n\tif (ret) {\n\t\tkfree(clean);\n\t\treturn ERR_PTR(ret);\n\t}\n\n\treturn clean;\n",
+          "before": "\tclean = kmemdup(sb_clean, vstruct_bytes(&sb_clean->field),\n\t\t\tGFP_KERNEL);\n\tif (!clean) {\n\t\tmutex_unlock(&c->sb_lock);\n\t\treturn ERR_PTR(-BCH_ERR_ENOMEM_read_superblock_clean);\n\t}\n\n\tret = bch2_sb_clean_validate_late(c, clean, READ);\n\tif (ret) {\n\t\tkfree(clean);\n\t\tmutex_unlock(&c->sb_lock);\n\t\treturn ERR_PTR(ret);\n\t}\n\n\tmutex_unlock(&c->sb_lock);\n\n\treturn clean;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-clean.c b/fs/bcachefs/sb-clean.c\nindex 005275281804..535b4795758a 100644\n--- a/fs/bcachefs/sb-clean.c\n+++ b/fs/bcachefs/sb-clean.c\n@@ -160,20 +160,17 @@ struct bch_sb_field_clean *bch2_read_superblock_clean(struct bch_fs *c)\n \n \tclean = kmemdup(sb_clean, vstruct_bytes(&sb_clean->field),\n \t\t\tGFP_KERNEL);\n-\tif (!clean) {\n-\t\tmutex_unlock(&c->sb_lock);\n+\tmutex_unlock(&c->sb_lock);\n+\n+\tif (!clean)\n \t\treturn ERR_PTR(-BCH_ERR_ENOMEM_read_superblock_clean);\n-\t}\n \n \tret = bch2_sb_clean_validate_late(c, clean, READ);\n \tif (ret) {\n \t\tkfree(clean);\n-\t\tmutex_unlock(&c->sb_lock);\n \t\treturn ERR_PTR(ret);\n \t}\n \n-\tmutex_unlock(&c->sb_lock);\n-\n \treturn clean;\n fsck_err:\n \tmutex_unlock(&c->sb_lock);",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/bcachefs/sb-clean.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 23
+}

@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (link->prog) {\n\t\tsleepable = link->prog->sleepable ||\n\t\t\t    link->type == BPF_LINK_TYPE_RAW_TRACEPOINT;\n\t\t/* detach BPF program, clean up used resources */",
+          "before": "\tif (link->prog) {\n\t\tsleepable = link->prog->sleepable;\n\t\t/* detach BPF program, clean up used resources */",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..18c9d8f8944c 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -3000,7 +3000,8 @@ static void bpf_link_free(struct bpf_link *link)\n \n \tbpf_link_free_id(link->id);\n \tif (link->prog) {\n-\t\tsleepable = link->prog->sleepable;\n+\t\tsleepable = link->prog->sleepable ||\n+\t\t\t    link->type == BPF_LINK_TYPE_RAW_TRACEPOINT;\n \t\t/* detach BPF program, clean up used resources */\n \t\tops->release(link);\n \t\tbpf_prog_put(link->prog);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n\n\tif (link->prog)\n\t\tbpf_prog_put(link->prog);\n\t/* free bpf_link and its containing memory */\n\tlink->ops->dealloc_deferred(link);",
+          "before": "\tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n\n\t/* free bpf_link and its containing memory */\n\tlink->ops->dealloc_deferred(link);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..79d197879ee6 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -2980,6 +2980,8 @@ static void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)\n {\n \tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n \n+\tif (link->prog)\n+\t\tbpf_prog_put(link->prog);\n \t/* free bpf_link and its containing memory */\n \tlink->ops->dealloc_deferred(link);\n }\n@@ -3000,7 +3002,8 @@ static void bpf_link_free(struct bpf_link *link)\n \n \tbpf_link_free_id(link->id);\n \tif (link->prog) {\n-\t\tsleepable = link->prog->sleepable;\n+\t\tsleepable = link->prog->sleepable ||\n+\t\t\t    link->type == BPF_LINK_TYPE_RAW_TRACEPOINT;\n \t\t/* detach BPF program, clean up used resources */\n \t\tops->release(link);\n \t\tbpf_prog_put(link->prog);",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "\t\t/* detach BPF program, clean up used resources */\n\t\tops->release(link);\n\t}",
+          "before": "\t\t/* detach BPF program, clean up used resources */\n\t\tops->release(link);\n\t\tbpf_prog_put(link->prog);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..4e36c356fd1e 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -2980,6 +2980,8 @@ static void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)\n {\n \tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n \n+\tif (link->prog)\n+\t\tbpf_prog_put(link->prog);\n \t/* free bpf_link and its containing memory */\n \tlink->ops->dealloc_deferred(link);\n }\n@@ -3000,10 +3002,10 @@ static void bpf_link_free(struct bpf_link *link)\n \n \tbpf_link_free_id(link->id);\n \tif (link->prog) {\n-\t\tsleepable = link->prog->sleepable;\n+\t\tsleepable = link->prog->sleepable ||\n+\t\t\t    link->type == BPF_LINK_TYPE_RAW_TRACEPOINT;\n \t\t/* detach BPF program, clean up used resources */\n \t\tops->release(link);\n-\t\tbpf_prog_put(link->prog);\n \t}\n \tif (ops->dealloc_deferred) {\n \t\t/* schedule BPF link deallocation; if underlying BPF program",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "\t} else if (ops->dealloc) {\n\t\tif (link->prog)\n\t\t\tbpf_prog_put(link->prog);\n\t\tops->dealloc(link);\n\t}",
+          "before": "\t} else if (ops->dealloc)\n\t\tops->dealloc(link);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..7e844dbcfbfd 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -2980,6 +2980,8 @@ static void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)\n {\n \tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n \n+\tif (link->prog)\n+\t\tbpf_prog_put(link->prog);\n \t/* free bpf_link and its containing memory */\n \tlink->ops->dealloc_deferred(link);\n }\n@@ -3000,10 +3002,10 @@ static void bpf_link_free(struct bpf_link *link)\n \n \tbpf_link_free_id(link->id);\n \tif (link->prog) {\n-\t\tsleepable = link->prog->sleepable;\n+\t\tsleepable = link->prog->sleepable ||\n+\t\t\t    link->type == BPF_LINK_TYPE_RAW_TRACEPOINT;\n \t\t/* detach BPF program, clean up used resources */\n \t\tops->release(link);\n-\t\tbpf_prog_put(link->prog);\n \t}\n \tif (ops->dealloc_deferred) {\n \t\t/* schedule BPF link deallocation; if underlying BPF program\n@@ -3014,8 +3016,11 @@ static void bpf_link_free(struct bpf_link *link)\n \t\t\tcall_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);\n \t\telse\n \t\t\tcall_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);\n-\t} else if (ops->dealloc)\n+\t} else if (ops->dealloc) {\n+\t\tif (link->prog)\n+\t\t\tbpf_prog_put(link->prog);\n \t\tops->dealloc(link);\n+\t}\n }\n \n static void bpf_link_put_deferred(struct work_struct *work)",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 1,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\t} else {\n\t\tif (link->prog)\n\t\t\tbpf_prog_put(link->prog);\n\t\tif (ops->dealloc)\n\t\t\tops->dealloc(link);\n\t}",
+          "before": "\t} else if (ops->dealloc) {\n\t\tif (link->prog)\n\t\t\tbpf_prog_put(link->prog);\n\t\tops->dealloc(link);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c\nindex a8f1808a1ca5..797d383938e9 100644\n--- a/kernel/bpf/syscall.c\n+++ b/kernel/bpf/syscall.c\n@@ -2980,6 +2980,8 @@ static void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)\n {\n \tstruct bpf_link *link = container_of(rcu, struct bpf_link, rcu);\n \n+\tif (link->prog)\n+\t\tbpf_prog_put(link->prog);\n \t/* free bpf_link and its containing memory */\n \tlink->ops->dealloc_deferred(link);\n }\n@@ -3000,10 +3002,10 @@ static void bpf_link_free(struct bpf_link *link)\n \n \tbpf_link_free_id(link->id);\n \tif (link->prog) {\n-\t\tsleepable = link->prog->sleepable;\n+\t\tsleepable = link->prog->sleepable ||\n+\t\t\t    link->type == BPF_LINK_TYPE_RAW_TRACEPOINT;\n \t\t/* detach BPF program, clean up used resources */\n \t\tops->release(link);\n-\t\tbpf_prog_put(link->prog);\n \t}\n \tif (ops->dealloc_deferred) {\n \t\t/* schedule BPF link deallocation; if underlying BPF program\n@@ -3014,8 +3016,12 @@ static void bpf_link_free(struct bpf_link *link)\n \t\t\tcall_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);\n \t\telse\n \t\t\tcall_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);\n-\t} else if (ops->dealloc)\n-\t\tops->dealloc(link);\n+\t} else {\n+\t\tif (link->prog)\n+\t\t\tbpf_prog_put(link->prog);\n+\t\tif (ops->dealloc)\n+\t\t\tops->dealloc(link);\n+\t}\n }\n \n static void bpf_link_put_deferred(struct work_struct *work)",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "kernel/bpf/syscall.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 2,
+      "start_step": 38
+    }
+  ],
+  "success_step": 38
+}

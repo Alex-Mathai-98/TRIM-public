@@ -1,0 +1,120 @@
+diff --git a/kernel/bpf/range_tree.c b/kernel/bpf/range_tree.c
+index f7915ab0a6d3..864ffc9f5c11 100644
+--- a/kernel/bpf/range_tree.c
++++ b/kernel/bpf/range_tree.c
+@@ -5,6 +5,7 @@
+ #include <linux/bpf_mem_alloc.h>
+ #include <linux/bpf.h>
+ #include "range_tree.h"
++#include <linux/preempt.h>
+ 
+ /*
+  * struct range_tree is a data structure used to allocate contiguous memory
+@@ -139,7 +140,9 @@ int range_tree_clear(struct range_tree *rt, u32 start, u32 len)
+ 	u32 last = start + len - 1;
+ 	struct range_node *new_rn;
+ 	struct range_node *rn;
++	int err = 0;
+ 
++	migrate_disable();
+ 	while ((rn = range_it_iter_first(rt, start, last))) {
+ 		if (rn->rn_start < start && rn->rn_last > last) {
+ 			u32 old_last = rn->rn_last;
+@@ -151,8 +154,10 @@ int range_tree_clear(struct range_tree *rt, u32 start, u32 len)
+ 
+ 			/* Add a range */
+ 			new_rn = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));
+-			if (!new_rn)
+-				return -ENOMEM;
++			if (!new_rn) {
++				err = -ENOMEM;
++				goto out;
++			}
+ 			new_rn->rn_start = last + 1;
+ 			new_rn->rn_last = old_last;
+ 			range_it_insert(new_rn, rt);
+@@ -173,7 +178,9 @@ int range_tree_clear(struct range_tree *rt, u32 start, u32 len)
+ 			bpf_mem_free(&bpf_global_ma, rn);
+ 		}
+ 	}
+-	return 0;
++out:
++	migrate_enable();
++	return err;
+ }
+ 
+ /* Is the whole range set ? */
+@@ -195,27 +202,32 @@ int range_tree_set(struct range_tree *rt, u32 start, u32 len)
+ 	u32 last = start + len - 1;
+ 	struct range_node *right;
+ 	struct range_node *left;
+-	int err;
++	int err = 0;
+ 
++	migrate_disable();
+ 	/* Is this whole range already set ? */
+ 	left = range_it_iter_first(rt, start, last);
+ 	if (left && left->rn_start <= start && left->rn_last >= last)
+-		return 0;
++		goto out;
+ 
+ 	/* Clear out everything in the range we want to set. */
+ 	err = range_tree_clear(rt, start, len);
+ 	if (err)
+-		return err;
++		goto out;
+ 
+ 	/* Do we have a left-adjacent range ? */
+ 	left = range_it_iter_first(rt, start - 1, start - 1);
+-	if (left && left->rn_last + 1 != start)
+-		return -EFAULT;
++	if (left && left->rn_last + 1 != start) {
++		err = -EFAULT;
++		goto out;
++	}
+ 
+ 	/* Do we have a right-adjacent range ? */
+ 	right = range_it_iter_first(rt, last + 1, last + 1);
+-	if (right && right->rn_start != last + 1)
+-		return -EFAULT;
++	if (right && right->rn_start != last + 1) {
++		err = -EFAULT;
++		goto out;
++	}
+ 
+ 	if (left && right) {
+ 		/* Combine left and right adjacent ranges */
+@@ -236,23 +248,30 @@ int range_tree_set(struct range_tree *rt, u32 start, u32 len)
+ 		range_it_insert(right, rt);
+ 	} else {
+ 		left = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));
+-		if (!left)
+-			return -ENOMEM;
++		if (!left) {
++			err = -ENOMEM;
++			goto out;
++		}
+ 		left->rn_start = start;
+ 		left->rn_last = last;
+ 		range_it_insert(left, rt);
+ 	}
+-	return 0;
++
++out:
++	migrate_enable();
++	return err;
+ }
+ 
+ void range_tree_destroy(struct range_tree *rt)
+ {
+ 	struct range_node *rn;
+ 
++	migrate_disable();
+ 	while ((rn = range_it_iter_first(rt, 0, -1U))) {
+ 		range_it_remove(rn, rt);
+ 		bpf_mem_free(&bpf_global_ma, rn);
+ 	}
++	migrate_enable();
+ }
+ 
+ void range_tree_init(struct range_tree *rt)

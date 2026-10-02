@@ -1,0 +1,20 @@
+diff --git a/net/rxrpc/sendmsg.c b/net/rxrpc/sendmsg.c
+index c4c8b718cafa..a97740945b63 100644
+--- a/net/rxrpc/sendmsg.c
++++ b/net/rxrpc/sendmsg.c
+@@ -385,6 +385,15 @@ static int rxrpc_send_data(struct rxrpc_sock *rx,
+ 			if (!rxrpc_check_tx_space(call, NULL))
+ 				goto wait_for_space;
+ 
++			/* See if the last packet has already been queued. */
++			if (!call->send_queue && call->tx_queue) {
++				ret = -EPROTO;
++				trace_rxrpc_abort(call->debug_id, rxrpc_sendmsg_late_send,
++						  call->cid, call->call_id, call->rx_consumed,
++						  0, -EPROTO);
++				goto maybe_error;
++			}
++
+ 			/* See if we need to begin/extend the Tx queue. */
+ 			if (!call->send_queue || !((call->send_top + 1) & RXRPC_TXQ_MASK)) {
+ 				ret = rxrpc_alloc_txqueue(sk, call);

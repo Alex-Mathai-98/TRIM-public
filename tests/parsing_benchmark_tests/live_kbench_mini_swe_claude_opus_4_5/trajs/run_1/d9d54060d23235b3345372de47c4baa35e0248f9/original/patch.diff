@@ -1,0 +1,24 @@
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index adc5046fe9dd..fa72a94c6299 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -6468,6 +6468,19 @@ static int __ext4_remount(struct fs_context *fc, struct super_block *sb)
+ 	ext4_apply_options(fc, sb);
+ 	ext4_writepages_up_write(sb, alloc_ctx);
+ 
++	/*
++	 * Check if stripe size is compatible with cluster size.
++	 * This is the same check done during mount.
++	 */
++	if (sbi->s_stripe > 0 && sbi->s_cluster_ratio > 1 &&
++	    sbi->s_stripe % sbi->s_cluster_ratio != 0) {
++		ext4_msg(sb, KERN_WARNING,
++			 "stripe (%lu) is not aligned with cluster size (%u), "
++			 "stripe is disabled",
++			 sbi->s_stripe, sbi->s_cluster_ratio);
++		sbi->s_stripe = 0;
++	}
++
+ 	if ((old_opts.s_mount_opt & EXT4_MOUNT_JOURNAL_CHECKSUM) ^
+ 	    test_opt(sb, JOURNAL_CHECKSUM)) {
+ 		ext4_msg(sb, KERN_ERR, "changing journal_checksum "

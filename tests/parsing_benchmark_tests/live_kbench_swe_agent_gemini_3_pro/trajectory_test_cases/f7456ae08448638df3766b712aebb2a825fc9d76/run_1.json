@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "/*\n * Trace calls must be in a separate file, as otherwise there's a circular\n * dependency between linux/mmap_lock.h and trace/events/mmap_lock.h.\n *\n * NOTE: mmap_lock tracepoints are safe to be called from atomic context.\n */",
+          "before": "/*\n * Trace calls must be in a separate file, as otherwise there's a circular\n * dependency between linux/mmap_lock.h and trace/events/mmap_lock.h.\n */",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mmap_lock.c b/mm/mmap_lock.c\nindex e7dbaf96aa17..690bd30bf748 100644\n--- a/mm/mmap_lock.c\n+++ b/mm/mmap_lock.c\n@@ -21,6 +21,8 @@ EXPORT_TRACEPOINT_SYMBOL(mmap_lock_released);\n /*\n  * Trace calls must be in a separate file, as otherwise there's a circular\n  * dependency between linux/mmap_lock.h and trace/events/mmap_lock.h.\n+ *\n+ * NOTE: mmap_lock tracepoints are safe to be called from atomic context.\n  */\n \n void __mmap_lock_do_trace_start_locking(struct mm_struct *mm, bool write)",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "mm/mmap_lock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "/*\n * Trace calls must be in a separate file, as otherwise there's a circular\n * dependency between linux/mmap_lock.h and trace/events/mmap_lock.h.\n */",
+          "before": "/*\n * Trace calls must be in a separate file, as otherwise there's a circular\n * dependency between linux/mmap_lock.h and trace/events/mmap_lock.h.\n *\n * NOTE: mmap_lock tracepoints are safe to be called from atomic context.\n */",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "mm/mmap_lock.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        },
+        {
+          "after": "\tinode->i_private = device;\n\tbinder_add_device(device);\n\td_instantiate(dentry, inode);\n\tfsnotify_create(root->d_inode, dentry);\n\tinode_unlock(d_inode(root));\n\n\treturn 0;",
+          "before": "\tinode->i_private = device;\n\td_instantiate(dentry, inode);\n\tfsnotify_create(root->d_inode, dentry);\n\tinode_unlock(d_inode(root));\n\n\tbinder_add_device(device);\n\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binderfs.c b/drivers/android/binderfs.c\nindex bc6bae76ccaf..2099e769b895 100644\n--- a/drivers/android/binderfs.c\n+++ b/drivers/android/binderfs.c\n@@ -203,12 +203,11 @@ static int binderfs_binder_device_create(struct inode *ref_inode,\n \t}\n \n \tinode->i_private = device;\n+\tbinder_add_device(device);\n \td_instantiate(dentry, inode);\n \tfsnotify_create(root->d_inode, dentry);\n \tinode_unlock(d_inode(root));\n \n-\tbinder_add_device(device);\n-\n \treturn 0;\n \n err:",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "drivers/android/binderfs.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 1,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "static DEFINE_MUTEX(binder_devices_lock);\n\nvoid binder_add_device(struct binder_device *device)\n{\n\tmutex_lock(&binder_devices_lock);\n\thlist_add_head(&device->hlist, &binder_devices);\n\tmutex_unlock(&binder_devices_lock);\n}\n\nvoid binder_remove_device(struct binder_device *device)\n{\n\tmutex_lock(&binder_devices_lock);\n\thlist_del(&device->hlist);\n\tmutex_unlock(&binder_devices_lock);\n}",
+          "before": "void binder_add_device(struct binder_device *device)\n{\n\thlist_add_head(&device->hlist, &binder_devices);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binder.c b/drivers/android/binder.c\nindex 76052006bd87..9b657b8388c7 100644\n--- a/drivers/android/binder.c\n+++ b/drivers/android/binder.c\n@@ -6927,9 +6927,20 @@ const struct binder_debugfs_entry binder_debugfs_entries[] = {\n \t{} /* terminator */\n };\n \n+static DEFINE_MUTEX(binder_devices_lock);\n+\n void binder_add_device(struct binder_device *device)\n {\n+\tmutex_lock(&binder_devices_lock);\n \thlist_add_head(&device->hlist, &binder_devices);\n+\tmutex_unlock(&binder_devices_lock);\n+}\n+\n+void binder_remove_device(struct binder_device *device)\n+{\n+\tmutex_lock(&binder_devices_lock);\n+\thlist_del(&device->hlist);\n+\tmutex_unlock(&binder_devices_lock);\n }\n \n static int __init init_binder_device(const char *name)\ndiff --git a/drivers/android/binderfs.c b/drivers/android/binderfs.c\nindex bc6bae76ccaf..2099e769b895 100644\n--- a/drivers/android/binderfs.c\n+++ b/drivers/android/binderfs.c\n@@ -203,12 +203,11 @@ static int binderfs_binder_device_create(struct inode *ref_inode,\n \t}\n \n \tinode->i_private = device;\n+\tbinder_add_device(device);\n \td_instantiate(dentry, inode);\n \tfsnotify_create(root->d_inode, dentry);\n \tinode_unlock(d_inode(root));\n \n-\tbinder_add_device(device);\n-\n \treturn 0;\n \n err:",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "drivers/android/binder.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        },
+        {
+          "after": "void binder_add_device(struct binder_device *device);\nvoid binder_remove_device(struct binder_device *device);",
+          "before": "void binder_add_device(struct binder_device *device);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binder.c b/drivers/android/binder.c\nindex 76052006bd87..9b657b8388c7 100644\n--- a/drivers/android/binder.c\n+++ b/drivers/android/binder.c\n@@ -6927,9 +6927,20 @@ const struct binder_debugfs_entry binder_debugfs_entries[] = {\n \t{} /* terminator */\n };\n \n+static DEFINE_MUTEX(binder_devices_lock);\n+\n void binder_add_device(struct binder_device *device)\n {\n+\tmutex_lock(&binder_devices_lock);\n \thlist_add_head(&device->hlist, &binder_devices);\n+\tmutex_unlock(&binder_devices_lock);\n+}\n+\n+void binder_remove_device(struct binder_device *device)\n+{\n+\tmutex_lock(&binder_devices_lock);\n+\thlist_del(&device->hlist);\n+\tmutex_unlock(&binder_devices_lock);\n }\n \n static int __init init_binder_device(const char *name)\ndiff --git a/drivers/android/binder_internal.h b/drivers/android/binder_internal.h\nindex e4eb8357989c..74b9a6d994c3 100644\n--- a/drivers/android/binder_internal.h\n+++ b/drivers/android/binder_internal.h\n@@ -588,5 +588,6 @@ struct binder_object {\n  * Not reentrant as the list is not protected by any locks\n  */\n void binder_add_device(struct binder_device *device);\n+void binder_remove_device(struct binder_device *device);\n \n #endif /* _LINUX_BINDER_INTERNAL_H */\ndiff --git a/drivers/android/binderfs.c b/drivers/android/binderfs.c\nindex bc6bae76ccaf..2099e769b895 100644\n--- a/drivers/android/binderfs.c\n+++ b/drivers/android/binderfs.c\n@@ -203,12 +203,11 @@ static int binderfs_binder_device_create(struct inode *ref_inode,\n \t}\n \n \tinode->i_private = device;\n+\tbinder_add_device(device);\n \td_instantiate(dentry, inode);\n \tfsnotify_create(root->d_inode, dentry);\n \tinode_unlock(d_inode(root));\n \n-\tbinder_add_device(device);\n-\n \treturn 0;\n \n err:",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "drivers/android/binder_internal.h",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        },
+        {
+          "after": "\tif (refcount_dec_and_test(&device->ref)) {\n\t\tbinder_remove_device(device);\n\t\tkfree(device->context.name);\n\t\tkfree(device);\n\t}",
+          "before": "\tif (refcount_dec_and_test(&device->ref)) {\n\t\tkfree(device->context.name);\n\t\tkfree(device);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/android/binder.c b/drivers/android/binder.c\nindex 76052006bd87..9b657b8388c7 100644\n--- a/drivers/android/binder.c\n+++ b/drivers/android/binder.c\n@@ -6927,9 +6927,20 @@ const struct binder_debugfs_entry binder_debugfs_entries[] = {\n \t{} /* terminator */\n };\n \n+static DEFINE_MUTEX(binder_devices_lock);\n+\n void binder_add_device(struct binder_device *device)\n {\n+\tmutex_lock(&binder_devices_lock);\n \thlist_add_head(&device->hlist, &binder_devices);\n+\tmutex_unlock(&binder_devices_lock);\n+}\n+\n+void binder_remove_device(struct binder_device *device)\n+{\n+\tmutex_lock(&binder_devices_lock);\n+\thlist_del(&device->hlist);\n+\tmutex_unlock(&binder_devices_lock);\n }\n \n static int __init init_binder_device(const char *name)\ndiff --git a/drivers/android/binder_internal.h b/drivers/android/binder_internal.h\nindex e4eb8357989c..74b9a6d994c3 100644\n--- a/drivers/android/binder_internal.h\n+++ b/drivers/android/binder_internal.h\n@@ -588,5 +588,6 @@ struct binder_object {\n  * Not reentrant as the list is not protected by any locks\n  */\n void binder_add_device(struct binder_device *device);\n+void binder_remove_device(struct binder_device *device);\n \n #endif /* _LINUX_BINDER_INTERNAL_H */\ndiff --git a/drivers/android/binderfs.c b/drivers/android/binderfs.c\nindex bc6bae76ccaf..c5fba67c9ae5 100644\n--- a/drivers/android/binderfs.c\n+++ b/drivers/android/binderfs.c\n@@ -203,12 +203,11 @@ static int binderfs_binder_device_create(struct inode *ref_inode,\n \t}\n \n \tinode->i_private = device;\n+\tbinder_add_device(device);\n \td_instantiate(dentry, inode);\n \tfsnotify_create(root->d_inode, dentry);\n \tinode_unlock(d_inode(root));\n \n-\tbinder_add_device(device);\n-\n \treturn 0;\n \n err:\n@@ -274,6 +273,7 @@ static void binderfs_evict_inode(struct inode *inode)\n \tmutex_unlock(&binderfs_minors_mutex);\n \n \tif (refcount_dec_and_test(&device->ref)) {\n+\t\tbinder_remove_device(device);\n \t\tkfree(device->context.name);\n \t\tkfree(device);\n \t}",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "drivers/android/binderfs.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 2,
+      "start_step": 37
+    }
+  ],
+  "success_step": 40
+}

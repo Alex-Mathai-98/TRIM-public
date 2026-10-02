@@ -1,0 +1,114 @@
+diff --git a/fs/ocfs2/extent_map.c b/fs/ocfs2/extent_map.c
+index 930150ed5db1..4df6d34cc679 100644
+--- a/fs/ocfs2/extent_map.c
++++ b/fs/ocfs2/extent_map.c
+@@ -12,6 +12,7 @@
+ #include <linux/slab.h>
+ #include <linux/types.h>
+ #include <linux/fiemap.h>
++#include <linux/pagemap.h>
+ 
+ #include <cluster/masklog.h>
+ 
+@@ -751,15 +752,23 @@ int ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 	u64 len_bytes, phys_bytes, virt_bytes;
+ 	struct buffer_head *di_bh = NULL;
+ 	struct ocfs2_extent_rec rec;
++	struct fiemap_extent *ext_buf;
++	int ext_count = 0, i;
++#define OCFS2_FIEMAP_BUFFER_SIZE 32
++
++	ext_buf = kcalloc(OCFS2_FIEMAP_BUFFER_SIZE, sizeof(struct fiemap_extent),
++			  GFP_KERNEL);
++	if (!ext_buf)
++		return -ENOMEM;
+ 
+ 	ret = fiemap_prep(inode, fieinfo, map_start, &map_len, 0);
+ 	if (ret)
+-		return ret;
++		goto out_free;
+ 
+ 	ret = ocfs2_inode_lock(inode, &di_bh, 0);
+ 	if (ret) {
+ 		mlog_errno(ret);
+-		goto out;
++		goto out_free;
+ 	}
+ 
+ 	down_read(&OCFS2_I(inode)->ip_alloc_sem);
+@@ -803,16 +812,42 @@ int ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		phys_bytes = le64_to_cpu(rec.e_blkno) << osb->sb->s_blocksize_bits;
+ 		virt_bytes = (u64)le32_to_cpu(rec.e_cpos) << osb->s_clustersize_bits;
+ 
+-		ret = fiemap_fill_next_extent(fieinfo, virt_bytes, phys_bytes,
+-					      len_bytes, fe_flags);
+-		if (ret)
+-			break;
++		ext_buf[ext_count].fe_physical = phys_bytes;
++		ext_buf[ext_count].fe_logical = virt_bytes;
++		ext_buf[ext_count].fe_length = len_bytes;
++		ext_buf[ext_count].fe_flags = fe_flags;
++		ext_count++;
+ 
+ 		cpos = le32_to_cpu(rec.e_cpos)+ le16_to_cpu(rec.e_leaf_clusters);
+-	}
+ 
+-	if (ret > 0)
+-		ret = 0;
++		if (ext_count >= OCFS2_FIEMAP_BUFFER_SIZE) {
++			brelse(di_bh);
++			di_bh = NULL;
++			up_read(&OCFS2_I(inode)->ip_alloc_sem);
++			ocfs2_inode_unlock(inode, 0);
++
++			for (i = 0; i < ext_count; i++) {
++				ret = fiemap_fill_next_extent(fieinfo,
++							      ext_buf[i].fe_logical,
++							      ext_buf[i].fe_physical,
++							      ext_buf[i].fe_length,
++							      ext_buf[i].fe_flags);
++				if (ret)
++					break;
++			}
++			ext_count = 0;
++
++			if (ret)
++				goto out_free;
++
++			ret = ocfs2_inode_lock(inode, &di_bh, 0);
++			if (ret) {
++				mlog_errno(ret);
++				goto out_free;
++			}
++			down_read(&OCFS2_I(inode)->ip_alloc_sem);
++		}
++	}
+ 
+ out_unlock:
+ 	brelse(di_bh);
+@@ -820,8 +855,24 @@ int ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 	up_read(&OCFS2_I(inode)->ip_alloc_sem);
+ 
+ 	ocfs2_inode_unlock(inode, 0);
+-out:
+ 
++	if (ext_count > 0 && ret == 0) {
++		for (i = 0; i < ext_count; i++) {
++			ret = fiemap_fill_next_extent(fieinfo,
++						      ext_buf[i].fe_logical,
++						      ext_buf[i].fe_physical,
++						      ext_buf[i].fe_length,
++						      ext_buf[i].fe_flags);
++			if (ret)
++				break;
++		}
++	}
++
++	if (ret > 0)
++		ret = 0;
++
++out_free:
++	kfree(ext_buf);
+ 	return ret;
+ }
+ 

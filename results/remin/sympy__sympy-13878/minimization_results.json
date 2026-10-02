@@ -1,0 +1,314 @@
+{
+  "bug_id": "sympy__sympy-13878",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "from sympy import (log, sqrt, pi, S, Dummy, Interval, sympify, gamma,\n                   Piecewise, And, Eq, binomial, factorial, Sum, floor, Abs,\n                   Lambda, Basic, lowergamma, erf, erfc, I)\nfrom sympy import beta as beta_fn\nfrom sympy import cos, exp, besseli",
+        "after": "from sympy import (log, sqrt, pi, S, Dummy, Interval, sympify, gamma,\n                   Piecewise, And, Eq, binomial, factorial, Sum, floor, Abs,\n                   Lambda, Basic, lowergamma, erf, erfc, I, uppergamma, atan, asin)\nfrom sympy import beta as beta_fn\nfrom sympy import cos, exp, besseli, hyper",
+        "explanation": "classic_swe step 28 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "class ArcsinDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    def pdf(self, x):\n        return 1/(pi*sqrt((x - self.a)*(self.b - x)))",
+        "after": "class ArcsinDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    @property\n    def set(self):\n        return Interval(self.a, self.b)\n\n    def pdf(self, x):\n        return 1/(pi*sqrt((x - self.a)*(self.b - x)))\n\n    def _cdf(self, x):\n        a, b = self.a, self.b\n        return Piecewise(\n            (S.Zero, x < a),\n            (S(2)/pi * asin(sqrt((x - a)/(b - a))), And(a <= x, x <= b)),\n            (S.One, x > b)\n        )",
+        "explanation": "classic_swe step 30 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "class DagumDistribution(SingleContinuousDistribution):\n    _argnames = ('p', 'a', 'b')\n\n    def pdf(self, x):\n        p, a, b = self.p, self.a, self.b\n        return a*p/x*((x/b)**(a*p)/(((x/b)**a + 1)**(p + 1)))",
+        "after": "class DagumDistribution(SingleContinuousDistribution):\n    _argnames = ('p', 'a', 'b')\n\n    @property\n    def set(self):\n        return Interval(0, oo)\n\n    def pdf(self, x):\n        p, a, b = self.p, self.a, self.b\n        return a*p/x*((x/b)**(a*p)/(((x/b)**a + 1)**(p + 1)))\n\n    def _cdf(self, x):\n        p, a, b = self.p, self.a, self.b\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One - (S.One + (x/b)**a)**(-p), x > 0)\n        )",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "    def pdf(self, x):\n        a, b = self.a, self.b\n        return b**a/gamma(a) * x**(-a-1) * exp(-b/x)",
+        "after": "    def pdf(self, x):\n        a, b = self.a, self.b\n        return b**a/gamma(a) * x**(-a-1) * exp(-b/x)\n\n    def _cdf(self, x):\n        a, b = self.a, self.b\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (uppergamma(a, b/x) / gamma(a), x > 0)\n        )",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "    def pdf(self, x):\n        a, s, m = self.a, self.s, self.m\n        return a/s * ((x-m)/s)**(-1-a) * exp(-((x-m)/s)**(-a))",
+        "after": "    def pdf(self, x):\n        a, s, m = self.a, self.s, self.m\n        return a/s * ((x-m)/s)**(-1-a) * exp(-((x-m)/s)**(-a))\n\n    def _cdf(self, x):\n        a, s, m = self.a, self.s, self.m\n        return Piecewise(\n            (S.Zero, x <= m),\n            (exp(-((x-m)/s)**(-a)), x > m)\n        )",
+        "explanation": "classic_swe step 40 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "class KumaraswamyDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    set = Interval(0, oo)\n\n    @staticmethod\n    def check(a, b):\n        _value_check(a > 0, \"a must be positive\")\n        _value_check(b > 0, \"b must be positive\")\n\n    def pdf(self, x):\n        a, b = self.a, self.b\n        return a * b * x**(a-1) * (1-x**a)**(b-1)",
+        "after": "class KumaraswamyDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    set = Interval(0, 1)\n\n    @staticmethod\n    def check(a, b):\n        _value_check(a > 0, \"a must be positive\")\n        _value_check(b > 0, \"b must be positive\")\n\n    def pdf(self, x):\n        a, b = self.a, self.b\n        return a * b * x**(a-1) * (1-x**a)**(b-1)\n\n    def _cdf(self, x):\n        a, b = self.a, self.b\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One - (S.One - x**a)**b, And(x > 0, x < 1)),\n            (S.One, x >= 1)\n        )",
+        "explanation": "classic_swe step 44 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "    def pdf(self, x):\n        mu, omega = self.mu, self.omega\n        return 2*mu**mu/(gamma(mu)*omega**mu)*x**(2*mu - 1)*exp(-mu/omega*x**2)",
+        "after": "    def pdf(self, x):\n        mu, omega = self.mu, self.omega\n        return 2*mu**mu/(gamma(mu)*omega**mu)*x**(2*mu - 1)*exp(-mu/omega*x**2)\n\n    def _cdf(self, x):\n        mu, omega = self.mu, self.omega\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (lowergamma(mu, mu*x**2/omega) / gamma(mu), x > 0)\n        )",
+        "explanation": "classic_swe step 50 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "    def pdf(self, x):\n        nu = self.nu\n        return 1/(sqrt(nu)*beta_fn(S(1)/2, nu/2))*(1 + x**2/nu)**(-(nu + 1)/2)",
+        "after": "    def pdf(self, x):\n        nu = self.nu\n        return 1/(sqrt(nu)*beta_fn(S(1)/2, nu/2))*(1 + x**2/nu)**(-(nu + 1)/2)\n\n    def _cdf(self, x):\n        nu = self.nu\n        return Piecewise(\n            (S.Half + x*gamma((nu + 1)/2)/(sqrt(pi*nu)*gamma(nu/2)) * \n             hyper([S.Half, (nu + 1)/2], [S(3)/2], -x**2/nu), True)\n        )",
+        "explanation": "classic_swe step 52 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/stats/crv_types.py",
+        "before": "    def pdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return 1/factorial(\n            n - 1)*Sum((-1)**k*binomial(n, k)*(x - k)**(n - 1), (k, 0, floor(x)))",
+        "after": "    def pdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return 1/factorial(\n            n - 1)*Sum((-1)**k*binomial(n, k)*(x - k)**(n - 1), (k, 0, floor(x)))\n\n    def _cdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One/factorial(n)*Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x))), \n             And(x > 0, x < n)),\n            (S.One, x >= n)\n        )",
+        "explanation": "classic_swe step 54 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/stats/crv_types.py b/sympy/stats/crv_types.py\nindex fff7da80ae..0b3d3d6e82 100644\n--- a/sympy/stats/crv_types.py\n+++ b/sympy/stats/crv_types.py\n@@ -47,9 +47,9 @@\n \n from sympy import (log, sqrt, pi, S, Dummy, Interval, sympify, gamma,\n                    Piecewise, And, Eq, binomial, factorial, Sum, floor, Abs,\n-                   Lambda, Basic, lowergamma, erf, erfc, I)\n+                   Lambda, Basic, lowergamma, erf, erfc, I, uppergamma, atan, asin)\n from sympy import beta as beta_fn\n-from sympy import cos, exp, besseli\n+from sympy import cos, exp, besseli, hyper\n from sympy.stats.crv import (SingleContinuousPSpace, SingleContinuousDistribution,\n         ContinuousDistributionHandmade)\n from sympy.stats.rv import _value_check\n@@ -150,9 +150,21 @@ def rv(symbol, cls, args):\n class ArcsinDistribution(SingleContinuousDistribution):\n     _argnames = ('a', 'b')\n \n+    @property\n+    def set(self):\n+        return Interval(self.a, self.b)\n+\n     def pdf(self, x):\n         return 1/(pi*sqrt((x - self.a)*(self.b - x)))\n \n+    def _cdf(self, x):\n+        a, b = self.a, self.b\n+        return Piecewise(\n+            (S.Zero, x < a),\n+            (S(2)/pi * asin(sqrt((x - a)/(b - a))), And(a <= x, x <= b)),\n+            (S.One, x > b)\n+        )\n+\n def Arcsin(name, a=0, b=1):\n     r\"\"\"\n     Create a Continuous Random Variable with an arcsin distribution.\n@@ -666,10 +678,21 @@ def ChiSquared(name, k):\n class DagumDistribution(SingleContinuousDistribution):\n     _argnames = ('p', 'a', 'b')\n \n+    @property\n+    def set(self):\n+        return Interval(0, oo)\n+\n     def pdf(self, x):\n         p, a, b = self.p, self.a, self.b\n         return a*p/x*((x/b)**(a*p)/(((x/b)**a + 1)**(p + 1)))\n \n+    def _cdf(self, x):\n+        p, a, b = self.p, self.a, self.b\n+        return Piecewise(\n+            (S.Zero, x <= 0),\n+            (S.One - (S.One + (x/b)**a)**(-p), x > 0)\n+        )\n+\n \n def Dagum(name, p, a, b):\n     r\"\"\"\n@@ -1042,6 +1065,13 @@ def pdf(self, x):\n         a, s, m = self.a, self.s, self.m\n         return a/s * ((x-m)/s)**(-1-a) * exp(-((x-m)/s)**(-a))\n \n+    def _cdf(self, x):\n+        a, s, m = self.a, self.s, self.m\n+        return Piecewise(\n+            (S.Zero, x <= m),\n+            (exp(-((x-m)/s)**(-a)), x > m)\n+        )\n+\n def Frechet(name, a, s=1, m=0):\n     r\"\"\"\n     Create a continuous random variable with a Frechet distribution.\n@@ -1200,6 +1230,13 @@ def pdf(self, x):\n         a, b = self.a, self.b\n         return b**a/gamma(a) * x**(-a-1) * exp(-b/x)\n \n+    def _cdf(self, x):\n+        a, b = self.a, self.b\n+        return Piecewise(\n+            (S.Zero, x <= 0),\n+            (uppergamma(a, b/x) / gamma(a), x > 0)\n+        )\n+\n def GammaInverse(name, a, b):\n     r\"\"\"\n     Create a continuous random variable with an inverse Gamma distribution.\n@@ -1374,7 +1411,7 @@ def Gompertz(name, b, eta):\n class KumaraswamyDistribution(SingleContinuousDistribution):\n     _argnames = ('a', 'b')\n \n-    set = Interval(0, oo)\n+    set = Interval(0, 1)\n \n     @staticmethod\n     def check(a, b):\n@@ -1385,6 +1422,14 @@ def pdf(self, x):\n         a, b = self.a, self.b\n         return a * b * x**(a-1) * (1-x**a)**(b-1)\n \n+    def _cdf(self, x):\n+        a, b = self.a, self.b\n+        return Piecewise(\n+            (S.Zero, x <= 0),\n+            (S.One - (S.One - x**a)**b, And(x > 0, x < 1)),\n+            (S.One, x >= 1)\n+        )\n+\n def Kumaraswamy(name, a, b):\n     r\"\"\"\n     Create a Continuous Random Variable with a Kumaraswamy distribution.\n@@ -1711,6 +1756,13 @@ def pdf(self, x):\n         mu, omega = self.mu, self.omega\n         return 2*mu**mu/(gamma(mu)*omega**mu)*x**(2*mu - 1)*exp(-mu/omega*x**2)\n \n+    def _cdf(self, x):\n+        mu, omega = self.mu, self.omega\n+        return Piecewise(\n+            (S.Zero, x <= 0),\n+            (lowergamma(mu, mu*x**2/omega) / gamma(mu), x > 0)\n+        )\n+\n \n def Nakagami(name, mu, omega):\n     r\"\"\"\n@@ -2227,6 +2279,13 @@ def pdf(self, x):\n         nu = self.nu\n         return 1/(sqrt(nu)*beta_fn(S(1)/2, nu/2))*(1 + x**2/nu)**(-(nu + 1)/2)\n \n+    def _cdf(self, x):\n+        nu = self.nu\n+        return Piecewise(\n+            (S.Half + x*gamma((nu + 1)/2)/(sqrt(pi*nu)*gamma(nu/2)) * \n+             hyper([S.Half, (nu + 1)/2], [S(3)/2], -x**2/nu), True)\n+        )\n+\n \n def StudentT(name, nu):\n     r\"\"\"\n@@ -2554,6 +2613,16 @@ def pdf(self, x):\n         return 1/factorial(\n             n - 1)*Sum((-1)**k*binomial(n, k)*(x - k)**(n - 1), (k, 0, floor(x)))\n \n+    def _cdf(self, x):\n+        n = self.n\n+        k = Dummy(\"k\")\n+        return Piecewise(\n+            (S.Zero, x <= 0),\n+            (S.One/factorial(n)*Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x))), \n+             And(x > 0, x < n)),\n+            (S.One, x >= n)\n+        )\n+\n \n \n def UniformSum(name, n):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      21,
+      22
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "edit_list_after_file_min": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 15,
+    "greedy_removal_edit_no_crash": 3,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      11,
+      12,
+      13
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      2,
+      3,
+      4,
+      6,
+      7,
+      8,
+      11,
+      12,
+      13
+    ],
+    "edits_after_node_min": 12,
+    "edits_after_file_min": 12,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 14,
+  "minimized_edit_count": 9,
+  "reduction": "14_to_9",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "from sympy import (log, sqrt, pi, S, Dummy, Interval, sympify, gamma,\n                   Piecewise, And, Eq, binomial, factorial, Sum, floor, Abs,\n                   Lambda, Basic, lowergamma, erf, erfc, I)\nfrom sympy import beta as beta_fn\nfrom sympy import cos, exp, besseli",
+          "after": "from sympy import (log, sqrt, pi, S, Dummy, Interval, sympify, gamma,\n                   Piecewise, And, Eq, binomial, factorial, Sum, floor, Abs,\n                   Lambda, Basic, lowergamma, erf, erfc, I, uppergamma, atan, asin)\nfrom sympy import beta as beta_fn\nfrom sympy import cos, exp, besseli, hyper",
+          "explanation": "classic_swe step 28 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "class ArcsinDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    def pdf(self, x):\n        return 1/(pi*sqrt((x - self.a)*(self.b - x)))",
+          "after": "class ArcsinDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    @property\n    def set(self):\n        return Interval(self.a, self.b)\n\n    def pdf(self, x):\n        return 1/(pi*sqrt((x - self.a)*(self.b - x)))\n\n    def _cdf(self, x):\n        a, b = self.a, self.b\n        return Piecewise(\n            (S.Zero, x < a),\n            (S(2)/pi * asin(sqrt((x - a)/(b - a))), And(a <= x, x <= b)),\n            (S.One, x > b)\n        )",
+          "explanation": "classic_swe step 30 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "class DagumDistribution(SingleContinuousDistribution):\n    _argnames = ('p', 'a', 'b')\n\n    def pdf(self, x):\n        p, a, b = self.p, self.a, self.b\n        return a*p/x*((x/b)**(a*p)/(((x/b)**a + 1)**(p + 1)))",
+          "after": "class DagumDistribution(SingleContinuousDistribution):\n    _argnames = ('p', 'a', 'b')\n\n    @property\n    def set(self):\n        return Interval(0, oo)\n\n    def pdf(self, x):\n        p, a, b = self.p, self.a, self.b\n        return a*p/x*((x/b)**(a*p)/(((x/b)**a + 1)**(p + 1)))\n\n    def _cdf(self, x):\n        p, a, b = self.p, self.a, self.b\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One - (S.One + (x/b)**a)**(-p), x > 0)\n        )",
+          "explanation": "classic_swe step 32 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def sample(self):\n        return random.gammavariate(self.k, self.theta)",
+          "after": "    def sample(self):\n        return random.gammavariate(self.k, self.theta)\n\n    def _cdf(self, x):\n        k, theta = self.k, self.theta\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (lowergamma(k, x/theta) / gamma(k), x > 0)\n        )",
+          "explanation": "classic_swe step 34 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def pdf(self, x):\n        a, b = self.a, self.b\n        return b**a/gamma(a) * x**(-a-1) * exp(-b/x)",
+          "after": "    def pdf(self, x):\n        a, b = self.a, self.b\n        return b**a/gamma(a) * x**(-a-1) * exp(-b/x)\n\n    def _cdf(self, x):\n        a, b = self.a, self.b\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (uppergamma(a, b/x) / gamma(a), x > 0)\n        )",
+          "explanation": "classic_swe step 37 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def pdf(self, x):\n        a, s, m = self.a, self.s, self.m\n        return a/s * ((x-m)/s)**(-1-a) * exp(-((x-m)/s)**(-a))",
+          "after": "    def pdf(self, x):\n        a, s, m = self.a, self.s, self.m\n        return a/s * ((x-m)/s)**(-1-a) * exp(-((x-m)/s)**(-a))\n\n    def _cdf(self, x):\n        a, s, m = self.a, self.s, self.m\n        return Piecewise(\n            (S.Zero, x <= m),\n            (exp(-((x-m)/s)**(-a)), x > m)\n        )",
+          "explanation": "classic_swe step 40 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "class KumaraswamyDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    set = Interval(0, oo)\n\n    @staticmethod\n    def check(a, b):\n        _value_check(a > 0, \"a must be positive\")\n        _value_check(b > 0, \"b must be positive\")\n\n    def pdf(self, x):\n        a, b = self.a, self.b\n        return a * b * x**(a-1) * (1-x**a)**(b-1)",
+          "after": "class KumaraswamyDistribution(SingleContinuousDistribution):\n    _argnames = ('a', 'b')\n\n    set = Interval(0, 1)\n\n    @staticmethod\n    def check(a, b):\n        _value_check(a > 0, \"a must be positive\")\n        _value_check(b > 0, \"b must be positive\")\n\n    def pdf(self, x):\n        a, b = self.a, self.b\n        return a * b * x**(a-1) * (1-x**a)**(b-1)\n\n    def _cdf(self, x):\n        a, b = self.a, self.b\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One - (S.One - x**a)**b, And(x > 0, x < 1)),\n            (S.One, x >= 1)\n        )",
+          "explanation": "classic_swe step 44 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "class LaplaceDistribution(SingleContinuousDistribution):\n    _argnames = ('mu', 'b')\n\n    def pdf(self, x):\n        mu, b = self.mu, self.b\n        return 1/(2*b)*exp(-Abs(x - mu)/b)",
+          "after": "class LaplaceDistribution(SingleContinuousDistribution):\n    _argnames = ('mu', 'b')\n\n    def pdf(self, x):\n        mu, b = self.mu, self.b\n        return 1/(2*b)*exp(-Abs(x - mu)/b)\n\n    def _cdf(self, x):\n        mu, b = self.mu, self.b\n        return Piecewise(\n            (S.Half * exp((x - mu)/b), x < mu),\n            (S.One - S.Half * exp(-(x - mu)/b), x >= mu)\n        )",
+          "explanation": "classic_swe step 46 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "class LogisticDistribution(SingleContinuousDistribution):\n    _argnames = ('mu', 's')\n\n    def pdf(self, x):\n        mu, s = self.mu, self.s\n        return exp(-(x - mu)/s)/(s*(1 + exp(-(x - mu)/s))**2)",
+          "after": "class LogisticDistribution(SingleContinuousDistribution):\n    _argnames = ('mu', 's')\n\n    def pdf(self, x):\n        mu, s = self.mu, self.s\n        return exp(-(x - mu)/s)/(s*(1 + exp(-(x - mu)/s))**2)\n\n    def _cdf(self, x):\n        mu, s = self.mu, self.s\n        return S.One / (S.One + exp(-(x - mu)/s))",
+          "explanation": "classic_swe step 48 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def pdf(self, x):\n        mu, omega = self.mu, self.omega\n        return 2*mu**mu/(gamma(mu)*omega**mu)*x**(2*mu - 1)*exp(-mu/omega*x**2)",
+          "after": "    def pdf(self, x):\n        mu, omega = self.mu, self.omega\n        return 2*mu**mu/(gamma(mu)*omega**mu)*x**(2*mu - 1)*exp(-mu/omega*x**2)\n\n    def _cdf(self, x):\n        mu, omega = self.mu, self.omega\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (lowergamma(mu, mu*x**2/omega) / gamma(mu), x > 0)\n        )",
+          "explanation": "classic_swe step 50 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def pdf(self, x):\n        nu = self.nu\n        return 1/(sqrt(nu)*beta_fn(S(1)/2, nu/2))*(1 + x**2/nu)**(-(nu + 1)/2)",
+          "after": "    def pdf(self, x):\n        nu = self.nu\n        return 1/(sqrt(nu)*beta_fn(S(1)/2, nu/2))*(1 + x**2/nu)**(-(nu + 1)/2)\n\n    def _cdf(self, x):\n        nu = self.nu\n        return Piecewise(\n            (S.Half + x*gamma((nu + 1)/2)/(sqrt(pi*nu)*gamma(nu/2)) * \n             hyper([S.Half, (nu + 1)/2], [S(3)/2], -x**2/nu), True)\n        )",
+          "explanation": "classic_swe step 52 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def pdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return 1/factorial(\n            n - 1)*Sum((-1)**k*binomial(n, k)*(x - k)**(n - 1), (k, 0, floor(x)))",
+          "after": "    def pdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return 1/factorial(\n            n - 1)*Sum((-1)**k*binomial(n, k)*(x - k)**(n - 1), (k, 0, floor(x)))\n\n    def _cdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One/factorial(n)*Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x))), \n             And(x > 0, x < n)),\n            (S.One, x >= n)\n        )",
+          "explanation": "classic_swe step 54 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def _cdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (S.One/factorial(n)*Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x))), \n             And(x > 0, x < n)),\n            (S.One, x >= n)\n        )",
+          "after": "    def _cdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        sum_expr = Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x)))\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (sum_expr.doit()/factorial(n), And(x > 0, x < n)),\n            (S.One, x >= n)\n        )",
+          "explanation": "classic_swe step 73 #1"
+        },
+        {
+          "filename": "sympy/stats/crv_types.py",
+          "before": "    def _cdf(self, x):\n        n = self.n\n        k = Dummy(\"k\")\n        sum_expr = Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x)))\n        return Piecewise(\n            (S.Zero, x <= 0),\n            (sum_expr.doit()/factorial(n), And(x > 0, x < n)),\n            (S.One, x >= n)\n        )",
+          "after": "    def _cdf(self, x):\n        n = self.n\n        # For the Irwin-Hall distribution, we use the direct sum formula\n        # but evaluate it more efficiently\n        from sympy import Add\n        \n        def irwin_hall_cdf_sum(x_val, n_val):\n            \"\"\"Compute the Irwin-Hall CDF sum directly\"\"\"\n            if x_val <= 0:\n                return S.Zero\n            if x_val >= n_val:\n                return S.One\n                \n            # Compute sum directly for efficiency\n            result = S.Zero\n            max_k = min(int(floor(x_val)), n_val)\n            for k_val in range(max_k + 1):\n                if x_val - k_val > 0:\n                    term = (-1)**k_val * binomial(n_val, k_val) * (x_val - k_val)**n_val\n                    result += term\n            return result / factorial(n_val)\n        \n        # For symbolic x, we still need the piecewise form\n        k = Dummy(\"k\")\n        sum_expr = Sum((-1)**k*binomial(n, k)*(x - k)**n, (k, 0, floor(x)))\n        \n        return Piecewise(\n            (S.Zero, x <= 0),\n            (sum_expr/factorial(n), And(x > 0, x < n)),\n            (S.One, x >= n)\n        )",
+          "explanation": "classic_swe step 76 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 19,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 19,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/stats/crv_types.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/stats/crv_types.py"
+    ],
+    "gold_files": [
+      "sympy/stats/crv_types.py"
+    ],
+    "minimized_hunks": 10,
+    "gold_hunks": 45,
+    "minimized_added_lines": 72,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 142,
+    "gold_deleted_lines": 14
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,465 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5,
+      6,
+      7
+    ],
+    [
+      8
+    ],
+    [
+      9
+    ],
+    [
+      10
+    ],
+    [
+      11
+    ],
+    [
+      12,
+      13,
+      14
+    ],
+    [
+      15
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (*nplanes) {\n\t\t/*\n\t\t * Check if the number of requested planes match\n\t\t * the number of buffers in the current format. You can't mix that.\n\t\t */\n\t\tif (*nplanes != buffers)\n\t\t\treturn -EINVAL;\n\t\tfor (p = 0; p < buffers; p++) {\n\t\t\tunsigned int size = (tpg_g_line_width(&dev->tpg, p) * h) /\n\t\t\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\t\t\tdev->fmt_cap->data_offset[p];\n\n\t\t\tif (buffers == 1) {\n\t\t\t\tunsigned int plane;\n\n\t\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n\t\t\t\t\tsize += (tpg_g_line_width(&dev->tpg, plane) * h) /\n\t\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n\t\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n\t\t\t}\n\n\t\t\tif (sizes[p] < size)\n\t\t\t\treturn -EINVAL;\n\t\t}\n\t} else {\n\t\tfor (p = 0; p < buffers; p++) {\n\t\t\tsizes[p] = (tpg_g_line_width(&dev->tpg, p) * h) /\n\t\t\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\t\t\tdev->fmt_cap->data_offset[p];\n\n\t\t\tif (buffers == 1) {\n\t\t\t\tunsigned int plane;\n\n\t\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n\t\t\t\t\tsizes[p] += (tpg_g_line_width(&dev->tpg, plane) * h) /\n\t\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n\t\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n\t\t\t}\n\t\t}\n\t}",
+          "before": "\tif (*nplanes) {\n\t\t/*\n\t\t * Check if the number of requested planes match\n\t\t * the number of buffers in the current format. You can't mix that.\n\t\t */\n\t\tif (*nplanes != buffers)\n\t\t\treturn -EINVAL;\n\t\tfor (p = 0; p < buffers; p++) {\n\t\t\tif (sizes[p] < tpg_g_line_width(&dev->tpg, p) * h /\n\t\t\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\t\t\tdev->fmt_cap->data_offset[p])\n\t\t\t\treturn -EINVAL;\n\t\t}\n\t} else {\n\t\tfor (p = 0; p < buffers; p++)\n\t\t\tsizes[p] = (tpg_g_line_width(&dev->tpg, p) * h) /\n\t\t\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\t\t\tdev->fmt_cap->data_offset[p];\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -112 +112 @@\n-\t\t\tif (sizes[p] < tpg_g_line_width(&dev->tpg, p) * h /\n+\t\t\tunsigned int size = (tpg_g_line_width(&dev->tpg, p) * h) /\n@@ -114 +114,12 @@\n-\t\t\t\t\tdev->fmt_cap->data_offset[p])\n+\t\t\t\t\tdev->fmt_cap->data_offset[p];\n+\n+\t\t\tif (buffers == 1) {\n+\t\t\t\tunsigned int plane;\n+\n+\t\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n+\t\t\t\t\tsize += (tpg_g_line_width(&dev->tpg, plane) * h) /\n+\t\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n+\t\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n+\t\t\t}\n+\n+\t\t\tif (sizes[p] < size)\n@@ -118 +129 @@\n-\t\tfor (p = 0; p < buffers; p++)\n+\t\tfor (p = 0; p < buffers; p++) {\n@@ -121,0 +133,10 @@\n+\n+\t\t\tif (buffers == 1) {\n+\t\t\t\tunsigned int plane;\n+\n+\t\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n+\t\t\t\t\tsizes[p] += (tpg_g_line_width(&dev->tpg, plane) * h) /\n+\t\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n+\t\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n+\t\t\t}\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 71",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 71
+        },
+        {
+          "after": "\n\tfor (p = 0; p < buffers; p++) {\n\t\tsize = (tpg_g_line_width(&dev->tpg, p) *\n\t\t\tdev->fmt_cap_rect.height) /\n\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\tdev->fmt_cap->data_offset[p];\n\n\t\tif (buffers == 1) {\n\t\t\tunsigned int plane;\n\n\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n\t\t\t\tsize += (tpg_g_line_width(&dev->tpg, plane) *\n\t\t\t\t\t dev->fmt_cap_rect.height) /\n\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n\t\t}\n\n\t\tif (vb2_plane_size(vb, p) < size) {\n",
+          "before": "\n\tfor (p = 0; p < buffers; p++) {\n\t\tsize = (tpg_g_line_width(&dev->tpg, p) *\n\t\t\tdev->fmt_cap_rect.height) /\n\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\tdev->fmt_cap->data_offset[p];\n\n\t\tif (vb2_plane_size(vb, p) < size) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -178,0 +179,10 @@\n+\n+\t\tif (buffers == 1) {\n+\t\t\tunsigned int plane;\n+\n+\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n+\t\t\t\tsize += (tpg_g_line_width(&dev->tpg, plane) *\n+\t\t\t\t\t dev->fmt_cap_rect.height) /\n+\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n+\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 77",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 77
+        }
+      ],
+      "end_step": 77,
+      "revision_index": 0,
+      "start_step": 71
+    },
+    {
+      "edits": [
+        {
+          "after": "tpg_g_bytesperline",
+          "before": "tpg_g_line_width",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace_multi_per_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 93 sed s #1",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 93
+        },
+        {
+          "after": "\n\tfor (p = 0; p < mp->num_planes; p++) {\n\t\tmp->plane_fmt[p].bytesperline = tpg_g_bytesperline(&dev->tpg, p);\n\t\tmp->plane_fmt[p].sizeimage =\n\t\t\t(tpg_g_bytesperline(&dev->tpg, p) * mp->height) /\n\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\tdev->fmt_cap->data_offset[p];\n\t\tif (mp->num_planes == 1) {\n\t\t\tunsigned int plane;\n\n\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n\t\t\t\tmp->plane_fmt[p].sizeimage +=\n\t\t\t\t\t(tpg_g_bytesperline(&dev->tpg, plane) * mp->height) /\n\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n\t\t}\n\t}\n",
+          "before": "\n\tfor (p = 0; p < mp->num_planes; p++) {\n\t\tmp->plane_fmt[p].bytesperline = tpg_g_bytesperline(&dev->tpg, p);\n\t\tmp->plane_fmt[p].sizeimage =\n\t\t\t(tpg_g_bytesperline(&dev->tpg, p) * mp->height) /\n\t\t\tdev->fmt_cap->vdownsampling[p] +\n\t\t\tdev->fmt_cap->data_offset[p];\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -576,0 +577,9 @@\n+\t\tif (mp->num_planes == 1) {\n+\t\t\tunsigned int plane;\n+\n+\t\t\tfor (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)\n+\t\t\t\tmp->plane_fmt[p].sizeimage +=\n+\t\t\t\t\t(tpg_g_bytesperline(&dev->tpg, plane) * mp->height) /\n+\t\t\t\t\tdev->fmt_cap->vdownsampling[plane] +\n+\t\t\t\t\tdev->fmt_cap->data_offset[plane];\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 97",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 97
+        }
+      ],
+      "end_step": 97,
+      "revision_index": 1,
+      "start_step": 93
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\ttpg_s_fourcc(&dev->tpg, dev->fmt_cap->fourcc);\n\tfor (p = 0; p < tpg_g_buffers(&dev->tpg); p++)\n\t\ttpg_s_bytesperline(&dev->tpg, p, mp->plane_fmt[p].bytesperline);\n\tfor (p = tpg_g_buffers(&dev->tpg); p < tpg_g_planes(&dev->tpg); p++) {\n\t\tunsigned int plane_stride = mp->plane_fmt[0].bytesperline;\n\n\t\tif (p > 0 && dev->fmt_cap->bit_depth[p] != dev->fmt_cap->bit_depth[0])\n\t\t\tplane_stride = (plane_stride * dev->fmt_cap->bit_depth[p]) /\n\t\t\t\t       dev->fmt_cap->bit_depth[0];\n\t\ttpg_s_bytesperline(&dev->tpg, p, plane_stride);\n\t}\n\tdev->field_cap = mp->field;\n",
+          "before": "\n\ttpg_s_fourcc(&dev->tpg, dev->fmt_cap->fourcc);\n\tfor (p = 0; p < tpg_g_buffers(&dev->tpg); p++)\n\t\ttpg_s_bytesperline(&dev->tpg, p, mp->plane_fmt[p].bytesperline);\n\tdev->field_cap = mp->field;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -815,0 +816,8 @@\n+\tfor (p = tpg_g_buffers(&dev->tpg); p < tpg_g_planes(&dev->tpg); p++) {\n+\t\tunsigned int plane_stride = mp->plane_fmt[0].bytesperline;\n+\n+\t\tif (p > 0 && dev->fmt_cap->bit_depth[p] != dev->fmt_cap->bit_depth[0])\n+\t\t\tplane_stride = (plane_stride * dev->fmt_cap->bit_depth[p]) /\n+\t\t\t\t       dev->fmt_cap->bit_depth[0];\n+\t\ttpg_s_bytesperline(&dev->tpg, p, plane_stride);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 124",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 124
+        }
+      ],
+      "end_step": 124,
+      "revision_index": 2,
+      "start_step": 124
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tpr_info(\"vivid_debug: queue_setup p=%u size=%u nplanes=%u buffers=%u\\n\", p, sizes[p], *nplanes, buffers);",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_pattern",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 128 sed /pattern/ a #1",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": "dprintk(dev, 1, \"%s: size\\[%u\\]=%u\\\\n\", __func__, p, sizes\\[p\\]);",
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 128
+        },
+        {
+          "after": "\t\tpr_info(\"vivid_debug: fillbuff p=%u vbuf=%p buf_height=%u stride=%u\\n\", p, vbuf, tpg->buf_height, tpg->bytesperline[p]);",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_before_pattern",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 130 sed /pattern/ i #1",
+          "filename": "drivers/media/test-drivers/vivid/vivid-kthread-cap.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": "tpg_fill_plane_buffer(tpg, std, p, vbuf);",
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 130
+        },
+        {
+          "after": "\n\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf)) {\n\t\t\tpr_info(\"vivid_debug: fillbuff p=%u vbuf=%p buf_height=%u stride=%u\\n\", p, vbuf, tpg->buf_height, tpg->bytesperline[p]);\n\t\t\ttpg_fill_plane_buffer(tpg, vivid_get_std_cap(dev),\n\t\t\t\t\tp, vbuf);\n\t\t}\n",
+          "before": "\n\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf))\n\t\t\ttpg_fill_plane_buffer(tpg, vivid_get_std_cap(dev),\n\t\t\t\t\tp, vbuf);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-kthread-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-kthread-cap.c\n@@ -469 +469,2 @@\n-\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf))\n+\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf)) {\n+\t\t\tpr_info(\"vivid_debug: fillbuff p=%u vbuf=%p buf_height=%u stride=%u\\n\", p, vbuf, tpg->buf_height, tpg->bytesperline[p]);\n@@ -471,0 +473 @@\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 136",
+          "filename": "drivers/media/test-drivers/vivid/vivid-kthread-cap.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 136
+        }
+      ],
+      "end_step": 136,
+      "revision_index": 3,
+      "start_step": 128
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (dev->field_cap == V4L2_FIELD_ALTERNATE)\n\t\ttpg_s_field(&dev->tpg, V4L2_FIELD_TOP, false);\n\telse\n\t\ttpg_s_field(&dev->tpg, dev->field_cap, false);\n",
+          "before": "\n\tif (dev->field_cap == V4L2_FIELD_ALTERNATE)\n\t\ttpg_s_field(&dev->tpg, V4L2_FIELD_TOP, true);\n\telse\n\t\ttpg_s_field(&dev->tpg, dev->field_cap, false);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -827 +827 @@\n-\t\ttpg_s_field(&dev->tpg, V4L2_FIELD_TOP, true);\n+\t\ttpg_s_field(&dev->tpg, V4L2_FIELD_TOP, false);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 144",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 144
+        }
+      ],
+      "end_step": 144,
+      "revision_index": 4,
+      "start_step": 144
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tif (dev->field_cap == V4L2_FIELD_ALTERNATE) {\n\t\tstruct v4l2_rect compose = dev->compose_cap;\n\n\t\tcompose.height /= 2;\n\t\tcompose.top /= 2;\n\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &compose);\n\t} else {\n\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);\n\t}\n\tif (vivid_is_sdtv_cap(dev))\n\t\tdev->tv_field_cap = mp->field;\n",
+          "before": "\n\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);\n\tif (vivid_is_sdtv_cap(dev))\n\t\tdev->tv_field_cap = mp->field;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -830 +830,9 @@\n-\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);\n+\tif (dev->field_cap == V4L2_FIELD_ALTERNATE) {\n+\t\tstruct v4l2_rect compose = dev->compose_cap;\n+\n+\t\tcompose.height /= 2;\n+\t\tcompose.top /= 2;\n+\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &compose);\n+\t} else {\n+\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 150",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 9,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 150
+        }
+      ],
+      "end_step": 150,
+      "revision_index": 5,
+      "start_step": 150
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\tfor (h = 0; h < tpg->compose.height; h++) {\n\t\tunsigned buf_line;\n\n\t\tif (h == 0 && (tpg->compose.height > tpg->buf_height || tpg->compose.height == 64)) {\n             pr_info(\"tpg_debug: loop h=%u compose_h=%u buf_h=%u field_alt=%d stride=%u\\n\",\n                    h, tpg->compose.height, tpg->buf_height, tpg->field_alternate, params.stride);\n        }\n\n\t\tparams.frame_line = tpg_calc_frameline(tpg, src_y, tpg->field);\n\t\tparams.frame_line_next = params.frame_line;\n\t\tbuf_line = tpg_calc_buffer_line(tpg, h, tpg->field);\n\n",
+          "before": "\n\n\tfor (h = 0; h < tpg->compose.height; h++) {\n\t\tunsigned buf_line;\n\n\t\tparams.frame_line = tpg_calc_frameline(tpg, src_y, tpg->field);\n\t\tparams.frame_line_next = params.frame_line;\n\t\tbuf_line = tpg_calc_buffer_line(tpg, h, tpg->field);\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c\n+++ /linux/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c\n@@ -2658,0 +2659,5 @@\n+\t\tif (h == 0 && (tpg->compose.height > tpg->buf_height || tpg->compose.height == 64)) {\n+             pr_info(\"tpg_debug: loop h=%u compose_h=%u buf_h=%u field_alt=%d stride=%u\\n\",\n+                    h, tpg->compose.height, tpg->buf_height, tpg->field_alternate, params.stride);\n+        }\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 161",
+          "filename": "drivers/media/common/v4l2-tpg/v4l2-tpg-core.c",
+          "global_edit_idx": 10,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 161
+        }
+      ],
+      "end_step": 161,
+      "revision_index": 6,
+      "start_step": 161
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\t{\n\t\tstruct v4l2_rect compose = dev->compose_cap;\n\n\t\tif (compose.width > mp->width)\n\t\t\tcompose.width = mp->width;\n\t\tif (compose.height > mp->height)\n\t\t\tcompose.height = mp->height;\n\n\t\tif (dev->field_cap == V4L2_FIELD_ALTERNATE) {\n\t\t\tcompose.height /= 2;\n\t\t\tcompose.top /= 2;\n\t\t}\n\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &compose);\n\t}\n\n",
+          "before": "\n\n\tif (dev->field_cap == V4L2_FIELD_ALTERNATE) {\n\t\tstruct v4l2_rect compose = dev->compose_cap;\n\n\t\tcompose.height /= 2;\n\t\tcompose.top /= 2;\n\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &compose);\n\t} else {\n\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);\n\t}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-vid-cap.c\n@@ -830 +830 @@\n-\tif (dev->field_cap == V4L2_FIELD_ALTERNATE) {\n+\t{\n@@ -833,2 +833,9 @@\n-\t\tcompose.height /= 2;\n-\t\tcompose.top /= 2;\n+\t\tif (compose.width > mp->width)\n+\t\t\tcompose.width = mp->width;\n+\t\tif (compose.height > mp->height)\n+\t\t\tcompose.height = mp->height;\n+\n+\t\tif (dev->field_cap == V4L2_FIELD_ALTERNATE) {\n+\t\t\tcompose.height /= 2;\n+\t\t\tcompose.top /= 2;\n+\t\t}\n@@ -836,2 +842,0 @@\n-\t} else {\n-\t\ttpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 169",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 11,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 169
+        }
+      ],
+      "end_step": 169,
+      "revision_index": 7,
+      "start_step": 169
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\tfor (h = 0; h < tpg->compose.height; h++) {\n\t\tunsigned buf_line;\n\n\t\t/*\n\t\t * If the compose height is greater than the buffer height, then\n\t\t * we can't write to the buffer beyond the buffer height.\n\t\t */\n\t\tif (h >= tpg->buf_height)\n\t\t\tbreak;\n\n\t\tparams.frame_line = tpg_calc_frameline(tpg, src_y, tpg->field);\n\n",
+          "before": "\n\n\tfor (h = 0; h < tpg->compose.height; h++) {\n\t\tunsigned buf_line;\n\n\t\tif (h == 0 && (tpg->compose.height > tpg->buf_height || tpg->compose.height == 64)) {\n             pr_info(\"tpg_debug: loop h=%u compose_h=%u buf_h=%u field_alt=%d stride=%u\\n\",\n                    h, tpg->compose.height, tpg->buf_height, tpg->field_alternate, params.stride);\n        }\n\n\t\tparams.frame_line = tpg_calc_frameline(tpg, src_y, tpg->field);\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c\n+++ /linux/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c\n@@ -2659,4 +2659,6 @@\n-\t\tif (h == 0 && (tpg->compose.height > tpg->buf_height || tpg->compose.height == 64)) {\n-             pr_info(\"tpg_debug: loop h=%u compose_h=%u buf_h=%u field_alt=%d stride=%u\\n\",\n-                    h, tpg->compose.height, tpg->buf_height, tpg->field_alternate, params.stride);\n-        }\n+\t\t/*\n+\t\t * If the compose height is greater than the buffer height, then\n+\t\t * we can't write to the buffer beyond the buffer height.\n+\t\t */\n+\t\tif (h >= tpg->buf_height)\n+\t\t\tbreak;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 185",
+          "filename": "drivers/media/common/v4l2-tpg/v4l2-tpg-core.c",
+          "global_edit_idx": 12,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 185
+        },
+        {
+          "after": "\n\n\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf))\n\t\t\ttpg_fill_plane_buffer(tpg, vivid_get_std_cap(dev),\n\t\t\t\t\tp, vbuf);\n\n",
+          "before": "\n\n\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf)) {\n\t\t\tpr_info(\"vivid_debug: fillbuff p=%u vbuf=%p buf_height=%u stride=%u\\n\", p, vbuf, tpg->buf_height, tpg->bytesperline[p]);\n\t\t\ttpg_fill_plane_buffer(tpg, vivid_get_std_cap(dev),\n\t\t\t\t\tp, vbuf);\n\t\t}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/test-drivers/vivid/vivid-kthread-cap.c\n+++ /linux/drivers/media/test-drivers/vivid/vivid-kthread-cap.c\n@@ -469,2 +469 @@\n-\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf)) {\n-\t\t\tpr_info(\"vivid_debug: fillbuff p=%u vbuf=%p buf_height=%u stride=%u\\n\", p, vbuf, tpg->buf_height, tpg->bytesperline[p]);\n+\t\tif (!out_dev || vivid_copy_buffer(dev, out_dev, p, vbuf, buf))\n@@ -473 +471,0 @@\n-\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 187",
+          "filename": "drivers/media/test-drivers/vivid/vivid-kthread-cap.c",
+          "global_edit_idx": 13,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 187
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_pattern",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 189 sed /pattern/ d #1",
+          "filename": "drivers/media/test-drivers/vivid/vivid-vid-cap.c",
+          "global_edit_idx": 14,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": "pr_info(\"vivid_debug: queue_setup",
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 189
+        }
+      ],
+      "end_step": 189,
+      "revision_index": 8,
+      "start_step": 185
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\t/* Checks if it is possible to show string */\n\tif (y + 16 >= tpg->compose.height || x + 8 >= tpg->compose.width)\n\t\treturn;\n\n\tif (y + 16 >= tpg->buf_height)\n\t\treturn;\n\n\tif (len > (tpg->compose.width - x) / 8)\n\n",
+          "before": "\n\n\t/* Checks if it is possible to show string */\n\tif (y + 16 >= tpg->compose.height || x + 8 >= tpg->compose.width)\n\t\treturn;\n\n\tif (len > (tpg->compose.width - x) / 8)\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c\n+++ /linux/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c\n@@ -2014,0 +2015,3 @@\n+\tif (y + 16 >= tpg->buf_height)\n+\t\treturn;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 203",
+          "filename": "drivers/media/common/v4l2-tpg/v4l2-tpg-core.c",
+          "global_edit_idx": 15,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 203
+        }
+      ],
+      "end_step": 203,
+      "revision_index": 9,
+      "start_step": 203
+    }
+  ],
+  "success_step": 203
+}

@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (size) {\n\t\th->htable = kvcalloc(size, sizeof(*h->htable), GFP_KERNEL);\n\t\tif (!h->htable)\n\t\t\treturn -ENOMEM;\n\t\th->size = size;\n\t}\n\treturn 0;\n}\n\nint __hashtab_insert(struct hashtab *h, struct hashtab_node **dst, void *key,\n\t\t     void *datum)\n{\n\tstruct hashtab_node *newnode;\n\n\tnewnode = kmem_cache_zalloc(hashtab_node_cachep, GFP_KERNEL);\n\tif (!newnode)\n\t\treturn -ENOMEM;\n\tnewnode->key = key;\n\tnewnode->datum = datum;\n\tnewnode->next = *dst;\n\t*dst = newnode;\n\n\th->nel++;\n\treturn 0;\n}\n\nvoid hashtab_destroy(struct hashtab *h)\n{\n\tu32 i;\n\tstruct hashtab_node *cur, *temp;\n\n\tfor (i = 0; i < h->size; i++) {\n\t\tcur = h->htable[i];\n\t\twhile (cur) {\n\t\t\ttemp = cur;\n\t\t\tcur = cur->next;\n\t\t\tkmem_cache_free(hashtab_node_cachep, temp);\n\t\t}\n\t\th->htable[i] = NULL;\n\t}\n\n\tkvfree(h->htable);\n\th->htable = NULL;\n}\n",
+          "before": "\n\tif (size) {\n\t\th->htable = kcalloc(size, sizeof(*h->htable), GFP_KERNEL);\n\t\tif (!h->htable)\n\t\t\treturn -ENOMEM;\n\t\th->size = size;\n\t}\n\treturn 0;\n}\n\nint __hashtab_insert(struct hashtab *h, struct hashtab_node **dst, void *key,\n\t\t     void *datum)\n{\n\tstruct hashtab_node *newnode;\n\n\tnewnode = kmem_cache_zalloc(hashtab_node_cachep, GFP_KERNEL);\n\tif (!newnode)\n\t\treturn -ENOMEM;\n\tnewnode->key = key;\n\tnewnode->datum = datum;\n\tnewnode->next = *dst;\n\t*dst = newnode;\n\n\th->nel++;\n\treturn 0;\n}\n\nvoid hashtab_destroy(struct hashtab *h)\n{\n\tu32 i;\n\tstruct hashtab_node *cur, *temp;\n\n\tfor (i = 0; i < h->size; i++) {\n\t\tcur = h->htable[i];\n\t\twhile (cur) {\n\t\t\ttemp = cur;\n\t\t\tcur = cur->next;\n\t\t\tkmem_cache_free(hashtab_node_cachep, temp);\n\t\t}\n\t\th->htable[i] = NULL;\n\t}\n\n\tkfree(h->htable);\n\th->htable = NULL;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/selinux/ss/hashtab.c\n+++ /linux/security/selinux/ss/hashtab.c\n@@ -43 +43 @@\n-\t\th->htable = kcalloc(size, sizeof(*h->htable), GFP_KERNEL);\n+\t\th->htable = kvcalloc(size, sizeof(*h->htable), GFP_KERNEL);\n@@ -83 +83 @@\n-\tkfree(h->htable);\n+\tkvfree(h->htable);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 25",
+          "filename": "security/selinux/ss/hashtab.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "\n\tmemset(new, 0, sizeof(*new));\n\n\tnew->htable = kvcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL);\n\tif (!new->htable)\n\t\treturn -ENOMEM;\n\n\tnew->size = orig->size;\n\n\tfor (i = 0; i < orig->size; i++) {\n",
+          "before": "\n\tmemset(new, 0, sizeof(*new));\n\n\tnew->htable = kcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL);\n\tif (!new->htable)\n\t\treturn -ENOMEM;\n\n\tnew->size = orig->size;\n\n\tfor (i = 0; i < orig->size; i++) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/selinux/ss/hashtab.c\n+++ /linux/security/selinux/ss/hashtab.c\n@@ -151 +151 @@\n-\tnew->htable = kcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL);\n+\tnew->htable = kvcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 27",
+          "filename": "security/selinux/ss/hashtab.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\n\n\tfor (i = 0; i < new->size; i++) {\n\t\tfor (cur = new->htable[i]; cur; cur = tmp) {\n\t\t\ttmp = cur->next;\n\t\t\tdestroy(cur->key, cur->datum, args);\n\t\t\tkmem_cache_free(hashtab_node_cachep, cur);\n\t\t}\n\t}\n\tkvfree(new->htable);\n\tmemset(new, 0, sizeof(*new));\n\treturn -ENOMEM;\n}\n",
+          "before": "\n\n\tfor (i = 0; i < new->size; i++) {\n\t\tfor (cur = new->htable[i]; cur; cur = tmp) {\n\t\t\ttmp = cur->next;\n\t\t\tdestroy(cur->key, cur->datum, args);\n\t\t\tkmem_cache_free(hashtab_node_cachep, cur);\n\t\t}\n\t}\n\tkfree(new->htable);\n\tmemset(new, 0, sizeof(*new));\n\treturn -ENOMEM;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/selinux/ss/hashtab.c\n+++ /linux/security/selinux/ss/hashtab.c\n@@ -190 +190 @@\n-\tkfree(new->htable);\n+\tkvfree(new->htable);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 29",
+          "filename": "security/selinux/ss/hashtab.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\tif (size) {\n\t\th->htable = kvcalloc(size, sizeof(*h->htable), GFP_KERNEL | __GFP_NOWARN);\n\t\tif (!h->htable)\n\t\t\treturn -ENOMEM;\n\t\th->size = size;\n\t}\n",
+          "before": "\n\n\tif (size) {\n\t\th->htable = kvcalloc(size, sizeof(*h->htable), GFP_KERNEL);\n\t\tif (!h->htable)\n\t\t\treturn -ENOMEM;\n\t\th->size = size;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/selinux/ss/hashtab.c\n+++ /linux/security/selinux/ss/hashtab.c\n@@ -43 +43 @@\n-\t\th->htable = kvcalloc(size, sizeof(*h->htable), GFP_KERNEL);\n+\t\th->htable = kvcalloc(size, sizeof(*h->htable), GFP_KERNEL | __GFP_NOWARN);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 60",
+          "filename": "security/selinux/ss/hashtab.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 60
+        },
+        {
+          "after": "\n\n\tmemset(new, 0, sizeof(*new));\n\n\tnew->htable = kvcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL | __GFP_NOWARN);\n\tif (!new->htable)\n\t\treturn -ENOMEM;\n\n",
+          "before": "\n\n\tmemset(new, 0, sizeof(*new));\n\n\tnew->htable = kvcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL);\n\tif (!new->htable)\n\t\treturn -ENOMEM;\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/selinux/ss/hashtab.c\n+++ /linux/security/selinux/ss/hashtab.c\n@@ -151 +151 @@\n-\tnew->htable = kvcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL);\n+\tnew->htable = kvcalloc(orig->size, sizeof(*new->htable), GFP_KERNEL | __GFP_NOWARN);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 62",
+          "filename": "security/selinux/ss/hashtab.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 62
+        }
+      ],
+      "end_step": 62,
+      "revision_index": 1,
+      "start_step": 60
+    }
+  ],
+  "success_step": 62
+}

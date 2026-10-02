@@ -1,0 +1,104 @@
+{
+  "bug_id": "pydata__xarray-4966",
+  "short_path": [
+    [
+      {
+        "filename": "xarray/coding/variables.py",
+        "before": "            if data.dtype.kind == \"i\":\n                if unsigned == \"true\":\n                    unsigned_dtype = np.dtype(\"u%s\" % data.dtype.itemsize)\n                    transform = partial(np.asarray, dtype=unsigned_dtype)\n                    data = lazy_elemwise_func(data, transform, unsigned_dtype)\n                    if \"_FillValue\" in attrs:\n                        new_fill = unsigned_dtype.type(attrs[\"_FillValue\"])\n                        attrs[\"_FillValue\"] = new_fill\n            else:\n                warnings.warn(\n                    \"variable %r has _Unsigned attribute but is not \"\n                    \"of integer type. Ignoring attribute.\" % name,\n                    SerializationWarning,\n                    stacklevel=3,\n                )",
+        "after": "            if data.dtype.kind == \"i\":\n                if unsigned == \"true\":\n                    unsigned_dtype = np.dtype(\"u%s\" % data.dtype.itemsize)\n                    transform = partial(np.asarray, dtype=unsigned_dtype)\n                    data = lazy_elemwise_func(data, transform, unsigned_dtype)\n                    if \"_FillValue\" in attrs:\n                        new_fill = unsigned_dtype.type(attrs[\"_FillValue\"])\n                        attrs[\"_FillValue\"] = new_fill\n            elif data.dtype.kind == \"u\":\n                if unsigned == \"false\":\n                    signed_dtype = np.dtype(\"i%s\" % data.dtype.itemsize)\n                    transform = partial(np.asarray, dtype=signed_dtype)\n                    data = lazy_elemwise_func(data, transform, signed_dtype)\n                    if \"_FillValue\" in attrs:\n                        new_fill = signed_dtype.type(attrs[\"_FillValue\"])\n                        attrs[\"_FillValue\"] = new_fill\n            else:\n                warnings.warn(\n                    \"variable %r has _Unsigned attribute but is not \"\n                    \"of integer type. Ignoring attribute.\" % name,\n                    SerializationWarning,\n                    stacklevel=3,\n                )",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/xarray/coding/variables.py b/xarray/coding/variables.py\nindex b035ff82..938752c4 100644\n--- a/xarray/coding/variables.py\n+++ b/xarray/coding/variables.py\n@@ -316,6 +316,14 @@ class UnsignedIntegerCoder(VariableCoder):\n                     if \"_FillValue\" in attrs:\n                         new_fill = unsigned_dtype.type(attrs[\"_FillValue\"])\n                         attrs[\"_FillValue\"] = new_fill\n+            elif data.dtype.kind == \"u\":\n+                if unsigned == \"false\":\n+                    signed_dtype = np.dtype(\"i%s\" % data.dtype.itemsize)\n+                    transform = partial(np.asarray, dtype=signed_dtype)\n+                    data = lazy_elemwise_func(data, transform, signed_dtype)\n+                    if \"_FillValue\" in attrs:\n+                        new_fill = signed_dtype.type(attrs[\"_FillValue\"])\n+                        attrs[\"_FillValue\"] = new_fill\n             else:\n                 warnings.warn(\n                     \"variable %r has _Unsigned attribute but is not \"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "xarray/coding/variables.py",
+          "before": "            if data.dtype.kind == \"i\":\n                if unsigned == \"true\":\n                    unsigned_dtype = np.dtype(\"u%s\" % data.dtype.itemsize)\n                    transform = partial(np.asarray, dtype=unsigned_dtype)\n                    data = lazy_elemwise_func(data, transform, unsigned_dtype)\n                    if \"_FillValue\" in attrs:\n                        new_fill = unsigned_dtype.type(attrs[\"_FillValue\"])\n                        attrs[\"_FillValue\"] = new_fill\n            else:\n                warnings.warn(\n                    \"variable %r has _Unsigned attribute but is not \"\n                    \"of integer type. Ignoring attribute.\" % name,\n                    SerializationWarning,\n                    stacklevel=3,\n                )",
+          "after": "            if data.dtype.kind == \"i\":\n                if unsigned == \"true\":\n                    unsigned_dtype = np.dtype(\"u%s\" % data.dtype.itemsize)\n                    transform = partial(np.asarray, dtype=unsigned_dtype)\n                    data = lazy_elemwise_func(data, transform, unsigned_dtype)\n                    if \"_FillValue\" in attrs:\n                        new_fill = unsigned_dtype.type(attrs[\"_FillValue\"])\n                        attrs[\"_FillValue\"] = new_fill\n            elif data.dtype.kind == \"u\":\n                if unsigned == \"false\":\n                    signed_dtype = np.dtype(\"i%s\" % data.dtype.itemsize)\n                    transform = partial(np.asarray, dtype=signed_dtype)\n                    data = lazy_elemwise_func(data, transform, signed_dtype)\n                    if \"_FillValue\" in attrs:\n                        new_fill = signed_dtype.type(attrs[\"_FillValue\"])\n                        attrs[\"_FillValue\"] = new_fill\n            else:\n                warnings.warn(\n                    \"variable %r has _Unsigned attribute but is not \"\n                    \"of integer type. Ignoring attribute.\" % name,\n                    SerializationWarning,\n                    stacklevel=3,\n                )",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 4,
+    "f2p_fail": 0,
+    "p2p_pass": 21,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 4,
+    "f2p_fail": 0,
+    "p2p_pass": 21,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "xarray/coding/variables.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "xarray/coding/variables.py"
+    ],
+    "gold_files": [
+      "xarray/coding/variables.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 8,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

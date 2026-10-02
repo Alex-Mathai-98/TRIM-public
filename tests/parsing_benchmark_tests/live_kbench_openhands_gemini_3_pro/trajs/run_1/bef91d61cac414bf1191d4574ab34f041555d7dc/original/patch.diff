@@ -1,0 +1,41 @@
+diff --git a/net/ipv4/igmp.c b/net/ipv4/igmp.c
+index d1769034b643..d60c65ae2389 100644
+--- a/net/ipv4/igmp.c
++++ b/net/ipv4/igmp.c
+@@ -424,10 +424,14 @@ static int igmpv3_sendpack(struct sk_buff *skb)
+ {
+ 	struct igmphdr *pig = igmp_hdr(skb);
+ 	const int igmplen = skb_tail_pointer(skb) - skb_transport_header(skb);
++	int ret;
+ 
+ 	pig->csum = ip_compute_csum(igmp_hdr(skb), igmplen);
+ 
+-	return ip_local_out(dev_net(skb_dst(skb)->dev), skb->sk, skb);
++	rcu_read_lock();
++	ret = ip_local_out(dev_net(skb_dst(skb)->dev), skb->sk, skb);
++	rcu_read_unlock();
++	return ret;
+ }
+ 
+ static int grec_size(struct ip_mc_list *pmc, int type, int gdel, int sdel)
+@@ -738,7 +742,7 @@ static int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,
+ 	__be32	group = pmc ? pmc->multiaddr : 0;
+ 	struct flowi4 fl4;
+ 	__be32	dst;
+-	int hlen, tlen;
++	int hlen, tlen, ret;
+ 
+ 	if (type == IGMPV3_HOST_MEMBERSHIP_REPORT)
+ 		return igmpv3_send_report(in_dev, pmc);
+@@ -796,7 +800,10 @@ static int igmp_send_report(struct in_device *in_dev, struct ip_mc_list *pmc,
+ 	ih->group = group;
+ 	ih->csum = ip_compute_csum((void *)ih, sizeof(struct igmphdr));
+ 
+-	return ip_local_out(net, skb->sk, skb);
++	rcu_read_lock();
++	ret = ip_local_out(net, skb->sk, skb);
++	rcu_read_unlock();
++	return ret;
+ }
+ 
+ static void igmp_gq_timer_expire(struct timer_list *t)

@@ -1,0 +1,98 @@
+diff --git a/net/ipv6/ah6.c b/net/ipv6/ah6.c
+index eb474f0987ae..b09a9e24070a 100644
+--- a/net/ipv6/ah6.c
++++ b/net/ipv6/ah6.c
+@@ -99,6 +99,50 @@ static inline struct scatterlist *ah_req_sg(struct crypto_ahash *ahash,
+ 			     __alignof__(struct scatterlist));
+ }
+ 
++static inline void ah6_save_hdrs(struct ipv6hdr *top_iph,
++				 struct tmp_ext *iph_ext, int extlen)
++{
++	int ext_hdrs_len;
++
++	if (!extlen)
++		return;
++
++	ext_hdrs_len = extlen - sizeof(*iph_ext);
++
++#if IS_ENABLED(CONFIG_IPV6_MIP6)
++	memcpy(&iph_ext->saddr, &top_iph->saddr, sizeof(iph_ext->saddr));
++#endif
++	memcpy(&iph_ext->daddr, &top_iph->daddr, sizeof(iph_ext->daddr));
++
++	if (ext_hdrs_len > 0) {
++		void *ext_hdrs_start = (void *)top_iph + sizeof(*top_iph);
++
++		memcpy(iph_ext->hdrs, ext_hdrs_start, ext_hdrs_len);
++	}
++}
++
++static inline void ah6_restore_hdrs(struct ipv6hdr *top_iph,
++				    struct tmp_ext *iph_ext, int extlen)
++{
++	int ext_hdrs_len;
++
++	if (!extlen)
++		return;
++
++	ext_hdrs_len = extlen - sizeof(*iph_ext);
++
++#if IS_ENABLED(CONFIG_IPV6_MIP6)
++	memcpy(&top_iph->saddr, &iph_ext->saddr, sizeof(top_iph->saddr));
++#endif
++	memcpy(&top_iph->daddr, &iph_ext->daddr, sizeof(top_iph->daddr));
++
++	if (ext_hdrs_len > 0) {
++		void *ext_hdrs_start = (void *)top_iph + sizeof(*top_iph);
++
++		memcpy(ext_hdrs_start, iph_ext->hdrs, ext_hdrs_len);
++	}
++}
++
+ static bool zero_out_mutable_opts(struct ipv6_opt_hdr *opthdr)
+ {
+ 	u8 *opt = (u8 *)opthdr;
+@@ -301,13 +345,7 @@ static void ah6_output_done(void *data, int err)
+ 	memcpy(ah->auth_data, icv, ahp->icv_trunc_len);
+ 	memcpy(top_iph, iph_base, IPV6HDR_BASELEN);
+ 
+-	if (extlen) {
+-#if IS_ENABLED(CONFIG_IPV6_MIP6)
+-		memcpy(&top_iph->saddr, iph_ext, extlen);
+-#else
+-		memcpy(&top_iph->daddr, iph_ext, extlen);
+-#endif
+-	}
++	ah6_restore_hdrs(top_iph, iph_ext, extlen);
+ 
+ 	kfree(AH_SKB_CB(skb)->tmp);
+ 	xfrm_output_resume(skb->sk, skb, err);
+@@ -379,11 +417,7 @@ static int ah6_output(struct xfrm_state *x, struct sk_buff *skb)
+ 	memcpy(iph_base, top_iph, IPV6HDR_BASELEN);
+ 
+ 	if (extlen) {
+-#if IS_ENABLED(CONFIG_IPV6_MIP6)
+-		memcpy(iph_ext, &top_iph->saddr, extlen);
+-#else
+-		memcpy(iph_ext, &top_iph->daddr, extlen);
+-#endif
++		ah6_save_hdrs(top_iph, iph_ext, extlen);
+ 		err = ipv6_clear_mutable_options(top_iph,
+ 						 extlen - sizeof(*iph_ext) +
+ 						 sizeof(*top_iph),
+@@ -434,13 +468,7 @@ static int ah6_output(struct xfrm_state *x, struct sk_buff *skb)
+ 	memcpy(ah->auth_data, icv, ahp->icv_trunc_len);
+ 	memcpy(top_iph, iph_base, IPV6HDR_BASELEN);
+ 
+-	if (extlen) {
+-#if IS_ENABLED(CONFIG_IPV6_MIP6)
+-		memcpy(&top_iph->saddr, iph_ext, extlen);
+-#else
+-		memcpy(&top_iph->daddr, iph_ext, extlen);
+-#endif
+-	}
++	ah6_restore_hdrs(top_iph, iph_ext, extlen);
+ 
+ out_free:
+ 	kfree(iph_base);

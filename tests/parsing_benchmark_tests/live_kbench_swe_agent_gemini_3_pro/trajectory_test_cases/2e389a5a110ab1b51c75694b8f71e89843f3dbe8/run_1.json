@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3,
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "// https://syzkaller.appspot.com/bug?id=2e389a5a110ab1b51c75694b8f71e89843f3dbe8\n#define _GNU_SOURCE\n#include <sys/mman.h>\n#include <sys/ioctl.h>\n#include <linux/userfaultfd.h>\n#include <sys/syscall.h>\n#include <unistd.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nint main(void) {\n    mmap((void*)0x200000000000, 0xb36000, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED|MAP_POPULATE, -1, 0);\n    int r0 = syscall(__NR_userfaultfd, 0x80001);\n    struct uffdio_api api = { .api = UFFD_API, .features = 0 };\n    ioctl(r0, UFFDIO_API, &api);\n    struct uffdio_register reg = { .mode = UFFDIO_REGISTER_MODE_MISSING };\n    reg.range.start = 0x200000000000;\n    reg.range.len = 0x400000;\n    ioctl(r0, UFFDIO_REGISTER, &reg);\n    mremap((void*)0x200000000000, 0xc00000, 0x400000, MREMAP_MAYMOVE|MREMAP_FIXED, (void*)0x200000c00000);\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 24 create #1",
+          "filename": "reproducer.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\tif (!pmd_none(*new_pmd))\n\t\treturn false;\n",
+          "before": "\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n\t\treturn false;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..89e7bfd8c095 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,7 +358,7 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\tif (!pmd_none(*new_pmd))\n \t\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need\ndiff --git a/reproducer b/reproducer\nnew file mode 100755\nindex 000000000000..853d3e224bed\nBinary files /dev/null and b/reproducer differ",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 32 rm #1",
+          "filename": "reproducer",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..89e7bfd8c095 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,7 +358,7 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\tif (!pmd_none(*new_pmd))\n \t\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need\ndiff --git a/reproducer b/reproducer\nnew file mode 100755\nindex 000000000000..853d3e224bed\nBinary files /dev/null and b/reproducer differ",
+          "explanation": "classic_swe step 32 rm #2",
+          "filename": "reproducer.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "classic_swe step 34 rm #1",
+          "filename": "reproducer",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/mremap.c b/mm/mremap.c\nindex 33b642076205..89e7bfd8c095 100644\n--- a/mm/mremap.c\n+++ b/mm/mremap.c\n@@ -358,7 +358,7 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,\n \t * One alternative might be to just unmap the target pmd at\n \t * this point, and verify that it really is empty. We'll see.\n \t */\n-\tif (WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\tif (!pmd_none(*new_pmd))\n \t\treturn false;\n \n \t/* If this pmd belongs to a uffd vma with remap events disabled, we need",
+          "explanation": "classic_swe step 34 rm #2",
+          "filename": "reproducer.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 1,
+      "start_step": 32
+    }
+  ],
+  "success_step": 34
+}

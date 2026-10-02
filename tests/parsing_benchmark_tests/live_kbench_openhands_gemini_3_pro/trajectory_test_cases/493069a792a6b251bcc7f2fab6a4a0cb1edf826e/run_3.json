@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static DEFINE_PER_CPU(struct memcg_path, memcg_paths) = {\n\t.lock = INIT_LOCAL_LOCK(lock),\n\t.buf_idx = LOCAL_INIT(0),\n};\n\nstatic DEFINE_PER_CPU(int, mmap_lock_recursion);\n\nstatic char **tmp_bufs;",
+          "before": "static DEFINE_PER_CPU(struct memcg_path, memcg_paths) = {\n\t.lock = INIT_LOCAL_LOCK(lock),\n\t.buf_idx = LOCAL_INIT(0),\n};\n\nstatic char **tmp_bufs;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mmap_lock.c\n+++ /linux/mm/mmap_lock.c\n@@ -51,0 +52,2 @@\n+\n+static DEFINE_PER_CPU(int, mmap_lock_recursion);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 12",
+          "filename": "mm/mmap_lock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        },
+        {
+          "after": "\n#define TRACE_MMAP_LOCK_EVENT(type, mm, ...)                                   \\\n\tdo {                                                                   \\\n\t\tconst char *memcg_path;                                        \\\n\t\tpreempt_disable();                                             \\\n\t\tif (__this_cpu_read(mmap_lock_recursion)) {                    \\\n\t\t\ttrace_mmap_lock_##type(mm, \"\", ##__VA_ARGS__);         \\\n\t\t\tpreempt_enable();                                      \\\n\t\t\tbreak;                                                 \\\n\t\t}                                                              \\\n\t\t__this_cpu_inc(mmap_lock_recursion);                           \\\n\t\tlocal_lock(&memcg_paths.lock);                                 \\\n\t\tmemcg_path = get_mm_memcg_path(mm);                            \\\n\t\ttrace_mmap_lock_##type(mm,                                     \\\n\t\t\t\t       memcg_path != NULL ? memcg_path : \"\",   \\\n\t\t\t\t       ##__VA_ARGS__);                         \\\n\t\tif (likely(memcg_path != NULL))                                \\\n\t\t\tput_memcg_path_buf();                                  \\\n\t\tlocal_unlock(&memcg_paths.lock);                               \\\n\t\t__this_cpu_dec(mmap_lock_recursion);                           \\\n\t\tpreempt_enable();                                              \\\n\t} while (0)\n",
+          "before": "\n#define TRACE_MMAP_LOCK_EVENT(type, mm, ...)                                   \\\n\tdo {                                                                   \\\n\t\tconst char *memcg_path;                                        \\\n\t\tlocal_lock(&memcg_paths.lock);                                 \\\n\t\tmemcg_path = get_mm_memcg_path(mm);                            \\\n\t\ttrace_mmap_lock_##type(mm,                                     \\\n\t\t\t\t       memcg_path != NULL ? memcg_path : \"\",   \\\n\t\t\t\t       ##__VA_ARGS__);                         \\\n\t\tif (likely(memcg_path != NULL))                                \\\n\t\t\tput_memcg_path_buf();                                  \\\n\t\tlocal_unlock(&memcg_paths.lock);                               \\\n\t} while (0)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mmap_lock.c\n+++ /linux/mm/mmap_lock.c\n@@ -160,0 +161,7 @@\n+\t\tpreempt_disable();                                             \\\n+\t\tif (__this_cpu_read(mmap_lock_recursion)) {                    \\\n+\t\t\ttrace_mmap_lock_##type(mm, \"\", ##__VA_ARGS__);         \\\n+\t\t\tpreempt_enable();                                      \\\n+\t\t\tbreak;                                                 \\\n+\t\t}                                                              \\\n+\t\t__this_cpu_inc(mmap_lock_recursion);                           \\\n@@ -168,0 +176,2 @@\n+\t\t__this_cpu_dec(mmap_lock_recursion);                           \\\n+\t\tpreempt_enable();                                              \\",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 14",
+          "filename": "mm/mmap_lock.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 12
+    }
+  ],
+  "success_step": 14
+}

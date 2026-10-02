@@ -1,0 +1,75 @@
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 385c4091aa77..41df6e8ec196 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -5126,11 +5126,14 @@ static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);
+ 
+ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
+ {
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
++
+ 	if (xdp_prog) {
+ 		struct xdp_buff xdp;
+ 		u32 act;
+ 		int err;
+ 
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		act = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);
+ 		if (act != XDP_PASS) {
+ 			switch (act) {
+@@ -5144,11 +5147,14 @@ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
+ 				generic_xdp_tx(*pskb, xdp_prog);
+ 				break;
+ 			}
++			bpf_net_ctx_clear(bpf_net_ctx);
+ 			return XDP_DROP;
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	return XDP_PASS;
+ out_redir:
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 	kfree_skb_reason(*pskb, SKB_DROP_REASON_XDP);
+ 	return XDP_DROP;
+ }
+diff --git a/net/core/dev.c.rej b/net/core/dev.c.rej
+new file mode 100644
+index 000000000000..60867e457dc8
+--- /dev/null
++++ b/net/core/dev.c.rej
+@@ -0,0 +1,35 @@
++--- net/core/dev.c
+++++ net/core/dev.c
++@@ -5126,27 +5126,32 @@ static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);
++ 
++ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
++ {
++ 	if (xdp_prog) {
+++		struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
++ 		struct xdp_buff xdp;
++ 		u32 act;
++ 		int err;
++ 
+++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
++ 		act = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);
++ 		if (act != XDP_PASS) {
++ 			switch (act) {
++ 			case XDP_REDIRECT:
++ 				err = xdp_do_generic_redirect((*pskb)->dev, *pskb,
++ 							      &xdp, xdp_prog);
++ 				if (err)
++ 					goto out_redir;
++ 				break;
++ 			case XDP_TX:
++ 				generic_xdp_tx(*pskb, xdp_prog);
++ 				break;
++ 			}
+++			bpf_net_ctx_clear(bpf_net_ctx);
++ 			return XDP_DROP;
++ 		}
+++		bpf_net_ctx_clear(bpf_net_ctx);
++ 	}
++ 	return XDP_PASS;
++ out_redir:
+++	bpf_net_ctx_clear(bpf_net_ctx);
++ 	kfree_skb_reason(*pskb, SKB_DROP_REASON_XDP);

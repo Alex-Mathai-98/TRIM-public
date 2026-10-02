@@ -1,0 +1,22 @@
+diff --git a/net/unix/af_unix.c b/net/unix/af_unix.c
+index 159d78fc3d14..fec40298234c 100644
+--- a/net/unix/af_unix.c
++++ b/net/unix/af_unix.c
+@@ -2671,6 +2671,8 @@ static struct sk_buff *manage_oob(struct sk_buff *skb, struct sock *sk,
+ 			read_skb = skb;
+ 			skb = skb_peek_next(skb, &sk->sk_receive_queue);
+ 			__skb_unlink(read_skb, &sk->sk_receive_queue);
++			if (read_skb == u->oob_skb)
++				WRITE_ONCE(u->oob_skb, NULL);
+ 		}
+ 
+ 		goto unlock;
+@@ -2914,6 +2916,8 @@ static int unix_stream_read_generic(struct unix_stream_read_state *state,
+ 				break;
+ 
+ 			skb_unlink(skb, &sk->sk_receive_queue);
++			if (skb == u->oob_skb)
++				WRITE_ONCE(u->oob_skb, NULL);
+ 			consume_skb(skb);
+ 
+ 			if (scm.fp)

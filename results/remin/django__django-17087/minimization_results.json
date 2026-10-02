@@ -1,0 +1,199 @@
+{
+  "bug_id": "django__django-17087",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/migrations/serializer.py",
+        "before": "            return \"%s.%s.%s\" % (module, klass.__name__, self.value.__name__), {\n                \"import %s\" % module\n            }",
+        "after": "            return \"%s.%s.%s\" % (module, klass.__qualname__, self.value.__name__), {\n                \"import %s\" % module\n            }",
+        "explanation": "classic_swe step 10 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/migrations/test_writer.py",
+        "before": "    def test_serialize_local_function_reference(self):\n        \"\"\"A reference in a local scope can't be serialized.\"\"\"\n\n        class TestModel2:\n            def upload_to(self):\n                return \"somewhere dynamic\"\n\n            thing = models.FileField(upload_to=upload_to)\n\n        with self.assertRaisesMessage(\n            ValueError, \"Could not find function upload_to in migrations.test_writer\"\n        ):\n            self.serialize_round_trip(TestModel2.thing)",
+        "after": "    def test_serialize_local_function_reference(self):\n        \"\"\"A reference in a local scope can't be serialized.\"\"\"\n\n        class TestModel2:\n            def upload_to(self):\n                return \"somewhere dynamic\"\n\n            thing = models.FileField(upload_to=upload_to)\n\n        with self.assertRaisesMessage(\n            ValueError, \"Could not find function upload_to in migrations.test_writer\"\n        ):\n            self.serialize_round_trip(TestModel2.thing)\n\n    def test_serialize_nested_class_method(self):\n        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n        \n        class TestModel3:\n            class NestedClass:\n                @classmethod\n                def nested_method(cls):\n                    return \"nested\"\n                \n                class DeeplyNestedClass:\n                    @classmethod\n                    def deeply_nested_method(cls):\n                        return \"deeply_nested\"\n        \n        # Test nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})\n        \n        # Test deeply nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})",
+        "explanation": "classic_swe step 53 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/migrations/test_writer.py",
+        "before": "class TestModel1:\n    def upload_to(self):\n        return \"/somewhere/dynamic/\"\n\n    thing = models.FileField(upload_to=upload_to)\n\n\nclass TextEnum(enum.Enum):",
+        "after": "class TestModel1:\n    def upload_to(self):\n        return \"/somewhere/dynamic/\"\n\n    thing = models.FileField(upload_to=upload_to)\n\n\nclass TestModel3:\n    class NestedClass:\n        @classmethod\n        def nested_method(cls):\n            return \"nested\"\n        \n        class DeeplyNestedClass:\n            @classmethod\n            def deeply_nested_method(cls):\n                return \"deeply_nested\"\n\n\nclass TextEnum(enum.Enum):",
+        "explanation": "classic_swe step 56 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/migrations/test_writer.py",
+        "before": "    def test_serialize_nested_class_method(self):\n        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n        \n        class TestModel3:\n            class NestedClass:\n                @classmethod\n                def nested_method(cls):\n                    return \"nested\"\n                \n                class DeeplyNestedClass:\n                    @classmethod\n                    def deeply_nested_method(cls):\n                        return \"deeply_nested\"\n        \n        # Test nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})\n        \n        # Test deeply nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})",
+        "after": "    def test_serialize_nested_class_method(self):\n        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n        \n        # Test nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})\n        \n        # Test deeply nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})",
+        "explanation": "classic_swe step 57 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/migrations/serializer.py b/django/db/migrations/serializer.py\nindex d88cda6e20..06657ebaab 100644\n--- a/django/db/migrations/serializer.py\n+++ b/django/db/migrations/serializer.py\n@@ -168,7 +168,7 @@ class FunctionTypeSerializer(BaseSerializer):\n         ):\n             klass = self.value.__self__\n             module = klass.__module__\n-            return \"%s.%s.%s\" % (module, klass.__name__, self.value.__name__), {\n+            return \"%s.%s.%s\" % (module, klass.__qualname__, self.value.__name__), {\n                 \"import %s\" % module\n             }\n         # Further error checking\ndiff --git a/tests/migrations/test_writer.py b/tests/migrations/test_writer.py\nindex bef8f64061..21b23ac0ee 100644\n--- a/tests/migrations/test_writer.py\n+++ b/tests/migrations/test_writer.py\n@@ -52,6 +52,18 @@ class TestModel1:\n     thing = models.FileField(upload_to=upload_to)\n \n \n+class TestModel3:\n+    class NestedClass:\n+        @classmethod\n+        def nested_method(cls):\n+            return \"nested\"\n+        \n+        class DeeplyNestedClass:\n+            @classmethod\n+            def deeply_nested_method(cls):\n+                return \"deeply_nested\"\n+\n+\n class TextEnum(enum.Enum):\n     A = \"a-value\"\n     B = \"value-b\"\n@@ -753,6 +765,19 @@ class WriterTests(SimpleTestCase):\n         ):\n             self.serialize_round_trip(TestModel2.thing)\n \n+    def test_serialize_nested_class_method(self):\n+        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n+        \n+        # Test nested class method\n+        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n+        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n+        self.assertEqual(imports, {\"import migrations.test_writer\"})\n+        \n+        # Test deeply nested class method\n+        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n+        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n+        self.assertEqual(imports, {\"import migrations.test_writer\"})\n+\n     def test_serialize_managers(self):\n         self.assertSerializedEqual(models.Manager())\n         self.assertSerializedResultEqual(\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      22,
+      23,
+      24
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      4,
+      22,
+      23,
+      24
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "edit_list_after_file_min": [
+      4,
+      22,
+      23,
+      24
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 2,
+    "greedy_removal_edit_not_applicable": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      4,
+      22,
+      23,
+      24
+    ],
+    "edit_list_after_refinement": [
+      4,
+      22,
+      23,
+      24
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/serializer.py",
+          "before": "            return \"%s.%s.%s\" % (module, klass.__name__, self.value.__name__), {\n                \"import %s\" % module\n            }",
+          "after": "            return \"%s.%s.%s\" % (module, klass.__qualname__, self.value.__name__), {\n                \"import %s\" % module\n            }",
+          "explanation": "classic_swe step 10 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/migrations/test_writer.py",
+          "before": "    def test_serialize_local_function_reference(self):\n        \"\"\"A reference in a local scope can't be serialized.\"\"\"\n\n        class TestModel2:\n            def upload_to(self):\n                return \"somewhere dynamic\"\n\n            thing = models.FileField(upload_to=upload_to)\n\n        with self.assertRaisesMessage(\n            ValueError, \"Could not find function upload_to in migrations.test_writer\"\n        ):\n            self.serialize_round_trip(TestModel2.thing)",
+          "after": "    def test_serialize_local_function_reference(self):\n        \"\"\"A reference in a local scope can't be serialized.\"\"\"\n\n        class TestModel2:\n            def upload_to(self):\n                return \"somewhere dynamic\"\n\n            thing = models.FileField(upload_to=upload_to)\n\n        with self.assertRaisesMessage(\n            ValueError, \"Could not find function upload_to in migrations.test_writer\"\n        ):\n            self.serialize_round_trip(TestModel2.thing)\n\n    def test_serialize_nested_class_method(self):\n        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n        \n        class TestModel3:\n            class NestedClass:\n                @classmethod\n                def nested_method(cls):\n                    return \"nested\"\n                \n                class DeeplyNestedClass:\n                    @classmethod\n                    def deeply_nested_method(cls):\n                        return \"deeply_nested\"\n        \n        # Test nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})\n        \n        # Test deeply nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})",
+          "explanation": "classic_swe step 53 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/migrations/test_writer.py",
+          "before": "class TestModel1:\n    def upload_to(self):\n        return \"/somewhere/dynamic/\"\n\n    thing = models.FileField(upload_to=upload_to)\n\n\nclass TextEnum(enum.Enum):",
+          "after": "class TestModel1:\n    def upload_to(self):\n        return \"/somewhere/dynamic/\"\n\n    thing = models.FileField(upload_to=upload_to)\n\n\nclass TestModel3:\n    class NestedClass:\n        @classmethod\n        def nested_method(cls):\n            return \"nested\"\n        \n        class DeeplyNestedClass:\n            @classmethod\n            def deeply_nested_method(cls):\n                return \"deeply_nested\"\n\n\nclass TextEnum(enum.Enum):",
+          "explanation": "classic_swe step 56 #1"
+        },
+        {
+          "filename": "tests/migrations/test_writer.py",
+          "before": "    def test_serialize_nested_class_method(self):\n        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n        \n        class TestModel3:\n            class NestedClass:\n                @classmethod\n                def nested_method(cls):\n                    return \"nested\"\n                \n                class DeeplyNestedClass:\n                    @classmethod\n                    def deeply_nested_method(cls):\n                        return \"deeply_nested\"\n        \n        # Test nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})\n        \n        # Test deeply nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})",
+          "after": "    def test_serialize_nested_class_method(self):\n        \"\"\"Nested class methods should use __qualname__ for correct serialization.\"\"\"\n        \n        # Test nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})\n        \n        # Test deeply nested class method\n        string, imports = MigrationWriter.serialize(TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method)\n        self.assertEqual(string, \"migrations.test_writer.TestModel3.NestedClass.DeeplyNestedClass.deeply_nested_method\")\n        self.assertEqual(imports, {\"import migrations.test_writer\"})",
+          "explanation": "classic_swe step 57 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 53,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 53,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/migrations/serializer.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/migrations/test_writer.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/migrations/serializer.py",
+      "tests/migrations/test_writer.py"
+    ],
+    "gold_files": [
+      "django/db/migrations/serializer.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 1,
+    "minimized_added_lines": 26,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

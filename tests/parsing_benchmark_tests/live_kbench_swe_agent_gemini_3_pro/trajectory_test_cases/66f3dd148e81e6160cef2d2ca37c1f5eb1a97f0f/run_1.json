@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (!xfrm_state_kern(x) &&\n\t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n\t\t\t\tif (!refcount_inc_not_zero(&x->refcnt))\n\t\t\t\t\tcontinue;\n\t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n",
+          "before": "\t\t\tif (!xfrm_state_kern(x) &&\n\t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n\t\t\t\txfrm_state_hold(x);\n\t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c\nindex 78fcbb89cf32..e7b41a2882d4 100644\n--- a/net/xfrm/xfrm_state.c\n+++ b/net/xfrm/xfrm_state.c\n@@ -933,7 +933,8 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n \t\thlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {\n \t\t\tif (!xfrm_state_kern(x) &&\n \t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n-\t\t\t\txfrm_state_hold(x);\n+\t\t\t\tif (!refcount_inc_not_zero(&x->refcnt))\n+\t\t\t\t\tcontinue;\n \t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n \n \t\t\t\terr = xfrm_state_delete(x);",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct xfrm_state *x0;\n\tint err = -ENOENT;\n\t__be32 newspi = 0;\n\tu32 range;\n\n\tif (low == 0)\n\t\tlow = 1;\n\tif (high < low)\n\t\treturn -EINVAL;\n\n\trange = high - low + 1;\n\n\tspin_lock_bh(&x->lock);\n",
+          "before": "\tstruct xfrm_state *x0;\n\tint err = -ENOENT;\n\tu32 range = high - low + 1;\n\t__be32 newspi = 0;\n\n\tspin_lock_bh(&x->lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c\nindex 78fcbb89cf32..5c9e74dea471 100644\n--- a/net/xfrm/xfrm_state.c\n+++ b/net/xfrm/xfrm_state.c\n@@ -933,7 +933,8 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n \t\thlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {\n \t\t\tif (!xfrm_state_kern(x) &&\n \t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n-\t\t\t\txfrm_state_hold(x);\n+\t\t\t\tif (!refcount_inc_not_zero(&x->refcnt))\n+\t\t\t\t\tcontinue;\n \t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n \n \t\t\t\terr = xfrm_state_delete(x);\n@@ -2566,8 +2567,15 @@ int xfrm_alloc_spi(struct xfrm_state *x, u32 low, u32 high,\n \tunsigned int h;\n \tstruct xfrm_state *x0;\n \tint err = -ENOENT;\n-\tu32 range = high - low + 1;\n \t__be32 newspi = 0;\n+\tu32 range;\n+\n+\tif (low == 0)\n+\t\tlow = 1;\n+\tif (high < low)\n+\t\treturn -EINVAL;\n+\n+\trange = high - low + 1;\n \n \tspin_lock_bh(&x->lock);\n \tif (x->km.state == XFRM_STATE_DEAD) {",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 1,
+      "start_step": 36
+    }
+  ],
+  "success_step": 36
+}

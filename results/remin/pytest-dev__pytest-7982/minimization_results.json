@@ -1,0 +1,211 @@
+{
+  "bug_id": "pytest-dev__pytest-7982",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/pathlib.py",
+        "before": "    for entry in entries:\n        if entry.is_dir(follow_symlinks=False) and recurse(entry):\n            yield from visit(entry.path, recurse)",
+        "after": "    for entry in entries:\n        if entry.is_dir() and recurse(entry):\n            yield from visit(entry.path, recurse)",
+        "explanation": "classic_swe step 34 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/main.py",
+        "before": "                seen_dirs: Set[py.path.local] = set()\n                for direntry in visit(str(argpath), self._recurse):\n                    if not direntry.is_file():\n                        continue",
+        "after": "                seen_dirs: Set[py.path.local] = set()\n                for direntry in visit(str(argpath), self._recurse):\n                    try:\n                        if not direntry.is_file():\n                            continue\n                    except OSError:\n                        # Skip entries that can't be accessed (e.g., circular symlinks)\n                        continue",
+        "explanation": "classic_swe step 36 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/pathlib.py",
+        "before": "    for entry in entries:\n        if entry.is_dir() and recurse(entry):\n            yield from visit(entry.path, recurse)",
+        "after": "    for entry in entries:\n        try:\n            if entry.is_dir() and recurse(entry):\n                yield from visit(entry.path, recurse)\n        except OSError:\n            # Skip entries that can't be accessed (e.g., circular symlinks)\n            continue",
+        "explanation": "classic_swe step 38 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/main.py b/src/_pytest/main.py\nindex d8a208a1a..762b953cd 100644\n--- a/src/_pytest/main.py\n+++ b/src/_pytest/main.py\n@@ -676,7 +676,11 @@ class Session(nodes.FSCollector):\n \n                 seen_dirs: Set[py.path.local] = set()\n                 for direntry in visit(str(argpath), self._recurse):\n-                    if not direntry.is_file():\n+                    try:\n+                        if not direntry.is_file():\n+                            continue\n+                    except OSError:\n+                        # Skip entries that can't be accessed (e.g., circular symlinks)\n                         continue\n \n                     path = py.path.local(direntry.path)\ndiff --git a/src/_pytest/pathlib.py b/src/_pytest/pathlib.py\nindex f0bdb1481..24bb4d507 100644\n--- a/src/_pytest/pathlib.py\n+++ b/src/_pytest/pathlib.py\n@@ -558,8 +558,12 @@ def visit(\n     entries = sorted(os.scandir(path), key=lambda entry: entry.name)\n     yield from entries\n     for entry in entries:\n-        if entry.is_dir(follow_symlinks=False) and recurse(entry):\n-            yield from visit(entry.path, recurse)\n+        try:\n+            if entry.is_dir() and recurse(entry):\n+                yield from visit(entry.path, recurse)\n+        except OSError:\n+            # Skip entries that can't be accessed (e.g., circular symlinks)\n+            continue\n \n \n def absolutepath(path: Union[Path, str]) -> Path:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      5,
+      6,
+      7,
+      8,
+      9
+    ],
+    "nodes_original_count": 5,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_substring_node_no_crash": 2,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      2,
+      3,
+      4
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "node_list_after_phase2": [
+      2,
+      3,
+      4
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      6,
+      7,
+      8
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      6,
+      7,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      6,
+      7,
+      8
+    ],
+    "edit_list_after_refinement": [
+      6,
+      7,
+      8
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 3,
+  "reduction": "6_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/pathlib.py",
+          "before": "    for entry in entries:\n        if entry.is_dir(follow_symlinks=False) and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "after": "    for entry in entries:\n        if entry.is_dir() and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/pathlib.py",
+          "before": "    for entry in entries:\n        if entry.is_dir() and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "after": "    for entry in entries:\n        if entry.is_dir(follow_symlinks=False) and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/pathlib.py",
+          "before": "    for entry in entries:\n        if entry.is_dir(follow_symlinks=False) and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "after": "    for entry in entries:\n        if entry.is_dir() and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "explanation": "classic_swe step 34 #1"
+        },
+        {
+          "filename": "src/_pytest/main.py",
+          "before": "                seen_dirs: Set[py.path.local] = set()\n                for direntry in visit(str(argpath), self._recurse):\n                    if not direntry.is_file():\n                        continue",
+          "after": "                seen_dirs: Set[py.path.local] = set()\n                for direntry in visit(str(argpath), self._recurse):\n                    try:\n                        if not direntry.is_file():\n                            continue\n                    except OSError:\n                        # Skip entries that can't be accessed (e.g., circular symlinks)\n                        continue",
+          "explanation": "classic_swe step 36 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/pathlib.py",
+          "before": "    for entry in entries:\n        if entry.is_dir() and recurse(entry):\n            yield from visit(entry.path, recurse)",
+          "after": "    for entry in entries:\n        try:\n            if entry.is_dir() and recurse(entry):\n                yield from visit(entry.path, recurse)\n        except OSError:\n            # Skip entries that can't be accessed (e.g., circular symlinks)\n            continue",
+          "explanation": "classic_swe step 38 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/python.py",
+          "before": "        for direntry in visit(str(this_path), recurse=self._recurse):\n            path = py.path.local(direntry.path)\n\n            # We will visit our own __init__.py file, in which case we skip it.\n            if direntry.is_file():\n                if direntry.name == \"__init__.py\" and path.dirpath() == this_path:\n                    continue\n\n            parts_ = parts(direntry.path)\n            if any(\n                str(pkg_prefix) in parts_ and pkg_prefix.join(\"__init__.py\") != path\n                for pkg_prefix in pkg_prefixes\n            ):\n                continue\n\n            if direntry.is_file():\n                yield from self._collectfile(path)\n            elif not direntry.is_dir():\n                # Broken symlink or invalid/missing file.\n                continue\n            elif path.join(\"__init__.py\").check(file=1):\n                pkg_prefixes.add(path)",
+          "after": "        for direntry in visit(str(this_path), recurse=self._recurse):\n            path = py.path.local(direntry.path)\n\n            try:\n                # We will visit our own __init__.py file, in which case we skip it.\n                if direntry.is_file():\n                    if direntry.name == \"__init__.py\" and path.dirpath() == this_path:\n                        continue\n\n                parts_ = parts(direntry.path)\n                if any(\n                    str(pkg_prefix) in parts_ and pkg_prefix.join(\"__init__.py\") != path\n                    for pkg_prefix in pkg_prefixes\n                ):\n                    continue\n\n                if direntry.is_file():\n                    yield from self._collectfile(path)\n                elif not direntry.is_dir():\n                    # Broken symlink or invalid/missing file.\n                    continue\n                elif path.join(\"__init__.py\").check(file=1):\n                    pkg_prefixes.add(path)\n            except OSError:\n                # Skip entries that can't be accessed (e.g., circular symlinks)\n                continue",
+          "explanation": "classic_swe step 49 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 78,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 78,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "src/_pytest/pathlib.py"
+    ],
+    "extra_files_in_minimized": [
+      "src/_pytest/main.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/main.py",
+      "src/_pytest/pathlib.py"
+    ],
+    "gold_files": [
+      "src/_pytest/pathlib.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 11,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

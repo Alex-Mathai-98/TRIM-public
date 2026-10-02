@@ -1,0 +1,39 @@
+diff --git a/net/bluetooth/hci_sock.c b/net/bluetooth/hci_sock.c
+index 428ee5c7de7e..043936783f74 100644
+--- a/net/bluetooth/hci_sock.c
++++ b/net/bluetooth/hci_sock.c
+@@ -1311,7 +1311,9 @@ static int hci_sock_bind(struct socket *sock, struct sockaddr *addr,
+ 			goto done;
+ 		}
+ 
++		hci_dev_lock(hdev);
+ 		mgmt_index_removed(hdev);
++		hci_dev_unlock(hdev);
+ 
+ 		err = hci_dev_open(hdev->id);
+ 		if (err) {
+diff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c
+index 14a9462fced5..bf71e91426c8 100644
+--- a/net/bluetooth/mgmt.c
++++ b/net/bluetooth/mgmt.c
+@@ -5398,14 +5398,17 @@ static void mgmt_remove_adv_monitor_complete(struct hci_dev *hdev,
+ 	struct mgmt_pending_cmd *cmd = data;
+ 	struct mgmt_cp_remove_adv_monitor *cp;
+ 
+-	if (status == -ECANCELED ||
+-	    cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev))
++	if (status == -ECANCELED)
+ 		return;
+ 
+ 	hci_dev_lock(hdev);
+ 
+-	cp = cmd->param;
++	if (cmd != pending_find(MGMT_OP_REMOVE_ADV_MONITOR, hdev)) {
++		hci_dev_unlock(hdev);
++		return;
++	}
+ 
++	cp = cmd->param;
+ 	rp.monitor_handle = cp->monitor_handle;
+ 
+ 	if (!status)

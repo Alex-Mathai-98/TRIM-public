@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!hlist_unhashed(&tmr->ignored_list)) {\n\t\t/*\n\t\t * If the timer is on the ignore list, remove it. The reference\n\t\t * count which is held by the ignored list is reused for\n\t\t * queueing the signal.\n\t\t */\n\t\thlist_del_init(&tmr->ignored_list);\n\t} else if (unlikely(!list_empty(&q->list))) {\n\t\t/* This holds a reference count already */\n\t\tresult = TRACE_SIGNAL_ALREADY_PENDING;\n\t\tgoto out;\n\t} else {\n\t\tposixtimer_sigqueue_getref(q);\n\t}\n\n\tposixtimer_queue_sigqueue(q, t, tmr->it_pid_type);",
+          "before": "\t/* This should never happen and leaks a reference count */\n\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n\t\thlist_del_init(&tmr->ignored_list);\n\n\tif (unlikely(!list_empty(&q->list))) {\n\t\t/* This holds a reference count already */\n\t\tresult = TRACE_SIGNAL_ALREADY_PENDING;\n\t\tgoto out;\n\t}\n\n\tposixtimer_sigqueue_getref(q);\n\tposixtimer_queue_sigqueue(q, t, tmr->it_pid_type);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/signal.c b/kernel/signal.c\nindex 989b1cc9116a..19c09a0b6cfe 100644\n--- a/kernel/signal.c\n+++ b/kernel/signal.c\n@@ -2046,17 +2046,21 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \t\tgoto out;\n \t}\n \n-\t/* This should never happen and leaks a reference count */\n-\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n+\tif (!hlist_unhashed(&tmr->ignored_list)) {\n+\t\t/*\n+\t\t * If the timer is on the ignore list, remove it. The reference\n+\t\t * count which is held by the ignored list is reused for\n+\t\t * queueing the signal.\n+\t\t */\n \t\thlist_del_init(&tmr->ignored_list);\n-\n-\tif (unlikely(!list_empty(&q->list))) {\n+\t} else if (unlikely(!list_empty(&q->list))) {\n \t\t/* This holds a reference count already */\n \t\tresult = TRACE_SIGNAL_ALREADY_PENDING;\n \t\tgoto out;\n+\t} else {\n+\t\tposixtimer_sigqueue_getref(q);\n \t}\n \n-\tposixtimer_sigqueue_getref(q);\n \tposixtimer_queue_sigqueue(q, t, tmr->it_pid_type);\n \tresult = TRACE_SIGNAL_DELIVERED;\n out:",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "kernel/signal.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "revision_index": 0,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (!list_empty(&q->list))\n\t\t\tgoto out;",
+          "before": "\t\tif (!list_empty(&q->list)) {\n\t\t\t/*\n\t\t\t * If task group is exiting with the signal already pending,\n\t\t\t * wait for __exit_signal() to do its job. Otherwise if\n\t\t\t * ignored, it's not supposed to be queued. Try to survive.\n\t\t\t */\n\t\t\tWARN_ON_ONCE(!(t->signal->flags & SIGNAL_GROUP_EXIT));\n\t\t\tgoto out;\n\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/signal.c b/kernel/signal.c\nindex 989b1cc9116a..a2e15ccfd72b 100644\n--- a/kernel/signal.c\n+++ b/kernel/signal.c\n@@ -2005,15 +2005,8 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \tif (!prepare_signal(sig, t, false)) {\n \t\tresult = TRACE_SIGNAL_IGNORED;\n \n-\t\tif (!list_empty(&q->list)) {\n-\t\t\t/*\n-\t\t\t * If task group is exiting with the signal already pending,\n-\t\t\t * wait for __exit_signal() to do its job. Otherwise if\n-\t\t\t * ignored, it's not supposed to be queued. Try to survive.\n-\t\t\t */\n-\t\t\tWARN_ON_ONCE(!(t->signal->flags & SIGNAL_GROUP_EXIT));\n+\t\tif (!list_empty(&q->list))\n \t\t\tgoto out;\n-\t\t}\n \n \t\t/* Periodic timers with SIG_IGN are queued on the ignored list */\n \t\tif (tmr->it_sig_periodic) {\n@@ -2046,17 +2039,21 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \t\tgoto out;\n \t}\n \n-\t/* This should never happen and leaks a reference count */\n-\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n+\tif (!hlist_unhashed(&tmr->ignored_list)) {\n+\t\t/*\n+\t\t * If the timer is on the ignore list, remove it. The reference\n+\t\t * count which is held by the ignored list is reused for\n+\t\t * queueing the signal.\n+\t\t */\n \t\thlist_del_init(&tmr->ignored_list);\n-\n-\tif (unlikely(!list_empty(&q->list))) {\n+\t} else if (unlikely(!list_empty(&q->list))) {\n \t\t/* This holds a reference count already */\n \t\tresult = TRACE_SIGNAL_ALREADY_PENDING;\n \t\tgoto out;\n+\t} else {\n+\t\tposixtimer_sigqueue_getref(q);\n \t}\n \n-\tposixtimer_sigqueue_getref(q);\n \tposixtimer_queue_sigqueue(q, t, tmr->it_pid_type);\n \tresult = TRACE_SIGNAL_DELIVERED;\n out:",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "kernel/signal.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 1,
+      "start_step": 38
+    }
+  ],
+  "success_step": 38
+}

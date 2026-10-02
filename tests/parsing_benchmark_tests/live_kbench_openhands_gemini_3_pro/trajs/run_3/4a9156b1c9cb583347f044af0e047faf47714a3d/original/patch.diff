@@ -1,0 +1,161 @@
+diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
+index 4c2db6cca557..de786d1325d2 100644
+--- a/net/vmw_vsock/af_vsock.c
++++ b/net/vmw_vsock/af_vsock.c
+@@ -487,10 +487,24 @@ int vsock_assign_transport(struct vsock_sock *vsk, struct vsock_sock *psk)
+ 		goto err;
+ 	}
+ 
++	/* We increase the module refcnt to prevent the transport unloading
++	 * while there are open sockets assigned to it.
++	 */
++	if (!new_transport || !try_module_get(new_transport->module)) {
++		ret = -ENODEV;
++		goto err;
++	}
++
++	/* It's safe to release the mutex after a successful try_module_get().
++	 * Whichever transport `new_transport` points at, it won't go away until
++	 * the last module_put() below or in vsock_deassign_transport().
++	 */
++	mutex_unlock(&vsock_register_mutex);
++
+ 	if (vsk->transport) {
+ 		if (vsk->transport == new_transport) {
+-			ret = 0;
+-			goto err;
++			module_put(new_transport->module);
++			return 0;
+ 		}
+ 
+ 		/* transport->release() must be called with sock lock acquired.
+@@ -512,19 +526,6 @@ int vsock_assign_transport(struct vsock_sock *vsk, struct vsock_sock *psk)
+ 		vsk->peer_shutdown = 0;
+ 	}
+ 
+-	/* We increase the module refcnt to prevent the transport unloading
+-	 * while there are open sockets assigned to it.
+-	 */
+-	if (!new_transport || !try_module_get(new_transport->module)) {
+-		ret = -ENODEV;
+-		goto err;
+-	}
+-
+-	/* It's safe to release the mutex after a successful try_module_get().
+-	 * Whichever transport `new_transport` points at, it won't go away until
+-	 * the last module_put() below or in vsock_deassign_transport().
+-	 */
+-	mutex_unlock(&vsock_register_mutex);
+ 
+ 	if (sk->sk_type == SOCK_SEQPACKET) {
+ 		if (!new_transport->seqpacket_allow ||
+diff --git a/original_vsock_assign.c b/original_vsock_assign.c
+new file mode 100644
+index 000000000000..a620be003cfd
+--- /dev/null
++++ b/original_vsock_assign.c
+@@ -0,0 +1,104 @@
++int vsock_assign_transport(struct vsock_sock *vsk, struct vsock_sock *psk)
++{
++	const struct vsock_transport *new_transport;
++	struct sock *sk = sk_vsock(vsk);
++	unsigned int remote_cid = vsk->remote_addr.svm_cid;
++	__u8 remote_flags;
++	int ret;
++
++	/* If the packet is coming with the source and destination CIDs higher
++	 * than VMADDR_CID_HOST, then a vsock channel where all the packets are
++	 * forwarded to the host should be established. Then the host will
++	 * need to forward the packets to the guest.
++	 *
++	 * The flag is set on the (listen) receive path (psk is not NULL). On
++	 * the connect path the flag can be set by the user space application.
++	 */
++	if (psk && vsk->local_addr.svm_cid > VMADDR_CID_HOST &&
++	    vsk->remote_addr.svm_cid > VMADDR_CID_HOST)
++		vsk->remote_addr.svm_flags |= VMADDR_FLAG_TO_HOST;
++
++	remote_flags = vsk->remote_addr.svm_flags;
++
++	mutex_lock(&vsock_register_mutex);
++
++	switch (sk->sk_type) {
++	case SOCK_DGRAM:
++		new_transport = transport_dgram;
++		break;
++	case SOCK_STREAM:
++	case SOCK_SEQPACKET:
++		if (vsock_use_local_transport(remote_cid))
++			new_transport = transport_local;
++		else if (remote_cid <= VMADDR_CID_HOST || !transport_h2g ||
++			 (remote_flags & VMADDR_FLAG_TO_HOST))
++			new_transport = transport_g2h;
++		else
++			new_transport = transport_h2g;
++		break;
++	default:
++		ret = -ESOCKTNOSUPPORT;
++		goto err;
++	}
++
++	if (vsk->transport) {
++		if (vsk->transport == new_transport) {
++			ret = 0;
++			goto err;
++		}
++
++		/* transport->release() must be called with sock lock acquired.
++		 * This path can only be taken during vsock_connect(), where we
++		 * have already held the sock lock. In the other cases, this
++		 * function is called on a new socket which is not assigned to
++		 * any transport.
++		 */
++		vsk->transport->release(vsk);
++		vsock_deassign_transport(vsk);
++
++		/* transport's release() and destruct() can touch some socket
++		 * state, since we are reassigning the socket to a new transport
++		 * during vsock_connect(), let's reset these fields to have a
++		 * clean state.
++		 */
++		sock_reset_flag(sk, SOCK_DONE);
++		sk->sk_state = TCP_CLOSE;
++		vsk->peer_shutdown = 0;
++	}
++
++	/* We increase the module refcnt to prevent the transport unloading
++	 * while there are open sockets assigned to it.
++	 */
++	if (!new_transport || !try_module_get(new_transport->module)) {
++		ret = -ENODEV;
++		goto err;
++	}
++
++	/* It's safe to release the mutex after a successful try_module_get().
++	 * Whichever transport `new_transport` points at, it won't go away until
++	 * the last module_put() below or in vsock_deassign_transport().
++	 */
++	mutex_unlock(&vsock_register_mutex);
++
++	if (sk->sk_type == SOCK_SEQPACKET) {
++		if (!new_transport->seqpacket_allow ||
++		    !new_transport->seqpacket_allow(remote_cid)) {
++			module_put(new_transport->module);
++			return -ESOCKTNOSUPPORT;
++		}
++	}
++
++	ret = new_transport->init(vsk, psk);
++	if (ret) {
++		module_put(new_transport->module);
++		return ret;
++	}
++
++	vsk->transport = new_transport;
++
++	return 0;
++err:
++	mutex_unlock(&vsock_register_mutex);
++	return ret;
++}
++EXPORT_SYMBOL_GPL(vsock_assign_transport);

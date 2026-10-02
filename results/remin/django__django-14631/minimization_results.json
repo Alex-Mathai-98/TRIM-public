@@ -1,0 +1,161 @@
+{
+  "bug_id": "django__django-14631",
+  "short_path": [
+    [
+      {
+        "filename": "django/forms/forms.py",
+        "before": "        bound_field = field.get_bound_field(self, name)\n        self._bound_fields_cache[name] = bound_field\n        return bound_field\n\n    @property",
+        "after": "        bound_field = field.get_bound_field(self, name)\n        self._bound_fields_cache[name] = bound_field\n        return bound_field\n\n    def _bound_items(self):\n        \"\"\"Yield (name, bound_field) pairs for all fields.\"\"\"\n        for name in self.fields:\n            yield name, self[name]\n\n    @property",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/forms/boundfield.py",
+        "before": "    @property\n    def widget_type(self):\n        return re.sub(r'widget$|input$', '', self.field.widget.__class__.__name__.lower())",
+        "after": "    @property\n    def widget_type(self):\n        return re.sub(r'widget$|input$', '', self.field.widget.__class__.__name__.lower())\n\n    def _did_change(self):\n        \"\"\"Return True if data differs from initial.\"\"\"\n        from django.core.exceptions import ValidationError\n        \n        data_value = self.data\n        if not self.field.show_hidden_initial:\n            # Use the BoundField's initial as this is the value passed to\n            # the widget.\n            initial_value = self.initial\n        else:\n            initial_prefixed_name = self.form.add_initial_prefix(self.name)\n            hidden_widget = self.field.hidden_widget()\n            try:\n                initial_value = self.field.to_python(\n                    self.form._widget_data_value(hidden_widget, initial_prefixed_name)\n                )\n            except ValidationError:\n                # Always assume data has changed if validation fails.\n                return True\n        return self.field.has_changed(initial_value, data_value)",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/forms/forms.py",
+        "before": "    def _clean_fields(self):\n        for name, field in self.fields.items():\n            if field.disabled:\n                value = self.get_initial_for_field(field, name)\n            else:\n                value = self._field_data_value(field, self.add_prefix(name))\n            try:\n                if isinstance(field, FileField):\n                    initial = self.get_initial_for_field(field, name)\n                    value = field.clean(value, initial)\n                else:\n                    value = field.clean(value)\n                self.cleaned_data[name] = value\n                if hasattr(self, 'clean_%s' % name):\n                    value = getattr(self, 'clean_%s' % name)()\n                    self.cleaned_data[name] = value\n            except ValidationError as e:\n                self.add_error(name, e)",
+        "after": "    def _clean_fields(self):\n        for name, bf in self._bound_items():\n            field = bf.field\n            if field.disabled:\n                value = bf.initial\n            else:\n                value = bf.data\n            try:\n                if isinstance(field, FileField):\n                    initial = bf.initial\n                    value = field.clean(value, initial)\n                else:\n                    value = field.clean(value)\n                self.cleaned_data[name] = value\n                if hasattr(self, 'clean_%s' % name):\n                    value = getattr(self, 'clean_%s' % name)()\n                    self.cleaned_data[name] = value\n            except ValidationError as e:\n                self.add_error(name, e)",
+        "explanation": "classic_swe step 23 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/forms/boundfield.py b/django/forms/boundfield.py\nindex 88adadb37d..835ed599c3 100644\n--- a/django/forms/boundfield.py\n+++ b/django/forms/boundfield.py\n@@ -232,6 +232,27 @@ class BoundField:\n     def widget_type(self):\n         return re.sub(r'widget$|input$', '', self.field.widget.__class__.__name__.lower())\n \n+    def _did_change(self):\n+        \"\"\"Return True if data differs from initial.\"\"\"\n+        from django.core.exceptions import ValidationError\n+        \n+        data_value = self.data\n+        if not self.field.show_hidden_initial:\n+            # Use the BoundField's initial as this is the value passed to\n+            # the widget.\n+            initial_value = self.initial\n+        else:\n+            initial_prefixed_name = self.form.add_initial_prefix(self.name)\n+            hidden_widget = self.field.hidden_widget()\n+            try:\n+                initial_value = self.field.to_python(\n+                    self.form._widget_data_value(hidden_widget, initial_prefixed_name)\n+                )\n+            except ValidationError:\n+                # Always assume data has changed if validation fails.\n+                return True\n+        return self.field.has_changed(initial_value, data_value)\n+\n \n @html_safe\n class BoundWidget:\ndiff --git a/django/forms/forms.py b/django/forms/forms.py\nindex d14037bfe9..26fc327eb5 100644\n--- a/django/forms/forms.py\n+++ b/django/forms/forms.py\n@@ -167,6 +167,11 @@ class BaseForm:\n         self._bound_fields_cache[name] = bound_field\n         return bound_field\n \n+    def _bound_items(self):\n+        \"\"\"Yield (name, bound_field) pairs for all fields.\"\"\"\n+        for name in self.fields:\n+            yield name, self[name]\n+\n     @property\n     def errors(self):\n         \"\"\"Return an ErrorDict for the data provided for the form.\"\"\"\n@@ -387,14 +392,15 @@ class BaseForm:\n         self._post_clean()\n \n     def _clean_fields(self):\n-        for name, field in self.fields.items():\n+        for name, bf in self._bound_items():\n+            field = bf.field\n             if field.disabled:\n-                value = self.get_initial_for_field(field, name)\n+                value = bf.initial\n             else:\n-                value = self._field_data_value(field, self.add_prefix(name))\n+                value = bf.data\n             try:\n                 if isinstance(field, FileField):\n-                    initial = self.get_initial_for_field(field, name)\n+                    initial = bf.initial\n                     value = field.clean(value, initial)\n                 else:\n                     value = field.clean(value)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_file_no_crash": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 4,
+    "greedy_removal_edit_no_crash": 1,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      4
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      1,
+      2,
+      4
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 3,
+  "reduction": "4_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/forms/forms.py",
+          "before": "        bound_field = field.get_bound_field(self, name)\n        self._bound_fields_cache[name] = bound_field\n        return bound_field\n\n    @property",
+          "after": "        bound_field = field.get_bound_field(self, name)\n        self._bound_fields_cache[name] = bound_field\n        return bound_field\n\n    def _bound_items(self):\n        \"\"\"Yield (name, bound_field) pairs for all fields.\"\"\"\n        for name in self.fields:\n            yield name, self[name]\n\n    @property",
+          "explanation": "classic_swe step 16 #1"
+        },
+        {
+          "filename": "django/forms/boundfield.py",
+          "before": "    @property\n    def widget_type(self):\n        return re.sub(r'widget$|input$', '', self.field.widget.__class__.__name__.lower())",
+          "after": "    @property\n    def widget_type(self):\n        return re.sub(r'widget$|input$', '', self.field.widget.__class__.__name__.lower())\n\n    def _did_change(self):\n        \"\"\"Return True if data differs from initial.\"\"\"\n        from django.core.exceptions import ValidationError\n        \n        data_value = self.data\n        if not self.field.show_hidden_initial:\n            # Use the BoundField's initial as this is the value passed to\n            # the widget.\n            initial_value = self.initial\n        else:\n            initial_prefixed_name = self.form.add_initial_prefix(self.name)\n            hidden_widget = self.field.hidden_widget()\n            try:\n                initial_value = self.field.to_python(\n                    self.form._widget_data_value(hidden_widget, initial_prefixed_name)\n                )\n            except ValidationError:\n                # Always assume data has changed if validation fails.\n                return True\n        return self.field.has_changed(initial_value, data_value)",
+          "explanation": "classic_swe step 19 #1"
+        },
+        {
+          "filename": "django/forms/forms.py",
+          "before": "    @cached_property\n    def changed_data(self):\n        data = []\n        for name, field in self.fields.items():\n            data_value = self._field_data_value(field, self.add_prefix(name))\n            if not field.show_hidden_initial:\n                # Use the BoundField's initial as this is the value passed to\n                # the widget.\n                initial_value = self[name].initial\n            else:\n                initial_prefixed_name = self.add_initial_prefix(name)\n                hidden_widget = field.hidden_widget()\n                try:\n                    initial_value = field.to_python(\n                        self._widget_data_value(hidden_widget, initial_prefixed_name)\n                    )\n                except ValidationError:\n                    # Always assume data has changed if validation fails.\n                    data.append(name)\n                    continue\n            if field.has_changed(initial_value, data_value):\n                data.append(name)\n        return data",
+          "after": "    @cached_property\n    def changed_data(self):\n        return [name for name, bf in self._bound_items() if bf._did_change()]",
+          "explanation": "classic_swe step 20 #1"
+        },
+        {
+          "filename": "django/forms/forms.py",
+          "before": "    def _clean_fields(self):\n        for name, field in self.fields.items():\n            if field.disabled:\n                value = self.get_initial_for_field(field, name)\n            else:\n                value = self._field_data_value(field, self.add_prefix(name))\n            try:\n                if isinstance(field, FileField):\n                    initial = self.get_initial_for_field(field, name)\n                    value = field.clean(value, initial)\n                else:\n                    value = field.clean(value)\n                self.cleaned_data[name] = value\n                if hasattr(self, 'clean_%s' % name):\n                    value = getattr(self, 'clean_%s' % name)()\n                    self.cleaned_data[name] = value\n            except ValidationError as e:\n                self.add_error(name, e)",
+          "after": "    def _clean_fields(self):\n        for name, bf in self._bound_items():\n            field = bf.field\n            if field.disabled:\n                value = bf.initial\n            else:\n                value = bf.data\n            try:\n                if isinstance(field, FileField):\n                    initial = bf.initial\n                    value = field.clean(value, initial)\n                else:\n                    value = field.clean(value)\n                self.cleaned_data[name] = value\n                if hasattr(self, 'clean_%s' % name):\n                    value = getattr(self, 'clean_%s' % name)()\n                    self.cleaned_data[name] = value\n            except ValidationError as e:\n                self.add_error(name, e)",
+          "explanation": "classic_swe step 23 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 117,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 117,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/forms/boundfield.py",
+      "django/forms/forms.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/forms/boundfield.py",
+      "django/forms/forms.py"
+    ],
+    "gold_files": [
+      "django/forms/boundfield.py",
+      "django/forms/forms.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 7,
+    "minimized_added_lines": 31,
+    "minimized_deleted_lines": 4,
+    "gold_added_lines": 31,
+    "gold_deleted_lines": 34
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

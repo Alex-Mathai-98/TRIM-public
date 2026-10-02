@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#define _GNU_SOURCE\n#include <unistd.h>\n#include <sys/syscall.h>\n#include <sys/types.h>\n#include <fcntl.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <sched.h>\n#include <sys/mount.h>\n\n#ifndef __NR_pidfd_open\n#define __NR_pidfd_open 434\n#endif\n\nint main() {\n    pid_t r0 = getpid();\n    int r1 = syscall(__NR_pidfd_open, r0, 0);\n    \n    // Create binderfs directory if it doesn't exist\n    mkdir(\"binderfs\", 0777);\n    \n    syscall(SYS_openat, AT_FDCWD, \"./binderfs/binder0\", 0, 0);\n    syscall(SYS_setns, r1, 0x24020000); // CLONE_NEWNS | CLONE_NEWUSER\n    syscall(SYS_umount2, \".\", MNT_DETACH);\n    \n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/reproduce_crash.c\n+++ /linux/reproduce_crash.c\n@@ -1,0 +2,28 @@\n+#define _GNU_SOURCE\n+#include <unistd.h>\n+#include <sys/syscall.h>\n+#include <sys/types.h>\n+#include <fcntl.h>\n+#include <stdio.h>\n+#include <stdlib.h>\n+#include <sched.h>\n+#include <sys/mount.h>\n+\n+#ifndef __NR_pidfd_open\n+#define __NR_pidfd_open 434\n+#endif\n+\n+int main() {\n+    pid_t r0 = getpid();\n+    int r1 = syscall(__NR_pidfd_open, r0, 0);\n+\n+    // Create binderfs directory if it doesn't exist\n+    mkdir(\"binderfs\", 0777);\n+\n+    syscall(SYS_openat, AT_FDCWD, \"./binderfs/binder0\", 0, 0);\n+    syscall(SYS_setns, r1, 0x24020000); // CLONE_NEWNS | CLONE_NEWUSER\n+    syscall(SYS_umount2, \".\", MNT_DETACH);\n+\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 14",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 16 rm #1",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "if (refcount_dec_and_test(&device->ref)) {\n\t\tbinder_remove_device(device);",
+          "before": "if (refcount_dec_and_test(&device->ref)) {",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace_once_per_line_in_range",
+          "ending_line": 5246,
+          "expected_diff": null,
+          "explanation": "openhands step 51 sed N,M s #1 (range sub)",
+          "filename": "drivers/android/binder.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 5243,
+          "step_index": 51
+        },
+        {
+          "after": "\n        if (refcount_dec_and_test(&device->ref)) {\n",
+          "before": "\n        if (refcount_dec_and_test(if (refcount_dec_and_test(&device->ref)) {device->ref)) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/android/binder.c\n+++ /linux/drivers/android/binder.c\n@@ -5243 +5243 @@\n-\tif (refcount_dec_and_test(if (refcount_dec_and_test(&device->ref)) {device->ref)) {\n+\tif (refcount_dec_and_test(&device->ref)) {",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 55",
+          "filename": "drivers/android/binder.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 55
+        }
+      ],
+      "end_step": 55,
+      "revision_index": 0,
+      "start_step": 14
+    }
+  ],
+  "success_step": 55
+}

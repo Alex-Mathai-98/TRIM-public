@@ -1,0 +1,105 @@
+diff --git a/fs/btrfs/direct-io.c b/fs/btrfs/direct-io.c
+index 67adbe9d294a..8fefccf0e332 100644
+--- a/fs/btrfs/direct-io.c
++++ b/fs/btrfs/direct-io.c
+@@ -784,6 +784,7 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	ssize_t ret;
+ 	unsigned int ilock_flags = 0;
+ 	struct iomap_dio *dio;
++	bool locked = false;
+ 
+ 	if (iocb->ki_flags & IOCB_NOWAIT)
+ 		ilock_flags |= BTRFS_ILOCK_TRY;
+@@ -801,23 +802,33 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	ret = btrfs_inode_lock(BTRFS_I(inode), ilock_flags);
+ 	if (ret < 0)
+ 		return ret;
++	locked = true;
+ 
+ 	/* Shared lock cannot be used with security bits set. */
+ 	if ((ilock_flags & BTRFS_ILOCK_SHARED) && !IS_NOSEC(inode)) {
+-		btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++		if (locked) {
++			btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++			locked = false;
++		}
+ 		ilock_flags &= ~BTRFS_ILOCK_SHARED;
+ 		goto relock;
+ 	}
+ 
+ 	ret = generic_write_checks(iocb, from);
+ 	if (ret <= 0) {
+-		btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++		if (locked) {
++			btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++			locked = false;
++		}
+ 		return ret;
+ 	}
+ 
+ 	ret = btrfs_write_check(iocb, from, ret);
+ 	if (ret < 0) {
+-		btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++		if (locked) {
++			btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++			locked = false;
++		}
+ 		goto out;
+ 	}
+ 
+@@ -828,13 +839,19 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 	 */
+ 	if ((ilock_flags & BTRFS_ILOCK_SHARED) &&
+ 	    pos + iov_iter_count(from) > i_size_read(inode)) {
+-		btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++		if (locked) {
++			btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++			locked = false;
++		}
+ 		ilock_flags &= ~BTRFS_ILOCK_SHARED;
+ 		goto relock;
+ 	}
+ 
+ 	if (check_direct_IO(fs_info, from, pos)) {
+-		btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++		if (locked) {
++			btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++			locked = false;
++		}
+ 		goto buffered;
+ 	}
+ 
+@@ -917,7 +934,12 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)
+ 		}
+ 	}
+ 
+-	btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++	if (locked) {
++		if ((ilock_flags & BTRFS_ILOCK_SHARED) ||
++		    inode_is_locked(inode))
++			btrfs_inode_unlock(BTRFS_I(inode), ilock_flags);
++		locked = false;
++	}
+ 
+ 	/*
+ 	 * If 'ret' is -ENOTBLK or we have not written all data, then it means
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index ceee5422089b..2e388fa96ad9 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -344,6 +344,7 @@ static void __cold btrfs_print_data_csum_error(struct btrfs_inode *inode,
+  */
+ int btrfs_inode_lock(struct btrfs_inode *inode, unsigned int ilock_flags)
+ {
++	printk(KERN_ERR "DEBUG: btrfs_inode_lock ENTER inode %p flags %x\n", &inode->vfs_inode, ilock_flags);
+ 	if (ilock_flags & BTRFS_ILOCK_SHARED) {
+ 		if (ilock_flags & BTRFS_ILOCK_TRY) {
+ 			if (!inode_trylock_shared(&inode->vfs_inode))
+@@ -374,6 +375,7 @@ int btrfs_inode_lock(struct btrfs_inode *inode, unsigned int ilock_flags)
+  */
+ void btrfs_inode_unlock(struct btrfs_inode *inode, unsigned int ilock_flags)
+ {
++	printk(KERN_ERR "DEBUG: btrfs_inode_unlock inode %p flags %x\n", &inode->vfs_inode, ilock_flags);
+ 	if (ilock_flags & BTRFS_ILOCK_MMAP)
+ 		up_write(&inode->i_mmap_lock);
+ 	if (ilock_flags & BTRFS_ILOCK_SHARED)

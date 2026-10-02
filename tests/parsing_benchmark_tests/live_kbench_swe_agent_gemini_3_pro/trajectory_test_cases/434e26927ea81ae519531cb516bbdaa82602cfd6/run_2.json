@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\trcu_read_lock_bh();\n\tinfo->retval = bpf_prog_run(info->prog, info->ctx);\n\trcu_read_unlock_bh();\n",
+          "before": "\trcu_read_lock();\n\tinfo->retval = bpf_prog_run(info->prog, info->ctx);\n\trcu_read_unlock();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c\nindex aaf13a7d58ed..6efa94dffa87 100644\n--- a/net/bpf/test_run.c\n+++ b/net/bpf/test_run.c\n@@ -746,9 +746,9 @@ __bpf_prog_test_run_raw_tp(void *data)\n \n \told_run_ctx = bpf_set_run_ctx(&run_ctx.run_ctx);\n \n-\trcu_read_lock();\n+\trcu_read_lock_bh();\n \tinfo->retval = bpf_prog_run(info->prog, info->ctx);\n-\trcu_read_unlock();\n+\trcu_read_unlock_bh();\n \n \tbpf_reset_run_ctx(old_run_ctx);\n }",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "net/bpf/test_run.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 0,
+      "start_step": 40
+    },
+    {
+      "edits": [
+        {
+          "after": "\trcu_read_lock();\n\tinfo->retval = bpf_prog_run(info->prog, info->ctx);\n\trcu_read_unlock();\n",
+          "before": "\trcu_read_lock_bh();\n\tinfo->retval = bpf_prog_run(info->prog, info->ctx);\n\trcu_read_unlock_bh();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "net/bpf/test_run.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        },
+        {
+          "after": "BPF_CALL_0(bpf_get_cgroup_classid_curr)\n{\n\tu32 classid;\n\n\trcu_read_lock();\n\tclassid = __task_get_classid(current);\n\trcu_read_unlock();\n\treturn classid;\n}\n",
+          "before": "BPF_CALL_0(bpf_get_cgroup_classid_curr)\n{\n\treturn __task_get_classid(current);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/filter.c b/net/core/filter.c\nindex 327ca73f9cd7..10c67c5c698e 100644\n--- a/net/core/filter.c\n+++ b/net/core/filter.c\n@@ -3085,7 +3085,12 @@ static const struct bpf_func_proto bpf_msg_pop_data_proto = {\n #ifdef CONFIG_CGROUP_NET_CLASSID\n BPF_CALL_0(bpf_get_cgroup_classid_curr)\n {\n-\treturn __task_get_classid(current);\n+\tu32 classid;\n+\n+\trcu_read_lock();\n+\tclassid = __task_get_classid(current);\n+\trcu_read_unlock();\n+\treturn classid;\n }\n \n const struct bpf_func_proto bpf_get_cgroup_classid_curr_proto = {",
+          "explanation": "classic_swe step 49 #1",
+          "filename": "net/core/filter.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        },
+        {
+          "after": "BPF_CALL_1(bpf_get_cgroup_classid, const struct sk_buff *, skb)\n{\n\tu32 classid;\n\n\trcu_read_lock();\n\tclassid = task_get_classid(skb);\n\trcu_read_unlock();\n\treturn classid;\n}\n",
+          "before": "BPF_CALL_1(bpf_get_cgroup_classid, const struct sk_buff *, skb)\n{\n\treturn task_get_classid(skb);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/filter.c b/net/core/filter.c\nindex 327ca73f9cd7..ed5cc2dbe0be 100644\n--- a/net/core/filter.c\n+++ b/net/core/filter.c\n@@ -3085,7 +3085,12 @@ static const struct bpf_func_proto bpf_msg_pop_data_proto = {\n #ifdef CONFIG_CGROUP_NET_CLASSID\n BPF_CALL_0(bpf_get_cgroup_classid_curr)\n {\n-\treturn __task_get_classid(current);\n+\tu32 classid;\n+\n+\trcu_read_lock();\n+\tclassid = __task_get_classid(current);\n+\trcu_read_unlock();\n+\treturn classid;\n }\n \n const struct bpf_func_proto bpf_get_cgroup_classid_curr_proto = {\n@@ -3114,7 +3119,12 @@ static const struct bpf_func_proto bpf_skb_cgroup_classid_proto = {\n \n BPF_CALL_1(bpf_get_cgroup_classid, const struct sk_buff *, skb)\n {\n-\treturn task_get_classid(skb);\n+\tu32 classid;\n+\n+\trcu_read_lock();\n+\tclassid = task_get_classid(skb);\n+\trcu_read_unlock();\n+\treturn classid;\n }\n \n static const struct bpf_func_proto bpf_get_cgroup_classid_proto = {",
+          "explanation": "classic_swe step 50 #1",
+          "filename": "net/core/filter.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        }
+      ],
+      "end_step": 50,
+      "revision_index": 1,
+      "start_step": 48
+    }
+  ],
+  "success_step": 50
+}

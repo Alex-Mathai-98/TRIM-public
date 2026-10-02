@@ -1,0 +1,48 @@
+diff --git a/sympy/concrete/summations.py b/sympy/concrete/summations.py
+index 372487664c..a3c318712f 100644
+--- a/sympy/concrete/summations.py
++++ b/sympy/concrete/summations.py
+@@ -867,6 +867,26 @@ def eval_sum(f, limits):
+                 newargs.append((newexpr, arg.cond))
+             return f.func(*newargs)
+ 
++    # Special case for Piecewise expressions where the condition matches the summation bounds
++    if isinstance(f, Piecewise):
++        # Check if we have a simple case like Piecewise((expr, (a <= i) & (i <= b)), (0, True))
++        # where we're summing from a to b
++        if len(f.args) == 2 and f.args[1].expr == 0 and f.args[1].cond == True:
++            expr, cond = f.args[0]
++            # Check if the condition is of the form (a <= i) & (i <= b)
++            from sympy.logic.boolalg import And
++            if isinstance(cond, And) and len(cond.args) == 2:
++                from sympy.core.relational import LessThan
++                left_cond, right_cond = cond.args
++                # Check for (a <= i) & (i <= b) pattern
++                # We expect: (a <= i) & (i <= b)
++                # In SymPy, this becomes: LessThan(a, i) & LessThan(i, b)
++                if (isinstance(left_cond, LessThan) and isinstance(right_cond, LessThan) and
++                    left_cond.lhs == a and left_cond.rhs == i and
++                    right_cond.lhs == i and right_cond.rhs == b):
++                    # The condition matches the summation bounds, so we can simplify
++                    return eval_sum(expr, limits)
++
+     if f.has(KroneckerDelta) and _has_simple_delta(f, limits[0]):
+         return deltasummation(f, limits)
+ 
+diff --git a/sympy/matrices/expressions/matexpr.py b/sympy/matrices/expressions/matexpr.py
+index b4d759836e..1cb0cf4df5 100644
+--- a/sympy/matrices/expressions/matexpr.py
++++ b/sympy/matrices/expressions/matexpr.py
+@@ -476,10 +476,8 @@ def conjugate(self):
+         return self
+ 
+     def _entry(self, i, j):
+-        if i == j:
+-            return S.One
+-        else:
+-            return S.Zero
++        from sympy.functions.special.tensor_functions import KroneckerDelta
++        return KroneckerDelta(i, j)
+ 
+     def _eval_determinant(self):
+         return S.One

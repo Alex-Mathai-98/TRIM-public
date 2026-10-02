@@ -1,0 +1,24 @@
+diff --git a/fs/f2fs/inode.c b/fs/f2fs/inode.c
+index 1ed86df343a5..4d31d86a60c7 100644
+--- a/fs/f2fs/inode.c
++++ b/fs/f2fs/inode.c
+@@ -897,10 +897,16 @@ void f2fs_evict_inode(struct inode *inode)
+ 			atomic_read(&fi->i_compr_blocks));
+ 
+ 	if (likely(!f2fs_cp_error(sbi) &&
+-				!is_sbi_flag_set(sbi, SBI_CP_DISABLED)))
+-		f2fs_bug_on(sbi, is_inode_flag_set(inode, FI_DIRTY_INODE));
+-	else
++				!is_sbi_flag_set(sbi, SBI_CP_DISABLED))) {
++		if (is_inode_flag_set(inode, FI_DIRTY_INODE)) {
++			f2fs_warn(sbi, "f2fs_evict_inode: dirty inode, ino:%lu",
++				  inode->i_ino);
++			set_sbi_flag(sbi, SBI_NEED_FSCK);
++			f2fs_inode_synced(inode);
++		}
++	} else {
+ 		f2fs_inode_synced(inode);
++	}
+ 
+ 	/* for the case f2fs_new_inode() was failed, .i_ino is zero, skip it */
+ 	if (inode->i_ino)

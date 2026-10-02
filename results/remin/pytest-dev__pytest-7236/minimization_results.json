@@ -1,0 +1,228 @@
+{
+  "bug_id": "pytest-dev__pytest-7236",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/unittest.py",
+        "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            if not self._store.get(skipped_by_mark_key, False):\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/unittest.py",
+        "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            if not self._store.get(skipped_by_mark_key, False):\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/unittest.py",
+        "before": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+        "after": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            print(f\"DEBUG: addSkip called, setting skipped_by_mark_key=True\")\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+        "explanation": "classic_swe step 38 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/unittest.py",
+        "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            \n            # Also check if there's a skip exception in the excinfo\n            if not is_skipped and hasattr(self, '_excinfo') and self._excinfo:\n                from _pytest.outcomes import skip\n                for excinfo in self._excinfo:\n                    if excinfo.errisinstance(skip.Exception):\n                        is_skipped = True\n                        break\n            \n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}, excinfo={getattr(self, '_excinfo', None)}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "explanation": "classic_swe step 42 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/unittest.py",
+        "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            \n            # Also check if there's a skip exception in the excinfo\n            if not is_skipped and hasattr(self, '_excinfo') and self._excinfo:\n                from _pytest.outcomes import skip\n                for excinfo in self._excinfo:\n                    if excinfo.errisinstance(skip.Exception):\n                        is_skipped = True\n                        break\n            \n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}, excinfo={getattr(self, '_excinfo', None)}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            if not self._store.get(skipped_by_mark_key, False):\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+        "explanation": "classic_swe step 60 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/unittest.py",
+        "before": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            print(f\"DEBUG: addSkip called, setting skipped_by_mark_key=True\")\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+        "after": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+        "explanation": "classic_swe step 61 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/unittest.py b/src/_pytest/unittest.py\nindex 773f545af..3aafd1a20 100644\n--- a/src/_pytest/unittest.py\n+++ b/src/_pytest/unittest.py\n@@ -122,7 +122,9 @@ class TestCaseFunction(Function):\n \n     def teardown(self):\n         if self._explicit_tearDown is not None:\n-            self._explicit_tearDown()\n+            # Only call explicit tearDown if the test was not skipped\n+            if not self._store.get(skipped_by_mark_key, False):\n+                self._explicit_tearDown()\n             self._explicit_tearDown = None\n         self._testcase = None\n         self._obj = None\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      8,
+      9,
+      10,
+      13,
+      14
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      2,
+      8,
+      9,
+      10,
+      13,
+      14
+    ],
+    "edit_list_after_file_min": [
+      2,
+      8,
+      9,
+      10,
+      13,
+      14
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 4,
+    "greedy_removal_edit_no_crash": 2,
+    "greedy_removal_edit_not_applicable": 8,
+    "edit_list_after_greedy": [
+      2,
+      8,
+      9,
+      10,
+      13,
+      14
+    ],
+    "edit_list_after_refinement": [
+      2,
+      8,
+      9,
+      10,
+      13,
+      14
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 6,
+  "reduction": "6_to_6",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/unittest.py",
+          "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            if not self._store.get(skipped_by_mark_key, False):\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "explanation": "classic_swe step 21 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/unittest.py",
+          "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            if not self._store.get(skipped_by_mark_key, False):\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "explanation": "classic_swe step 35 #1"
+        },
+        {
+          "filename": "src/_pytest/unittest.py",
+          "before": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+          "after": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            print(f\"DEBUG: addSkip called, setting skipped_by_mark_key=True\")\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+          "explanation": "classic_swe step 38 #1"
+        },
+        {
+          "filename": "src/_pytest/unittest.py",
+          "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            \n            # Also check if there's a skip exception in the excinfo\n            if not is_skipped and hasattr(self, '_excinfo') and self._excinfo:\n                from _pytest.outcomes import skip\n                for excinfo in self._excinfo:\n                    if excinfo.errisinstance(skip.Exception):\n                        is_skipped = True\n                        break\n            \n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}, excinfo={getattr(self, '_excinfo', None)}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "explanation": "classic_swe step 42 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/unittest.py",
+          "before": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            is_skipped = self._store.get(skipped_by_mark_key, False)\n            \n            # Also check if there's a skip exception in the excinfo\n            if not is_skipped and hasattr(self, '_excinfo') and self._excinfo:\n                from _pytest.outcomes import skip\n                for excinfo in self._excinfo:\n                    if excinfo.errisinstance(skip.Exception):\n                        is_skipped = True\n                        break\n            \n            print(f\"DEBUG: teardown called, is_skipped={is_skipped}, excinfo={getattr(self, '_excinfo', None)}\")\n            if not is_skipped:\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "after": "    def teardown(self):\n        if self._explicit_tearDown is not None:\n            # Only call explicit tearDown if the test was not skipped\n            if not self._store.get(skipped_by_mark_key, False):\n                self._explicit_tearDown()\n            self._explicit_tearDown = None\n        self._testcase = None\n        self._obj = None",
+          "explanation": "classic_swe step 60 #1"
+        },
+        {
+          "filename": "src/_pytest/unittest.py",
+          "before": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            print(f\"DEBUG: addSkip called, setting skipped_by_mark_key=True\")\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+          "after": "    def addSkip(self, testcase, reason):\n        try:\n            skip(reason)\n        except skip.Exception:\n            self._store[skipped_by_mark_key] = True\n            self._addexcinfo(sys.exc_info())",
+          "explanation": "classic_swe step 61 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 51,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 51,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "src/_pytest/unittest.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/unittest.py"
+    ],
+    "gold_files": [
+      "src/_pytest/unittest.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 4,
+    "minimized_added_lines": 3,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 8,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

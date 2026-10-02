@@ -1,0 +1,72 @@
+diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c
+index cfd9b9ead473..1b7a9da7763e 100644
+--- a/fs/bcachefs/backpointers.c
++++ b/fs/bcachefs/backpointers.c
+@@ -634,8 +634,9 @@ static int check_btree_root_to_backpointers(struct btree_trans *trans,
+ 	struct bkey_s_c k;
+ 	int ret;
+ retry:
++	struct btree *root = bch2_btree_id_root(c, btree_id)->b;
+ 	bch2_trans_node_iter_init(trans, &iter, btree_id, POS_MIN,
+-				  0, bch2_btree_id_root(c, btree_id)->b->c.level, 0);
++				  0, root ? root->c.level : 0, 0);
+ 	b = bch2_btree_iter_peek_node(&iter);
+ 	ret = PTR_ERR_OR_ZERO(b);
+ 	if (ret)
+diff --git a/fs/bcachefs/btree_gc.c b/fs/bcachefs/btree_gc.c
+index 2e8cfc4d3265..115abbdbff14 100644
+--- a/fs/bcachefs/btree_gc.c
++++ b/fs/bcachefs/btree_gc.c
+@@ -686,8 +686,9 @@ static int bch2_gc_btree(struct btree_trans *trans, enum btree_id btree, bool in
+ 		bch2_trans_begin(trans);
+ 
+ 		struct btree_iter iter;
++		struct btree *root = bch2_btree_id_root(c, btree)->b;
+ 		bch2_trans_node_iter_init(trans, &iter, btree, POS_MIN,
+-					  0, bch2_btree_id_root(c, btree)->b->c.level, 0);
++					  0, root ? root->c.level : 0, 0);
+ 		struct btree *b = bch2_btree_iter_peek_node(&iter);
+ 		ret = PTR_ERR_OR_ZERO(b);
+ 		if (ret)
+diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c
+index 89f9665ce70d..ca3cbb3f26d6 100644
+--- a/fs/bcachefs/btree_iter.c
++++ b/fs/bcachefs/btree_iter.c
+@@ -224,8 +224,9 @@ static void bch2_btree_path_verify(struct btree_trans *trans,
+ 
+ 	for (unsigned i = 0; i < (!path->cached ? BTREE_MAX_DEPTH : 1); i++) {
+ 		if (!path->l[i].b) {
+-			BUG_ON(!path->cached &&
+-			       bch2_btree_id_root(c, path->btree_id)->b->c.level > i);
++			struct btree *root = bch2_btree_id_root(c, path->btree_id)->b;
++			BUG_ON(!path->cached && root &&
++			       root->c.level > i);
+ 			break;
+ 		}
+ 
+@@ -731,9 +732,9 @@ static inline int btree_path_lock_root(struct btree_trans *trans,
+ 
+ 	while (1) {
+ 		b = READ_ONCE(*rootp);
+-		path->level = READ_ONCE(b->c.level);
+ 
+-		if (unlikely(path->level < depth_want)) {
++		if (unlikely(!b) ||
++		    unlikely((path->level = READ_ONCE(b->c.level)) < depth_want)) {
+ 			/*
+ 			 * the root is at a lower depth than the depth we want:
+ 			 * got to the end of the btree, or we're walking nodes
+diff --git a/fs/bcachefs/btree_locking.h b/fs/bcachefs/btree_locking.h
+index ca4aeefd631e..905ded0e3829 100644
+--- a/fs/bcachefs/btree_locking.h
++++ b/fs/bcachefs/btree_locking.h
+@@ -404,7 +404,8 @@ static inline int bch2_btree_path_upgrade(struct btree_trans *trans,
+ 
+ static inline void btree_path_set_should_be_locked(struct btree_trans *trans, struct btree_path *path)
+ {
+-	EBUG_ON(!btree_node_locked(path, path->level));
++	EBUG_ON(!IS_ERR_OR_NULL(path->l[path->level].b) &&
++		!btree_node_locked(path, path->level));
+ 	EBUG_ON(path->uptodate);
+ 
+ 	path->should_be_locked = true;

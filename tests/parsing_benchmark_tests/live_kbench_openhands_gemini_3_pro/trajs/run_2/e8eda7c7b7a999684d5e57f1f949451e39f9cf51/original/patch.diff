@@ -1,0 +1,43 @@
+diff --git a/drivers/mtd/mtdpart.c b/drivers/mtd/mtdpart.c
+index 6811a714349d..a5ba6a04c64f 100644
+--- a/drivers/mtd/mtdpart.c
++++ b/drivers/mtd/mtdpart.c
+@@ -92,6 +92,7 @@ static struct mtd_info *allocate_partition(struct mtd_info *parent,
+ 	child->parent = parent;
+ 	child->part.offset = part->offset;
+ 	INIT_LIST_HEAD(&child->partitions);
++	INIT_LIST_HEAD(&child->part.node);
+ 
+ 	if (child->part.offset == MTDPART_OFS_APPEND)
+ 		child->part.offset = cur_offset;
+@@ -272,26 +273,17 @@ int mtd_add_partition(struct mtd_info *parent, const char *name,
+ 	if (IS_ERR(child))
+ 		return PTR_ERR(child);
+ 
+-	mutex_lock(&master->master.partitions_lock);
+-	list_add_tail(&child->part.node, &parent->partitions);
+-	mutex_unlock(&master->master.partitions_lock);
+-
+ 	ret = add_mtd_device(child);
+ 	if (ret)
+-		goto err_remove_part;
+-
+-	mtd_add_partition_attrs(child);
+-
+-	return 0;
++		return ret;
+ 
+-err_remove_part:
+ 	mutex_lock(&master->master.partitions_lock);
+-	list_del(&child->part.node);
++	list_add_tail(&child->part.node, &parent->partitions);
+ 	mutex_unlock(&master->master.partitions_lock);
+ 
+-	free_partition(child);
++	mtd_add_partition_attrs(child);
+ 
+-	return ret;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(mtd_add_partition);
+ 

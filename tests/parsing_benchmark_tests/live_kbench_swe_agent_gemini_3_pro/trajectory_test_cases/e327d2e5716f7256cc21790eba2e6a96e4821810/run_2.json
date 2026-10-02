@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tbv_size = array_size(max_pages, sizeof(*bv));\n\tpg_size = array_size(max_pages, sizeof(*pages));\n\tbv = kvmalloc(bv_size + pg_size, GFP_KERNEL);\n\tif (!bv)\n\t\treturn -ENOMEM;\n\n\tpages = (void *)bv + bv_size;\n",
+          "before": "\tbv_size = array_size(max_pages, sizeof(*bv));\n\tbv = kvmalloc(bv_size, GFP_KERNEL);\n\tif (!bv)\n\t\treturn -ENOMEM;\n\n\t/* Put the page list at the end of the bvec list storage.  bvec\n\t * elements are larger than page pointers, so as long as we work\n\t * 0->last, we should be fine.\n\t */\n\tpg_size = array_size(max_pages, sizeof(*pages));\n\tpages = (void *)bv + bv_size - pg_size;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/netfs/iterator.c b/fs/netfs/iterator.c\nindex 72a435e5fc6d..47ce56df2231 100644\n--- a/fs/netfs/iterator.c\n+++ b/fs/netfs/iterator.c\n@@ -52,16 +52,12 @@ ssize_t netfs_extract_user_iter(struct iov_iter *orig, size_t orig_len,\n \n \tmax_pages = iov_iter_npages(orig, INT_MAX);\n \tbv_size = array_size(max_pages, sizeof(*bv));\n-\tbv = kvmalloc(bv_size, GFP_KERNEL);\n+\tpg_size = array_size(max_pages, sizeof(*pages));\n+\tbv = kvmalloc(bv_size + pg_size, GFP_KERNEL);\n \tif (!bv)\n \t\treturn -ENOMEM;\n \n-\t/* Put the page list at the end of the bvec list storage.  bvec\n-\t * elements are larger than page pointers, so as long as we work\n-\t * 0->last, we should be fine.\n-\t */\n-\tpg_size = array_size(max_pages, sizeof(*pages));\n-\tpages = (void *)bv + bv_size - pg_size;\n+\tpages = (void *)bv + bv_size;\n \n \twhile (count && npages < max_pages) {\n \t\tret = iov_iter_extract_pages(orig, &pages, count,",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/netfs/iterator.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 23
+}

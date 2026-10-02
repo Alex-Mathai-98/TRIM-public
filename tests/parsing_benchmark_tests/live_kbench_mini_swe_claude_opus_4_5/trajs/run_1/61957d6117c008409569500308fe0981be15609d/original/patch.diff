@@ -1,0 +1,25 @@
+diff --git a/drivers/net/ipvlan/ipvlan_core.c b/drivers/net/ipvlan/ipvlan_core.c
+index fd591ddb3884..8cdc78a29624 100644
+--- a/drivers/net/ipvlan/ipvlan_core.c
++++ b/drivers/net/ipvlan/ipvlan_core.c
+@@ -586,8 +586,10 @@ static int ipvlan_xmit_mode_l3(struct sk_buff *skb, struct net_device *dev)
+ 	int addr_type;
+ 
+ 	lyr3h = ipvlan_get_L3_hdr(ipvlan->port, skb, &addr_type);
+-	if (!lyr3h)
+-		goto out;
++	if (!lyr3h) {
++		kfree_skb(skb);
++		return NET_XMIT_DROP;
++	}
+ 
+ 	if (!ipvlan_is_vepa(ipvlan->port)) {
+ 		addr = ipvlan_addr_lookup(ipvlan->port, lyr3h, addr_type, true);
+@@ -600,7 +602,6 @@ static int ipvlan_xmit_mode_l3(struct sk_buff *skb, struct net_device *dev)
+ 			return NET_XMIT_SUCCESS;
+ 		}
+ 	}
+-out:
+ 	ipvlan_skb_crossing_ns(skb, ipvlan->phy_dev);
+ 	return ipvlan_process_outbound(skb);
+ }

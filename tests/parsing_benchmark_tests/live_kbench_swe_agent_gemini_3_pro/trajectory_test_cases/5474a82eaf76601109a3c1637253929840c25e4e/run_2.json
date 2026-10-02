@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct comedi_cmd cmd;\n\twait_queue_head_t wait_head;\n\tunsigned int cb_mask;\n\tstruct rcu_head rcu;\n\tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n\t\t       unsigned int x);\n};\n",
+          "before": "\tstruct comedi_cmd cmd;\n\twait_queue_head_t wait_head;\n\tunsigned int cb_mask;\n\tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n\t\t       unsigned int x);\n};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/comedi/comedidev.h b/include/linux/comedi/comedidev.h\nindex 4cb0400ad616..4130516cee0b 100644\n--- a/include/linux/comedi/comedidev.h\n+++ b/include/linux/comedi/comedidev.h\n@@ -358,6 +358,7 @@ struct comedi_async {\n \tstruct comedi_cmd cmd;\n \twait_queue_head_t wait_head;\n \tunsigned int cb_mask;\n+\tstruct rcu_head rcu;\n \tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n \t\t       unsigned int x);\n };",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "include/linux/comedi/comedidev.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "#include <linux/rcupdate.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers.c b/drivers/comedi/drivers.c\nindex 376130bfba8a..33eb66e79f84 100644\n--- a/drivers/comedi/drivers.c\n+++ b/drivers/comedi/drivers.c\n@@ -19,6 +19,7 @@\n #include <linux/firmware.h>\n #include <linux/comedi/comedidev.h>\n #include \"comedi_internal.h\"\n+#include <linux/rcupdate.h>\n \n struct comedi_driver *comedi_drivers;\n /* protects access to comedi_drivers */\ndiff --git a/include/linux/comedi/comedidev.h b/include/linux/comedi/comedidev.h\nindex 4cb0400ad616..4130516cee0b 100644\n--- a/include/linux/comedi/comedidev.h\n+++ b/include/linux/comedi/comedidev.h\n@@ -358,6 +358,7 @@ struct comedi_async {\n \tstruct comedi_cmd cmd;\n \twait_queue_head_t wait_head;\n \tunsigned int cb_mask;\n+\tstruct rcu_head rcu;\n \tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n \t\t       unsigned int x);\n };",
+          "explanation": "classic_swe step 20 insert #1",
+          "filename": "drivers/comedi/drivers.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 22,
+          "step_index": 20
+        },
+        {
+          "after": "\t\t\tif (s->async) {\n\t\t\t\tcomedi_buf_alloc(dev, s, 0);\n\t\t\t\tkfree_rcu(s->async, rcu);\n\t\t\t}\n",
+          "before": "\t\t\tif (s->async) {\n\t\t\t\tcomedi_buf_alloc(dev, s, 0);\n\t\t\t\tkfree(s->async);\n\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers.c b/drivers/comedi/drivers.c\nindex 376130bfba8a..30c8d2eb8b5a 100644\n--- a/drivers/comedi/drivers.c\n+++ b/drivers/comedi/drivers.c\n@@ -19,6 +19,7 @@\n #include <linux/firmware.h>\n #include <linux/comedi/comedidev.h>\n #include \"comedi_internal.h\"\n+#include <linux/rcupdate.h>\n \n struct comedi_driver *comedi_drivers;\n /* protects access to comedi_drivers */\n@@ -168,7 +169,7 @@ static void comedi_device_detach_cleanup(struct comedi_device *dev)\n \t\t\tcomedi_free_subdevice_minor(s);\n \t\t\tif (s->async) {\n \t\t\t\tcomedi_buf_alloc(dev, s, 0);\n-\t\t\t\tkfree(s->async);\n+\t\t\t\tkfree_rcu(s->async, rcu);\n \t\t\t}\n \t\t\tkfree(s->readback);\n \t\t}\ndiff --git a/include/linux/comedi/comedidev.h b/include/linux/comedi/comedidev.h\nindex 4cb0400ad616..4130516cee0b 100644\n--- a/include/linux/comedi/comedidev.h\n+++ b/include/linux/comedi/comedidev.h\n@@ -358,6 +358,7 @@ struct comedi_async {\n \tstruct comedi_cmd cmd;\n \twait_queue_head_t wait_head;\n \tunsigned int cb_mask;\n+\tstruct rcu_head rcu;\n \tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n \t\t       unsigned int x);\n };",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "drivers/comedi/drivers.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 0,
+      "start_step": 18
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (s->async) {\n\t\t\t\tcomedi_buf_alloc(dev, s, 0);\n\t\t\t\t/*\n\t\t\t\t * Wait for any poll waiters to disappear.\n\t\t\t\t * POLL_ADD (io_uring) removes itself upon wakeup (signaled earlier).\n\t\t\t\t * This prevents UAF if kfree_rcu happens before works run.\n\t\t\t\t */\n\t\t\t\twhile (waitqueue_active(&s->async->wait_head))\n\t\t\t\t\tschedule_timeout_uninterruptible(1);\n\t\t\t\tkfree_rcu(s->async, rcu);\n\t\t\t}\n",
+          "before": "\t\t\tif (s->async) {\n\t\t\t\tcomedi_buf_alloc(dev, s, 0);\n\t\t\t\tkfree_rcu(s->async, rcu);\n\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers.c b/drivers/comedi/drivers.c\nindex 376130bfba8a..4ba9a3383897 100644\n--- a/drivers/comedi/drivers.c\n+++ b/drivers/comedi/drivers.c\n@@ -19,6 +19,7 @@\n #include <linux/firmware.h>\n #include <linux/comedi/comedidev.h>\n #include \"comedi_internal.h\"\n+#include <linux/rcupdate.h>\n \n struct comedi_driver *comedi_drivers;\n /* protects access to comedi_drivers */\n@@ -168,7 +169,14 @@ static void comedi_device_detach_cleanup(struct comedi_device *dev)\n \t\t\tcomedi_free_subdevice_minor(s);\n \t\t\tif (s->async) {\n \t\t\t\tcomedi_buf_alloc(dev, s, 0);\n-\t\t\t\tkfree(s->async);\n+\t\t\t\t/*\n+\t\t\t\t * Wait for any poll waiters to disappear.\n+\t\t\t\t * POLL_ADD (io_uring) removes itself upon wakeup (signaled earlier).\n+\t\t\t\t * This prevents UAF if kfree_rcu happens before works run.\n+\t\t\t\t */\n+\t\t\t\twhile (waitqueue_active(&s->async->wait_head))\n+\t\t\t\t\tschedule_timeout_uninterruptible(1);\n+\t\t\t\tkfree_rcu(s->async, rcu);\n \t\t\t}\n \t\t\tkfree(s->readback);\n \t\t}\ndiff --git a/include/linux/comedi/comedidev.h b/include/linux/comedi/comedidev.h\nindex 4cb0400ad616..4130516cee0b 100644\n--- a/include/linux/comedi/comedidev.h\n+++ b/include/linux/comedi/comedidev.h\n@@ -358,6 +358,7 @@ struct comedi_async {\n \tstruct comedi_cmd cmd;\n \twait_queue_head_t wait_head;\n \tunsigned int cb_mask;\n+\tstruct rcu_head rcu;\n \tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n \t\t       unsigned int x);\n };",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "drivers/comedi/drivers.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "#include <linux/sched.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/comedi/drivers.c b/drivers/comedi/drivers.c\nindex 376130bfba8a..849851cb01fd 100644\n--- a/drivers/comedi/drivers.c\n+++ b/drivers/comedi/drivers.c\n@@ -19,6 +19,8 @@\n #include <linux/firmware.h>\n #include <linux/comedi/comedidev.h>\n #include \"comedi_internal.h\"\n+#include <linux/rcupdate.h>\n+#include <linux/sched.h>\n \n struct comedi_driver *comedi_drivers;\n /* protects access to comedi_drivers */\n@@ -168,7 +170,14 @@ static void comedi_device_detach_cleanup(struct comedi_device *dev)\n \t\t\tcomedi_free_subdevice_minor(s);\n \t\t\tif (s->async) {\n \t\t\t\tcomedi_buf_alloc(dev, s, 0);\n-\t\t\t\tkfree(s->async);\n+\t\t\t\t/*\n+\t\t\t\t * Wait for any poll waiters to disappear.\n+\t\t\t\t * POLL_ADD (io_uring) removes itself upon wakeup (signaled earlier).\n+\t\t\t\t * This prevents UAF if kfree_rcu happens before works run.\n+\t\t\t\t */\n+\t\t\t\twhile (waitqueue_active(&s->async->wait_head))\n+\t\t\t\t\tschedule_timeout_uninterruptible(1);\n+\t\t\t\tkfree_rcu(s->async, rcu);\n \t\t\t}\n \t\t\tkfree(s->readback);\n \t\t}\ndiff --git a/include/linux/comedi/comedidev.h b/include/linux/comedi/comedidev.h\nindex 4cb0400ad616..4130516cee0b 100644\n--- a/include/linux/comedi/comedidev.h\n+++ b/include/linux/comedi/comedidev.h\n@@ -358,6 +358,7 @@ struct comedi_async {\n \tstruct comedi_cmd cmd;\n \twait_queue_head_t wait_head;\n \tunsigned int cb_mask;\n+\tstruct rcu_head rcu;\n \tint (*inttrig)(struct comedi_device *dev, struct comedi_subdevice *s,\n \t\t       unsigned int x);\n };",
+          "explanation": "classic_swe step 26 insert #1",
+          "filename": "drivers/comedi/drivers.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 23,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 1,
+      "start_step": 25
+    }
+  ],
+  "success_step": 26
+}

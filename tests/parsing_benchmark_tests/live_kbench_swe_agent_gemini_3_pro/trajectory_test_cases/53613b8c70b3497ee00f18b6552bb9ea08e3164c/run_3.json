@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void bq_xmit_all(struct xdp_dev_bulk_queue *bq, u32 flags)\n{\n\tstruct net_device *dev = bq->dev;\n\tunsigned int cnt = bq->count;\n\tint sent = 0, err = 0;\n\tstruct xdp_frame *q[DEV_MAP_BULK_SIZE];\n\tint to_send = cnt;\n\tint i;\n\n\tif (unlikely(!cnt))\n\t\treturn;\n\n\tfor (i = 0; i < cnt; i++)\n\t\tq[i] = bq->q[i];\n\n\tbq->count = 0;\n\n\tfor (i = 0; i < cnt; i++) {\n\t\tstruct xdp_frame *xdpf = q[i];\n\n\t\tprefetch(xdpf);\n\t}\n\n\tif (bq->xdp_prog) {\n\t\tto_send = dev_map_bpf_prog_run(bq->xdp_prog, q, cnt, dev);\n\t\tif (!to_send)\n\t\t\tgoto out;\n\t}\n\n\tsent = dev->netdev_ops->ndo_xdp_xmit(dev, to_send, q, flags);\n\tif (sent < 0) {\n\t\t/* If ndo_xdp_xmit fails with an errno, no frames have\n\t\t * been xmit'ed.\n\t\t */\n\t\terr = sent;\n\t\tsent = 0;\n\t}\n\n\t/* If not all frames have been transmitted, it is our\n\t * responsibility to free them\n\t */\n\tfor (i = sent; unlikely(i < to_send); i++)\n\t\txdp_return_frame_rx_napi(q[i]);\n\nout:\n\ttrace_xdp_devmap_xmit(bq->dev_rx, dev, sent, cnt - sent, err);\n}",
+          "before": "static void bq_xmit_all(struct xdp_dev_bulk_queue *bq, u32 flags)\n{\n\tstruct net_device *dev = bq->dev;\n\tunsigned int cnt = bq->count;\n\tint sent = 0, err = 0;\n\tint to_send = cnt;\n\tint i;\n\n\tif (unlikely(!cnt))\n\t\treturn;\n\n\tfor (i = 0; i < cnt; i++) {\n\t\tstruct xdp_frame *xdpf = bq->q[i];\n\n\t\tprefetch(xdpf);\n\t}\n\n\tif (bq->xdp_prog) {\n\t\tto_send = dev_map_bpf_prog_run(bq->xdp_prog, bq->q, cnt, dev);\n\t\tif (!to_send)\n\t\t\tgoto out;\n\t}\n\n\tsent = dev->netdev_ops->ndo_xdp_xmit(dev, to_send, bq->q, flags);\n\tif (sent < 0) {\n\t\t/* If ndo_xdp_xmit fails with an errno, no frames have\n\t\t * been xmit'ed.\n\t\t */\n\t\terr = sent;\n\t\tsent = 0;\n\t}\n\n\t/* If not all frames have been transmitted, it is our\n\t * responsibility to free them\n\t */\n\tfor (i = sent; unlikely(i < to_send); i++)\n\t\txdp_return_frame_rx_napi(bq->q[i]);\n\nout:\n\tbq->count = 0;\n\ttrace_xdp_devmap_xmit(bq->dev_rx, dev, sent, cnt - sent, err);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c\nindex 9e0e3b0a18e4..26bb08830af3 100644\n--- a/kernel/bpf/devmap.c\n+++ b/kernel/bpf/devmap.c\n@@ -375,25 +375,31 @@ static void bq_xmit_all(struct xdp_dev_bulk_queue *bq, u32 flags)\n \tstruct net_device *dev = bq->dev;\n \tunsigned int cnt = bq->count;\n \tint sent = 0, err = 0;\n+\tstruct xdp_frame *q[DEV_MAP_BULK_SIZE];\n \tint to_send = cnt;\n \tint i;\n \n \tif (unlikely(!cnt))\n \t\treturn;\n \n+\tfor (i = 0; i < cnt; i++)\n+\t\tq[i] = bq->q[i];\n+\n+\tbq->count = 0;\n+\n \tfor (i = 0; i < cnt; i++) {\n-\t\tstruct xdp_frame *xdpf = bq->q[i];\n+\t\tstruct xdp_frame *xdpf = q[i];\n \n \t\tprefetch(xdpf);\n \t}\n \n \tif (bq->xdp_prog) {\n-\t\tto_send = dev_map_bpf_prog_run(bq->xdp_prog, bq->q, cnt, dev);\n+\t\tto_send = dev_map_bpf_prog_run(bq->xdp_prog, q, cnt, dev);\n \t\tif (!to_send)\n \t\t\tgoto out;\n \t}\n \n-\tsent = dev->netdev_ops->ndo_xdp_xmit(dev, to_send, bq->q, flags);\n+\tsent = dev->netdev_ops->ndo_xdp_xmit(dev, to_send, q, flags);\n \tif (sent < 0) {\n \t\t/* If ndo_xdp_xmit fails with an errno, no frames have\n \t\t * been xmit'ed.\n@@ -406,10 +412,9 @@ static void bq_xmit_all(struct xdp_dev_bulk_queue *bq, u32 flags)\n \t * responsibility to free them\n \t */\n \tfor (i = sent; unlikely(i < to_send); i++)\n-\t\txdp_return_frame_rx_napi(bq->q[i]);\n+\t\txdp_return_frame_rx_napi(q[i]);\n \n out:\n-\tbq->count = 0;\n \ttrace_xdp_devmap_xmit(bq->dev_rx, dev, sent, cnt - sent, err);\n }",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "kernel/bpf/devmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (unlikely(!cnt))\n\t\treturn;\n\n\tif (unlikely(cnt > DEV_MAP_BULK_SIZE))\n\t\tcnt = DEV_MAP_BULK_SIZE;\n\n\tfor (i = 0; i < cnt; i++)\n\t\tq[i] = bq->q[i];\n\n\tbq->count = 0;\n\n\tto_send = cnt;\n\n\tfor (i = 0; i < cnt; i++) {",
+          "before": "\tif (unlikely(!cnt))\n\t\treturn;\n\n\tfor (i = 0; i < cnt; i++)\n\t\tq[i] = bq->q[i];\n\n\tbq->count = 0;\n\n\tfor (i = 0; i < cnt; i++) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c\nindex 9e0e3b0a18e4..222b7b03b942 100644\n--- a/kernel/bpf/devmap.c\n+++ b/kernel/bpf/devmap.c\n@@ -375,25 +375,36 @@ static void bq_xmit_all(struct xdp_dev_bulk_queue *bq, u32 flags)\n \tstruct net_device *dev = bq->dev;\n \tunsigned int cnt = bq->count;\n \tint sent = 0, err = 0;\n+\tstruct xdp_frame *q[DEV_MAP_BULK_SIZE];\n \tint to_send = cnt;\n \tint i;\n \n \tif (unlikely(!cnt))\n \t\treturn;\n \n+\tif (unlikely(cnt > DEV_MAP_BULK_SIZE))\n+\t\tcnt = DEV_MAP_BULK_SIZE;\n+\n+\tfor (i = 0; i < cnt; i++)\n+\t\tq[i] = bq->q[i];\n+\n+\tbq->count = 0;\n+\n+\tto_send = cnt;\n+\n \tfor (i = 0; i < cnt; i++) {\n-\t\tstruct xdp_frame *xdpf = bq->q[i];\n+\t\tstruct xdp_frame *xdpf = q[i];\n \n \t\tprefetch(xdpf);\n \t}\n \n \tif (bq->xdp_prog) {\n-\t\tto_send = dev_map_bpf_prog_run(bq->xdp_prog, bq->q, cnt, dev);\n+\t\tto_send = dev_map_bpf_prog_run(bq->xdp_prog, q, cnt, dev);\n \t\tif (!to_send)\n \t\t\tgoto out;\n \t}\n \n-\tsent = dev->netdev_ops->ndo_xdp_xmit(dev, to_send, bq->q, flags);\n+\tsent = dev->netdev_ops->ndo_xdp_xmit(dev, to_send, q, flags);\n \tif (sent < 0) {\n \t\t/* If ndo_xdp_xmit fails with an errno, no frames have\n \t\t * been xmit'ed.\n@@ -406,10 +417,9 @@ static void bq_xmit_all(struct xdp_dev_bulk_queue *bq, u32 flags)\n \t * responsibility to free them\n \t */\n \tfor (i = sent; unlikely(i < to_send); i++)\n-\t\txdp_return_frame_rx_napi(bq->q[i]);\n+\t\txdp_return_frame_rx_napi(q[i]);\n \n out:\n-\tbq->count = 0;\n \ttrace_xdp_devmap_xmit(bq->dev_rx, dev, sent, cnt - sent, err);\n }",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "kernel/bpf/devmap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 1,
+      "start_step": 32
+    }
+  ],
+  "success_step": 32
+}

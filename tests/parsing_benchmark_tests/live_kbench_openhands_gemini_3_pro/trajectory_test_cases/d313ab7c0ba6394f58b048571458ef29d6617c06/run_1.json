@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/* Try to get link status using Ethtool first. */\n\tif (slave_dev->ethtool_ops->get_link) {\n\t\t/* Optimization: if the driver uses the generic ethtool_op_get_link,\n\t\t * we can just check carrier directly. This avoids calling\n\t\t * __linkwatch_sync_dev() which asserts locking, but we might be\n\t\t * running lockless in bond_mii_monitor().\n\t\t */\n\t\tif (slave_dev->ethtool_ops->get_link == ethtool_op_get_link) {\n\t\t\tret = netif_carrier_ok(slave_dev) ? 1 : 0;\n\t\t} else {\n\t\t\tnetdev_lock_ops(slave_dev);\n\t\t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n\t\t\tnetdev_unlock_ops(slave_dev);\n\t\t}\n\n\t\treturn ret ? BMSR_LSTATUS : 0;\n\t}",
+          "before": "\t/* Try to get link status using Ethtool first. */\n\tif (slave_dev->ethtool_ops->get_link) {\n\t\tnetdev_lock_ops(slave_dev);\n\t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n\t\tnetdev_unlock_ops(slave_dev);\n\n\t\treturn ret ? BMSR_LSTATUS : 0;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -865,3 +865,12 @@\n-\t\tnetdev_lock_ops(slave_dev);\n-\t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n-\t\tnetdev_unlock_ops(slave_dev);\n+\t\t/* Optimization: if the driver uses the generic ethtool_op_get_link,\n+\t\t * we can just check carrier directly. This avoids calling\n+\t\t * __linkwatch_sync_dev() which asserts locking, but we might be\n+\t\t * running lockless in bond_mii_monitor().\n+\t\t */\n+\t\tif (slave_dev->ethtool_ops->get_link == ethtool_op_get_link) {\n+\t\t\tret = netif_carrier_ok(slave_dev) ? 1 : 0;\n+\t\t} else {\n+\t\t\tnetdev_lock_ops(slave_dev);\n+\t\t\tret = slave_dev->ethtool_ops->get_link(slave_dev);\n+\t\t\tnetdev_unlock_ops(slave_dev);\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 0,
+      "start_step": 41
+    }
+  ],
+  "success_step": 41
+}

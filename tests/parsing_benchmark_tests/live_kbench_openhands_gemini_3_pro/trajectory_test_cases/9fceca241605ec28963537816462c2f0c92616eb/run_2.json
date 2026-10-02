@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (compr) {\n\t\tstd->fa &= ~FILE_ATTRIBUTE_SPARSE_FILE;\n\t\tstd->fa |= FILE_ATTRIBUTE_COMPRESSED;\n\t\tif (ni->ni_flags & NI_FLAG_COMPRESSED_MASK) {\n\t\t\t/* Already have some compressed bits. */\n\t\t} else if (ni->ni_flags & NI_FLAG_DEDUPLICATED) {\n\t\t\t/* WOF compression? */\n\t\t} else {\n\t\t\t/*\n\t\t\t * Standard compression.\n\t\t\t * We need to set some compressed bits to make\n\t\t\t * is_compressed(ni) return true.\n\t\t\t * The default compression unit is 4 (16 clusters).\n\t\t\t */\n\t\t\tni->ni_flags |= NTFS_LZNT_CUNIT;\n\t\t}\n\t} else {\n\t\tstd->fa &= ~FILE_ATTRIBUTE_COMPRESSED;\n\t\tni->ni_flags &= ~NI_FLAG_COMPRESSED_MASK;\n\t}\n",
+          "before": "\n\tif (compr) {\n\t\tstd->fa &= ~FILE_ATTRIBUTE_SPARSE_FILE;\n\t\tstd->fa |= FILE_ATTRIBUTE_COMPRESSED;\n\t} else {\n\t\tstd->fa &= ~FILE_ATTRIBUTE_COMPRESSED;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/frecord.c\n+++ /linux/fs/ntfs3/frecord.c\n@@ -3382,0 +3383,13 @@\n+\t\tif (ni->ni_flags & NI_FLAG_COMPRESSED_MASK) {\n+\t\t\t/* Already have some compressed bits. */\n+\t\t} else if (ni->ni_flags & NI_FLAG_DEDUPLICATED) {\n+\t\t\t/* WOF compression? */\n+\t\t} else {\n+\t\t\t/*\n+\t\t\t * Standard compression.\n+\t\t\t * We need to set some compressed bits to make\n+\t\t\t * is_compressed(ni) return true.\n+\t\t\t * The default compression unit is 4 (16 clusters).\n+\t\t\t */\n+\t\t\tni->ni_flags |= NTFS_LZNT_CUNIT;\n+\t\t}\n@@ -3384,0 +3398 @@\n+\t\tni->ni_flags &= ~NI_FLAG_COMPRESSED_MASK;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 144",
+          "filename": "fs/ntfs3/frecord.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 144
+        },
+        {
+          "after": "\n\tif (is_compressed(ni) && (iocb->ki_flags & IOCB_DIRECT)) {\n\t\tntfs_inode_warn(inode, \"direct i/o + compressed not supported\");\n\t\treturn -EOPNOTSUPP;\n\t}\n\n\tif (iocb->ki_flags & IOCB_NOWAIT) {\n\t\tif (!inode_trylock_shared(inode))\n\t\t\treturn -EAGAIN;\n\t} else {\n\t\tinode_lock_shared(inode);\n\t}\n\n\terr = generic_file_read_iter(iocb, iter);\n\tinode_unlock_shared(inode);\n\n\treturn err;\n}\n",
+          "before": "\n\tif (is_compressed(ni) && (iocb->ki_flags & IOCB_DIRECT)) {\n\t\tntfs_inode_warn(inode, \"direct i/o + compressed not supported\");\n\t\treturn -EOPNOTSUPP;\n\t}\n\n\treturn generic_file_read_iter(iocb, iter);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/file.c\n+++ /linux/fs/ntfs3/file.c\n@@ -927 +927,11 @@\n-\treturn generic_file_read_iter(iocb, iter);\n+\tif (iocb->ki_flags & IOCB_NOWAIT) {\n+\t\tif (!inode_trylock_shared(inode))\n+\t\t\treturn -EAGAIN;\n+\t} else {\n+\t\tinode_lock_shared(inode);\n+\t}\n+\n+\terr = generic_file_read_iter(iocb, iter);\n+\tinode_unlock_shared(inode);\n+\n+\treturn err;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 146",
+          "filename": "fs/ntfs3/file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 146
+        }
+      ],
+      "end_step": 146,
+      "revision_index": 0,
+      "start_step": 144
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t/* Decompress \"external compressed\" file if opened for rw. */\n\tif ((ni->ni_flags & NI_FLAG_COMPRESSED_MASK) &&\n\t    (ni->std_fa & FILE_ATTRIBUTE_REPARSE_POINT) &&\n\t    (file->f_flags & (O_WRONLY | O_RDWR | O_TRUNC))) {\n#ifdef CONFIG_NTFS3_LZX_XPRESS\n",
+          "before": "\n\t/* Decompress \"external compressed\" file if opened for rw. */\n\tif ((ni->ni_flags & NI_FLAG_COMPRESSED_MASK) &&\n\t    (file->f_flags & (O_WRONLY | O_RDWR | O_TRUNC))) {\n#ifdef CONFIG_NTFS3_LZX_XPRESS\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/file.c\n+++ /linux/fs/ntfs3/file.c\n@@ -1324,0 +1325 @@\n+\t    (ni->std_fa & FILE_ATTRIBUTE_REPARSE_POINT) &&",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 175",
+          "filename": "fs/ntfs3/file.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 175
+        },
+        {
+          "after": "\n\n\t/*\n\t * If we are here with compressed file, it means:\n\t * 1. It is standard compressed file (not WOF).\n\t * 2. It was enabled via ioctl after open.\n\t * We support writing to standard compressed files.\n\t */\n\tif ((ni->ni_flags & NI_FLAG_COMPRESSED_MASK) &&\n\t    (ni->std_fa & FILE_ATTRIBUTE_REPARSE_POINT)) {\n\t\t/* Should never be here, see ntfs_file_open(). */\n\t\tif (WARN_ON(1)) {\n\t\t\tret = -EOPNOTSUPP;\n\t\t\tgoto out;\n\t\t}\n\t}\n\n",
+          "before": "\n\n\tif (WARN_ON(ni->ni_flags & NI_FLAG_COMPRESSED_MASK)) {\n\t\t/* Should never be here, see ntfs_file_open(). */\n\t\tret = -EOPNOTSUPP;\n\t\tgoto out;\n\t}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/file.c\n+++ /linux/fs/ntfs3/file.c\n@@ -1286 +1286,8 @@\n-\tif (WARN_ON(ni->ni_flags & NI_FLAG_COMPRESSED_MASK)) {\n+\t/*\n+\t * If we are here with compressed file, it means:\n+\t * 1. It is standard compressed file (not WOF).\n+\t * 2. It was enabled via ioctl after open.\n+\t * We support writing to standard compressed files.\n+\t */\n+\tif ((ni->ni_flags & NI_FLAG_COMPRESSED_MASK) &&\n+\t    (ni->std_fa & FILE_ATTRIBUTE_REPARSE_POINT)) {\n@@ -1288,2 +1295,4 @@\n-\t\tret = -EOPNOTSUPP;\n-\t\tgoto out;\n+\t\tif (WARN_ON(1)) {\n+\t\t\tret = -EOPNOTSUPP;\n+\t\t\tgoto out;\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 177",
+          "filename": "fs/ntfs3/file.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 177
+        }
+      ],
+      "end_step": 177,
+      "revision_index": 1,
+      "start_step": 175
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\tif (iocb->ki_flags & IOCB_NOWAIT) {\n\t\tif (!inode_trylock_shared(inode))\n\t\t\treturn -EAGAIN;\n\t} else {\n\t\tinode_lock_shared(inode);\n\t}\n\n\tif (is_compressed(ni) && (iocb->ki_flags & IOCB_DIRECT)) {\n\t\tinode_unlock_shared(inode);\n\t\tntfs_inode_warn(inode, \"direct i/o + compressed not supported\");\n\t\treturn -EOPNOTSUPP;\n\t}\n\n\terr = generic_file_read_iter(iocb, iter);\n\tinode_unlock_shared(inode);\n\n",
+          "before": "\n\n\tif (is_compressed(ni) && (iocb->ki_flags & IOCB_DIRECT)) {\n\t\tntfs_inode_warn(inode, \"direct i/o + compressed not supported\");\n\t\treturn -EOPNOTSUPP;\n\t}\n\n\tif (iocb->ki_flags & IOCB_NOWAIT) {\n\t\tif (!inode_trylock_shared(inode))\n\t\t\treturn -EAGAIN;\n\t} else {\n\t\tinode_lock_shared(inode);\n\t}\n\n\terr = generic_file_read_iter(iocb, iter);\n\tinode_unlock_shared(inode);\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/file.c\n+++ /linux/fs/ntfs3/file.c\n@@ -922,5 +921,0 @@\n-\tif (is_compressed(ni) && (iocb->ki_flags & IOCB_DIRECT)) {\n-\t\tntfs_inode_warn(inode, \"direct i/o + compressed not supported\");\n-\t\treturn -EOPNOTSUPP;\n-\t}\n-\n@@ -931,0 +927,6 @@\n+\t}\n+\n+\tif (is_compressed(ni) && (iocb->ki_flags & IOCB_DIRECT)) {\n+\t\tinode_unlock_shared(inode);\n+\t\tntfs_inode_warn(inode, \"direct i/o + compressed not supported\");\n+\t\treturn -EOPNOTSUPP;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 189",
+          "filename": "fs/ntfs3/file.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 189
+        }
+      ],
+      "end_step": 189,
+      "revision_index": 2,
+      "start_step": 189
+    }
+  ],
+  "success_step": 189
+}

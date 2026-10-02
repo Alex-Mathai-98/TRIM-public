@@ -1,0 +1,46 @@
+diff --git a/fs/jfs/jfs_dmap.c b/fs/jfs/jfs_dmap.c
+index 8847e8c5d5b4..2b1fd338205b 100644
+--- a/fs/jfs/jfs_dmap.c
++++ b/fs/jfs/jfs_dmap.c
+@@ -2250,6 +2250,10 @@ static void dbAllocBits(struct bmap * bmp, struct dmap * dp, s64 blkno,
+ 	 * group is the new max.
+ 	 */
+ 	agno = blkno >> bmp->db_agl2size;
++	if (agno < 0 || agno >= MAXAG) {
++		BMAP_UNLOCK(bmp);
++		return;
++	}
+ 	if (agno > bmp->db_maxag)
+ 		bmp->db_maxag = agno;
+ 
+@@ -2629,6 +2633,11 @@ static void dbSplit(dmtree_t *tp, int leafno, int splitsz, int newval, bool is_c
+ 	int cursz;
+ 	s8 *leaf = tp->dmt_stree + le32_to_cpu(tp->dmt_leafidx);
+ 
++	/* Validate leafno is within bounds */
++	if (leafno < 0 || leafno >= le32_to_cpu(tp->dmt_nleafs)) {
++		return;
++	}
++
+ 	/* check if the leaf needs to be split.
+ 	 */
+ 	if (leaf[leafno] > tp->dmt_budmin) {
+@@ -2872,14 +2881,16 @@ static void dbAdjTree(dmtree_t *tp, int leafno, int newval, bool is_ctl)
+ 	 */
+ 	lp = leafno + le32_to_cpu(tp->dmt_leafidx);
+ 
+-	if (WARN_ON_ONCE(lp >= size || lp < 0))
++	if (WARN_ON_ONCE(lp >= size || lp < 0)) {
+ 		return;
++	}
+ 
+ 	/* is the current value the same as the old value ?  if so,
+ 	 * there is nothing to do.
+ 	 */
+-	if (tp->dmt_stree[lp] == newval)
++	if (tp->dmt_stree[lp] == newval) {
+ 		return;
++	}
+ 
+ 	/* set the new value.
+ 	 */

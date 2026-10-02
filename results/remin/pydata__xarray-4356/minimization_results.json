@@ -1,0 +1,171 @@
+{
+  "bug_id": "pydata__xarray-4356",
+  "short_path": [
+    [
+      {
+        "filename": "xarray/core/nanops.py",
+        "before": "def _maybe_null_out(result, axis, mask, min_count=1):\n    \"\"\"\n    xarray version of pandas.core.nanops._maybe_null_out\n    \"\"\"\n    if hasattr(axis, \"__len__\"):  # if tuple or list\n        raise ValueError(\n            \"min_count is not available for reduction with more than one dimensions.\"\n        )\n\n    if axis is not None and getattr(result, \"ndim\", False):\n        null_mask = (mask.shape[axis] - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            result[null_mask] = fill_value\n\n    elif getattr(result, \"dtype\", None) not in dtypes.NAT_TYPES:\n        null_mask = mask.size - mask.sum()\n        if null_mask < min_count:\n            result = np.nan\n\n    return result",
+        "after": "def _maybe_null_out(result, axis, mask, min_count=1):\n    \"\"\"\n    xarray version of pandas.core.nanops._maybe_null_out\n    \"\"\"\n    if axis is not None and getattr(result, \"ndim\", False):\n        # Calculate total number of elements along the specified axis/axes\n        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n            total_elements = np.take(mask.shape, axis).prod()\n        else:  # single axis\n            total_elements = mask.shape[axis]\n        \n        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            result[null_mask] = fill_value\n\n    elif getattr(result, \"dtype\", None) not in dtypes.NAT_TYPES:\n        null_mask = mask.size - mask.sum()\n        if null_mask < min_count:\n            result = np.nan\n\n    return result",
+        "explanation": "classic_swe step 8 #1"
+      }
+    ],
+    [
+      {
+        "filename": "xarray/core/nanops.py",
+        "before": "    if axis is not None and getattr(result, \"ndim\", False):",
+        "after": "    if axis is not None and hasattr(result, \"ndim\"):",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ],
+    [
+      {
+        "filename": "xarray/core/nanops.py",
+        "before": "    if axis is not None and hasattr(result, \"ndim\"):\n        # Calculate total number of elements along the specified axis/axes\n        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n            total_elements = np.take(mask.shape, axis).prod()\n        else:  # single axis\n            total_elements = mask.shape[axis]\n        \n        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            result[null_mask] = fill_value",
+        "after": "    if axis is not None and hasattr(result, \"ndim\"):\n        # Calculate total number of elements along the specified axis/axes\n        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n            total_elements = np.take(mask.shape, axis).prod()\n        else:  # single axis\n            total_elements = mask.shape[axis]\n        \n        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            if result.ndim == 0:\n                # Scalar result - replace the entire value\n                result = fill_value\n            else:\n                # Array result - replace elements where null_mask is True\n                result[null_mask] = fill_value",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/xarray/core/nanops.py b/xarray/core/nanops.py\nindex 41c8d258..2fcac65a 100644\n--- a/xarray/core/nanops.py\n+++ b/xarray/core/nanops.py\n@@ -26,17 +26,23 @@ def _maybe_null_out(result, axis, mask, min_count=1):\n     \"\"\"\n     xarray version of pandas.core.nanops._maybe_null_out\n     \"\"\"\n-    if hasattr(axis, \"__len__\"):  # if tuple or list\n-        raise ValueError(\n-            \"min_count is not available for reduction with more than one dimensions.\"\n-        )\n-\n-    if axis is not None and getattr(result, \"ndim\", False):\n-        null_mask = (mask.shape[axis] - mask.sum(axis) - min_count) < 0\n+    if axis is not None and hasattr(result, \"ndim\"):\n+        # Calculate total number of elements along the specified axis/axes\n+        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n+            total_elements = np.take(mask.shape, axis).prod()\n+        else:  # single axis\n+            total_elements = mask.shape[axis]\n+        \n+        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n         if null_mask.any():\n             dtype, fill_value = dtypes.maybe_promote(result.dtype)\n             result = result.astype(dtype)\n-            result[null_mask] = fill_value\n+            if result.ndim == 0:\n+                # Scalar result - replace the entire value\n+                result = fill_value\n+            else:\n+                # Array result - replace elements where null_mask is True\n+                result[null_mask] = fill_value\n \n     elif getattr(result, \"dtype\", None) not in dtypes.NAT_TYPES:\n         null_mask = mask.size - mask.sum()\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      7,
+      8
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      3,
+      7,
+      8
+    ],
+    "edit_list_after_file_min": [
+      3,
+      7,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      3,
+      7,
+      8
+    ],
+    "edit_list_after_refinement": [
+      3,
+      7,
+      8
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/nanops.py",
+          "before": "def _maybe_null_out(result, axis, mask, min_count=1):\n    \"\"\"\n    xarray version of pandas.core.nanops._maybe_null_out\n    \"\"\"\n    if hasattr(axis, \"__len__\"):  # if tuple or list\n        raise ValueError(\n            \"min_count is not available for reduction with more than one dimensions.\"\n        )\n\n    if axis is not None and getattr(result, \"ndim\", False):\n        null_mask = (mask.shape[axis] - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            result[null_mask] = fill_value\n\n    elif getattr(result, \"dtype\", None) not in dtypes.NAT_TYPES:\n        null_mask = mask.size - mask.sum()\n        if null_mask < min_count:\n            result = np.nan\n\n    return result",
+          "after": "def _maybe_null_out(result, axis, mask, min_count=1):\n    \"\"\"\n    xarray version of pandas.core.nanops._maybe_null_out\n    \"\"\"\n    if axis is not None and getattr(result, \"ndim\", False):\n        # Calculate total number of elements along the specified axis/axes\n        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n            total_elements = np.take(mask.shape, axis).prod()\n        else:  # single axis\n            total_elements = mask.shape[axis]\n        \n        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            result[null_mask] = fill_value\n\n    elif getattr(result, \"dtype\", None) not in dtypes.NAT_TYPES:\n        null_mask = mask.size - mask.sum()\n        if null_mask < min_count:\n            result = np.nan\n\n    return result",
+          "explanation": "classic_swe step 8 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/nanops.py",
+          "before": "    if axis is not None and getattr(result, \"ndim\", False):",
+          "after": "    if axis is not None and hasattr(result, \"ndim\"):",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/nanops.py",
+          "before": "    if axis is not None and hasattr(result, \"ndim\"):\n        # Calculate total number of elements along the specified axis/axes\n        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n            total_elements = np.take(mask.shape, axis).prod()\n        else:  # single axis\n            total_elements = mask.shape[axis]\n        \n        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            result[null_mask] = fill_value",
+          "after": "    if axis is not None and hasattr(result, \"ndim\"):\n        # Calculate total number of elements along the specified axis/axes\n        if hasattr(axis, \"__len__\"):  # if tuple or list (multiple axes)\n            total_elements = np.take(mask.shape, axis).prod()\n        else:  # single axis\n            total_elements = mask.shape[axis]\n        \n        null_mask = (total_elements - mask.sum(axis) - min_count) < 0\n        if null_mask.any():\n            dtype, fill_value = dtypes.maybe_promote(result.dtype)\n            result = result.astype(dtype)\n            if result.ndim == 0:\n                # Scalar result - replace the entire value\n                result = fill_value\n            else:\n                # Array result - replace elements where null_mask is True\n                result[null_mask] = fill_value",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 8,
+    "f2p_fail": 0,
+    "p2p_pass": 604,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 8,
+    "f2p_fail": 0,
+    "p2p_pass": 604,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "xarray/core/nanops.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "xarray/core/nanops.py"
+    ],
+    "gold_files": [
+      "xarray/core/nanops.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 14,
+    "minimized_deleted_lines": 8,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 5
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

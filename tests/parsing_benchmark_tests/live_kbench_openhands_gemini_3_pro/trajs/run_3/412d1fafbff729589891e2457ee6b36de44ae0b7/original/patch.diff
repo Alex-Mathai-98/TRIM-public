@@ -1,0 +1,27 @@
+diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c
+index c0360c450880..4718ee41259e 100644
+--- a/drivers/iommu/iommufd/io_pagetable.c
++++ b/drivers/iommu/iommufd/io_pagetable.c
+@@ -544,7 +544,7 @@ iommu_read_and_clear_dirty(struct iommu_domain *domain,
+ 				 bitmap->page_size,
+ 				 u64_to_user_ptr(bitmap->data));
+ 	if (IS_ERR(iter))
+-		return -ENOMEM;
++		return PTR_ERR(iter);
+ 
+ 	iommu_dirty_bitmap_init(&dirty, iter, &gather);
+ 
+diff --git a/drivers/iommu/iommufd/iova_bitmap.c b/drivers/iommu/iommufd/iova_bitmap.c
+index 4514575818fc..a544d9cd6032 100644
+--- a/drivers/iommu/iommufd/iova_bitmap.c
++++ b/drivers/iommu/iommufd/iova_bitmap.c
+@@ -248,6 +248,9 @@ struct iova_bitmap *iova_bitmap_alloc(unsigned long iova, size_t length,
+ 	struct iova_bitmap *bitmap;
+ 	int rc;
+ 
++	if (!page_size || ((page_size >= (1UL << (BITS_PER_LONG - 3)))))
++		return ERR_PTR(-EINVAL);
++
+ 	bitmap = kzalloc(sizeof(*bitmap), GFP_KERNEL);
+ 	if (!bitmap)
+ 		return ERR_PTR(-ENOMEM);

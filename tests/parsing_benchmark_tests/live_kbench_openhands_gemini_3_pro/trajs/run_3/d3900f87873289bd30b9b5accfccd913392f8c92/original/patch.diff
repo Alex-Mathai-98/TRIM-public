@@ -1,0 +1,93 @@
+diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c
+index fe5b1a30c509..3570fcbfb407 100644
+--- a/fs/nilfs2/dir.c
++++ b/fs/nilfs2/dir.c
+@@ -82,8 +82,25 @@ static int nilfs_prepare_chunk(struct folio *folio, unsigned int from,
+ 			       unsigned int to)
+ {
+ 	loff_t pos = folio_pos(folio) + from;
++	int err;
+ 
+-	return __block_write_begin(folio, pos, to - from, nilfs_get_block);
++	err = __block_write_begin(folio, pos, to - from, nilfs_get_block);
++	if (unlikely(err)) {
++		struct buffer_head *bh, *head = folio_buffers(folio);
++
++		if (head) {
++			bh = head;
++			do {
++				if (buffer_delay(bh) && !buffer_uptodate(bh)) {
++					clear_buffer_delay(bh);
++					clear_buffer_mapped(bh);
++					clear_buffer_new(bh);
++					clear_buffer_dirty(bh);
++				}
++			} while ((bh = bh->b_this_page) != head);
++		}
++	}
++	return err;
+ }
+ 
+ static void nilfs_commit_chunk(struct folio *folio,
+diff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c
+index be6acf6e2bfc..dd43b27f6e35 100644
+--- a/fs/nilfs2/inode.c
++++ b/fs/nilfs2/inode.c
+@@ -144,6 +144,21 @@ int nilfs_get_block(struct inode *inode, sector_t blkoff,
+  */
+ static int nilfs_read_folio(struct file *file, struct folio *folio)
+ {
++	struct buffer_head *bh, *head;
++
++	head = folio_buffers(folio);
++	if (head) {
++		bh = head;
++		do {
++			if (buffer_delay(bh) && !buffer_uptodate(bh)) {
++				clear_buffer_delay(bh);
++				clear_buffer_mapped(bh);
++				clear_buffer_new(bh);
++				clear_buffer_dirty(bh);
++			}
++		} while ((bh = bh->b_this_page) != head);
++	}
++
+ 	return mpage_read_folio(folio, nilfs_get_block);
+ }
+ 
+@@ -259,6 +274,35 @@ static int nilfs_write_begin(struct file *file, struct address_space *mapping,
+ 	err = block_write_begin(mapping, pos, len, foliop, nilfs_get_block);
+ 	if (unlikely(err)) {
+ 		nilfs_write_failed(mapping, pos + len);
++		/*
++		 * If specific error is returned, nilfs_get_block()
++		 * may have partially initialized buffers.
++		 * If the page was not removed, we need to clean up
++		 * buffers to avoid crash in submitting reads.
++		 */
++		struct folio *folio;
++
++		folio = filemap_lock_folio(mapping, pos >> PAGE_SHIFT);
++		if (!IS_ERR(folio)) {
++			struct buffer_head *bh, *head;
++
++			head = folio_buffers(folio);
++			if (head) {
++				bh = head;
++				do {
++					if (buffer_delay(bh) &&
++					    !buffer_uptodate(bh)) {
++						clear_buffer_delay(bh);
++						clear_buffer_mapped(bh);
++						clear_buffer_new(bh);
++						clear_buffer_dirty(bh);
++					}
++				} while ((bh = bh->b_this_page) !=
++					 head);
++			}
++			folio_unlock(folio);
++			folio_put(folio);
++		}
+ 		nilfs_transaction_abort(inode->i_sb);
+ 	}
+ 	return err;

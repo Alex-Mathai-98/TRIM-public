@@ -1,0 +1,50 @@
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..410a4778d39d
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "d696252073981a083f85190be40c080063b73115": 89616
++}
+\ No newline at end of file
+diff --git a/sound/usb/midi.c b/sound/usb/midi.c
+index acb3bf92857c..5dec8a962984 100644
+--- a/sound/usb/midi.c
++++ b/sound/usb/midi.c
+@@ -307,6 +307,8 @@ static void snd_usbmidi_do_output(struct snd_usb_midi_out_endpoint *ep)
+ 	for (;;) {
+ 		if (!(ep->active_urbs & (1 << urb_index))) {
+ 			urb = ep->urbs[urb_index].urb;
++			if (!urb)
++				break;
+ 			urb->transfer_buffer_length = 0;
+ 			ep->umidi->usb_protocol_ops->output(ep, urb);
+ 			if (urb->transfer_buffer_length == 0)
+@@ -1521,16 +1523,23 @@ static int snd_usbmidi_out_endpoint_create(struct snd_usb_midi *umidi,
+ static void snd_usbmidi_free(struct snd_usb_midi *umidi)
+ {
+ 	int i;
++	unsigned int j;
+ 
++	timer_shutdown_sync(&umidi->error_timer);
+ 	for (i = 0; i < MIDI_MAX_ENDPOINTS; ++i) {
+ 		struct snd_usb_midi_endpoint *ep = &umidi->endpoints[i];
+-		if (ep->out)
++		if (ep->out) {
++			for (j = 0; j < OUTPUT_URBS; ++j)
++				usb_kill_urb(ep->out->urbs[j].urb);
+ 			snd_usbmidi_out_endpoint_delete(ep->out);
+-		if (ep->in)
++		}
++		if (ep->in) {
++			for (j = 0; j < INPUT_URBS; ++j)
++				usb_kill_urb(ep->in->urbs[j]);
+ 			snd_usbmidi_in_endpoint_delete(ep->in);
++		}
+ 	}
+ 	mutex_destroy(&umidi->mutex);
+-	timer_shutdown_sync(&umidi->error_timer);
+ 	kfree(umidi);
+ }
+ 

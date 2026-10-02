@@ -1,0 +1,24 @@
+diff --git a/fs/super.c b/fs/super.c
+index 38d72a3cf6fc..7b9bf3b27983 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -616,6 +616,19 @@ void generic_shutdown_super(struct super_block *sb)
+ {
+ 	const struct super_operations *sop = sb->s_op;
+ 
++	for (int i = 0; i < SB_FREEZE_LEVELS; i++) {
++		struct percpu_rw_semaphore *sem = sb->s_writers.rw_sem + i;
++
++		if (sem->rss.gp_count) {
++			percpu_rwsem_acquire(sem, 0, _THIS_IP_);
++			percpu_up_write(sem);
++		}
++	}
++	if (sb->s_writers.frozen != SB_UNFROZEN) {
++		sb->s_writers.frozen = SB_UNFROZEN;
++		wake_up_var(&sb->s_writers.frozen);
++	}
++
+ 	if (sb->s_root) {
+ 		shrink_dcache_for_umount(sb);
+ 		sync_filesystem(sb);

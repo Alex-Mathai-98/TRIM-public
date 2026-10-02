@@ -1,0 +1,190 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tswitch (cfg->nh_family) {\n\tcase AF_INET:\n\t\terr = nh_create_ipv4(net, nh, nhi, cfg, extack);\n\t\tbreak;\n\tcase AF_INET6:\n\t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n\t\tbreak;\n\tdefault:\n\t\terr = -EAFNOSUPPORT;\n\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n\t\tbreak;\n\t}\n",
+          "before": "\tswitch (cfg->nh_family) {\n\tcase AF_INET:\n\t\terr = nh_create_ipv4(net, nh, nhi, cfg, extack);\n\t\tbreak;\n\tcase AF_INET6:\n\t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n\t\tbreak;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c\nindex 29118c43ebf5..347e6b548dce 100644\n--- a/net/ipv4/nexthop.c\n+++ b/net/ipv4/nexthop.c\n@@ -2912,6 +2912,10 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,\n \tcase AF_INET6:\n \t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n \t\tbreak;\n+\tdefault:\n+\t\terr = -EAFNOSUPPORT;\n+\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n+\t\tbreak;\n \t}\n \n \tif (err) {",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "net/ipv4/nexthop.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (nh->fib_nh_dev &&\n\t    ip6_ignore_linkdown(nh->fib_nh_dev) &&\n\t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n\t\tgoto out;\n",
+          "before": "\tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n\t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n\t\tgoto out;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c\nindex 29118c43ebf5..347e6b548dce 100644\n--- a/net/ipv4/nexthop.c\n+++ b/net/ipv4/nexthop.c\n@@ -2912,6 +2912,10 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,\n \tcase AF_INET6:\n \t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n \t\tbreak;\n+\tdefault:\n+\t\terr = -EAFNOSUPPORT;\n+\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n+\t\tbreak;\n \t}\n \n \tif (err) {\ndiff --git a/net/ipv6/route.c b/net/ipv6/route.c\nindex 3299cfa12e21..88cd40387ab5 100644\n--- a/net/ipv6/route.c\n+++ b/net/ipv6/route.c\n@@ -777,7 +777,8 @@ static bool find_match(struct fib6_nh *nh, u32 fib6_flags,\n \tif (nh->fib_nh_flags & RTNH_F_DEAD)\n \t\tgoto out;\n \n-\tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n+\tif (nh->fib_nh_dev &&\n+\t    ip6_ignore_linkdown(nh->fib_nh_dev) &&\n \t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n \t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n \t\tgoto out;",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "net/ipv6/route.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        }
+      ],
+      "end_step": 39,
+      "revision_index": 1,
+      "start_step": 39
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE)) {\n\t\tstruct net_device *dev = READ_ONCE(nh->fib_nh_dev);\n\n\t\tif (dev && ip6_ignore_linkdown(dev))\n\t\t\tgoto out;\n\t}\n",
+          "before": "\tif (nh->fib_nh_dev &&\n\t    ip6_ignore_linkdown(nh->fib_nh_dev) &&\n\t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n\t\tgoto out;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c\nindex 29118c43ebf5..347e6b548dce 100644\n--- a/net/ipv4/nexthop.c\n+++ b/net/ipv4/nexthop.c\n@@ -2912,6 +2912,10 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,\n \tcase AF_INET6:\n \t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n \t\tbreak;\n+\tdefault:\n+\t\terr = -EAFNOSUPPORT;\n+\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n+\t\tbreak;\n \t}\n \n \tif (err) {\ndiff --git a/net/ipv6/route.c b/net/ipv6/route.c\nindex 3299cfa12e21..4a73e5893971 100644\n--- a/net/ipv6/route.c\n+++ b/net/ipv6/route.c\n@@ -777,10 +777,13 @@ static bool find_match(struct fib6_nh *nh, u32 fib6_flags,\n \tif (nh->fib_nh_flags & RTNH_F_DEAD)\n \t\tgoto out;\n \n-\tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n-\t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n-\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n-\t\tgoto out;\n+\tif (nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n+\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE)) {\n+\t\tstruct net_device *dev = READ_ONCE(nh->fib_nh_dev);\n+\n+\t\tif (dev && ip6_ignore_linkdown(dev))\n+\t\t\tgoto out;\n+\t}\n \n \tm = rt6_score_route(nh, fib6_flags, oif, strict);\n \tif (m == RT6_NUD_FAIL_DO_RR) {",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "net/ipv6/route.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 2,
+      "start_step": 44
+    },
+    {
+      "edits": [
+        {
+          "after": "\tnh_gw = &fib6_nh->fib_nh_gw6;\n\tdev = fib6_nh->fib_nh_dev;\n\tif (!dev)\n\t\treturn;\n\trcu_read_lock();\n",
+          "before": "\tnh_gw = &fib6_nh->fib_nh_gw6;\n\tdev = fib6_nh->fib_nh_dev;\n\trcu_read_lock();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c\nindex 29118c43ebf5..347e6b548dce 100644\n--- a/net/ipv4/nexthop.c\n+++ b/net/ipv4/nexthop.c\n@@ -2912,6 +2912,10 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,\n \tcase AF_INET6:\n \t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n \t\tbreak;\n+\tdefault:\n+\t\terr = -EAFNOSUPPORT;\n+\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n+\t\tbreak;\n \t}\n \n \tif (err) {\ndiff --git a/net/ipv6/route.c b/net/ipv6/route.c\nindex 3299cfa12e21..27e284c3deec 100644\n--- a/net/ipv6/route.c\n+++ b/net/ipv6/route.c\n@@ -669,6 +669,8 @@ static void rt6_probe(struct fib6_nh *fib6_nh)\n \n \tnh_gw = &fib6_nh->fib_nh_gw6;\n \tdev = fib6_nh->fib_nh_dev;\n+\tif (!dev)\n+\t\treturn;\n \trcu_read_lock();\n \tlast_probe = READ_ONCE(fib6_nh->last_probe);\n \tidev = __in6_dev_get(dev);\n@@ -777,10 +779,13 @@ static bool find_match(struct fib6_nh *nh, u32 fib6_flags,\n \tif (nh->fib_nh_flags & RTNH_F_DEAD)\n \t\tgoto out;\n \n-\tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n-\t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n-\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n-\t\tgoto out;\n+\tif (nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n+\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE)) {\n+\t\tstruct net_device *dev = READ_ONCE(nh->fib_nh_dev);\n+\n+\t\tif (dev && ip6_ignore_linkdown(dev))\n+\t\t\tgoto out;\n+\t}\n \n \tm = rt6_score_route(nh, fib6_flags, oif, strict);\n \tif (m == RT6_NUD_FAIL_DO_RR) {",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "net/ipv6/route.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 3,
+      "start_step": 48
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (!nh->fib_nh_dev)\n\t\tgoto out;\n\n\tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n\t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))\n\t\tgoto out;\n",
+          "before": "\tif (nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n\t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE)) {\n\t\tstruct net_device *dev = READ_ONCE(nh->fib_nh_dev);\n\n\t\tif (dev && ip6_ignore_linkdown(dev))\n\t\t\tgoto out;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c\nindex 29118c43ebf5..347e6b548dce 100644\n--- a/net/ipv4/nexthop.c\n+++ b/net/ipv4/nexthop.c\n@@ -2912,6 +2912,10 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,\n \tcase AF_INET6:\n \t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n \t\tbreak;\n+\tdefault:\n+\t\terr = -EAFNOSUPPORT;\n+\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n+\t\tbreak;\n \t}\n \n \tif (err) {\ndiff --git a/net/ipv6/route.c b/net/ipv6/route.c\nindex 3299cfa12e21..2e416a7b43cb 100644\n--- a/net/ipv6/route.c\n+++ b/net/ipv6/route.c\n@@ -669,6 +669,8 @@ static void rt6_probe(struct fib6_nh *fib6_nh)\n \n \tnh_gw = &fib6_nh->fib_nh_gw6;\n \tdev = fib6_nh->fib_nh_dev;\n+\tif (!dev)\n+\t\treturn;\n \trcu_read_lock();\n \tlast_probe = READ_ONCE(fib6_nh->last_probe);\n \tidev = __in6_dev_get(dev);\n@@ -777,6 +779,9 @@ static bool find_match(struct fib6_nh *nh, u32 fib6_flags,\n \tif (nh->fib_nh_flags & RTNH_F_DEAD)\n \t\tgoto out;\n \n+\tif (!nh->fib_nh_dev)\n+\t\tgoto out;\n+\n \tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n \t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n \t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))",
+          "explanation": "classic_swe step 52 #1",
+          "filename": "net/ipv6/route.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        },
+        {
+          "after": "\tnh_gw = &fib6_nh->fib_nh_gw6;\n\tdev = fib6_nh->fib_nh_dev;\n\trcu_read_lock();\n",
+          "before": "\tnh_gw = &fib6_nh->fib_nh_gw6;\n\tdev = fib6_nh->fib_nh_dev;\n\tif (!dev)\n\t\treturn;\n\trcu_read_lock();\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/nexthop.c b/net/ipv4/nexthop.c\nindex 29118c43ebf5..347e6b548dce 100644\n--- a/net/ipv4/nexthop.c\n+++ b/net/ipv4/nexthop.c\n@@ -2912,6 +2912,10 @@ static struct nexthop *nexthop_create(struct net *net, struct nh_config *cfg,\n \tcase AF_INET6:\n \t\terr = nh_create_ipv6(net, nh, nhi, cfg, extack);\n \t\tbreak;\n+\tdefault:\n+\t\terr = -EAFNOSUPPORT;\n+\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n+\t\tbreak;\n \t}\n \n \tif (err) {\ndiff --git a/net/ipv6/route.c b/net/ipv6/route.c\nindex 3299cfa12e21..e53f12ba1d6c 100644\n--- a/net/ipv6/route.c\n+++ b/net/ipv6/route.c\n@@ -777,6 +777,9 @@ static bool find_match(struct fib6_nh *nh, u32 fib6_flags,\n \tif (nh->fib_nh_flags & RTNH_F_DEAD)\n \t\tgoto out;\n \n+\tif (!nh->fib_nh_dev)\n+\t\tgoto out;\n+\n \tif (ip6_ignore_linkdown(nh->fib_nh_dev) &&\n \t    nh->fib_nh_flags & RTNH_F_LINKDOWN &&\n \t    !(strict & RT6_LOOKUP_F_IGNORE_LINKSTATE))",
+          "explanation": "classic_swe step 54 #1",
+          "filename": "net/ipv6/route.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        }
+      ],
+      "end_step": 54,
+      "revision_index": 4,
+      "start_step": 52
+    }
+  ],
+  "success_step": 54
+}

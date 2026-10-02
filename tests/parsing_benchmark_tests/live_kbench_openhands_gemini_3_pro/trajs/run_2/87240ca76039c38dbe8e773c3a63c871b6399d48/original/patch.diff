@@ -1,0 +1,27 @@
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ca5499e9412b..8d51cc40eb7b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -541,6 +541,10 @@ static void ext4_cache_extents(struct inode *inode,
+ 
+ 		if (ext4_ext_is_unwritten(ex))
+ 			status = EXTENT_STATUS_UNWRITTEN;
++		if (len == 0)
++			continue;
++		if (lblk + len <= lblk)
++			break;
+ 		ext4_es_cache_extent(inode, lblk, len,
+ 				     ext4_ext_pblock(ex), status);
+ 		prev = lblk + len;
+@@ -905,6 +909,11 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 		goto err;
+ 	}
+ 
++	if (ext4_ext_check(inode, eh, depth, 0)) {
++		ret = -EFSCORRUPTED;
++		goto err;
++	}
++
+ 	if (path) {
+ 		ext4_ext_drop_refs(path);
+ 		if (depth > path[0].p_maxdepth) {

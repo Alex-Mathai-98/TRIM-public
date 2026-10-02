@@ -1,0 +1,24 @@
+diff --git a/fs/ntfs3/bitmap.c b/fs/ntfs3/bitmap.c
+index cf4fe21a5039..3b547ee6bf3a 100644
+--- a/fs/ntfs3/bitmap.c
++++ b/fs/ntfs3/bitmap.c
+@@ -748,7 +748,18 @@ int wnd_set_free(struct wnd_bitmap *wnd, size_t bit, size_t bits)
+ 		iw += 1;
+ 	}
+ 
+-	wnd_add_free_ext(wnd, bit, bits0, false);
++	if (bit < wnd->zone_end && bit + bits0 > wnd->zone_bit) {
++		size_t zbit = max(bit, wnd->zone_bit);
++		size_t zend = min(bit + bits0, wnd->zone_end);
++
++		if (zbit > bit)
++			wnd_add_free_ext(wnd, bit, zbit - bit, false);
++
++		if (zend < bit + bits0)
++			wnd_add_free_ext(wnd, zend, bit + bits0 - zend, false);
++	} else {
++		wnd_add_free_ext(wnd, bit, bits0, false);
++	}
+ 
+ 	return err;
+ }

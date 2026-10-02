@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int bch2_btree_root_read(struct bch_fs *c, enum btree_id id,\n\t\t\tconst struct bkey_i *k, unsigned level)\n{\n\tif (k->k.type != KEY_TYPE_btree_ptr &&\n\t    k->k.type != KEY_TYPE_btree_ptr_v2)\n\t\treturn -BCH_ERR_btree_node_read_error;\n\n\treturn bch2_trans_run(c, __bch2_btree_root_read(trans, id, k, level));\n}",
+          "before": "int bch2_btree_root_read(struct bch_fs *c, enum btree_id id,\n\t\t\tconst struct bkey_i *k, unsigned level)\n{\n\treturn bch2_trans_run(c, __bch2_btree_root_read(trans, id, k, level));\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex 89a42ee81e5c..0fea6dce4783 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1769,6 +1769,10 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,\n int bch2_btree_root_read(struct bch_fs *c, enum btree_id id,\n \t\t\tconst struct bkey_i *k, unsigned level)\n {\n+\tif (k->k.type != KEY_TYPE_btree_ptr &&\n+\t    k->k.type != KEY_TYPE_btree_ptr_v2)\n+\t\treturn -BCH_ERR_btree_node_read_error;\n+\n \treturn bch2_trans_run(c, __bch2_btree_root_read(trans, id, k, level));\n }",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 0,
+      "start_step": 42
+    },
+    {
+      "edits": [
+        {
+          "after": "\tbkey_copy(&b->key, k);\n\tret = bch2_btree_node_hash_insert(&c->btree_cache, b, level, id);\n\tif (ret) {\n\t\tbch2_btree_node_to_freelist(c, b);\n\t\treturn ret;\n\t}\n\n\tset_btree_node_read_in_flight(b);",
+          "before": "\tbkey_copy(&b->key, k);\n\tBUG_ON(bch2_btree_node_hash_insert(&c->btree_cache, b, level, id));\n\n\tset_btree_node_read_in_flight(b);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex 89a42ee81e5c..d325e68c39cd 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1741,7 +1741,11 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,\n \tBUG_ON(IS_ERR(b));\n \n \tbkey_copy(&b->key, k);\n-\tBUG_ON(bch2_btree_node_hash_insert(&c->btree_cache, b, level, id));\n+\tret = bch2_btree_node_hash_insert(&c->btree_cache, b, level, id);\n+\tif (ret) {\n+\t\tbch2_btree_node_to_freelist(c, b);\n+\t\treturn ret;\n+\t}\n \n \tset_btree_node_read_in_flight(b);\n \n@@ -1769,6 +1773,10 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,\n int bch2_btree_root_read(struct bch_fs *c, enum btree_id id,\n \t\t\tconst struct bkey_i *k, unsigned level)\n {\n+\tif (k->k.type != KEY_TYPE_btree_ptr &&\n+\t    k->k.type != KEY_TYPE_btree_ptr_v2)\n+\t\treturn -BCH_ERR_btree_node_read_error;\n+\n \treturn bch2_trans_run(c, __bch2_btree_root_read(trans, id, k, level));\n }",
+          "explanation": "classic_swe step 57 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 1,
+      "start_step": 57
+    },
+    {
+      "edits": [
+        {
+          "after": "\tret = bch2_btree_node_hash_insert(&c->btree_cache, b, level, id);\n\tif (ret) {\n\t\tb->hash_val = 0;\n\t\tbch2_btree_node_to_freelist(c, b);\n\t\treturn ret;\n\t}",
+          "before": "\tret = bch2_btree_node_hash_insert(&c->btree_cache, b, level, id);\n\tif (ret) {\n\t\tbch2_btree_node_to_freelist(c, b);\n\t\treturn ret;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c\nindex 89a42ee81e5c..95d5dc6691c2 100644\n--- a/fs/bcachefs/btree_io.c\n+++ b/fs/bcachefs/btree_io.c\n@@ -1741,7 +1741,12 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,\n \tBUG_ON(IS_ERR(b));\n \n \tbkey_copy(&b->key, k);\n-\tBUG_ON(bch2_btree_node_hash_insert(&c->btree_cache, b, level, id));\n+\tret = bch2_btree_node_hash_insert(&c->btree_cache, b, level, id);\n+\tif (ret) {\n+\t\tb->hash_val = 0;\n+\t\tbch2_btree_node_to_freelist(c, b);\n+\t\treturn ret;\n+\t}\n \n \tset_btree_node_read_in_flight(b);\n \n@@ -1769,6 +1774,10 @@ static int __bch2_btree_root_read(struct btree_trans *trans, enum btree_id id,\n int bch2_btree_root_read(struct bch_fs *c, enum btree_id id,\n \t\t\tconst struct bkey_i *k, unsigned level)\n {\n+\tif (k->k.type != KEY_TYPE_btree_ptr &&\n+\t    k->k.type != KEY_TYPE_btree_ptr_v2)\n+\t\treturn -BCH_ERR_btree_node_read_error;\n+\n \treturn bch2_trans_run(c, __bch2_btree_root_read(trans, id, k, level));\n }",
+          "explanation": "classic_swe step 62 #1",
+          "filename": "fs/bcachefs/btree_io.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 62
+        }
+      ],
+      "end_step": 62,
+      "revision_index": 2,
+      "start_step": 62
+    }
+  ],
+  "success_step": 62
+}

@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-10973",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/postgresql/client.py",
+        "before": "import os\nimport signal\nimport subprocess\n\nfrom django.core.files.temp import NamedTemporaryFile\nfrom django.db.backends.base.client import BaseDatabaseClient\n\n\ndef _escape_pgpass(txt):\n    \"\"\"\n    Escape a fragment of a PostgreSQL .pgpass file.\n    \"\"\"\n    return txt.replace('\\\\', '\\\\\\\\').replace(':', '\\\\:')\n\n\nclass DatabaseClient(BaseDatabaseClient):\n    executable_name = 'psql'\n\n    @classmethod\n    def runshell_db(cls, conn_params):\n        args = [cls.executable_name]\n\n        host = conn_params.get('host', '')\n        port = conn_params.get('port', '')\n        dbname = conn_params.get('database', '')\n        user = conn_params.get('user', '')\n        passwd = conn_params.get('password', '')\n\n        if user:\n            args += ['-U', user]\n        if host:\n            args += ['-h', host]\n        if port:\n            args += ['-p', str(port)]\n        args += [dbname]\n\n        temp_pgpass = None\n        sigint_handler = signal.getsignal(signal.SIGINT)\n        try:\n            if passwd:\n                # Create temporary .pgpass file.\n                temp_pgpass = NamedTemporaryFile(mode='w+')\n                try:\n                    print(\n                        _escape_pgpass(host) or '*',\n                        str(port) or '*',\n                        _escape_pgpass(dbname) or '*',\n                        _escape_pgpass(user) or '*',\n                        _escape_pgpass(passwd),\n                        file=temp_pgpass,\n                        sep=':',\n                        flush=True,\n                    )\n                    os.environ['PGPASSFILE'] = temp_pgpass.name\n                except UnicodeEncodeError:\n                    # If the current locale can't encode the data, let the\n                    # user input the password manually.\n                    pass\n            # Allow SIGINT to pass to psql to abort queries.\n            signal.signal(signal.SIGINT, signal.SIG_IGN)\n            subprocess.check_call(args)\n        finally:\n            # Restore the original SIGINT handler.\n            signal.signal(signal.SIGINT, sigint_handler)\n            if temp_pgpass:\n                temp_pgpass.close()\n                if 'PGPASSFILE' in os.environ:  # unit tests need cleanup\n                    del os.environ['PGPASSFILE']\n\n    def runshell(self):\n        DatabaseClient.runshell_db(self.connection.get_connection_params())",
+        "after": "import os\nimport signal\nimport subprocess\n\nfrom django.db.backends.base.client import BaseDatabaseClient\n\n\nclass DatabaseClient(BaseDatabaseClient):\n    executable_name = 'psql'\n\n    @classmethod\n    def runshell_db(cls, conn_params):\n        args = [cls.executable_name]\n\n        host = conn_params.get('host', '')\n        port = conn_params.get('port', '')\n        dbname = conn_params.get('database', '')\n        user = conn_params.get('user', '')\n        passwd = conn_params.get('password', '')\n\n        if user:\n            args += ['-U', user]\n        if host:\n            args += ['-h', host]\n        if port:\n            args += ['-p', str(port)]\n        args += [dbname]\n\n        env = os.environ.copy()\n        if passwd:\n            env['PGPASSWORD'] = passwd\n\n        sigint_handler = signal.getsignal(signal.SIGINT)\n        try:\n            # Allow SIGINT to pass to psql to abort queries.\n            signal.signal(signal.SIGINT, signal.SIG_IGN)\n            subprocess.run(args, env=env, check=True)\n        finally:\n            # Restore the original SIGINT handler.\n            signal.signal(signal.SIGINT, sigint_handler)\n\n    def runshell(self):\n        DatabaseClient.runshell_db(self.connection.get_connection_params())",
+        "explanation": "classic_swe step 10 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/postgresql/client.py b/django/db/backends/postgresql/client.py\nindex 7fca6eff30..cf31b84801 100644\n--- a/django/db/backends/postgresql/client.py\n+++ b/django/db/backends/postgresql/client.py\n@@ -2,17 +2,9 @@ import os\n import signal\n import subprocess\n \n-from django.core.files.temp import NamedTemporaryFile\n from django.db.backends.base.client import BaseDatabaseClient\n \n \n-def _escape_pgpass(txt):\n-    \"\"\"\n-    Escape a fragment of a PostgreSQL .pgpass file.\n-    \"\"\"\n-    return txt.replace('\\\\', '\\\\\\\\').replace(':', '\\\\:')\n-\n-\n class DatabaseClient(BaseDatabaseClient):\n     executable_name = 'psql'\n \n@@ -34,38 +26,18 @@ class DatabaseClient(BaseDatabaseClient):\n             args += ['-p', str(port)]\n         args += [dbname]\n \n-        temp_pgpass = None\n+        env = os.environ.copy()\n+        if passwd:\n+            env['PGPASSWORD'] = passwd\n+\n         sigint_handler = signal.getsignal(signal.SIGINT)\n         try:\n-            if passwd:\n-                # Create temporary .pgpass file.\n-                temp_pgpass = NamedTemporaryFile(mode='w+')\n-                try:\n-                    print(\n-                        _escape_pgpass(host) or '*',\n-                        str(port) or '*',\n-                        _escape_pgpass(dbname) or '*',\n-                        _escape_pgpass(user) or '*',\n-                        _escape_pgpass(passwd),\n-                        file=temp_pgpass,\n-                        sep=':',\n-                        flush=True,\n-                    )\n-                    os.environ['PGPASSFILE'] = temp_pgpass.name\n-                except UnicodeEncodeError:\n-                    # If the current locale can't encode the data, let the\n-                    # user input the password manually.\n-                    pass\n             # Allow SIGINT to pass to psql to abort queries.\n             signal.signal(signal.SIGINT, signal.SIG_IGN)\n-            subprocess.check_call(args)\n+            subprocess.run(args, env=env, check=True)\n         finally:\n             # Restore the original SIGINT handler.\n             signal.signal(signal.SIGINT, sigint_handler)\n-            if temp_pgpass:\n-                temp_pgpass.close()\n-                if 'PGPASSFILE' in os.environ:  # unit tests need cleanup\n-                    del os.environ['PGPASSFILE']\n \n     def runshell(self):\n         DatabaseClient.runshell_db(self.connection.get_connection_params())\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/postgresql/client.py",
+          "before": "import os\nimport signal\nimport subprocess\n\nfrom django.core.files.temp import NamedTemporaryFile\nfrom django.db.backends.base.client import BaseDatabaseClient\n\n\ndef _escape_pgpass(txt):\n    \"\"\"\n    Escape a fragment of a PostgreSQL .pgpass file.\n    \"\"\"\n    return txt.replace('\\\\', '\\\\\\\\').replace(':', '\\\\:')\n\n\nclass DatabaseClient(BaseDatabaseClient):\n    executable_name = 'psql'\n\n    @classmethod\n    def runshell_db(cls, conn_params):\n        args = [cls.executable_name]\n\n        host = conn_params.get('host', '')\n        port = conn_params.get('port', '')\n        dbname = conn_params.get('database', '')\n        user = conn_params.get('user', '')\n        passwd = conn_params.get('password', '')\n\n        if user:\n            args += ['-U', user]\n        if host:\n            args += ['-h', host]\n        if port:\n            args += ['-p', str(port)]\n        args += [dbname]\n\n        temp_pgpass = None\n        sigint_handler = signal.getsignal(signal.SIGINT)\n        try:\n            if passwd:\n                # Create temporary .pgpass file.\n                temp_pgpass = NamedTemporaryFile(mode='w+')\n                try:\n                    print(\n                        _escape_pgpass(host) or '*',\n                        str(port) or '*',\n                        _escape_pgpass(dbname) or '*',\n                        _escape_pgpass(user) or '*',\n                        _escape_pgpass(passwd),\n                        file=temp_pgpass,\n                        sep=':',\n                        flush=True,\n                    )\n                    os.environ['PGPASSFILE'] = temp_pgpass.name\n                except UnicodeEncodeError:\n                    # If the current locale can't encode the data, let the\n                    # user input the password manually.\n                    pass\n            # Allow SIGINT to pass to psql to abort queries.\n            signal.signal(signal.SIGINT, signal.SIG_IGN)\n            subprocess.check_call(args)\n        finally:\n            # Restore the original SIGINT handler.\n            signal.signal(signal.SIGINT, sigint_handler)\n            if temp_pgpass:\n                temp_pgpass.close()\n                if 'PGPASSFILE' in os.environ:  # unit tests need cleanup\n                    del os.environ['PGPASSFILE']\n\n    def runshell(self):\n        DatabaseClient.runshell_db(self.connection.get_connection_params())",
+          "after": "import os\nimport signal\nimport subprocess\n\nfrom django.db.backends.base.client import BaseDatabaseClient\n\n\nclass DatabaseClient(BaseDatabaseClient):\n    executable_name = 'psql'\n\n    @classmethod\n    def runshell_db(cls, conn_params):\n        args = [cls.executable_name]\n\n        host = conn_params.get('host', '')\n        port = conn_params.get('port', '')\n        dbname = conn_params.get('database', '')\n        user = conn_params.get('user', '')\n        passwd = conn_params.get('password', '')\n\n        if user:\n            args += ['-U', user]\n        if host:\n            args += ['-h', host]\n        if port:\n            args += ['-p', str(port)]\n        args += [dbname]\n\n        env = os.environ.copy()\n        if passwd:\n            env['PGPASSWORD'] = passwd\n\n        sigint_handler = signal.getsignal(signal.SIGINT)\n        try:\n            # Allow SIGINT to pass to psql to abort queries.\n            signal.signal(signal.SIGINT, signal.SIG_IGN)\n            subprocess.run(args, env=env, check=True)\n        finally:\n            # Restore the original SIGINT handler.\n            signal.signal(signal.SIGINT, sigint_handler)\n\n    def runshell(self):\n        DatabaseClient.runshell_db(self.connection.get_connection_params())",
+          "explanation": "classic_swe step 10 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 5,
+    "f2p_fail": 0,
+    "p2p_pass": 0,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 5,
+    "f2p_fail": 0,
+    "p2p_pass": 0,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/backends/postgresql/client.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/backends/postgresql/client.py"
+    ],
+    "gold_files": [
+      "django/db/backends/postgresql/client.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 5,
+    "minimized_deleted_lines": 33,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 33
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

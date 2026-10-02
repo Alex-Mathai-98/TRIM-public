@@ -1,0 +1,153 @@
+diff --git a/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c b/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c
+index 931e5dc453b9..85982ad5e0bd 100644
+--- a/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c
++++ b/drivers/media/common/v4l2-tpg/v4l2-tpg-core.c
+@@ -2012,6 +2012,9 @@ void tpg_gen_text(const struct tpg_data *tpg, u8 *basep[TPG_MAX_PLANES][2],
+ 	if (y + 16 >= tpg->compose.height || x + 8 >= tpg->compose.width)
+ 		return;
+ 
++	if (y + 16 >= tpg->buf_height)
++		return;
++
+ 	if (len > (tpg->compose.width - x) / 8)
+ 		len = (tpg->compose.width - x) / 8;
+ 	if (tpg->vflip)
+@@ -2656,6 +2659,13 @@ void tpg_fill_plane_buffer(struct tpg_data *tpg, v4l2_std_id std,
+ 	for (h = 0; h < tpg->compose.height; h++) {
+ 		unsigned buf_line;
+ 
++		/*
++		 * If the compose height is greater than the buffer height, then
++		 * we can't write to the buffer beyond the buffer height.
++		 */
++		if (h >= tpg->buf_height)
++			break;
++
+ 		params.frame_line = tpg_calc_frameline(tpg, src_y, tpg->field);
+ 		params.frame_line_next = params.frame_line;
+ 		buf_line = tpg_calc_buffer_line(tpg, h, tpg->field);
+diff --git a/drivers/media/test-drivers/vivid/vivid-vid-cap.c b/drivers/media/test-drivers/vivid/vivid-vid-cap.c
+index df726961222b..595a53e7a9e9 100644
+--- a/drivers/media/test-drivers/vivid/vivid-vid-cap.c
++++ b/drivers/media/test-drivers/vivid/vivid-vid-cap.c
+@@ -109,16 +109,37 @@ static int vid_cap_queue_setup(struct vb2_queue *vq,
+ 		if (*nplanes != buffers)
+ 			return -EINVAL;
+ 		for (p = 0; p < buffers; p++) {
+-			if (sizes[p] < tpg_g_line_width(&dev->tpg, p) * h /
++			unsigned int size = (tpg_g_bytesperline(&dev->tpg, p) * h) /
+ 					dev->fmt_cap->vdownsampling[p] +
+-					dev->fmt_cap->data_offset[p])
++					dev->fmt_cap->data_offset[p];
++
++			if (buffers == 1) {
++				unsigned int plane;
++
++				for (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)
++					size += (tpg_g_bytesperline(&dev->tpg, plane) * h) /
++						dev->fmt_cap->vdownsampling[plane] +
++						dev->fmt_cap->data_offset[plane];
++			}
++
++			if (sizes[p] < size)
+ 				return -EINVAL;
+ 		}
+ 	} else {
+-		for (p = 0; p < buffers; p++)
+-			sizes[p] = (tpg_g_line_width(&dev->tpg, p) * h) /
++		for (p = 0; p < buffers; p++) {
++			sizes[p] = (tpg_g_bytesperline(&dev->tpg, p) * h) /
+ 					dev->fmt_cap->vdownsampling[p] +
+ 					dev->fmt_cap->data_offset[p];
++
++			if (buffers == 1) {
++				unsigned int plane;
++
++				for (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)
++					sizes[p] += (tpg_g_bytesperline(&dev->tpg, plane) * h) /
++						dev->fmt_cap->vdownsampling[plane] +
++						dev->fmt_cap->data_offset[plane];
++			}
++		}
+ 	}
+ 
+ 	*nplanes = buffers;
+@@ -151,11 +172,21 @@ static int vid_cap_buf_prepare(struct vb2_buffer *vb)
+ 		return -EINVAL;
+ 	}
+ 	for (p = 0; p < buffers; p++) {
+-		size = (tpg_g_line_width(&dev->tpg, p) *
++		size = (tpg_g_bytesperline(&dev->tpg, p) *
+ 			dev->fmt_cap_rect.height) /
+ 			dev->fmt_cap->vdownsampling[p] +
+ 			dev->fmt_cap->data_offset[p];
+ 
++		if (buffers == 1) {
++			unsigned int plane;
++
++			for (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)
++				size += (tpg_g_bytesperline(&dev->tpg, plane) *
++					 dev->fmt_cap_rect.height) /
++					dev->fmt_cap->vdownsampling[plane] +
++					dev->fmt_cap->data_offset[plane];
++		}
++
+ 		if (vb2_plane_size(vb, p) < size) {
+ 			dprintk(dev, 1, "%s data will not fit into plane %u (%lu < %lu)\n",
+ 					__func__, p, vb2_plane_size(vb, p), size);
+@@ -540,9 +571,18 @@ int vivid_g_fmt_vid_cap(struct file *file, void *priv,
+ 	for (p = 0; p < mp->num_planes; p++) {
+ 		mp->plane_fmt[p].bytesperline = tpg_g_bytesperline(&dev->tpg, p);
+ 		mp->plane_fmt[p].sizeimage =
+-			(tpg_g_line_width(&dev->tpg, p) * mp->height) /
++			(tpg_g_bytesperline(&dev->tpg, p) * mp->height) /
+ 			dev->fmt_cap->vdownsampling[p] +
+ 			dev->fmt_cap->data_offset[p];
++		if (mp->num_planes == 1) {
++			unsigned int plane;
++
++			for (plane = 1; plane < tpg_g_planes(&dev->tpg); plane++)
++				mp->plane_fmt[p].sizeimage +=
++					(tpg_g_bytesperline(&dev->tpg, plane) * mp->height) /
++					dev->fmt_cap->vdownsampling[plane] +
++					dev->fmt_cap->data_offset[plane];
++		}
+ 	}
+ 	return 0;
+ }
+@@ -773,12 +813,33 @@ int vivid_s_fmt_vid_cap(struct file *file, void *priv,
+ 	tpg_s_fourcc(&dev->tpg, dev->fmt_cap->fourcc);
+ 	for (p = 0; p < tpg_g_buffers(&dev->tpg); p++)
+ 		tpg_s_bytesperline(&dev->tpg, p, mp->plane_fmt[p].bytesperline);
++	for (p = tpg_g_buffers(&dev->tpg); p < tpg_g_planes(&dev->tpg); p++) {
++		unsigned int plane_stride = mp->plane_fmt[0].bytesperline;
++
++		if (p > 0 && dev->fmt_cap->bit_depth[p] != dev->fmt_cap->bit_depth[0])
++			plane_stride = (plane_stride * dev->fmt_cap->bit_depth[p]) /
++				       dev->fmt_cap->bit_depth[0];
++		tpg_s_bytesperline(&dev->tpg, p, plane_stride);
++	}
+ 	dev->field_cap = mp->field;
+ 	if (dev->field_cap == V4L2_FIELD_ALTERNATE)
+-		tpg_s_field(&dev->tpg, V4L2_FIELD_TOP, true);
++		tpg_s_field(&dev->tpg, V4L2_FIELD_TOP, false);
+ 	else
+ 		tpg_s_field(&dev->tpg, dev->field_cap, false);
+-	tpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &dev->compose_cap);
++	{
++		struct v4l2_rect compose = dev->compose_cap;
++
++		if (compose.width > mp->width)
++			compose.width = mp->width;
++		if (compose.height > mp->height)
++			compose.height = mp->height;
++
++		if (dev->field_cap == V4L2_FIELD_ALTERNATE) {
++			compose.height /= 2;
++			compose.top /= 2;
++		}
++		tpg_s_crop_compose(&dev->tpg, &dev->crop_cap, &compose);
++	}
+ 	if (vivid_is_sdtv_cap(dev))
+ 		dev->tv_field_cap = mp->field;
+ 	tpg_update_mv_step(&dev->tpg);

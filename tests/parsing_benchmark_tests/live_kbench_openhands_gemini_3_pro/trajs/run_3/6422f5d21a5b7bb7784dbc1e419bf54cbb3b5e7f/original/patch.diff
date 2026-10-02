@@ -1,0 +1,38 @@
+diff --git a/kernel/nsproxy.c b/kernel/nsproxy.c
+index 94c2cfe0afa1..56e9c9d756e1 100644
+--- a/kernel/nsproxy.c
++++ b/kernel/nsproxy.c
+@@ -185,9 +185,10 @@ int copy_namespaces(u64 flags, struct task_struct *tsk)
+ 	return 0;
+ }
+ 
+-void free_nsproxy(struct nsproxy *ns)
++static void do_free_nsproxy(struct nsproxy *ns, bool put_active)
+ {
+-	nsproxy_ns_active_put(ns);
++	if (put_active)
++		nsproxy_ns_active_put(ns);
+ 
+ 	put_mnt_ns(ns->mnt_ns);
+ 	put_uts_ns(ns->uts_ns);
+@@ -200,6 +201,11 @@ void free_nsproxy(struct nsproxy *ns)
+ 	kmem_cache_free(nsproxy_cachep, ns);
+ }
+ 
++void free_nsproxy(struct nsproxy *ns)
++{
++	do_free_nsproxy(ns, true);
++}
++
+ /*
+  * Called from unshare. Unshare all the namespaces part of nsproxy.
+  * On success, returns the new nsproxy.
+@@ -338,7 +344,7 @@ static void put_nsset(struct nsset *nsset)
+ 	if (nsset->fs && (flags & CLONE_NEWNS) && (flags & ~CLONE_NEWNS))
+ 		free_fs_struct(nsset->fs);
+ 	if (nsset->nsproxy)
+-		free_nsproxy(nsset->nsproxy);
++		do_free_nsproxy(nsset->nsproxy, false);
+ }
+ 
+ static int prepare_nsset(unsigned flags, struct nsset *nsset)

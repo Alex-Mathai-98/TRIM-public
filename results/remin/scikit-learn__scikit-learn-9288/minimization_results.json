@@ -1,0 +1,104 @@
+{
+  "bug_id": "scikit-learn__scikit-learn-9288",
+  "short_path": [
+    [
+      {
+        "filename": "sklearn/cluster/k_means_.py",
+        "before": "    if effective_n_jobs(n_jobs) == 1:\n        # For a single thread, less memory is needed if we just store one set\n        # of the best results (as opposed to one set per run per thread).\n        for it in range(n_init):\n            # run a k-means once\n            labels, inertia, centers, n_iter_ = kmeans_single(\n                X, sample_weight, n_clusters, max_iter=max_iter, init=init,\n                verbose=verbose, precompute_distances=precompute_distances,\n                tol=tol, x_squared_norms=x_squared_norms,\n                random_state=random_state)\n            # determine if these results are the best so far\n            if best_inertia is None or inertia < best_inertia:\n                best_labels = labels.copy()\n                best_centers = centers.copy()\n                best_inertia = inertia\n                best_n_iter = n_iter_",
+        "after": "    if effective_n_jobs(n_jobs) == 1:\n        # For a single thread, less memory is needed if we just store one set\n        # of the best results (as opposed to one set per run per thread).\n        # Generate seeds for each run to ensure reproducibility\n        seeds = random_state.randint(np.iinfo(np.int32).max, size=n_init)\n        for it in range(n_init):\n            # run a k-means once\n            labels, inertia, centers, n_iter_ = kmeans_single(\n                X, sample_weight, n_clusters, max_iter=max_iter, init=init,\n                verbose=verbose, precompute_distances=precompute_distances,\n                tol=tol, x_squared_norms=x_squared_norms,\n                random_state=seeds[it])\n            # determine if these results are the best so far\n            if best_inertia is None or inertia < best_inertia:\n                best_labels = labels.copy()\n                best_centers = centers.copy()\n                best_inertia = inertia\n                best_n_iter = n_iter_",
+        "explanation": "classic_swe step 13 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sklearn/cluster/k_means_.py b/sklearn/cluster/k_means_.py\nindex b7fbdf7da3..8453330a09 100644\n--- a/sklearn/cluster/k_means_.py\n+++ b/sklearn/cluster/k_means_.py\n@@ -363,13 +363,15 @@ def k_means(X, n_clusters, sample_weight=None, init='k-means++',\n     if effective_n_jobs(n_jobs) == 1:\n         # For a single thread, less memory is needed if we just store one set\n         # of the best results (as opposed to one set per run per thread).\n+        # Generate seeds for each run to ensure reproducibility\n+        seeds = random_state.randint(np.iinfo(np.int32).max, size=n_init)\n         for it in range(n_init):\n             # run a k-means once\n             labels, inertia, centers, n_iter_ = kmeans_single(\n                 X, sample_weight, n_clusters, max_iter=max_iter, init=init,\n                 verbose=verbose, precompute_distances=precompute_distances,\n                 tol=tol, x_squared_norms=x_squared_norms,\n-                random_state=random_state)\n+                random_state=seeds[it])\n             # determine if these results are the best so far\n             if best_inertia is None or inertia < best_inertia:\n                 best_labels = labels.copy()\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/cluster/k_means_.py",
+          "before": "    if effective_n_jobs(n_jobs) == 1:\n        # For a single thread, less memory is needed if we just store one set\n        # of the best results (as opposed to one set per run per thread).\n        for it in range(n_init):\n            # run a k-means once\n            labels, inertia, centers, n_iter_ = kmeans_single(\n                X, sample_weight, n_clusters, max_iter=max_iter, init=init,\n                verbose=verbose, precompute_distances=precompute_distances,\n                tol=tol, x_squared_norms=x_squared_norms,\n                random_state=random_state)\n            # determine if these results are the best so far\n            if best_inertia is None or inertia < best_inertia:\n                best_labels = labels.copy()\n                best_centers = centers.copy()\n                best_inertia = inertia\n                best_n_iter = n_iter_",
+          "after": "    if effective_n_jobs(n_jobs) == 1:\n        # For a single thread, less memory is needed if we just store one set\n        # of the best results (as opposed to one set per run per thread).\n        # Generate seeds for each run to ensure reproducibility\n        seeds = random_state.randint(np.iinfo(np.int32).max, size=n_init)\n        for it in range(n_init):\n            # run a k-means once\n            labels, inertia, centers, n_iter_ = kmeans_single(\n                X, sample_weight, n_clusters, max_iter=max_iter, init=init,\n                verbose=verbose, precompute_distances=precompute_distances,\n                tol=tol, x_squared_norms=x_squared_norms,\n                random_state=seeds[it])\n            # determine if these results are the best so far\n            if best_inertia is None or inertia < best_inertia:\n                best_labels = labels.copy()\n                best_centers = centers.copy()\n                best_inertia = inertia\n                best_n_iter = n_iter_",
+          "explanation": "classic_swe step 13 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 123,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 123,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sklearn/cluster/k_means_.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sklearn/cluster/k_means_.py"
+    ],
+    "gold_files": [
+      "sklearn/cluster/k_means_.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 3,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

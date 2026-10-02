@@ -1,0 +1,176 @@
+{
+  "bug_id": "sphinx-doc__sphinx-8593",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "            elif (namespace, membername) in attr_docs:\n                if want_all and isprivate:\n                    if self.options.private_members is None:\n                        keep = False\n                    else:\n                        keep = membername in self.options.private_members\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True",
+        "after": "            elif (namespace, membername) in attr_docs:\n                # Extract metadata from the attribute's docstring\n                attr_doc = '\\n'.join(attr_docs[(namespace, membername)])\n                attr_metadata = extract_metadata(attr_doc)\n                if 'private' in attr_metadata:\n                    # consider a member private if docstring has \"private\" metadata\n                    isprivate = True\n                elif 'public' in attr_metadata:\n                    # consider a member public if docstring has \"public\" metadata\n                    isprivate = False\n                # Note: if no metadata, isprivate keeps its original value based on name\n                \n                if want_all and isprivate:\n                    if self.options.private_members is None:\n                        keep = False\n                    else:\n                        keep = membername in self.options.private_members\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "            else:\n                if (self.options.members is ALL and\n                        is_filtered_inherited_member(membername, obj)):\n                    keep = False\n                else:\n                    # ignore undocumented members if :undoc-members: is not given\n                    keep = has_doc or self.options.undoc_members",
+        "after": "            else:\n                if (self.options.members is ALL and\n                        is_filtered_inherited_member(membername, obj)):\n                    keep = False\n                elif isprivate:\n                    # member marked as private via metadata\n                    keep = False\n                else:\n                    # ignore undocumented members if :undoc-members: is not given\n                    keep = has_doc or self.options.undoc_members",
+        "explanation": "classic_swe step 31 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/ext/autodoc/__init__.py",
+        "before": "                elif isprivate:\n                    # member marked as private via metadata\n                    keep = False",
+        "after": "                elif isprivate and not special_member_re.match(membername):\n                    # member marked as private via metadata (but not special methods)\n                    keep = False",
+        "explanation": "classic_swe step 75 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py\nindex 76265f5be..f014f4ee6 100644\n--- a/sphinx/ext/autodoc/__init__.py\n+++ b/sphinx/ext/autodoc/__init__.py\n@@ -757,6 +757,17 @@ class Documenter:\n                 else:\n                     keep = False\n             elif (namespace, membername) in attr_docs:\n+                # Extract metadata from the attribute's docstring\n+                attr_doc = '\\n'.join(attr_docs[(namespace, membername)])\n+                attr_metadata = extract_metadata(attr_doc)\n+                if 'private' in attr_metadata:\n+                    # consider a member private if docstring has \"private\" metadata\n+                    isprivate = True\n+                elif 'public' in attr_metadata:\n+                    # consider a member public if docstring has \"public\" metadata\n+                    isprivate = False\n+                # Note: if no metadata, isprivate keeps its original value based on name\n+                \n                 if want_all and isprivate:\n                     if self.options.private_members is None:\n                         keep = False\n@@ -780,6 +791,9 @@ class Documenter:\n                 if (self.options.members is ALL and\n                         is_filtered_inherited_member(membername, obj)):\n                     keep = False\n+                elif isprivate and not special_member_re.match(membername):\n+                    # member marked as private via metadata (but not special methods)\n+                    keep = False\n                 else:\n                     # ignore undocumented members if :undoc-members: is not given\n                     keep = has_doc or self.options.undoc_members\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      5,
+      14
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      1,
+      5,
+      14
+    ],
+    "edit_list_after_file_min": [
+      1,
+      5,
+      14
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      1,
+      5,
+      14
+    ],
+    "edit_list_after_refinement": [
+      1,
+      5,
+      14
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "            elif (namespace, membername) in attr_docs:\n                if want_all and isprivate:\n                    if self.options.private_members is None:\n                        keep = False\n                    else:\n                        keep = membername in self.options.private_members\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True",
+          "after": "            elif (namespace, membername) in attr_docs:\n                # Extract metadata from the attribute's docstring\n                attr_doc = '\\n'.join(attr_docs[(namespace, membername)])\n                attr_metadata = extract_metadata(attr_doc)\n                if 'private' in attr_metadata:\n                    # consider a member private if docstring has \"private\" metadata\n                    isprivate = True\n                elif 'public' in attr_metadata:\n                    # consider a member public if docstring has \"public\" metadata\n                    isprivate = False\n                # Note: if no metadata, isprivate keeps its original value based on name\n                \n                if want_all and isprivate:\n                    if self.options.private_members is None:\n                        keep = False\n                    else:\n                        keep = membername in self.options.private_members\n                else:\n                    # keep documented attributes\n                    keep = True\n                isattr = True",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "            else:\n                if (self.options.members is ALL and\n                        is_filtered_inherited_member(membername, obj)):\n                    keep = False\n                else:\n                    # ignore undocumented members if :undoc-members: is not given\n                    keep = has_doc or self.options.undoc_members",
+          "after": "            else:\n                if (self.options.members is ALL and\n                        is_filtered_inherited_member(membername, obj)):\n                    keep = False\n                elif isprivate:\n                    # member marked as private via metadata\n                    keep = False\n                else:\n                    # ignore undocumented members if :undoc-members: is not given\n                    keep = has_doc or self.options.undoc_members",
+          "explanation": "classic_swe step 31 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/ext/autodoc/__init__.py",
+          "before": "                elif isprivate:\n                    # member marked as private via metadata\n                    keep = False",
+          "after": "                elif isprivate and not special_member_re.match(membername):\n                    # member marked as private via metadata (but not special methods)\n                    keep = False",
+          "explanation": "classic_swe step 75 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 1,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 1,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [
+      "sphinx/ext/autodoc/importer.py"
+    ],
+    "minimized_files": [
+      "sphinx/ext/autodoc/__init__.py"
+    ],
+    "gold_files": [
+      "sphinx/ext/autodoc/__init__.py",
+      "sphinx/ext/autodoc/importer.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 4,
+    "minimized_added_lines": 14,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 44,
+    "gold_deleted_lines": 16
+  },
+  "gold_equivalence": "subset_of_gold"
+}

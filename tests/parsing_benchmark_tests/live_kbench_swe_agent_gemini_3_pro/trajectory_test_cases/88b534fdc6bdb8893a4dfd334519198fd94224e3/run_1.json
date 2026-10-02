@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tcmd->out_capabilities = 0;\n\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\tidev = NULL;\n\n\tcopy_len = min(cmd->data_len, data_len);\n\tif (copy_to_user(user_ptr, data, copy_len)) {\n\t\trc = -EFAULT;\n\t\tgoto out_free;\n\t}\n\n\t/*\n\t * Zero the trailing bytes if the user buffer is bigger than the\n\t * data size kernel actually has.\n\t */\n\tif (copy_len < cmd->data_len) {\n\t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n\t\t\trc = -EFAULT;\n\t\t\tgoto out_free;\n\t\t}\n\t}\n\n\t/*\n\t * We return the length the kernel supports so userspace may know what\n\t * the kernel capability is. It could be larger than the input buffer.\n\t */\n\tcmd->data_len = data_len;\n\n\trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\nout_free:\n\tkfree(data);\nout_put:\n\tif (idev)\n\t\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\treturn rc;",
+          "before": "\tcopy_len = min(cmd->data_len, data_len);\n\tif (copy_to_user(user_ptr, data, copy_len)) {\n\t\trc = -EFAULT;\n\t\tgoto out_free;\n\t}\n\n\t/*\n\t * Zero the trailing bytes if the user buffer is bigger than the\n\t * data size kernel actually has.\n\t */\n\tif (copy_len < cmd->data_len) {\n\t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n\t\t\trc = -EFAULT;\n\t\t\tgoto out_free;\n\t\t}\n\t}\n\n\t/*\n\t * We return the length the kernel supports so userspace may know what\n\t * the kernel capability is. It could be larger than the input buffer.\n\t */\n\tcmd->data_len = data_len;\n\n\tcmd->out_capabilities = 0;\n\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n\n\trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\nout_free:\n\tkfree(data);\nout_put:\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\treturn rc;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/device.c b/drivers/iommu/iommufd/device.c\nindex dfd0898fb6c1..5af8bf96543c 100644\n--- a/drivers/iommu/iommufd/device.c\n+++ b/drivers/iommu/iommufd/device.c\n@@ -1213,6 +1213,13 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)\n \t\tdata = NULL;\n \t}\n \n+\tcmd->out_capabilities = 0;\n+\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n+\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n+\n+\tiommufd_put_object(ucmd->ictx, &idev->obj);\n+\tidev = NULL;\n+\n \tcopy_len = min(cmd->data_len, data_len);\n \tif (copy_to_user(user_ptr, data, copy_len)) {\n \t\trc = -EFAULT;\n@@ -1236,14 +1243,11 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)\n \t */\n \tcmd->data_len = data_len;\n \n-\tcmd->out_capabilities = 0;\n-\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n-\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n-\n \trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\n out_free:\n \tkfree(data);\n out_put:\n-\tiommufd_put_object(ucmd->ictx, &idev->obj);\n+\tif (idev)\n+\t\tiommufd_put_object(ucmd->ictx, &idev->obj);\n \treturn rc;\n }",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "drivers/iommu/iommufd/device.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 0,
+      "start_step": 38
+    }
+  ],
+  "success_step": 38
+}

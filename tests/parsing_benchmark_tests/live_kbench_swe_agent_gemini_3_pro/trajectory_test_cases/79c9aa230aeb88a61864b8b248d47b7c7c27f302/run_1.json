@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct xt_led_info_internal *ledinternal;\n\tint err;\n\tchar *id;\n\n\tif (ledinfo->id[0] == '\\0')\n\t\treturn -EINVAL;\n\n\tid = kstrndup(ledinfo->id, sizeof(ledinfo->id), GFP_KERNEL);\n\tif (!id)\n\t\treturn -ENOMEM;\n\n\tmutex_lock(&xt_led_mutex);\n\n\tledinternal = led_trigger_lookup(id);\n\tif (ledinternal) {\n\t\tkfree(id);\n\t\tledinternal->refcnt++;\n\t\tgoto out;\n\t}\n\n\terr = -ENOMEM;\n\tledinternal = kzalloc(sizeof(struct xt_led_info_internal), GFP_KERNEL);\n\tif (!ledinternal) {\n\t\tkfree(id);\n\t\tgoto exit_mutex_only;\n\t}\n\n\tledinternal->trigger_id = id;",
+          "before": "\tstruct xt_led_info_internal *ledinternal;\n\tint err;\n\n\tif (ledinfo->id[0] == '\\0')\n\t\treturn -EINVAL;\n\n\tmutex_lock(&xt_led_mutex);\n\n\tledinternal = led_trigger_lookup(ledinfo->id);\n\tif (ledinternal) {\n\t\tledinternal->refcnt++;\n\t\tgoto out;\n\t}\n\n\terr = -ENOMEM;\n\tledinternal = kzalloc(sizeof(struct xt_led_info_internal), GFP_KERNEL);\n\tif (!ledinternal)\n\t\tgoto exit_mutex_only;\n\n\tledinternal->trigger_id = kstrdup(ledinfo->id, GFP_KERNEL);\n\tif (!ledinternal->trigger_id)\n\t\tgoto exit_internal_alloc;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/netfilter/xt_LED.c b/net/netfilter/xt_LED.c\nindex f7b0286d106a..9f98b00288bc 100644\n--- a/net/netfilter/xt_LED.c\n+++ b/net/netfilter/xt_LED.c\n@@ -95,26 +95,32 @@ static int led_tg_check(const struct xt_tgchk_param *par)\n \tstruct xt_led_info *ledinfo = par->targinfo;\n \tstruct xt_led_info_internal *ledinternal;\n \tint err;\n+\tchar *id;\n \n \tif (ledinfo->id[0] == '\\0')\n \t\treturn -EINVAL;\n \n+\tid = kstrndup(ledinfo->id, sizeof(ledinfo->id), GFP_KERNEL);\n+\tif (!id)\n+\t\treturn -ENOMEM;\n+\n \tmutex_lock(&xt_led_mutex);\n \n-\tledinternal = led_trigger_lookup(ledinfo->id);\n+\tledinternal = led_trigger_lookup(id);\n \tif (ledinternal) {\n+\t\tkfree(id);\n \t\tledinternal->refcnt++;\n \t\tgoto out;\n \t}\n \n \terr = -ENOMEM;\n \tledinternal = kzalloc(sizeof(struct xt_led_info_internal), GFP_KERNEL);\n-\tif (!ledinternal)\n+\tif (!ledinternal) {\n+\t\tkfree(id);\n \t\tgoto exit_mutex_only;\n+\t}\n \n-\tledinternal->trigger_id = kstrdup(ledinfo->id, GFP_KERNEL);\n-\tif (!ledinternal->trigger_id)\n-\t\tgoto exit_internal_alloc;\n+\tledinternal->trigger_id = id;\n \n \tledinternal->refcnt = 1;\n \tledinternal->netfilter_led_trigger.name = ledinternal->trigger_id;",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "net/netfilter/xt_LED.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 16
+}

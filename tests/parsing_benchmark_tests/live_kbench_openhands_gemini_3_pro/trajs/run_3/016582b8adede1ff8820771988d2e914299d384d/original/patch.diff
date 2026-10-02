@@ -1,0 +1,36 @@
+diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c
+index 6673cbd8bdb9..a5c53a17be4a 100644
+--- a/fs/bcachefs/opts.c
++++ b/fs/bcachefs/opts.c
+@@ -303,6 +303,13 @@ int bch2_opt_validate(const struct bch_option *opt, u64 v, struct printbuf *err)
+ 		return -BCH_ERR_ERANGE_option_too_big;
+ 	}
+ 
++	if (opt->type == BCH_OPT_STR && opt->max && v >= opt->max - 1) {
++		if (err)
++			prt_printf(err, "%s: too big (max %llu)",
++			       opt->attr.name, opt->max - 1);
++		return -BCH_ERR_ERANGE_option_too_big;
++	}
++
+ 	if ((opt->flags & OPT_SB_FIELD_SECTORS) && (v & 511)) {
+ 		if (err)
+ 			prt_printf(err, "%s: not a multiple of 512",
+@@ -642,11 +649,16 @@ int bch2_opts_from_sb(struct bch_opts *opts, struct bch_sb *sb)
+ 
+ 	for (id = 0; id < bch2_opts_nr; id++) {
+ 		const struct bch_option *opt = bch2_opt_table + id;
++		u64 v;
+ 
+ 		if (opt->get_sb == BCH2_NO_SB_OPT)
+ 			continue;
+ 
+-		bch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));
++		v = bch2_opt_from_sb(sb, id);
++		if (bch2_opt_validate(opt, v, NULL))
++			v = bch2_opt_get_by_id(&bch2_opts_default, id);
++
++		bch2_opt_set_by_id(opts, id, v);
+ 	}
+ 
+ 	return 0;

@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tup_read(&bmap->b_sem);\n\n\treturn ret;\n}\n",
+          "before": "\tup_read(&bmap->b_sem);\n\n\treturn nilfs_bmap_convert_error(bmap, __func__, ret);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/bmap.c b/fs/nilfs2/bmap.c\nindex ccc1a7aa52d2..36d4c512747b 100644\n--- a/fs/nilfs2/bmap.c\n+++ b/fs/nilfs2/bmap.c\n@@ -97,7 +97,7 @@ int nilfs_bmap_lookup_contig(struct nilfs_bmap *bmap, __u64 key, __u64 *ptrp,\n \tret = bmap->b_ops->bop_lookup_contig(bmap, key, ptrp, maxblocks);\n \tup_read(&bmap->b_sem);\n \n-\treturn nilfs_bmap_convert_error(bmap, __func__, ret);\n+\treturn ret;\n }\n \n static int nilfs_bmap_do_insert(struct nilfs_bmap *bmap, __u64 key, __u64 ptr)",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "fs/nilfs2/bmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "\tup_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n\tif (ret < 0 && ret != -ENOENT) {\n\t\tif (ret == -EINVAL) {\n\t\t\tnilfs_error(inode->i_sb,\n\t\t\t\t    \"broken bmap (inode number=%lu)\",\n\t\t\t\t    inode->i_ino);\n\t\t\tret = -EIO;\n\t\t}\n\t\tgoto out;\n\t}\n\tif (ret >= 0) {\t/* found */\n",
+          "before": "\tup_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n\tif (ret >= 0) {\t/* found */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/bmap.c b/fs/nilfs2/bmap.c\nindex ccc1a7aa52d2..36d4c512747b 100644\n--- a/fs/nilfs2/bmap.c\n+++ b/fs/nilfs2/bmap.c\n@@ -97,7 +97,7 @@ int nilfs_bmap_lookup_contig(struct nilfs_bmap *bmap, __u64 key, __u64 *ptrp,\n \tret = bmap->b_ops->bop_lookup_contig(bmap, key, ptrp, maxblocks);\n \tup_read(&bmap->b_sem);\n \n-\treturn nilfs_bmap_convert_error(bmap, __func__, ret);\n+\treturn ret;\n }\n \n static int nilfs_bmap_do_insert(struct nilfs_bmap *bmap, __u64 key, __u64 ptr)\ndiff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c\nindex 6613b8fcceb0..080347d2cbe0 100644\n--- a/fs/nilfs2/inode.c\n+++ b/fs/nilfs2/inode.c\n@@ -83,6 +83,15 @@ int nilfs_get_block(struct inode *inode, sector_t blkoff,\n \tdown_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n \tret = nilfs_bmap_lookup_contig(ii->i_bmap, blkoff, &blknum, maxblocks);\n \tup_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n+\tif (ret < 0 && ret != -ENOENT) {\n+\t\tif (ret == -EINVAL) {\n+\t\t\tnilfs_error(inode->i_sb,\n+\t\t\t\t    \"broken bmap (inode number=%lu)\",\n+\t\t\t\t    inode->i_ino);\n+\t\t\tret = -EIO;\n+\t\t}\n+\t\tgoto out;\n+\t}\n \tif (ret >= 0) {\t/* found */\n \t\tmap_bh(bh_result, inode->i_sb, blknum);\n \t\tif (ret > 0)",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "fs/nilfs2/inode.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "\tif (n < 0) {\n\t\t\tif (n == -EINVAL) {\n\t\t\t\tnilfs_error(inode->i_sb,\n\t\t\t\t\t    \"broken bmap (inode number=%lu)\",\n\t\t\t\t\t    inode->i_ino);\n\t\t\t\tn = -EIO;\n\t\t\t}\n\t\t\tint past_eof;\n",
+          "before": "\tif (n < 0) {\n\t\t\tint past_eof;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/bmap.c b/fs/nilfs2/bmap.c\nindex ccc1a7aa52d2..36d4c512747b 100644\n--- a/fs/nilfs2/bmap.c\n+++ b/fs/nilfs2/bmap.c\n@@ -97,7 +97,7 @@ int nilfs_bmap_lookup_contig(struct nilfs_bmap *bmap, __u64 key, __u64 *ptrp,\n \tret = bmap->b_ops->bop_lookup_contig(bmap, key, ptrp, maxblocks);\n \tup_read(&bmap->b_sem);\n \n-\treturn nilfs_bmap_convert_error(bmap, __func__, ret);\n+\treturn ret;\n }\n \n static int nilfs_bmap_do_insert(struct nilfs_bmap *bmap, __u64 key, __u64 ptr)\ndiff --git a/fs/nilfs2/inode.c b/fs/nilfs2/inode.c\nindex 6613b8fcceb0..524eef038ecc 100644\n--- a/fs/nilfs2/inode.c\n+++ b/fs/nilfs2/inode.c\n@@ -83,6 +83,15 @@ int nilfs_get_block(struct inode *inode, sector_t blkoff,\n \tdown_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n \tret = nilfs_bmap_lookup_contig(ii->i_bmap, blkoff, &blknum, maxblocks);\n \tup_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n+\tif (ret < 0 && ret != -ENOENT) {\n+\t\tif (ret == -EINVAL) {\n+\t\t\tnilfs_error(inode->i_sb,\n+\t\t\t\t    \"broken bmap (inode number=%lu)\",\n+\t\t\t\t    inode->i_ino);\n+\t\t\tret = -EIO;\n+\t\t}\n+\t\tgoto out;\n+\t}\n \tif (ret >= 0) {\t/* found */\n \t\tmap_bh(bh_result, inode->i_sb, blknum);\n \t\tif (ret > 0)\n@@ -1159,6 +1168,12 @@ int nilfs_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,\n \t\tup_read(&NILFS_MDT(nilfs->ns_dat)->mi_sem);\n \n \t\tif (n < 0) {\n+\t\t\tif (n == -EINVAL) {\n+\t\t\t\tnilfs_error(inode->i_sb,\n+\t\t\t\t\t    \"broken bmap (inode number=%lu)\",\n+\t\t\t\t\t    inode->i_ino);\n+\t\t\t\tn = -EIO;\n+\t\t\t}\n \t\t\tint past_eof;\n \n \t\t\tif (unlikely(n != -ENOENT))",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/nilfs2/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 0,
+      "start_step": 25
+    }
+  ],
+  "success_step": 27
+}

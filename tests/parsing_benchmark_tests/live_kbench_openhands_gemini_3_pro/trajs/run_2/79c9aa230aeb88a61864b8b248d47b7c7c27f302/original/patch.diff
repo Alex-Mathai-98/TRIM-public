@@ -1,0 +1,33 @@
+diff --git a/net/netfilter/xt_LED.c b/net/netfilter/xt_LED.c
+index f7b0286d106a..3507c7df76a2 100644
+--- a/net/netfilter/xt_LED.c
++++ b/net/netfilter/xt_LED.c
+@@ -94,14 +94,18 @@ static int led_tg_check(const struct xt_tgchk_param *par)
+ {
+ 	struct xt_led_info *ledinfo = par->targinfo;
+ 	struct xt_led_info_internal *ledinternal;
++	char name[sizeof(ledinfo->id) + 1];
+ 	int err;
+ 
+ 	if (ledinfo->id[0] == '\0')
+ 		return -EINVAL;
+ 
++	memcpy(name, ledinfo->id, sizeof(ledinfo->id));
++	name[sizeof(ledinfo->id)] = '\0';
++
+ 	mutex_lock(&xt_led_mutex);
+ 
+-	ledinternal = led_trigger_lookup(ledinfo->id);
++	ledinternal = led_trigger_lookup(name);
+ 	if (ledinternal) {
+ 		ledinternal->refcnt++;
+ 		goto out;
+@@ -112,7 +116,7 @@ static int led_tg_check(const struct xt_tgchk_param *par)
+ 	if (!ledinternal)
+ 		goto exit_mutex_only;
+ 
+-	ledinternal->trigger_id = kstrdup(ledinfo->id, GFP_KERNEL);
++	ledinternal->trigger_id = kstrdup(name, GFP_KERNEL);
+ 	if (!ledinternal->trigger_id)
+ 		goto exit_internal_alloc;
+ 

@@ -1,0 +1,48 @@
+diff --git a/kernel/bpf/mmap_unlock_work.h b/kernel/bpf/mmap_unlock_work.h
+index 5d18d7d85bef..93d1614a0d75 100644
+--- a/kernel/bpf/mmap_unlock_work.h
++++ b/kernel/bpf/mmap_unlock_work.h
+@@ -49,7 +49,7 @@ static inline bool bpf_mmap_unlock_get_irq_work(struct mmap_unlock_irq_work **wo
+ static inline void bpf_mmap_unlock_mm(struct mmap_unlock_irq_work *work, struct mm_struct *mm)
+ {
+ 	if (!work) {
+-		mmap_read_unlock(mm);
++		up_read(&mm->mmap_lock);
+ 	} else {
+ 		work->mm = mm;
+ 
+diff --git a/kernel/bpf/stackmap.c b/kernel/bpf/stackmap.c
+index 3615c06b7dfa..765fcceafa38 100644
+--- a/kernel/bpf/stackmap.c
++++ b/kernel/bpf/stackmap.c
+@@ -154,7 +154,7 @@ static void stack_map_get_build_id_offset(struct bpf_stack_build_id *id_offs,
+ 	 * build_id.
+ 	 */
+ 	if (!user || !current || !current->mm || irq_work_busy ||
+-	    !mmap_read_trylock(current->mm)) {
++	    !down_read_trylock(&current->mm->mmap_lock)) {
+ 		/* cannot access current->mm, fall back to ips */
+ 		for (i = 0; i < trace_nr; i++) {
+ 			id_offs[i].status = BPF_STACK_BUILD_ID_IP;
+diff --git a/kernel/bpf/task_iter.c b/kernel/bpf/task_iter.c
+index 98d9b4c0daff..6d7c5150caac 100644
+--- a/kernel/bpf/task_iter.c
++++ b/kernel/bpf/task_iter.c
+@@ -769,7 +769,7 @@ BPF_CALL_5(bpf_find_vma, struct task_struct *, task, u64, start,
+ 
+ 	irq_work_busy = bpf_mmap_unlock_get_irq_work(&work);
+ 
+-	if (irq_work_busy || !mmap_read_trylock(mm))
++	if (irq_work_busy || !down_read_trylock(&mm->mmap_lock))
+ 		return -EBUSY;
+ 
+ 	vma = find_vma(mm, start);
+@@ -842,7 +842,7 @@ __bpf_kfunc int bpf_iter_task_vma_new(struct bpf_iter_task_vma *it,
+ 
+ 	/* kit->data->work == NULL is valid after bpf_mmap_unlock_get_irq_work */
+ 	irq_work_busy = bpf_mmap_unlock_get_irq_work(&kit->data->work);
+-	if (irq_work_busy || !mmap_read_trylock(kit->data->mm)) {
++	if (irq_work_busy || !down_read_trylock(&kit->data->mm->mmap_lock)) {
+ 		err = -EBUSY;
+ 		goto err_cleanup_iter;
+ 	}

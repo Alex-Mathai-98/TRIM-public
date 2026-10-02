@@ -1,0 +1,24 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6296a11ccb09..9efd1f4a8dea 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1128,8 +1128,18 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		if (ret)
+ 			goto fsck_err;
+ 
+-		if (!b->written)
++		if (!b->written) {
+ 			btree_node_set_format(b, b->data->format);
++			if (b->format.nr_fields != BKEY_NR_FIELDS) {
++				struct printbuf buf = PRINTBUF;
++				bch2_btree_node_header_to_text(&buf, b->data);
++				bch_err(c, "btree node read error: invalid bkey format fields %u vs %u\n%s",
++					b->format.nr_fields, BKEY_NR_FIELDS, buf.buf);
++				printbuf_exit(&buf);
++				ret = -BCH_ERR_btree_node_read_err_bad_node;
++				goto fsck_err;
++			}
++		}
+ 
+ 		ret = validate_bset_keys(c, b, i, READ, have_retry, saw_error);
+ 		if (ret)

@@ -1,0 +1,123 @@
+{
+  "bug_id": "django__django-14771",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/autoreload.py",
+        "before": "    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]",
+        "after": "    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    if hasattr(sys, '_xoptions'):\n        args += ['-X%s' % (k if v is True else '%s=%s' % (k, v)) for k, v in sys._xoptions.items()]",
+        "explanation": "classic_swe step 14 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/utils/autoreload.py b/django/utils/autoreload.py\nindex cc65c043ab..90a4a26662 100644\n--- a/django/utils/autoreload.py\n+++ b/django/utils/autoreload.py\n@@ -220,6 +220,8 @@ def get_child_arguments():\n     py_script = Path(sys.argv[0])\n \n     args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n+    if hasattr(sys, '_xoptions'):\n+        args += ['-X%s' % (k if v is True else '%s=%s' % (k, v)) for k, v in sys._xoptions.items()]\n     # __spec__ is set when the server was started with the `-m` option,\n     # see https://docs.python.org/3/reference/import.html#main-spec\n     # __spec__ may not exist, e.g. when running in a Conda env.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      4
+    ],
+    "edit_list_after_file_min": [
+      4
+    ],
+    "edit_list_after_greedy": [
+      4
+    ],
+    "edit_list_after_refinement": [
+      4
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 1,
+  "reduction": "2_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/autoreload.py",
+          "before": "    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]",
+          "after": "    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    if hasattr(sys, '_xoptions'):\n        args += ['-X%s' % (k if v is True else '%s=%s' % (k, v)) for k, v in sys._xoptions.items()]",
+          "explanation": "classic_swe step 14 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/utils_tests/test_autoreload.py",
+          "before": "    @mock.patch('__main__.__spec__', None)\n    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', ['error'])\n    def test_warnoptions(self):\n        self.assertEqual(\n            autoreload.get_child_arguments(),\n            [sys.executable, '-Werror', __file__, 'runserver']\n        )",
+          "after": "    @mock.patch('__main__.__spec__', None)\n    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', ['error'])\n    def test_warnoptions(self):\n        self.assertEqual(\n            autoreload.get_child_arguments(),\n            [sys.executable, '-Werror', __file__, 'runserver']\n        )\n\n    @mock.patch('__main__.__spec__', None)\n    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', [])\n    def test_xoptions(self):\n        with mock.patch.object(sys, '_xoptions', {'utf8': True}):\n            self.assertEqual(\n                autoreload.get_child_arguments(),\n                [sys.executable, '-Xutf8', __file__, 'runserver']\n            )\n\n    @mock.patch('__main__.__spec__', None)\n    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', [])\n    def test_xoptions_with_values(self):\n        with mock.patch.object(sys, '_xoptions', {'tracemalloc': '10'}):\n            self.assertEqual(\n                autoreload.get_child_arguments(),\n                [sys.executable, '-Xtracemalloc=10', __file__, 'runserver']\n            )\n\n    @mock.patch('__main__.__spec__', None)\n    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', [])\n    def test_xoptions_multiple(self):\n        with mock.patch.object(sys, '_xoptions', {'utf8': True, 'dev': True}):\n            args = autoreload.get_child_arguments()\n            self.assertIn('-Xutf8', args)\n            self.assertIn('-Xdev', args)\n            self.assertEqual(args[0], sys.executable)\n            self.assertEqual(args[-2:], [__file__, 'runserver'])\n\n    @mock.patch('__main__.__spec__', None)\n    @mock.patch('sys.argv', [__file__, 'runserver'])\n    @mock.patch('sys.warnoptions', [])\n    def test_xoptions_no_attribute(self):\n        # Test when sys._xoptions doesn't exist\n        original_xoptions = getattr(sys, '_xoptions', None)\n        if hasattr(sys, '_xoptions'):\n            delattr(sys, '_xoptions')\n        try:\n            self.assertEqual(\n                autoreload.get_child_arguments(),\n                [sys.executable, __file__, 'runserver']\n            )\n        finally:\n            if original_xoptions is not None:\n                sys._xoptions = original_xoptions",
+          "explanation": "classic_swe step 29 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 60,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 60,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/utils/autoreload.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/utils/autoreload.py"
+    ],
+    "gold_files": [
+      "django/utils/autoreload.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 2,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 5,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

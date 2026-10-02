@@ -1,0 +1,66 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 5cf698785fae..ddf84bfa9c71 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -916,11 +916,31 @@ static int ocfs2_validate_extent_block(struct super_block *sb,
+ 		goto bail;
+ 	}
+ 
+-	if (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation)
++	if (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation) {
+ 		rc = ocfs2_error(sb,
+ 				 "Extent block #%llu has an invalid h_fs_generation of #%u\n",
+ 				 (unsigned long long)bh->b_blocknr,
+ 				 le32_to_cpu(eb->h_fs_generation));
++		goto bail;
++	}
++
++	if (le16_to_cpu(eb->h_list.l_next_free_rec) >
++	    le16_to_cpu(eb->h_list.l_count)) {
++		rc = ocfs2_error(sb, "Extent block #%llu: next_free_rec %u > count %u\n",
++				 (unsigned long long)bh->b_blocknr,
++				 le16_to_cpu(eb->h_list.l_next_free_rec),
++				 le16_to_cpu(eb->h_list.l_count));
++		goto bail;
++	}
++
++	if (le16_to_cpu(eb->h_list.l_count) > ocfs2_extent_recs_per_eb(sb)) {
++		rc = ocfs2_error(sb, "Extent block #%llu: count %u > max %u\n",
++				 (unsigned long long)bh->b_blocknr,
++				 le16_to_cpu(eb->h_list.l_count),
++				 ocfs2_extent_recs_per_eb(sb));
++		goto bail;
++	}
++
+ bail:
+ 	return rc;
+ }
+diff --git a/fs/ocfs2/extent_map.c b/fs/ocfs2/extent_map.c
+index f7672472fa82..6844a139eb48 100644
+--- a/fs/ocfs2/extent_map.c
++++ b/fs/ocfs2/extent_map.c
+@@ -414,6 +414,24 @@ static int ocfs2_get_clusters_nocache(struct inode *inode,
+ 	el = &di->id2.i_list;
+ 	tree_height = le16_to_cpu(el->l_tree_depth);
+ 
++	if (le16_to_cpu(el->l_next_free_rec) > le16_to_cpu(el->l_count)) {
++		ocfs2_error(inode->i_sb, "Inode %lu has bad next_free_rec %u > count %u\n",
++			    inode->i_ino,
++			    le16_to_cpu(el->l_next_free_rec),
++			    le16_to_cpu(el->l_count));
++		ret = -EROFS;
++		goto out;
++	}
++
++	if (le16_to_cpu(el->l_count) > ocfs2_extent_recs_per_inode(inode->i_sb)) {
++		ocfs2_error(inode->i_sb, "Inode %lu has bad count %u > max %u\n",
++			    inode->i_ino,
++			    le16_to_cpu(el->l_count),
++			    ocfs2_extent_recs_per_inode(inode->i_sb));
++		ret = -EROFS;
++		goto out;
++	}
++
+ 	if (tree_height > 0) {
+ 		ret = ocfs2_find_leaf(INODE_CACHE(inode), el, v_cluster,
+ 				      &eb_bh);

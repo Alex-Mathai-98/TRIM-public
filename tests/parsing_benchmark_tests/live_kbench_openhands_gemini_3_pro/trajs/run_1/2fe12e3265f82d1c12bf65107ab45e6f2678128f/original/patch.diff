@@ -1,0 +1,29 @@
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 5b680deb1c9b..4059754ac6e9 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -442,6 +442,14 @@ static int ext4_xattr_inode_iget(struct inode *parent, unsigned long ea_ino,
+ 			   err);
+ 		return err;
+ 	}
++
++	if (inode->i_nlink != 1) {
++		ext4_error(parent->i_sb,
++			   "EA inode %lu has invalid nlink=%u", ea_ino, inode->i_nlink);
++		iput(inode);
++		return -EFSCORRUPTED;
++	}
++
+ 	ext4_xattr_inode_set_class(inode);
+ 
+ 	/*
+@@ -2609,6 +2617,9 @@ static int ext4_xattr_move_to_block(handle_t *handle, struct inode *inode,
+ 	int needs_kvfree = 0;
+ 	int error;
+ 
++	if (value_size == 0 && entry->e_value_inum)
++		return -EFSCORRUPTED;
++
+ 	is = kzalloc(sizeof(struct ext4_xattr_ibody_find), GFP_NOFS);
+ 	bs = kzalloc(sizeof(struct ext4_xattr_block_find), GFP_NOFS);
+ 	b_entry_name = kmalloc(entry->e_name_len + 1, GFP_NOFS);

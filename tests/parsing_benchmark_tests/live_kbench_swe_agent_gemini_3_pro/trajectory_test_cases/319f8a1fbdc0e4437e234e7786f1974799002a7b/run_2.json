@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/*\n\t * If the timer was on the ignored list, it must be removed now\n\t * because the signal is being queued.\n\t */\n\tif (!hlist_unhashed(&tmr->ignored_list)) {\n\t\thlist_del_init(&tmr->ignored_list);\n\t\tposixtimer_putref(tmr);\n\t}",
+          "before": "\t/* This should never happen and leaks a reference count */\n\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n\t\thlist_del_init(&tmr->ignored_list);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/signal.c b/kernel/signal.c\nindex 989b1cc9116a..4daaea49d244 100644\n--- a/kernel/signal.c\n+++ b/kernel/signal.c\n@@ -2046,9 +2046,14 @@ void posixtimer_send_sigqueue(struct k_itimer *tmr)\n \t\tgoto out;\n \t}\n \n-\t/* This should never happen and leaks a reference count */\n-\tif (WARN_ON_ONCE(!hlist_unhashed(&tmr->ignored_list)))\n+\t/*\n+\t * If the timer was on the ignored list, it must be removed now\n+\t * because the signal is being queued.\n+\t */\n+\tif (!hlist_unhashed(&tmr->ignored_list)) {\n \t\thlist_del_init(&tmr->ignored_list);\n+\t\tposixtimer_putref(tmr);\n+\t}\n \n \tif (unlikely(!list_empty(&q->list))) {\n \t\t/* This holds a reference count already */",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "kernel/signal.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 29
+    }
+  ],
+  "success_step": 29
+}

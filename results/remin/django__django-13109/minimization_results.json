@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-13109",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/fields/related.py",
+        "before": "    def validate(self, value, model_instance):\n        if self.remote_field.parent_link:\n            return\n        super().validate(value, model_instance)\n        if value is None:\n            return\n\n        using = router.db_for_read(self.remote_field.model, instance=model_instance)\n        qs = self.remote_field.model._default_manager.using(using).filter(\n            **{self.remote_field.field_name: value}\n        )\n        qs = qs.complex_filter(self.get_limit_choices_to())\n        if not qs.exists():\n            raise exceptions.ValidationError(\n                self.error_messages['invalid'],\n                code='invalid',\n                params={\n                    'model': self.remote_field.model._meta.verbose_name, 'pk': value,\n                    'field': self.remote_field.field_name, 'value': value,\n                },  # 'pk' is included for backwards compatibility\n            )",
+        "after": "    def validate(self, value, model_instance):\n        if self.remote_field.parent_link:\n            return\n        super().validate(value, model_instance)\n        if value is None:\n            return\n\n        using = router.db_for_read(self.remote_field.model, instance=model_instance)\n        qs = self.remote_field.model._base_manager.using(using).filter(\n            **{self.remote_field.field_name: value}\n        )\n        qs = qs.complex_filter(self.get_limit_choices_to())\n        if not qs.exists():\n            raise exceptions.ValidationError(\n                self.error_messages['invalid'],\n                code='invalid',\n                params={\n                    'model': self.remote_field.model._meta.verbose_name, 'pk': value,\n                    'field': self.remote_field.field_name, 'value': value,\n                },  # 'pk' is included for backwards compatibility\n            )",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/fields/related.py b/django/db/models/fields/related.py\nindex d517d7269b..c2aea9c730 100644\n--- a/django/db/models/fields/related.py\n+++ b/django/db/models/fields/related.py\n@@ -914,7 +914,7 @@ class ForeignKey(ForeignObject):\n             return\n \n         using = router.db_for_read(self.remote_field.model, instance=model_instance)\n-        qs = self.remote_field.model._default_manager.using(using).filter(\n+        qs = self.remote_field.model._base_manager.using(using).filter(\n             **{self.remote_field.field_name: value}\n         )\n         qs = qs.complex_filter(self.get_limit_choices_to())\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/related.py",
+          "before": "    def validate(self, value, model_instance):\n        if self.remote_field.parent_link:\n            return\n        super().validate(value, model_instance)\n        if value is None:\n            return\n\n        using = router.db_for_read(self.remote_field.model, instance=model_instance)\n        qs = self.remote_field.model._default_manager.using(using).filter(\n            **{self.remote_field.field_name: value}\n        )\n        qs = qs.complex_filter(self.get_limit_choices_to())\n        if not qs.exists():\n            raise exceptions.ValidationError(\n                self.error_messages['invalid'],\n                code='invalid',\n                params={\n                    'model': self.remote_field.model._meta.verbose_name, 'pk': value,\n                    'field': self.remote_field.field_name, 'value': value,\n                },  # 'pk' is included for backwards compatibility\n            )",
+          "after": "    def validate(self, value, model_instance):\n        if self.remote_field.parent_link:\n            return\n        super().validate(value, model_instance)\n        if value is None:\n            return\n\n        using = router.db_for_read(self.remote_field.model, instance=model_instance)\n        qs = self.remote_field.model._base_manager.using(using).filter(\n            **{self.remote_field.field_name: value}\n        )\n        qs = qs.complex_filter(self.get_limit_choices_to())\n        if not qs.exists():\n            raise exceptions.ValidationError(\n                self.error_messages['invalid'],\n                code='invalid',\n                params={\n                    'model': self.remote_field.model._meta.verbose_name, 'pk': value,\n                    'field': self.remote_field.field_name, 'value': value,\n                },  # 'pk' is included for backwards compatibility\n            )",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 170,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 170,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/fields/related.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/fields/related.py"
+    ],
+    "gold_files": [
+      "django/db/models/fields/related.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 1,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,57 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 5cf698785fae..b0b4fa466ff2 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -6326,18 +6326,38 @@ void ocfs2_truncate_log_shutdown(struct ocfs2_super *osb)
+ 	}
+ }
+ 
++
+ int ocfs2_truncate_log_init(struct ocfs2_super *osb)
+ {
+ 	int status;
++	unsigned int tl_count;
+ 	struct inode *tl_inode = NULL;
+ 	struct buffer_head *tl_bh = NULL;
++	struct ocfs2_dinode *di;
++	struct ocfs2_truncate_log *tl;
+ 
+ 	status = ocfs2_get_truncate_log_info(osb,
+ 					     osb->slot_num,
+ 					     &tl_inode,
+ 					     &tl_bh);
+-	if (status < 0)
++	if (status < 0) {
++		mlog_errno(status);
++		goto bail;
++	}
++
++	di = (struct ocfs2_dinode *) tl_bh->b_data;
++	tl = &di->id2.i_dealloc;
++	tl_count = le16_to_cpu(tl->tl_count);
++	if (tl_count > ocfs2_truncate_recs_per_inode(osb->sb) ||
++	    tl_count == 0) {
++		status = ocfs2_error(osb->sb,
++				     "Truncate record count on #%llu invalid, wanted %u, actual %u\n",
++				     (unsigned long long)OCFS2_I(tl_inode)->ip_blkno,
++				     ocfs2_truncate_recs_per_inode(osb->sb),
++				     tl_count);
+ 		mlog_errno(status);
++		goto bail;
++	}
+ 
+ 	/* ocfs2_truncate_log_shutdown keys on the existence of
+ 	 * osb->osb_tl_inode so we don't set any of the osb variables
+@@ -6348,6 +6368,12 @@ int ocfs2_truncate_log_init(struct ocfs2_super *osb)
+ 	osb->osb_tl_bh    = tl_bh;
+ 	osb->osb_tl_inode = tl_inode;
+ 
++	return 0;
++
++bail:
++	iput(tl_inode);
++	brelse(tl_bh);
++
+ 	return status;
+ }
+ 

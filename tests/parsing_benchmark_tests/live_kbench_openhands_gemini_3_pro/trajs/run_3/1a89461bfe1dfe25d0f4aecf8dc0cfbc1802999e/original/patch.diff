@@ -1,0 +1,97 @@
+diff --git a/mm/gup.c b/mm/gup.c
+index adffe663594d..4f1a533d214c 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -681,7 +681,7 @@ static struct page *follow_huge_pud(struct vm_area_struct *vma,
+ 	pfn += (addr & ~PUD_MASK) >> PAGE_SHIFT;
+ 	page = pfn_to_page(pfn);
+ 
+-	if (!pud_write(pud) && gup_must_unshare(vma, flags, page))
++	if (gup_must_unshare(vma, flags, page))
+ 		return ERR_PTR(-EMLINK);
+ 
+ 	ret = try_grab_folio(page_folio(page), 1, flags);
+@@ -735,7 +735,7 @@ static struct page *follow_huge_pmd(struct vm_area_struct *vma,
+ 	if (pmd_protnone(*pmd) && !gup_can_follow_protnone(vma, flags))
+ 		return NULL;
+ 
+-	if (!pmd_write(pmdval) && gup_must_unshare(vma, flags, page))
++	if (gup_must_unshare(vma, flags, page))
+ 		return ERR_PTR(-EMLINK);
+ 
+ 	VM_WARN_ON_ONCE_PAGE((flags & FOLL_PIN) && PageAnon(page) &&
+@@ -860,7 +860,7 @@ static struct page *follow_page_pte(struct vm_area_struct *vma,
+ 	}
+ 	folio = page_folio(page);
+ 
+-	if (!pte_write(pte) && gup_must_unshare(vma, flags, page)) {
++	if (gup_must_unshare(vma, flags, page)) {
+ 		page = ERR_PTR(-EMLINK);
+ 		goto out;
+ 	}
+@@ -1443,8 +1443,13 @@ static long __get_user_pages(struct mm_struct *mm,
+ 
+ 		page = follow_page_mask(vma, start, gup_flags, &ctx);
+ 		if (!page || PTR_ERR(page) == -EMLINK) {
+-			ret = faultin_page(vma, start, gup_flags,
+-					   PTR_ERR(page) == -EMLINK, locked);
++			bool unshare = PTR_ERR(page) == -EMLINK;
++			unsigned int fault_flags = gup_flags;
++
++			if (unshare)
++				fault_flags &= ~FOLL_WRITE;
++			ret = faultin_page(vma, start, fault_flags,
++					   unshare, locked);
+ 			switch (ret) {
+ 			case 0:
+ 				goto retry;
+@@ -2900,7 +2905,7 @@ static int gup_fast_pte_range(pmd_t pmd, pmd_t *pmdp, unsigned long addr,
+ 			goto pte_unmap;
+ 		}
+ 
+-		if (!pte_write(pte) && gup_must_unshare(NULL, flags, page)) {
++		if (gup_must_unshare(NULL, flags, page)) {
+ 			gup_put_folio(folio, 1, flags);
+ 			goto pte_unmap;
+ 		}
+@@ -2980,7 +2985,7 @@ static int gup_fast_pmd_leaf(pmd_t orig, pmd_t *pmdp, unsigned long addr,
+ 		gup_put_folio(folio, refs, flags);
+ 		return 0;
+ 	}
+-	if (!pmd_write(orig) && gup_must_unshare(NULL, flags, &folio->page)) {
++	if (gup_must_unshare(NULL, flags, &folio->page)) {
+ 		gup_put_folio(folio, refs, flags);
+ 		return 0;
+ 	}
+@@ -3021,7 +3026,7 @@ static int gup_fast_pud_leaf(pud_t orig, pud_t *pudp, unsigned long addr,
+ 		return 0;
+ 	}
+ 
+-	if (!pud_write(orig) && gup_must_unshare(NULL, flags, &folio->page)) {
++	if (gup_must_unshare(NULL, flags, &folio->page)) {
+ 		gup_put_folio(folio, refs, flags);
+ 		return 0;
+ 	}
+diff --git a/mm/internal.h b/mm/internal.h
+index 45b725c3dc03..bfef24640d8b 100644
+--- a/mm/internal.h
++++ b/mm/internal.h
+@@ -1480,8 +1480,17 @@ static inline bool gup_must_unshare(struct vm_area_struct *vma,
+ 	 * has to be writable -- and if it references (part of) an anonymous
+ 	 * folio, that part is required to be marked exclusive.
+ 	 */
+-	if ((flags & (FOLL_WRITE | FOLL_PIN)) != FOLL_PIN)
++	if ((flags & (FOLL_WRITE | FOLL_PIN)) != FOLL_PIN) {
++		/*
++		 * If we are pinning for write, we must have an exclusive page;
++		 * otherwise, we might be pinning a shared page and the parent/child
++		 * might see corruption.
++		 */
++		if ((flags & (FOLL_WRITE | FOLL_PIN)) == (FOLL_WRITE | FOLL_PIN) &&
++		    PageAnon(page) && !PageAnonExclusive(page))
++			return true;
+ 		return false;
++	}
+ 	/*
+ 	 * Note: PageAnon(page) is stable until the page is actually getting
+ 	 * freed.

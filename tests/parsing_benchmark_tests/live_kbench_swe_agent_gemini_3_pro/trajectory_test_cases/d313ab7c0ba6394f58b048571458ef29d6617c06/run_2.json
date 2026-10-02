@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int __bond_miimon_inspect(struct bonding *bond, bool rtnl_held)\n{\n\tbool ignore_updelay = false;\n\tint link_state, commit = 0;\n\tstruct list_head *iter;\n\tstruct slave *slave;\n\n\tif (BOND_MODE(bond) == BOND_MODE_ACTIVEBACKUP) {\n\t\tignore_updelay = !rcu_dereference(bond->curr_active_slave);\n\t} else {\n\t\tstruct bond_up_slave *usable_slaves;\n\n\t\tusable_slaves = rcu_dereference(bond->usable_slaves);\n\n\t\tif (usable_slaves && usable_slaves->count == 0)\n\t\t\tignore_updelay = true;\n\t}\n\n\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tif (rtnl_held == netdev_need_ops_lock(slave->dev))\n\t\t\tcontinue;\n\t\tif (!rtnl_held) {\n\t\t\tcommit++;\n\t\t\tcontinue;\n\t\t}\n\n\t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n\n\t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);\n\n\t\tswitch (slave->link) {\n",
+          "before": "static int bond_miimon_inspect(struct bonding *bond)\n{\n\tbool ignore_updelay = false;\n\tint link_state, commit = 0;\n\tstruct list_head *iter;\n\tstruct slave *slave;\n\n\tif (BOND_MODE(bond) == BOND_MODE_ACTIVEBACKUP) {\n\t\tignore_updelay = !rcu_dereference(bond->curr_active_slave);\n\t} else {\n\t\tstruct bond_up_slave *usable_slaves;\n\n\t\tusable_slaves = rcu_dereference(bond->usable_slaves);\n\n\t\tif (usable_slaves && usable_slaves->count == 0)\n\t\t\tignore_updelay = true;\n\t}\n\n\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n\n\t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);\n\n\t\tswitch (slave->link) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c\nindex 8ea183da8d53..fe6ac4d59051 100644\n--- a/drivers/net/bonding/bond_main.c\n+++ b/drivers/net/bonding/bond_main.c\n@@ -2715,7 +2715,7 @@ static int bond_slave_info_query(struct net_device *bond_dev, struct ifslave *in\n /*-------------------------------- Monitoring -------------------------------*/\n \n /* called with rcu_read_lock() */\n-static int bond_miimon_inspect(struct bonding *bond)\n+static int __bond_miimon_inspect(struct bonding *bond, bool rtnl_held)\n {\n \tbool ignore_updelay = false;\n \tint link_state, commit = 0;\n@@ -2734,6 +2734,13 @@ static int bond_miimon_inspect(struct bonding *bond)\n \t}\n \n \tbond_for_each_slave_rcu(bond, slave, iter) {\n+\t\tif (rtnl_held == netdev_need_ops_lock(slave->dev))\n+\t\t\tcontinue;\n+\t\tif (!rtnl_held) {\n+\t\t\tcommit++;\n+\t\t\tcontinue;\n+\t\t}\n+\n \t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n \n \t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        },
+        {
+          "after": "\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tif (rtnl_held) {\n\t\t\tif (netdev_need_ops_lock(slave->dev))\n\t\t\t\tcontinue;\n\t\t} else {\n\t\t\tif (!netdev_need_ops_lock(slave->dev)) {\n\t\t\t\tcommit++;\n\t\t\t\tcontinue;\n\t\t\t}\n\t\t}\n\n\t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n",
+          "before": "\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tif (rtnl_held == netdev_need_ops_lock(slave->dev))\n\t\t\tcontinue;\n\t\tif (!rtnl_held) {\n\t\t\tcommit++;\n\t\t\tcontinue;\n\t\t}\n\n\t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c\nindex 8ea183da8d53..d5e02167fa54 100644\n--- a/drivers/net/bonding/bond_main.c\n+++ b/drivers/net/bonding/bond_main.c\n@@ -2715,7 +2715,7 @@ static int bond_slave_info_query(struct net_device *bond_dev, struct ifslave *in\n /*-------------------------------- Monitoring -------------------------------*/\n \n /* called with rcu_read_lock() */\n-static int bond_miimon_inspect(struct bonding *bond)\n+static int __bond_miimon_inspect(struct bonding *bond, bool rtnl_held)\n {\n \tbool ignore_updelay = false;\n \tint link_state, commit = 0;\n@@ -2734,6 +2734,16 @@ static int bond_miimon_inspect(struct bonding *bond)\n \t}\n \n \tbond_for_each_slave_rcu(bond, slave, iter) {\n+\t\tif (rtnl_held) {\n+\t\t\tif (netdev_need_ops_lock(slave->dev))\n+\t\t\t\tcontinue;\n+\t\t} else {\n+\t\t\tif (!netdev_need_ops_lock(slave->dev)) {\n+\t\t\t\tcommit++;\n+\t\t\t\tcontinue;\n+\t\t\t}\n+\t\t}\n+\n \t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n \n \t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\nstatic int bond_miimon_inspect(struct bonding *bond)\n{\n\treturn __bond_miimon_inspect(bond, false);\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c\nindex 8ea183da8d53..8f9a4bdf5c32 100644\n--- a/drivers/net/bonding/bond_main.c\n+++ b/drivers/net/bonding/bond_main.c\n@@ -2715,7 +2715,7 @@ static int bond_slave_info_query(struct net_device *bond_dev, struct ifslave *in\n /*-------------------------------- Monitoring -------------------------------*/\n \n /* called with rcu_read_lock() */\n-static int bond_miimon_inspect(struct bonding *bond)\n+static int __bond_miimon_inspect(struct bonding *bond, bool rtnl_held)\n {\n \tbool ignore_updelay = false;\n \tint link_state, commit = 0;\n@@ -2734,6 +2734,16 @@ static int bond_miimon_inspect(struct bonding *bond)\n \t}\n \n \tbond_for_each_slave_rcu(bond, slave, iter) {\n+\t\tif (rtnl_held) {\n+\t\t\tif (netdev_need_ops_lock(slave->dev))\n+\t\t\t\tcontinue;\n+\t\t} else {\n+\t\t\tif (!netdev_need_ops_lock(slave->dev)) {\n+\t\t\t\tcommit++;\n+\t\t\t\tcontinue;\n+\t\t\t}\n+\t\t}\n+\n \t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n \n \t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);\n@@ -2821,6 +2831,12 @@ static int bond_miimon_inspect(struct bonding *bond)\n \treturn commit;\n }\n \n+static int bond_miimon_inspect(struct bonding *bond)\n+{\n+\treturn __bond_miimon_inspect(bond, false);\n+}\n+\n+\n static void bond_miimon_link_change(struct bonding *bond,\n \t\t\t\t    struct slave *slave,\n \t\t\t\t    char link)",
+          "explanation": "classic_swe step 24 insert #1",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 2833,
+          "step_index": 24
+        },
+        {
+          "after": "\trcu_read_lock();\n\t__bond_miimon_inspect(bond, true);\n\trcu_read_unlock();\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c\nindex 8ea183da8d53..189a8b6dd3b2 100644\n--- a/drivers/net/bonding/bond_main.c\n+++ b/drivers/net/bonding/bond_main.c\n@@ -2715,7 +2715,7 @@ static int bond_slave_info_query(struct net_device *bond_dev, struct ifslave *in\n /*-------------------------------- Monitoring -------------------------------*/\n \n /* called with rcu_read_lock() */\n-static int bond_miimon_inspect(struct bonding *bond)\n+static int __bond_miimon_inspect(struct bonding *bond, bool rtnl_held)\n {\n \tbool ignore_updelay = false;\n \tint link_state, commit = 0;\n@@ -2734,6 +2734,16 @@ static int bond_miimon_inspect(struct bonding *bond)\n \t}\n \n \tbond_for_each_slave_rcu(bond, slave, iter) {\n+\t\tif (rtnl_held) {\n+\t\t\tif (netdev_need_ops_lock(slave->dev))\n+\t\t\t\tcontinue;\n+\t\t} else {\n+\t\t\tif (!netdev_need_ops_lock(slave->dev)) {\n+\t\t\t\tcommit++;\n+\t\t\t\tcontinue;\n+\t\t\t}\n+\t\t}\n+\n \t\tbond_propose_link_state(slave, BOND_LINK_NOCHANGE);\n \n \t\tlink_state = bond_check_dev_link(bond, slave->dev, 0);\n@@ -2821,6 +2831,12 @@ static int bond_miimon_inspect(struct bonding *bond)\n \treturn commit;\n }\n \n+static int bond_miimon_inspect(struct bonding *bond)\n+{\n+\treturn __bond_miimon_inspect(bond, false);\n+}\n+\n+\n static void bond_miimon_link_change(struct bonding *bond,\n \t\t\t\t    struct slave *slave,\n \t\t\t\t    char link)\n@@ -2846,6 +2862,10 @@ static void bond_miimon_commit(struct bonding *bond)\n \tstruct list_head *iter;\n \n \tASSERT_RTNL();\n+\trcu_read_lock();\n+\t__bond_miimon_inspect(bond, true);\n+\trcu_read_unlock();\n+\n \n \tbond_for_each_slave(bond, slave, iter) {\n \t\tswitch (slave->link_new_state) {",
+          "explanation": "classic_swe step 26 insert #1",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 2865,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 20
+    }
+  ],
+  "success_step": 26
+}

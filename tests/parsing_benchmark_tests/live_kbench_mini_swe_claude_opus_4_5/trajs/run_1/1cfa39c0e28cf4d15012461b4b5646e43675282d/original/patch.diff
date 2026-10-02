@@ -1,0 +1,32 @@
+diff --git a/fs/udf/namei.c b/fs/udf/namei.c
+index 2be775d30ac1..7cf0e940470c 100644
+--- a/fs/udf/namei.c
++++ b/fs/udf/namei.c
+@@ -776,6 +776,13 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 	if (flags & ~RENAME_NOREPLACE)
+ 		return -EINVAL;
+ 
++	if (new_inode && !new_inode->i_nlink) {
++		udf_warn(old_dir->i_sb,
++			 "target of rename is already freed (ino %lu)\n",
++			 new_inode->i_ino);
++		return -EFSCORRUPTED;
++	}
++
+ 	retval = udf_fiiter_find_entry(old_dir, &old_dentry->d_name, &oiter);
+ 	if (retval)
+ 		return retval;
+@@ -886,9 +893,10 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,
+ 
+ 	if (is_dir) {
+ 		inode_dec_link_count(old_dir);
+-		if (new_inode)
+-			inode_dec_link_count(new_inode);
+-		else {
++		if (new_inode) {
++			if (S_ISDIR(new_inode->i_mode))
++				inode_dec_link_count(new_inode);
++		} else {
+ 			inc_nlink(new_dir);
+ 			mark_inode_dirty(new_dir);
+ 		}

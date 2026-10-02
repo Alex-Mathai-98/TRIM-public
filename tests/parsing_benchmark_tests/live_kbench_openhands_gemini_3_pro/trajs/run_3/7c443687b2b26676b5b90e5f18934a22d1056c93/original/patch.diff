@@ -1,0 +1,48 @@
+diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c
+index 65fb27d1e17c..3dc286acaf84 100644
+--- a/fs/ntfs3/file.c
++++ b/fs/ntfs3/file.c
+@@ -321,14 +321,19 @@ static int ntfs_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 			}
+ 		}
+ 
+-		if (ni->i_valid < to) {
+-			inode_lock(inode);
+-			err = ntfs_extend_initialized_size(file, ni,
+-							   ni->i_valid, to);
+-			inode_unlock(inode);
+-			if (err)
+-				goto out;
+-		}
++		/*
++		 * We cannot take inode_lock here because mmap_lock is held using
++		 * down_write, and generic_perform_write takes inode_lock
++		 * (exclusive). The fault handler takes mmap_lock (read), so
++		 * inode_lock -> mmap_lock (read) is a valid dependency.
++		 * Taking inode_lock here creates mmap_lock (write) -> inode_lock
++		 * dependency, which leads to ABBA deadlock.
++		 *
++		 * Since we fixed ntfs_get_block_vbo to handle uninitialized
++		 * reads correctly, this extension is not strictly required for
++		 * correctness of reads. Writes will handle extension via
++		 * writeback.
++		 */
+ 	}
+ 
+ 	err = generic_file_mmap(file, vma);
+diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
+index 4f9020df8912..f9fd3bc9ed4e 100644
+--- a/fs/ntfs3/inode.c
++++ b/fs/ntfs3/inode.c
+@@ -633,6 +633,11 @@ static noinline int ntfs_get_block_vbo(struct inode *inode, u64 vbo,
+ 
+ 	valid = ni->i_valid;
+ 
++	if (!create && vbo >= valid) {
++		clear_buffer_mapped(bh);
++		return 0;
++	}
++
+ 	if (ctx == GET_BLOCK_DIRECT_IO_W) {
+ 		/* ntfs_direct_IO will update ni->i_valid. */
+ 		if (vbo >= valid)

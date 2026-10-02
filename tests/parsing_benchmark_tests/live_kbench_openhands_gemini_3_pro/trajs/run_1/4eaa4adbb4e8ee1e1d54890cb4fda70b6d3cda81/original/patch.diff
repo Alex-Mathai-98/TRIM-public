@@ -1,0 +1,27 @@
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 8ab7868807a7..2aefe6332782 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -2589,6 +2589,7 @@ EXPORT_SYMBOL_GPL(nfs_net_id);
+ static int nfs_net_init(struct net *net)
+ {
+ 	struct nfs_net *nn = net_generic(net, nfs_net_id);
++	int ret;
+ 
+ 	nfs_clients_init(net);
+ 
+@@ -2597,7 +2598,13 @@ static int nfs_net_init(struct net *net)
+ 		return -ENOMEM;
+ 	}
+ 
+-	return nfs_fs_proc_net_init(net);
++	ret = nfs_fs_proc_net_init(net);
++	if (ret) {
++		rpc_proc_unregister(net, "nfs");
++		nfs_clients_exit(net);
++		return ret;
++	}
++	return 0;
+ }
+ 
+ static void nfs_net_exit(struct net *net)

@@ -1,0 +1,35 @@
+diff --git a/drivers/comedi/drivers/c6xdigio.c b/drivers/comedi/drivers/c6xdigio.c
+index 14b90d1c64dc..c56ffca2d796 100644
+--- a/drivers/comedi/drivers/c6xdigio.c
++++ b/drivers/comedi/drivers/c6xdigio.c
+@@ -230,6 +230,8 @@ static const struct pnp_device_id c6xdigio_pnp_tbl[] = {
+ 	{}
+ };
+ 
++static bool c6xdigio_pnp_registered;
++
+ static struct pnp_driver c6xdigio_pnp_driver = {
+ 	.name = "c6xdigio",
+ 	.id_table = c6xdigio_pnp_tbl,
+@@ -250,7 +252,8 @@ static int c6xdigio_attach(struct comedi_device *dev,
+ 		return ret;
+ 
+ 	/*  Make sure that PnP ports get activated */
+-	pnp_register_driver(&c6xdigio_pnp_driver);
++	if (pnp_register_driver(&c6xdigio_pnp_driver) == 0)
++		c6xdigio_pnp_registered = true;
+ 
+ 	s = &dev->subdevices[0];
+ 	/* pwm output subdevice */
+@@ -281,7 +284,10 @@ static int c6xdigio_attach(struct comedi_device *dev,
+ static void c6xdigio_detach(struct comedi_device *dev)
+ {
+ 	comedi_legacy_detach(dev);
+-	pnp_unregister_driver(&c6xdigio_pnp_driver);
++	if (c6xdigio_pnp_registered) {
++		pnp_unregister_driver(&c6xdigio_pnp_driver);
++		c6xdigio_pnp_registered = false;
++	}
+ }
+ 
+ static struct comedi_driver c6xdigio_driver = {

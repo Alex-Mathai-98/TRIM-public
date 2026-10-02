@@ -1,0 +1,65 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 9254bca2813d..d4e722c2a190 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -1661,6 +1661,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 				     int len, int *skb_xdp)
+ {
+ 	struct page_frag *alloc_frag = &current->task_frag;
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 	struct bpf_prog *xdp_prog;
+ 	int buflen = SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
+ 	char *buf;
+@@ -1698,6 +1699,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 
+ 	*skb_xdp = 0;
+ 
++	bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 	local_bh_disable();
+ 	rcu_read_lock();
+ 	xdp_prog = rcu_dereference(tun->xdp_prog);
+@@ -1730,12 +1732,14 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	}
+ 	rcu_read_unlock();
+ 	local_bh_enable();
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 
+ 	return __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);
+ 
+ out:
+ 	rcu_read_unlock();
+ 	local_bh_enable();
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 	return NULL;
+ }
+ 
+@@ -1745,6 +1749,7 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 			    int noblock, bool more)
+ {
+ 	struct tun_pi pi = { 0, cpu_to_be16(ETH_P_IP) };
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 	struct sk_buff *skb;
+ 	size_t total_len = iov_iter_count(from);
+ 	size_t len = total_len, align = tun->align, linear;
+@@ -1917,6 +1922,7 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 		struct bpf_prog *xdp_prog;
+ 		int ret;
+ 
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		local_bh_disable();
+ 		rcu_read_lock();
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+@@ -1925,11 +1931,13 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 			if (ret != XDP_PASS) {
+ 				rcu_read_unlock();
+ 				local_bh_enable();
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 				goto unlock_frags;
+ 			}
+ 		}
+ 		rcu_read_unlock();
+ 		local_bh_enable();
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 
+ 	/* Compute the costly rx hash only if needed for flow updates.

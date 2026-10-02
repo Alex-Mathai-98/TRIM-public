@@ -1,0 +1,130 @@
+{
+  "bug_id": "pytest-dev__pytest-5631",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/compat.py",
+        "before": "def num_mock_patch_args(function):\n    \"\"\" return number of arguments used up by mock arguments (if any) \"\"\"\n    patchings = getattr(function, \"patchings\", None)\n    if not patchings:\n        return 0\n    mock_modules = [sys.modules.get(\"mock\"), sys.modules.get(\"unittest.mock\")]\n    if any(mock_modules):\n        sentinels = [m.DEFAULT for m in mock_modules if m is not None]\n        return len(\n            [p for p in patchings if not p.attribute_name and p.new in sentinels]\n        )\n    return len(patchings)",
+        "after": "def num_mock_patch_args(function):\n    \"\"\" return number of arguments used up by mock arguments (if any) \"\"\"\n    patchings = getattr(function, \"patchings\", None)\n    if not patchings:\n        return 0\n    mock_modules = [sys.modules.get(\"mock\"), sys.modules.get(\"unittest.mock\")]\n    if any(mock_modules):\n        sentinels = [m.DEFAULT for m in mock_modules if m is not None]\n        \n        def _is_in_sentinels(new_value):\n            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n            try:\n                return new_value in sentinels\n            except ValueError:\n                # This handles the case where new_value is an array-like object\n                # (e.g., numpy array) that raises ValueError when used with 'in'\n                # due to ambiguous truth value. In such cases, we can safely\n                # assume it's not a sentinel value.\n                return False\n        \n        return len(\n            [p for p in patchings if not p.attribute_name and _is_in_sentinels(p.new)]\n        )\n    return len(patchings)",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/compat.py b/src/_pytest/compat.py\nindex d238061b4..3b49e3d25 100644\n--- a/src/_pytest/compat.py\n+++ b/src/_pytest/compat.py\n@@ -67,8 +67,20 @@ def num_mock_patch_args(function):\n     mock_modules = [sys.modules.get(\"mock\"), sys.modules.get(\"unittest.mock\")]\n     if any(mock_modules):\n         sentinels = [m.DEFAULT for m in mock_modules if m is not None]\n+        \n+        def _is_in_sentinels(new_value):\n+            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n+            try:\n+                return new_value in sentinels\n+            except ValueError:\n+                # This handles the case where new_value is an array-like object\n+                # (e.g., numpy array) that raises ValueError when used with 'in'\n+                # due to ambiguous truth value. In such cases, we can safely\n+                # assume it's not a sentinel value.\n+                return False\n+        \n         return len(\n-            [p for p in patchings if not p.attribute_name and p.new in sentinels]\n+            [p for p in patchings if not p.attribute_name and _is_in_sentinels(p.new)]\n         )\n     return len(patchings)\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      12,
+      13
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      4
+    ],
+    "edit_list_after_file_min": [
+      4
+    ],
+    "edit_list_after_greedy": [
+      4
+    ],
+    "edit_list_after_refinement": [
+      4
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 1,
+  "reduction": "3_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/compat.py",
+          "before": "def num_mock_patch_args(function):\n    \"\"\" return number of arguments used up by mock arguments (if any) \"\"\"\n    patchings = getattr(function, \"patchings\", None)\n    if not patchings:\n        return 0\n    mock_modules = [sys.modules.get(\"mock\"), sys.modules.get(\"unittest.mock\")]\n    if any(mock_modules):\n        sentinels = [m.DEFAULT for m in mock_modules if m is not None]\n        return len(\n            [p for p in patchings if not p.attribute_name and p.new in sentinels]\n        )\n    return len(patchings)",
+          "after": "def num_mock_patch_args(function):\n    \"\"\" return number of arguments used up by mock arguments (if any) \"\"\"\n    patchings = getattr(function, \"patchings\", None)\n    if not patchings:\n        return 0\n    mock_modules = [sys.modules.get(\"mock\"), sys.modules.get(\"unittest.mock\")]\n    if any(mock_modules):\n        sentinels = [m.DEFAULT for m in mock_modules if m is not None]\n        \n        def _is_in_sentinels(new_value):\n            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n            try:\n                return new_value in sentinels\n            except ValueError:\n                # This handles the case where new_value is an array-like object\n                # (e.g., numpy array) that raises ValueError when used with 'in'\n                # due to ambiguous truth value. In such cases, we can safely\n                # assume it's not a sentinel value.\n                return False\n        \n        return len(\n            [p for p in patchings if not p.attribute_name and _is_in_sentinels(p.new)]\n        )\n    return len(patchings)",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/compat.py",
+          "before": "        def _is_in_sentinels(new_value):\n            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n            try:\n                return new_value in sentinels\n            except ValueError:\n                # This handles the case where new_value is an array-like object\n                # (e.g., numpy array) that raises ValueError when used with 'in'\n                # due to ambiguous truth value. In such cases, we can safely\n                # assume it's not a sentinel value.\n                return False",
+          "after": "        def _is_in_sentinels(new_value):\n            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n            try:\n                return new_value in sentinels\n            except (ValueError, DeprecationWarning):\n                # This handles the case where new_value is an array-like object\n                # (e.g., numpy array) that raises ValueError when used with 'in'\n                # due to ambiguous truth value. In such cases, we can safely\n                # assume it's not a sentinel value.\n                # Also handles DeprecationWarning for empty arrays.\n                return False",
+          "explanation": "classic_swe step 37 #1"
+        },
+        {
+          "filename": "src/_pytest/compat.py",
+          "before": "        def _is_in_sentinels(new_value):\n            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n            try:\n                return new_value in sentinels\n            except (ValueError, DeprecationWarning):\n                # This handles the case where new_value is an array-like object\n                # (e.g., numpy array) that raises ValueError when used with 'in'\n                # due to ambiguous truth value. In such cases, we can safely\n                # assume it's not a sentinel value.\n                # Also handles DeprecationWarning for empty arrays.\n                return False",
+          "after": "        def _is_in_sentinels(new_value):\n            \"\"\"Check if new_value is in sentinels, handling array-like objects.\"\"\"\n            try:\n                import warnings\n                with warnings.catch_warnings():\n                    warnings.simplefilter(\"ignore\")\n                    return new_value in sentinels\n            except ValueError:\n                # This handles the case where new_value is an array-like object\n                # (e.g., numpy array) that raises ValueError when used with 'in'\n                # due to ambiguous truth value. In such cases, we can safely\n                # assume it's not a sentinel value.\n                return False",
+          "explanation": "classic_swe step 38 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 15,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 15,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "src/_pytest/compat.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/compat.py"
+    ],
+    "gold_files": [
+      "src/_pytest/compat.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 13,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 12,
+    "gold_deleted_lines": 7
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

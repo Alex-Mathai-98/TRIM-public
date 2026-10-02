@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (map->m_la >= inode->i_size) {\n\t\t/* leave out-of-bound access unmapped */\n\t\tmap->m_flags = 0;\n\t\t/* avoid wrapping of map->m_plen */\n\t\tif (map->m_llen > ULLONG_MAX - map->m_la)\n\t\t\tmap->m_plen = ULLONG_MAX - map->m_la;\n\t\telse\n\t\t\tmap->m_plen = map->m_llen;\n\t\tgoto out;\n\t}",
+          "before": "\tif (map->m_la >= inode->i_size) {\n\t\t/* leave out-of-bound access unmapped */\n\t\tmap->m_flags = 0;\n\t\tmap->m_plen = map->m_llen;\n\t\tgoto out;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 1c49f8962021..75ad69c1fa63 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -117,7 +117,11 @@ int erofs_map_blocks(struct inode *inode, struct erofs_map_blocks *map)\n \tif (map->m_la >= inode->i_size) {\n \t\t/* leave out-of-bound access unmapped */\n \t\tmap->m_flags = 0;\n-\t\tmap->m_plen = map->m_llen;\n+\t\t/* avoid wrapping of map->m_plen */\n+\t\tif (map->m_llen > ULLONG_MAX - map->m_la)\n+\t\t\tmap->m_plen = ULLONG_MAX - map->m_la;\n+\t\telse\n+\t\t\tmap->m_plen = map->m_llen;\n \t\tgoto out;\n \t}",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (map->m_la >= inode->i_size) {\n\t\t/* leave out-of-bound access unmapped */\n\t\tmap->m_flags = 0;\n\t\tmap->m_plen = map->m_llen;\n\t\tgoto out;\n\t}",
+          "before": "\tif (map->m_la >= inode->i_size) {\n\t\t/* leave out-of-bound access unmapped */\n\t\tmap->m_flags = 0;\n\t\t/* avoid wrapping of map->m_plen */\n\t\tif (map->m_llen > ULLONG_MAX - map->m_la)\n\t\t\tmap->m_plen = ULLONG_MAX - map->m_la;\n\t\telse\n\t\t\tmap->m_plen = map->m_llen;\n\t\tgoto out;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        },
+        {
+          "after": "\tif (iter->iomap.offset + iter->iomap.length <= iter->pos)\n\t\tprintk(KERN_ERR \"iomap_iter debug: offset %llx len %llx pos %llx\\n\",\n\t\t\titer->iomap.offset, iter->iomap.length, iter->pos);\n\tWARN_ON_ONCE(iter->iomap.offset + iter->iomap.length <= iter->pos);",
+          "before": "\tWARN_ON_ONCE(iter->iomap.offset + iter->iomap.length <= iter->pos);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/iomap/iter.c b/fs/iomap/iter.c\nindex 79a0614eaab7..2ad53219326b 100644\n--- a/fs/iomap/iter.c\n+++ b/fs/iomap/iter.c\n@@ -48,6 +48,9 @@ static inline void iomap_iter_done(struct iomap_iter *iter)\n {\n \tWARN_ON_ONCE(iter->iomap.offset > iter->pos);\n \tWARN_ON_ONCE(iter->iomap.length == 0);\n+\tif (iter->iomap.offset + iter->iomap.length <= iter->pos)\n+\t\tprintk(KERN_ERR \"iomap_iter debug: offset %llx len %llx pos %llx\\n\",\n+\t\t\titer->iomap.offset, iter->iomap.length, iter->pos);\n \tWARN_ON_ONCE(iter->iomap.offset + iter->iomap.length <= iter->pos);\n \tWARN_ON_ONCE(iter->iomap.flags & IOMAP_F_STALE);",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "fs/iomap/iter.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 1,
+      "start_step": 29
+    },
+    {
+      "edits": [
+        {
+          "after": "\tWARN_ON_ONCE(iter->iomap.offset + iter->iomap.length <= iter->pos);",
+          "before": "\tif (iter->iomap.offset + iter->iomap.length <= iter->pos)\n\t\tprintk(KERN_ERR \"iomap_iter debug: offset %llx len %llx pos %llx\\n\",\n\t\t\titer->iomap.offset, iter->iomap.length, iter->pos);\n\tWARN_ON_ONCE(iter->iomap.offset + iter->iomap.length <= iter->pos);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 46 #1",
+          "filename": "fs/iomap/iter.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        },
+        {
+          "after": "\tif (map.m_flags & EROFS_MAP_MAPPED) {\n\t\tiomap->type = IOMAP_MAPPED;\n\t\tiomap->addr = map.m_flags & EROFS_MAP_FRAGMENT ?\n\t\t\t      IOMAP_NULL_ADDR : map.m_pa;\n\t\tif (iomap->offset + iomap->length <= offset) {\n\t\t\tiomap->type = IOMAP_HOLE;\n\t\t\tiomap->addr = IOMAP_NULL_ADDR;\n\t\t\tiomap->offset = offset;\n\t\t\tiomap->length = length;\n\t\t}\n\t} else {",
+          "before": "\tif (map.m_flags & EROFS_MAP_MAPPED) {\n\t\tiomap->type = IOMAP_MAPPED;\n\t\tiomap->addr = map.m_flags & EROFS_MAP_FRAGMENT ?\n\t\t\t      IOMAP_NULL_ADDR : map.m_pa;\n\t} else {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/zmap.c b/fs/erofs/zmap.c\nindex a076cca1f547..737857a10398 100644\n--- a/fs/erofs/zmap.c\n+++ b/fs/erofs/zmap.c\n@@ -726,6 +726,12 @@ static int z_erofs_iomap_begin_report(struct inode *inode, loff_t offset,\n \t\tiomap->type = IOMAP_MAPPED;\n \t\tiomap->addr = map.m_flags & EROFS_MAP_FRAGMENT ?\n \t\t\t      IOMAP_NULL_ADDR : map.m_pa;\n+\t\tif (iomap->offset + iomap->length <= offset) {\n+\t\t\tiomap->type = IOMAP_HOLE;\n+\t\t\tiomap->addr = IOMAP_NULL_ADDR;\n+\t\t\tiomap->offset = offset;\n+\t\t\tiomap->length = length;\n+\t\t}\n \t} else {\n \t\tiomap->type = IOMAP_HOLE;\n \t\tiomap->addr = IOMAP_NULL_ADDR;",
+          "explanation": "classic_swe step 47 #1",
+          "filename": "fs/erofs/zmap.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 2,
+      "start_step": 46
+    }
+  ],
+  "success_step": 47
+}

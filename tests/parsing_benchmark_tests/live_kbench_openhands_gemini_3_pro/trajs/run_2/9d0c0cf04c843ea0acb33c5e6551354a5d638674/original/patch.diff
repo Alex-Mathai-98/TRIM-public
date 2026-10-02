@@ -1,0 +1,33 @@
+diff --git a/drivers/usb/atm/cxacru.c b/drivers/usb/atm/cxacru.c
+index 0dd85d2635b9..6f3c195225fb 100644
+--- a/drivers/usb/atm/cxacru.c
++++ b/drivers/usb/atm/cxacru.c
+@@ -1131,6 +1131,7 @@ static int cxacru_bind(struct usbatm_data *usbatm_instance,
+ 	struct cxacru_data *instance;
+ 	struct usb_device *usb_dev = interface_to_usbdev(intf);
+ 	struct usb_host_endpoint *cmd_ep = usb_dev->ep_in[CXACRU_EP_CMD];
++	struct usb_host_endpoint *out_ep = usb_dev->ep_out[CXACRU_EP_CMD];
+ 	struct usb_endpoint_descriptor *in, *out;
+ 	int ret;
+ 
+@@ -1172,12 +1173,19 @@ static int cxacru_bind(struct usbatm_data *usbatm_instance,
+ 		goto fail;
+ 	}
+ 
+-	if (!cmd_ep) {
++	if (!cmd_ep || !out_ep) {
+ 		usb_dbg(usbatm_instance, "cxacru_bind: no command endpoint\n");
+ 		ret = -ENODEV;
+ 		goto fail;
+ 	}
+ 
++	if ((cmd_ep->desc.bmAttributes & USB_ENDPOINT_XFERTYPE_MASK) !=
++	    (out_ep->desc.bmAttributes & USB_ENDPOINT_XFERTYPE_MASK)) {
++		usb_err(usbatm_instance, "cxacru_bind: command endpoint mismatch\n");
++		ret = -ENODEV;
++		goto fail;
++	}
++
+ 	if (usb_endpoint_xfer_int(&cmd_ep->desc))
+ 		ret = usb_find_common_endpoints(intf->cur_altsetting,
+ 						NULL, NULL, &in, &out);

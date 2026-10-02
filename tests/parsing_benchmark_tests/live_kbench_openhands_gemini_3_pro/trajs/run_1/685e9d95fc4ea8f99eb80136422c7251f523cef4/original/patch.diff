@@ -1,0 +1,28 @@
+diff --git a/net/ethtool/common.c b/net/ethtool/common.c
+index 02f941f667dd..f8e224f27a6f 100644
+--- a/net/ethtool/common.c
++++ b/net/ethtool/common.c
+@@ -870,7 +870,7 @@ int __ethtool_get_ts_info(struct net_device *dev,
+ {
+ 	struct hwtstamp_provider *hwprov;
+ 
+-	hwprov = rtnl_dereference(dev->hwprov);
++	hwprov = rcu_dereference_rtnl(dev->hwprov);
+ 	/* No provider specified, use default behavior */
+ 	if (!hwprov) {
+ 		const struct ethtool_ops *ops = dev->ethtool_ops;
+@@ -919,8 +919,13 @@ int ethtool_get_phc_vclocks(struct net_device *dev, int **vclock_index)
+ 	struct kernel_ethtool_ts_info info = { };
+ 	int num = 0;
+ 
+-	if (!__ethtool_get_ts_info(dev, &info))
++	rcu_read_lock();
++	if (!__ethtool_get_ts_info(dev, &info)) {
++		rcu_read_unlock();
+ 		num = ptp_get_vclocks_index(info.phc_index, vclock_index);
++	} else {
++		rcu_read_unlock();
++	}
+ 
+ 	return num;
+ }

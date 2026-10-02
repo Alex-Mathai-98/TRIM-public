@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3,
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n{\n\tstruct dentry *dentry;\n\n\trcu_read_lock();\n\tdentry = READ_ONCE(stashed);\n\tif (!dentry) {\n\t\trcu_read_unlock();\n\t\treturn NULL;\n\t}\n\tif (!lockref_get_not_dead(&dentry->d_lockref)) {\n\t\trcu_read_unlock();\n\t\treturn NULL;\n\t}\n\trcu_read_unlock();\n\treturn dentry;\n}",
+          "before": "static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n{\n\tstruct dentry *dentry;\n\n\tguard(rcu)();\n\tdentry = READ_ONCE(stashed);\n\tif (!dentry)\n\t\treturn NULL;\n\tif (!lockref_get_not_dead(&dentry->d_lockref))\n\t\treturn NULL;\n\treturn dentry;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/libfs.c b/fs/libfs.c\nindex 8aa34870449f..e6e09449adc6 100644\n--- a/fs/libfs.c\n+++ b/fs/libfs.c\n@@ -2108,12 +2108,17 @@ static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n {\n \tstruct dentry *dentry;\n \n-\tguard(rcu)();\n+\trcu_read_lock();\n \tdentry = READ_ONCE(stashed);\n-\tif (!dentry)\n+\tif (!dentry) {\n+\t\trcu_read_unlock();\n \t\treturn NULL;\n-\tif (!lockref_get_not_dead(&dentry->d_lockref))\n+\t}\n+\tif (!lockref_get_not_dead(&dentry->d_lockref)) {\n+\t\trcu_read_unlock();\n \t\treturn NULL;\n+\t}\n+\trcu_read_unlock();\n \treturn dentry;\n }",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/libfs.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "static struct dentry *stash_dentry(struct dentry **stashed,\n\t\t\t\t   struct dentry *dentry)\n{\n\trcu_read_lock();\n\tfor (;;) {\n\t\tstruct dentry *old;\n\n\t\t/* Assume any old dentry was cleared out. */\n\t\told = cmpxchg(stashed, NULL, dentry);\n\t\tif (likely(!old)) {\n\t\t\trcu_read_unlock();\n\t\t\treturn dentry;\n\t\t}\n\n\t\t/* Check if somebody else installed a reusable dentry. */\n\t\tif (lockref_get_not_dead(&old->d_lockref)) {\n\t\t\trcu_read_unlock();\n\t\t\treturn old;\n\t\t}\n\n\t\t/* There's an old dead dentry there, try to take it over. */\n\t\tif (likely(try_cmpxchg(stashed, &old, dentry))) {\n\t\t\trcu_read_unlock();\n\t\t\treturn dentry;\n\t\t}\n\t}\n}",
+          "before": "static struct dentry *stash_dentry(struct dentry **stashed,\n\t\t\t\t   struct dentry *dentry)\n{\n\tguard(rcu)();\n\tfor (;;) {\n\t\tstruct dentry *old;\n\n\t\t/* Assume any old dentry was cleared out. */\n\t\told = cmpxchg(stashed, NULL, dentry);\n\t\tif (likely(!old))\n\t\t\treturn dentry;\n\n\t\t/* Check if somebody else installed a reusable dentry. */\n\t\tif (lockref_get_not_dead(&old->d_lockref))\n\t\t\treturn old;\n\n\t\t/* There's an old dead dentry there, try to take it over. */\n\t\tif (likely(try_cmpxchg(stashed, &old, dentry)))\n\t\t\treturn dentry;\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/libfs.c b/fs/libfs.c\nindex 8aa34870449f..33e2652e484f 100644\n--- a/fs/libfs.c\n+++ b/fs/libfs.c\n@@ -2108,12 +2108,17 @@ static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n {\n \tstruct dentry *dentry;\n \n-\tguard(rcu)();\n+\trcu_read_lock();\n \tdentry = READ_ONCE(stashed);\n-\tif (!dentry)\n+\tif (!dentry) {\n+\t\trcu_read_unlock();\n \t\treturn NULL;\n-\tif (!lockref_get_not_dead(&dentry->d_lockref))\n+\t}\n+\tif (!lockref_get_not_dead(&dentry->d_lockref)) {\n+\t\trcu_read_unlock();\n \t\treturn NULL;\n+\t}\n+\trcu_read_unlock();\n \treturn dentry;\n }\n \n@@ -2163,22 +2168,28 @@ static struct dentry *prepare_anon_dentry(struct dentry **stashed,\n static struct dentry *stash_dentry(struct dentry **stashed,\n \t\t\t\t   struct dentry *dentry)\n {\n-\tguard(rcu)();\n+\trcu_read_lock();\n \tfor (;;) {\n \t\tstruct dentry *old;\n \n \t\t/* Assume any old dentry was cleared out. */\n \t\told = cmpxchg(stashed, NULL, dentry);\n-\t\tif (likely(!old))\n+\t\tif (likely(!old)) {\n+\t\t\trcu_read_unlock();\n \t\t\treturn dentry;\n+\t\t}\n \n \t\t/* Check if somebody else installed a reusable dentry. */\n-\t\tif (lockref_get_not_dead(&old->d_lockref))\n+\t\tif (lockref_get_not_dead(&old->d_lockref)) {\n+\t\t\trcu_read_unlock();\n \t\t\treturn old;\n+\t\t}\n \n \t\t/* There's an old dead dentry there, try to take it over. */\n-\t\tif (likely(try_cmpxchg(stashed, &old, dentry)))\n+\t\tif (likely(try_cmpxchg(stashed, &old, dentry))) {\n+\t\t\trcu_read_unlock();\n \t\t\treturn dentry;\n+\t\t}\n \t}\n }",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "fs/libfs.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 0,
+      "start_step": 34
+    },
+    {
+      "edits": [
+        {
+          "after": "static struct dentry *stash_dentry(struct dentry **stashed,\n\t\t\t\t   struct dentry *dentry)\n{\n\tguard(rcu)();\n\tfor (;;) {\n\t\tstruct dentry *old;\n\n\t\t/* Assume any old dentry was cleared out. */\n\t\told = cmpxchg(stashed, NULL, dentry);\n\t\tif (likely(!old))\n\t\t\treturn dentry;\n\n\t\t/* Check if somebody else installed a reusable dentry. */\n\t\tif (lockref_get_not_dead(&old->d_lockref))\n\t\t\treturn old;\n\n\t\t/* There's an old dead dentry there, try to take it over. */\n\t\tif (likely(try_cmpxchg(stashed, &old, dentry)))\n\t\t\treturn dentry;\n\t}\n}",
+          "before": "static struct dentry *stash_dentry(struct dentry **stashed,\n\t\t\t\t   struct dentry *dentry)\n{\n\trcu_read_lock();\n\tfor (;;) {\n\t\tstruct dentry *old;\n\n\t\t/* Assume any old dentry was cleared out. */\n\t\told = cmpxchg(stashed, NULL, dentry);\n\t\tif (likely(!old)) {\n\t\t\trcu_read_unlock();\n\t\t\treturn dentry;\n\t\t}\n\n\t\t/* Check if somebody else installed a reusable dentry. */\n\t\tif (lockref_get_not_dead(&old->d_lockref)) {\n\t\t\trcu_read_unlock();\n\t\t\treturn old;\n\t\t}\n\n\t\t/* There's an old dead dentry there, try to take it over. */\n\t\tif (likely(try_cmpxchg(stashed, &old, dentry))) {\n\t\t\trcu_read_unlock();\n\t\t\treturn dentry;\n\t\t}\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/libfs.c b/fs/libfs.c\nindex 8aa34870449f..e6e09449adc6 100644\n--- a/fs/libfs.c\n+++ b/fs/libfs.c\n@@ -2108,12 +2108,17 @@ static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n {\n \tstruct dentry *dentry;\n \n-\tguard(rcu)();\n+\trcu_read_lock();\n \tdentry = READ_ONCE(stashed);\n-\tif (!dentry)\n+\tif (!dentry) {\n+\t\trcu_read_unlock();\n \t\treturn NULL;\n-\tif (!lockref_get_not_dead(&dentry->d_lockref))\n+\t}\n+\tif (!lockref_get_not_dead(&dentry->d_lockref)) {\n+\t\trcu_read_unlock();\n \t\treturn NULL;\n+\t}\n+\trcu_read_unlock();\n \treturn dentry;\n }",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "fs/libfs.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n{\n\tstruct dentry *dentry;\n\n\tguard(rcu)();\n\tdentry = READ_ONCE(stashed);\n\tif (!dentry)\n\t\treturn NULL;\n\tif (!lockref_get_not_dead(&dentry->d_lockref))\n\t\treturn NULL;\n\treturn dentry;\n}",
+          "before": "static inline struct dentry *get_stashed_dentry(struct dentry *stashed)\n{\n\tstruct dentry *dentry;\n\n\trcu_read_lock();\n\tdentry = READ_ONCE(stashed);\n\tif (!dentry) {\n\t\trcu_read_unlock();\n\t\treturn NULL;\n\t}\n\tif (!lockref_get_not_dead(&dentry->d_lockref)) {\n\t\trcu_read_unlock();\n\t\treturn NULL;\n\t}\n\trcu_read_unlock();\n\treturn dentry;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "fs/libfs.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        },
+        {
+          "after": "\t\tif (!tsk) {\n\t\t\trcu_read_unlock();\n\t\t\tbreak;\n\t\t}",
+          "before": "\t\tif (!tsk)\n\t\t\tbreak;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nsfs.c b/fs/nsfs.c\nindex a4a925dce331..e228d06f0949 100644\n--- a/fs/nsfs.c\n+++ b/fs/nsfs.c\n@@ -188,8 +188,10 @@ static long ns_ioctl(struct file *filp, unsigned int ioctl,\n \t\t\ttsk = find_task_by_vpid(arg);\n \t\telse\n \t\t\ttsk = find_task_by_pid_ns(arg, pid_ns);\n-\t\tif (!tsk)\n+\t\tif (!tsk) {\n+\t\t\trcu_read_unlock();\n \t\t\tbreak;\n+\t\t}\n \n \t\tswitch (ioctl) {\n \t\tcase NS_GET_PID_FROM_PIDNS:",
+          "explanation": "classic_swe step 47 #1",
+          "filename": "fs/nsfs.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 1,
+      "start_step": 43
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nsfs.c b/fs/nsfs.c\nindex a4a925dce331..e228d06f0949 100644\n--- a/fs/nsfs.c\n+++ b/fs/nsfs.c\n@@ -188,8 +188,10 @@ static long ns_ioctl(struct file *filp, unsigned int ioctl,\n \t\t\ttsk = find_task_by_vpid(arg);\n \t\telse\n \t\t\ttsk = find_task_by_pid_ns(arg, pid_ns);\n-\t\tif (!tsk)\n+\t\tif (!tsk) {\n+\t\t\trcu_read_unlock();\n \t\t\tbreak;\n+\t\t}\n \n \t\tswitch (ioctl) {\n \t\tcase NS_GET_PID_FROM_PIDNS:",
+          "explanation": "classic_swe step 53 rm #1",
+          "filename": "root/report.txt",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        }
+      ],
+      "end_step": 53,
+      "revision_index": 2,
+      "start_step": 53
+    }
+  ],
+  "success_step": 53
+}

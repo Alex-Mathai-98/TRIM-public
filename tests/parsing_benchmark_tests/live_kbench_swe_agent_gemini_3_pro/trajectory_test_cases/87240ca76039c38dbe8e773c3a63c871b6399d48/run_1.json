@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n\t\tint len = ext4_ext_get_actual_len(ex);\n\n\t\tif (lblk < prev || lblk + len <= lblk)\n\t\t\tbreak;\n\n\t\tif (prev && (prev != lblk))",
+          "before": "\t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n\t\tint len = ext4_ext_get_actual_len(ex);\n\n\t\tif (prev && (prev != lblk))",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c\nindex ca5499e9412b..1239420e2681 100644\n--- a/fs/ext4/extents.c\n+++ b/fs/ext4/extents.c\n@@ -535,6 +535,9 @@ static void ext4_cache_extents(struct inode *inode,\n \t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n \t\tint len = ext4_ext_get_actual_len(ex);\n \n+\t\tif (lblk < prev || lblk + len <= lblk)\n+\t\t\tbreak;\n+\n \t\tif (prev && (prev != lblk))\n \t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n \t\t\t\t\t     EXTENT_STATUS_HOLE);",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "fs/ext4/extents.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "static int ext4_cache_extents(struct inode *inode,\n\t\t\t       struct ext4_extent_header *eh)\n{\n\tstruct ext4_extent *ex = EXT_FIRST_EXTENT(eh);\n\text4_lblk_t prev = 0;\n\tint i;\n\n\tfor (i = le16_to_cpu(eh->eh_entries); i > 0; i--, ex++) {\n\t\tunsigned int status = EXTENT_STATUS_WRITTEN;\n\t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n\t\tint len = ext4_ext_get_actual_len(ex);\n\n\t\tif (lblk < prev || lblk + len <= lblk)\n\t\t\treturn -EFSCORRUPTED;\n\n\t\tif (prev && (prev != lblk))\n\t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n\t\t\t\t\t     EXTENT_STATUS_HOLE);\n\n\t\tif (ext4_ext_is_unwritten(ex))\n\t\t\tstatus = EXTENT_STATUS_UNWRITTEN;\n\t\text4_es_cache_extent(inode, lblk, len,\n\t\t\t\t     ext4_ext_pblock(ex), status);\n\t\tprev = lblk + len;\n\t}\n\treturn 0;\n}",
+          "before": "static void ext4_cache_extents(struct inode *inode,\n\t\t\t       struct ext4_extent_header *eh)\n{\n\tstruct ext4_extent *ex = EXT_FIRST_EXTENT(eh);\n\text4_lblk_t prev = 0;\n\tint i;\n\n\tfor (i = le16_to_cpu(eh->eh_entries); i > 0; i--, ex++) {\n\t\tunsigned int status = EXTENT_STATUS_WRITTEN;\n\t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n\t\tint len = ext4_ext_get_actual_len(ex);\n\n\t\tif (lblk < prev || lblk + len <= lblk)\n\t\t\tbreak;\n\n\t\tif (prev && (prev != lblk))\n\t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n\t\t\t\t\t     EXTENT_STATUS_HOLE);\n\n\t\tif (ext4_ext_is_unwritten(ex))\n\t\t\tstatus = EXTENT_STATUS_UNWRITTEN;\n\t\text4_es_cache_extent(inode, lblk, len,\n\t\t\t\t     ext4_ext_pblock(ex), status);\n\t\tprev = lblk + len;\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c\nindex ca5499e9412b..f37b7eaf241c 100644\n--- a/fs/ext4/extents.c\n+++ b/fs/ext4/extents.c\n@@ -523,7 +523,7 @@ int ext4_ext_check_inode(struct inode *inode)\n \treturn ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode), 0);\n }\n \n-static void ext4_cache_extents(struct inode *inode,\n+static int ext4_cache_extents(struct inode *inode,\n \t\t\t       struct ext4_extent_header *eh)\n {\n \tstruct ext4_extent *ex = EXT_FIRST_EXTENT(eh);\n@@ -535,6 +535,9 @@ static void ext4_cache_extents(struct inode *inode,\n \t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n \t\tint len = ext4_ext_get_actual_len(ex);\n \n+\t\tif (lblk < prev || lblk + len <= lblk)\n+\t\t\treturn -EFSCORRUPTED;\n+\n \t\tif (prev && (prev != lblk))\n \t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n \t\t\t\t\t     EXTENT_STATUS_HOLE);\n@@ -545,6 +548,7 @@ static void ext4_cache_extents(struct inode *inode,\n \t\t\t\t     ext4_ext_pblock(ex), status);\n \t\tprev = lblk + len;\n \t}\n+\treturn 0;\n }\n \n static struct buffer_head *",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/ext4/extents.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\t\terr = ext4_cache_extents(inode, eh);\n\t\tif (err)\n\t\t\tgoto errout;\n\t}\n\treturn bh;",
+          "before": "\t\text4_cache_extents(inode, eh);\n\t}\n\treturn bh;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c\nindex ca5499e9412b..b9af057e1476 100644\n--- a/fs/ext4/extents.c\n+++ b/fs/ext4/extents.c\n@@ -523,7 +523,7 @@ int ext4_ext_check_inode(struct inode *inode)\n \treturn ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode), 0);\n }\n \n-static void ext4_cache_extents(struct inode *inode,\n+static int ext4_cache_extents(struct inode *inode,\n \t\t\t       struct ext4_extent_header *eh)\n {\n \tstruct ext4_extent *ex = EXT_FIRST_EXTENT(eh);\n@@ -535,6 +535,9 @@ static void ext4_cache_extents(struct inode *inode,\n \t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n \t\tint len = ext4_ext_get_actual_len(ex);\n \n+\t\tif (lblk < prev || lblk + len <= lblk)\n+\t\t\treturn -EFSCORRUPTED;\n+\n \t\tif (prev && (prev != lblk))\n \t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n \t\t\t\t\t     EXTENT_STATUS_HOLE);\n@@ -545,6 +548,7 @@ static void ext4_cache_extents(struct inode *inode,\n \t\t\t\t     ext4_ext_pblock(ex), status);\n \t\tprev = lblk + len;\n \t}\n+\treturn 0;\n }\n \n static struct buffer_head *\n@@ -583,7 +587,9 @@ __read_extent_tree_block(const char *function, unsigned int line,\n \t */\n \tif (!(flags & EXT4_EX_NOCACHE) && depth == 0) {\n \t\tstruct ext4_extent_header *eh = ext_block_hdr(bh);\n-\t\text4_cache_extents(inode, eh);\n+\t\terr = ext4_cache_extents(inode, eh);\n+\t\tif (err)\n+\t\t\tgoto errout;\n \t}\n \treturn bh;\n errout:",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "fs/ext4/extents.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "\tif (!(flags & EXT4_EX_NOCACHE) && depth == 0) {\n\t\tret = ext4_cache_extents(inode, eh);\n\t\tif (ret)\n\t\t\tgoto err;\n\t}",
+          "before": "\tif (!(flags & EXT4_EX_NOCACHE) && depth == 0)\n\t\text4_cache_extents(inode, eh);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c\nindex ca5499e9412b..84b50f6ae659 100644\n--- a/fs/ext4/extents.c\n+++ b/fs/ext4/extents.c\n@@ -523,7 +523,7 @@ int ext4_ext_check_inode(struct inode *inode)\n \treturn ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode), 0);\n }\n \n-static void ext4_cache_extents(struct inode *inode,\n+static int ext4_cache_extents(struct inode *inode,\n \t\t\t       struct ext4_extent_header *eh)\n {\n \tstruct ext4_extent *ex = EXT_FIRST_EXTENT(eh);\n@@ -535,6 +535,9 @@ static void ext4_cache_extents(struct inode *inode,\n \t\text4_lblk_t lblk = le32_to_cpu(ex->ee_block);\n \t\tint len = ext4_ext_get_actual_len(ex);\n \n+\t\tif (lblk < prev || lblk + len <= lblk)\n+\t\t\treturn -EFSCORRUPTED;\n+\n \t\tif (prev && (prev != lblk))\n \t\t\text4_es_cache_extent(inode, prev, lblk - prev, ~0,\n \t\t\t\t\t     EXTENT_STATUS_HOLE);\n@@ -545,6 +548,7 @@ static void ext4_cache_extents(struct inode *inode,\n \t\t\t\t     ext4_ext_pblock(ex), status);\n \t\tprev = lblk + len;\n \t}\n+\treturn 0;\n }\n \n static struct buffer_head *\n@@ -583,7 +587,9 @@ __read_extent_tree_block(const char *function, unsigned int line,\n \t */\n \tif (!(flags & EXT4_EX_NOCACHE) && depth == 0) {\n \t\tstruct ext4_extent_header *eh = ext_block_hdr(bh);\n-\t\text4_cache_extents(inode, eh);\n+\t\terr = ext4_cache_extents(inode, eh);\n+\t\tif (err)\n+\t\t\tgoto errout;\n \t}\n \treturn bh;\n errout:\n@@ -924,8 +930,11 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,\n \tpath[0].p_bh = NULL;\n \n \ti = depth;\n-\tif (!(flags & EXT4_EX_NOCACHE) && depth == 0)\n-\t\text4_cache_extents(inode, eh);\n+\tif (!(flags & EXT4_EX_NOCACHE) && depth == 0) {\n+\t\tret = ext4_cache_extents(inode, eh);\n+\t\tif (ret)\n+\t\t\tgoto err;\n+\t}\n \t/* walk through the tree */\n \twhile (i) {\n \t\text_debug(inode, \"depth %d: num %d, max %d\\n\",",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "fs/ext4/extents.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 1,
+      "start_step": 27
+    }
+  ],
+  "success_step": 38
+}

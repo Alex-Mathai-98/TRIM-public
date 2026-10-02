@@ -1,0 +1,18 @@
+diff --git a/sound/usb/endpoint.c b/sound/usb/endpoint.c
+index 880f5afcce60..448cff3b85c3 100644
+--- a/sound/usb/endpoint.c
++++ b/sound/usb/endpoint.c
+@@ -1386,8 +1386,11 @@ int snd_usb_endpoint_set_params(struct snd_usb_audio *chip,
+ 		return err;
+ 
+ 	/* some unit conversions in runtime */
+-	ep->maxframesize = ep->maxpacksize / ep->cur_frame_bytes;
+-	ep->curframesize = ep->curpacksize / ep->cur_frame_bytes;
++	ep->maxframesize = ep->maxpacksize / ep->stride;
++	ep->curframesize = ep->curpacksize / ep->stride;
++	/* limit the packet sizes to not exceed the max frame size */
++	ep->packsize[0] = min(ep->packsize[0], ep->maxframesize);
++	ep->packsize[1] = min(ep->packsize[1], ep->maxframesize);
+ 
+ 	err = update_clock_ref_rate(chip, ep);
+ 	if (err >= 0) {

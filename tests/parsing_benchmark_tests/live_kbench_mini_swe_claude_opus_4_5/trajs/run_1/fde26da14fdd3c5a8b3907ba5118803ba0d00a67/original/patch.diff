@@ -1,0 +1,30 @@
+diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c
+index e24509bd0af5..771dd82e98d3 100644
+--- a/kernel/trace/ring_buffer.c
++++ b/kernel/trace/ring_buffer.c
+@@ -6908,13 +6908,11 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)
+ 	buffer->subbuf_order = old_order;
+ 	buffer->subbuf_size = old_size;
+ 
+-	atomic_dec(&buffer->record_disabled);
+-	mutex_unlock(&buffer->mutex);
+-
+ 	for_each_buffer_cpu(buffer, cpu) {
+ 		cpu_buffer = buffer->buffers[cpu];
++		cpu_buffer->nr_pages_to_update = 0;
+ 
+-		if (!cpu_buffer->nr_pages_to_update)
++		if (list_empty(&cpu_buffer->new_pages))
+ 			continue;
+ 
+ 		list_for_each_entry_safe(bpage, tmp, &cpu_buffer->new_pages, list) {
+@@ -6923,6 +6921,9 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)
+ 		}
+ 	}
+ 
++	atomic_dec(&buffer->record_disabled);
++
++	mutex_unlock(&buffer->mutex);
+ 	return err;
+ }
+ EXPORT_SYMBOL_GPL(ring_buffer_subbuf_order_set);

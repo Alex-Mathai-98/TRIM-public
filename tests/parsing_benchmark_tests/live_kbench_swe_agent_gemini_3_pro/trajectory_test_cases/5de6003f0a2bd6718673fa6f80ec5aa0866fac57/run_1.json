@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int init_inode(struct inode *inode, struct treepath *path)\n{\n\tstruct buffer_head *bh;\n\tstruct item_head *ih;\n\t__u32 rdev;\n\n\tbh = PATH_PLAST_BUFFER(path);\n\tih = tp_item_head(path);\n\n\tif (ih_item_len(ih) > bh->b_size ||\n\t    ih_location(ih) > bh->b_size ||\n\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n\t\t\t       \"stat data of %K is invalid\",\n\t\t\t       INODE_PKEY(inode));\n\t\tpathrelse(path);\n\t\treturn -EIO;\n\t}\n\n\tcopy_key(INODE_PKEY(inode), &ih->ih_key);\n",
+          "before": "static void init_inode(struct inode *inode, struct treepath *path)\n{\n\tstruct buffer_head *bh;\n\tstruct item_head *ih;\n\t__u32 rdev;\n\n\tbh = PATH_PLAST_BUFFER(path);\n\tih = tp_item_head(path);\n\n\tcopy_key(INODE_PKEY(inode), &ih->ih_key);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..005b11b346a7 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1226,7 +1226,7 @@ static inline ulong to_fake_used_blocks(struct inode *inode, int sd_size)\n  */\n \n /* called by read_locked_inode */\n-static void init_inode(struct inode *inode, struct treepath *path)\n+static int init_inode(struct inode *inode, struct treepath *path)\n {\n \tstruct buffer_head *bh;\n \tstruct item_head *ih;\n@@ -1235,6 +1235,16 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \tbh = PATH_PLAST_BUFFER(path);\n \tih = tp_item_head(path);\n \n+\tif (ih_item_len(ih) > bh->b_size ||\n+\t    ih_location(ih) > bh->b_size ||\n+\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n+\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n+\t\t\t       \"stat data of %K is invalid\",\n+\t\t\t       INODE_PKEY(inode));\n+\t\tpathrelse(path);\n+\t\treturn -EIO;\n+\t}\n+\n \tcopy_key(INODE_PKEY(inode), &ih->ih_key);\n \n \tINIT_LIST_HEAD(&REISERFS_I(inode)->i_prealloc_list);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        },
+        {
+          "after": "\t\tinit_special_inode(inode, inode->i_mode, new_decode_dev(rdev));\n\t}\n\treturn 0;\n}\n",
+          "before": "\t\tinit_special_inode(inode, inode->i_mode, new_decode_dev(rdev));\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..b7b58d69a456 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1226,7 +1226,7 @@ static inline ulong to_fake_used_blocks(struct inode *inode, int sd_size)\n  */\n \n /* called by read_locked_inode */\n-static void init_inode(struct inode *inode, struct treepath *path)\n+static int init_inode(struct inode *inode, struct treepath *path)\n {\n \tstruct buffer_head *bh;\n \tstruct item_head *ih;\n@@ -1235,6 +1235,16 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \tbh = PATH_PLAST_BUFFER(path);\n \tih = tp_item_head(path);\n \n+\tif (ih_item_len(ih) > bh->b_size ||\n+\t    ih_location(ih) > bh->b_size ||\n+\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n+\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n+\t\t\t       \"stat data of %K is invalid\",\n+\t\t\t       INODE_PKEY(inode));\n+\t\tpathrelse(path);\n+\t\treturn -EIO;\n+\t}\n+\n \tcopy_key(INODE_PKEY(inode), &ih->ih_key);\n \n \tINIT_LIST_HEAD(&REISERFS_I(inode)->i_prealloc_list);\n@@ -1354,6 +1364,7 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\tinode->i_op = &reiserfs_special_inode_operations;\n \t\tinit_special_inode(inode, inode->i_mode, new_decode_dev(rdev));\n \t}\n+\treturn 0;\n }\n \n /* update new stat data with inode fields */",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        },
+        {
+          "after": "\tif (init_inode(inode, &path_to_sd)) {\n\t\treiserfs_make_bad_inode(inode);\n\t\treturn;\n\t}\n",
+          "before": "\tinit_inode(inode, &path_to_sd);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..8537d242c37f 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1226,7 +1226,7 @@ static inline ulong to_fake_used_blocks(struct inode *inode, int sd_size)\n  */\n \n /* called by read_locked_inode */\n-static void init_inode(struct inode *inode, struct treepath *path)\n+static int init_inode(struct inode *inode, struct treepath *path)\n {\n \tstruct buffer_head *bh;\n \tstruct item_head *ih;\n@@ -1235,6 +1235,16 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \tbh = PATH_PLAST_BUFFER(path);\n \tih = tp_item_head(path);\n \n+\tif (ih_item_len(ih) > bh->b_size ||\n+\t    ih_location(ih) > bh->b_size ||\n+\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n+\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n+\t\t\t       \"stat data of %K is invalid\",\n+\t\t\t       INODE_PKEY(inode));\n+\t\tpathrelse(path);\n+\t\treturn -EIO;\n+\t}\n+\n \tcopy_key(INODE_PKEY(inode), &ih->ih_key);\n \n \tINIT_LIST_HEAD(&REISERFS_I(inode)->i_prealloc_list);\n@@ -1354,6 +1364,7 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\tinode->i_op = &reiserfs_special_inode_operations;\n \t\tinit_special_inode(inode, inode->i_mode, new_decode_dev(rdev));\n \t}\n+\treturn 0;\n }\n \n /* update new stat data with inode fields */\n@@ -1557,7 +1568,10 @@ void reiserfs_read_locked_inode(struct inode *inode,\n \t\treturn;\n \t}\n \n-\tinit_inode(inode, &path_to_sd);\n+\tif (init_inode(inode, &path_to_sd)) {\n+\t\treiserfs_make_bad_inode(inode);\n+\t\treturn;\n+\t}\n \n \t/*\n \t * It is possible that knfsd is trying to access inode of a file",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 0,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (ih_item_len(ih) > bh->b_size ||\n\t    ih_location(ih) > bh->b_size ||\n\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n\t\t\t       \"stat data of %K is invalid\",\n\t\t\t       INODE_PKEY(inode));\n\t\tpathrelse(path);\n\t\treturn -EIO;\n\t}\n\n\tif (stat_data_v1(ih)) {\n\t\tif (ih_item_len(ih) != SD_V1_SIZE) {\n\t\t\treiserfs_error(inode->i_sb, \"vs-13077\",\n\t\t\t\t       \"stat data v1 of %K has invalid length %d\",\n\t\t\t\t       INODE_PKEY(inode), ih_item_len(ih));\n\t\t\tpathrelse(path);\n\t\t\treturn -EIO;\n\t\t}\n\t} else {\n\t\tif (ih_item_len(ih) != SD_V2_SIZE) {\n\t\t\treiserfs_error(inode->i_sb, \"vs-13078\",\n\t\t\t\t       \"stat data v2 of %K has invalid length %d\",\n\t\t\t\t       INODE_PKEY(inode), ih_item_len(ih));\n\t\t\tpathrelse(path);\n\t\t\treturn -EIO;\n\t\t}\n\t}\n",
+          "before": "\tif (ih_item_len(ih) > bh->b_size ||\n\t    ih_location(ih) > bh->b_size ||\n\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n\t\t\t       \"stat data of %K is invalid\",\n\t\t\t       INODE_PKEY(inode));\n\t\tpathrelse(path);\n\t\treturn -EIO;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/reiserfs/inode.c b/fs/reiserfs/inode.c\nindex d39ee5f6c075..3a89077213da 100644\n--- a/fs/reiserfs/inode.c\n+++ b/fs/reiserfs/inode.c\n@@ -1226,7 +1226,7 @@ static inline ulong to_fake_used_blocks(struct inode *inode, int sd_size)\n  */\n \n /* called by read_locked_inode */\n-static void init_inode(struct inode *inode, struct treepath *path)\n+static int init_inode(struct inode *inode, struct treepath *path)\n {\n \tstruct buffer_head *bh;\n \tstruct item_head *ih;\n@@ -1235,6 +1235,34 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \tbh = PATH_PLAST_BUFFER(path);\n \tih = tp_item_head(path);\n \n+\tif (ih_item_len(ih) > bh->b_size ||\n+\t    ih_location(ih) > bh->b_size ||\n+\t    ih_item_len(ih) + ih_location(ih) > bh->b_size) {\n+\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n+\t\t\t       \"stat data of %K is invalid\",\n+\t\t\t       INODE_PKEY(inode));\n+\t\tpathrelse(path);\n+\t\treturn -EIO;\n+\t}\n+\n+\tif (stat_data_v1(ih)) {\n+\t\tif (ih_item_len(ih) != SD_V1_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"vs-13077\",\n+\t\t\t\t       \"stat data v1 of %K has invalid length %d\",\n+\t\t\t\t       INODE_PKEY(inode), ih_item_len(ih));\n+\t\t\tpathrelse(path);\n+\t\t\treturn -EIO;\n+\t\t}\n+\t} else {\n+\t\tif (ih_item_len(ih) != SD_V2_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"vs-13078\",\n+\t\t\t\t       \"stat data v2 of %K has invalid length %d\",\n+\t\t\t\t       INODE_PKEY(inode), ih_item_len(ih));\n+\t\t\tpathrelse(path);\n+\t\t\treturn -EIO;\n+\t\t}\n+\t}\n+\n \tcopy_key(INODE_PKEY(inode), &ih->ih_key);\n \n \tINIT_LIST_HEAD(&REISERFS_I(inode)->i_prealloc_list);\n@@ -1354,6 +1382,7 @@ static void init_inode(struct inode *inode, struct treepath *path)\n \t\tinode->i_op = &reiserfs_special_inode_operations;\n \t\tinit_special_inode(inode, inode->i_mode, new_decode_dev(rdev));\n \t}\n+\treturn 0;\n }\n \n /* update new stat data with inode fields */\n@@ -1557,7 +1586,10 @@ void reiserfs_read_locked_inode(struct inode *inode,\n \t\treturn;\n \t}\n \n-\tinit_inode(inode, &path_to_sd);\n+\tif (init_inode(inode, &path_to_sd)) {\n+\t\treiserfs_make_bad_inode(inode);\n+\t\treturn;\n+\t}\n \n \t/*\n \t * It is possible that knfsd is trying to access inode of a file",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 1,
+      "start_step": 42
+    }
+  ],
+  "success_step": 42
+}

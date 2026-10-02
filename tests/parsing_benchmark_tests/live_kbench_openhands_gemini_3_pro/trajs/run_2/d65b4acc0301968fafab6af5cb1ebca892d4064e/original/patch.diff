@@ -1,0 +1,42 @@
+diff --git a/kernel/nsproxy.c b/kernel/nsproxy.c
+index 94c2cfe0afa1..d89dc48d84cd 100644
+--- a/kernel/nsproxy.c
++++ b/kernel/nsproxy.c
+@@ -87,6 +87,11 @@ static struct nsproxy *create_new_namespaces(u64 flags,
+ 		err = PTR_ERR(new_nsp->uts_ns);
+ 		goto out_uts;
+ 	}
++	if (new_nsp->uts_ns->ns.ns_id == 0) {
++		err = -EINVAL;
++		put_uts_ns(new_nsp->uts_ns);
++		goto out_uts;
++	}
+ 
+ 	new_nsp->ipc_ns = copy_ipcs(flags, user_ns, tsk->nsproxy->ipc_ns);
+ 	if (IS_ERR(new_nsp->ipc_ns)) {
+@@ -122,6 +127,7 @@ static struct nsproxy *create_new_namespaces(u64 flags,
+ 	}
+ 	new_nsp->time_ns = get_time_ns(tsk->nsproxy->time_ns);
+ 
++	nsproxy_ns_active_get(new_nsp);
+ 	return new_nsp;
+ 
+ out_time:
+@@ -180,7 +186,6 @@ int copy_namespaces(u64 flags, struct task_struct *tsk)
+ 	if ((flags & CLONE_VM) == 0)
+ 		timens_on_fork(new_ns, tsk);
+ 
+-	nsproxy_ns_active_get(new_ns);
+ 	tsk->nsproxy = new_ns;
+ 	return 0;
+ }
+@@ -236,9 +241,6 @@ void switch_task_namespaces(struct task_struct *p, struct nsproxy *new)
+ 
+ 	might_sleep();
+ 
+-	if (new)
+-		nsproxy_ns_active_get(new);
+-
+ 	task_lock(p);
+ 	ns = p->nsproxy;
+ 	p->nsproxy = new;

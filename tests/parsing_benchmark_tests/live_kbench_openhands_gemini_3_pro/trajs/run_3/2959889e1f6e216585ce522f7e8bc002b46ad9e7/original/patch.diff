@@ -1,0 +1,18 @@
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 267b50e8e42e..f178877cad90 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -2675,7 +2675,12 @@ static int ocfs2_refcount_cal_cow_clusters(struct inode *inode,
+ 			 * We should find a refcounted record in the
+ 			 * first pass.
+ 			 */
+-			BUG_ON(!(rec->e_flags & OCFS2_EXT_REFCOUNTED));
++			if (!(rec->e_flags & OCFS2_EXT_REFCOUNTED)) {
++				ret = ocfs2_error(inode->i_sb,
++						  "Inode %lu: extent at cpos %u is not refcounted but assumed to be\n",
++						  inode->i_ino, cpos);
++				goto out;
++			}
+ 			*cow_start = le32_to_cpu(rec->e_cpos);
+ 		}
+ 

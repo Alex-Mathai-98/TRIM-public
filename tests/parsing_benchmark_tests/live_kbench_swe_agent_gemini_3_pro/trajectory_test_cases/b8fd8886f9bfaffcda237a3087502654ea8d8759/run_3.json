@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!c->sb.clean)\n\t\tjournal_seq += 8;\n\n\tret = bch2_fs_journal_start(&c->journal, journal_seq);\n\tif (ret)\n\t\tgoto err;\n\n\tif (blacklist_seq != journal_seq) {\n\t\tret =   bch2_journal_log_msg(c, \"blacklisting entries %llu-%llu\",\n\t\t\t\t\t     blacklist_seq, journal_seq) ?:\n\t\t\tbch2_journal_seq_blacklist_add(c,\n\t\t\t\t\tblacklist_seq, journal_seq);\n\t\tif (ret) {\n\t\t\tbch_err_msg(c, ret, \"error creating new journal seq blacklist entry\");\n\t\t\tgoto err;\n\t\t}\n\t}\n\n\tret =   bch2_journal_log_msg(c, \"starting journal at entry %llu, replaying %llu-%llu\",\n\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1);\n\tif (ret)\n\t\tgoto err;\n\n\t/*\n\t * Skip past versions that might have possibly been used (as nonces),\n",
+          "before": "\tif (!c->sb.clean)\n\t\tjournal_seq += 8;\n\n\tif (blacklist_seq != journal_seq) {\n\t\tret =   bch2_journal_log_msg(c, \"blacklisting entries %llu-%llu\",\n\t\t\t\t\t     blacklist_seq, journal_seq) ?:\n\t\t\tbch2_journal_seq_blacklist_add(c,\n\t\t\t\t\tblacklist_seq, journal_seq);\n\t\tif (ret) {\n\t\t\tbch_err_msg(c, ret, \"error creating new journal seq blacklist entry\");\n\t\t\tgoto err;\n\t\t}\n\t}\n\n\tret =   bch2_journal_log_msg(c, \"starting journal at entry %llu, replaying %llu-%llu\",\n\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1) ?:\n\t\tbch2_fs_journal_start(&c->journal, journal_seq);\n\tif (ret)\n\t\tgoto err;\n\n\t/*\n\t * Skip past versions that might have possibly been used (as nonces),\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/recovery.c b/fs/bcachefs/recovery.c\nindex c50dede64785..545459d18691 100644\n--- a/fs/bcachefs/recovery.c\n+++ b/fs/bcachefs/recovery.c\n@@ -882,6 +882,10 @@ int bch2_fs_recovery(struct bch_fs *c)\n \tif (!c->sb.clean)\n \t\tjournal_seq += 8;\n \n+\tret = bch2_fs_journal_start(&c->journal, journal_seq);\n+\tif (ret)\n+\t\tgoto err;\n+\n \tif (blacklist_seq != journal_seq) {\n \t\tret =   bch2_journal_log_msg(c, \"blacklisting entries %llu-%llu\",\n \t\t\t\t\t     blacklist_seq, journal_seq) ?:\n@@ -894,8 +898,7 @@ int bch2_fs_recovery(struct bch_fs *c)\n \t}\n \n \tret =   bch2_journal_log_msg(c, \"starting journal at entry %llu, replaying %llu-%llu\",\n-\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1) ?:\n-\t\tbch2_fs_journal_start(&c->journal, journal_seq);\n+\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1);\n \tif (ret)\n \t\tgoto err;",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/bcachefs/recovery.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        }
+      ],
+      "end_step": 34,
+      "revision_index": 0,
+      "start_step": 34
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tblacklist_seq = journal_seq = le64_to_cpu(clean->journal_seq) + 1;\n\n\t\tif (journal_seq >= BIT_ULL(63)) {\n\t\t\tbch_err(c, \"journal sequence number too large: %llu\", journal_seq);\n\t\t\tret = -BCH_ERR_fsck_repair_impossible;\n\t\t\tgoto err;\n\t\t}\n\t}\n",
+          "before": "\t\tblacklist_seq = journal_seq = le64_to_cpu(clean->journal_seq) + 1;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/recovery.c b/fs/bcachefs/recovery.c\nindex c50dede64785..d78e68544053 100644\n--- a/fs/bcachefs/recovery.c\n+++ b/fs/bcachefs/recovery.c\n@@ -858,6 +858,12 @@ int bch2_fs_recovery(struct bch_fs *c)\n \n \t\t}\n \t\tblacklist_seq = journal_seq = le64_to_cpu(clean->journal_seq) + 1;\n+\n+\t\tif (journal_seq >= BIT_ULL(63)) {\n+\t\t\tbch_err(c, \"journal sequence number too large: %llu\", journal_seq);\n+\t\t\tret = -BCH_ERR_fsck_repair_impossible;\n+\t\t\tgoto err;\n+\t\t}\n \t}\n \n \tc->journal_replay_seq_start\t= last_seq;\n@@ -882,6 +888,10 @@ int bch2_fs_recovery(struct bch_fs *c)\n \tif (!c->sb.clean)\n \t\tjournal_seq += 8;\n \n+\tret = bch2_fs_journal_start(&c->journal, journal_seq);\n+\tif (ret)\n+\t\tgoto err;\n+\n \tif (blacklist_seq != journal_seq) {\n \t\tret =   bch2_journal_log_msg(c, \"blacklisting entries %llu-%llu\",\n \t\t\t\t\t     blacklist_seq, journal_seq) ?:\n@@ -894,8 +904,7 @@ int bch2_fs_recovery(struct bch_fs *c)\n \t}\n \n \tret =   bch2_journal_log_msg(c, \"starting journal at entry %llu, replaying %llu-%llu\",\n-\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1) ?:\n-\t\tbch2_fs_journal_start(&c->journal, journal_seq);\n+\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1);\n \tif (ret)\n \t\tgoto err;",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "fs/bcachefs/recovery.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        }
+      ],
+      "end_step": 39,
+      "revision_index": 1,
+      "start_step": 39
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (journal_seq >= (1ULL << 63)) {\n\t\t\tbch_err(c, \"journal sequence number too large: %llu\", journal_seq);\n\t\t\tret = -BCH_ERR_fsck_repair_impossible;\n\t\t\tgoto err;\n\t\t}\n",
+          "before": "\t\tif (journal_seq >= BIT_ULL(63)) {\n\t\t\tbch_err(c, \"journal sequence number too large: %llu\", journal_seq);\n\t\t\tret = -BCH_ERR_fsck_repair_impossible;\n\t\t\tgoto err;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/recovery.c b/fs/bcachefs/recovery.c\nindex c50dede64785..9f90eb67a687 100644\n--- a/fs/bcachefs/recovery.c\n+++ b/fs/bcachefs/recovery.c\n@@ -858,6 +858,12 @@ int bch2_fs_recovery(struct bch_fs *c)\n \n \t\t}\n \t\tblacklist_seq = journal_seq = le64_to_cpu(clean->journal_seq) + 1;\n+\n+\t\tif (journal_seq >= (1ULL << 63)) {\n+\t\t\tbch_err(c, \"journal sequence number too large: %llu\", journal_seq);\n+\t\t\tret = -BCH_ERR_fsck_repair_impossible;\n+\t\t\tgoto err;\n+\t\t}\n \t}\n \n \tc->journal_replay_seq_start\t= last_seq;\n@@ -882,6 +888,10 @@ int bch2_fs_recovery(struct bch_fs *c)\n \tif (!c->sb.clean)\n \t\tjournal_seq += 8;\n \n+\tret = bch2_fs_journal_start(&c->journal, journal_seq);\n+\tif (ret)\n+\t\tgoto err;\n+\n \tif (blacklist_seq != journal_seq) {\n \t\tret =   bch2_journal_log_msg(c, \"blacklisting entries %llu-%llu\",\n \t\t\t\t\t     blacklist_seq, journal_seq) ?:\n@@ -894,8 +904,7 @@ int bch2_fs_recovery(struct bch_fs *c)\n \t}\n \n \tret =   bch2_journal_log_msg(c, \"starting journal at entry %llu, replaying %llu-%llu\",\n-\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1) ?:\n-\t\tbch2_fs_journal_start(&c->journal, journal_seq);\n+\t\t\t\t     journal_seq, last_seq, blacklist_seq - 1);\n \tif (ret)\n \t\tgoto err;",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "fs/bcachefs/recovery.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 2,
+      "start_step": 44
+    }
+  ],
+  "success_step": 44
+}

@@ -1,0 +1,37 @@
+diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c
+index da0c2bffbd08..11219a5fff10 100644
+--- a/security/smack/smack_lsm.c
++++ b/security/smack/smack_lsm.c
+@@ -4629,6 +4629,8 @@ static int smack_watch_key(struct key *key)
+ {
+ 	struct smk_audit_info ad;
+ 	struct smack_known *tkp = smk_of_current();
++	struct smack_known **blob;
++	struct smack_known *skp;
+ 	int rc;
+ 
+ 	if (key == NULL)
+@@ -4639,6 +4641,12 @@ static int smack_watch_key(struct key *key)
+ 	 */
+ 	if (key->security == NULL)
+ 		return 0;
++
++	blob = smack_key(key);
++	skp = *blob;
++	if (skp == NULL)
++		return 0;
++
+ 	/*
+ 	 * This should not occur
+ 	 */
+@@ -4653,8 +4661,8 @@ static int smack_watch_key(struct key *key)
+ 	ad.a.u.key_struct.key = key->serial;
+ 	ad.a.u.key_struct.key_desc = key->description;
+ #endif
+-	rc = smk_access(tkp, key->security, MAY_READ, &ad);
+-	rc = smk_bu_note("key watch", tkp, key->security, MAY_READ, rc);
++	rc = smk_access(tkp, skp, MAY_READ, &ad);
++	rc = smk_bu_note("key watch", tkp, skp, MAY_READ, rc);
+ 	return rc;
+ }
+ #endif /* CONFIG_KEY_NOTIFICATIONS */

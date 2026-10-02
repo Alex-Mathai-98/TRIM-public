@@ -1,0 +1,34 @@
+diff --git a/fs/bcachefs/super-io.c b/fs/bcachefs/super-io.c
+index d86d5dae54c9..9ff334605a4d 100644
+--- a/fs/bcachefs/super-io.c
++++ b/fs/bcachefs/super-io.c
+@@ -807,6 +807,8 @@ static int __bch2_read_super(const char *path, struct bch_opts *opts,
+ 			goto got_super;
+ 	}
+ 
++	if (!ret)
++		ret = -BCH_ERR_invalid_sb_layout;
+ 	goto err;
+ 
+ got_super:
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index 873e4be7e1dc..96bfc4ed88e4 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -2047,6 +2047,16 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 			goto err_print;
+ 	}
+ 
++	if (!sbs.nr) {
++		ret = -EINVAL;
++		goto err_print;
++	}
++
++	best = sbs.data;
++	darray_for_each(sbs, sb)
++		if (sb_cmp(sb->sb, best->sb) > 0)
++			best = sb;
++
+ 	c = bch2_fs_alloc(best->sb, opts);
+ 	ret = PTR_ERR_OR_ZERO(c);
+ 	if (ret)

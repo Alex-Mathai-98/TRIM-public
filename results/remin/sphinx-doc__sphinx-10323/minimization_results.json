@@ -1,0 +1,208 @@
+{
+  "bug_id": "sphinx-doc__sphinx-10323",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/directives/code.py",
+        "before": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.prepend_filter,\n                       self.append_filter,\n                       self.dedent_filter]",
+        "after": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.dedent_filter,\n                       self.prepend_filter,\n                       self.append_filter]",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/test_directive_code.py",
+        "before": "    # dedent: None\n    options = {'lines': '9-11', 'dedent': None}\n    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n    content, lines = reader.read()\n    assert content == (\"def baz():\\n\"\n                       \"    pass\\n\"\n                       \"\\n\")\n\n\n@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")",
+        "after": "    # dedent: None\n    options = {'lines': '9-11', 'dedent': None}\n    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n    content, lines = reader.read()\n    assert content == (\"def baz():\\n\"\n                       \"    pass\\n\"\n                       \"\\n\")\n\n\n@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")\ndef test_LiteralIncludeReader_prepend_append_dedent(literal_inc_path):\n    # Test that prepend/append content is not dedented\n    # Using lines 9-11 which contain \"    def baz():\" with 4 spaces of indentation\n    options = {'lines': '9-11', 'prepend': '    # Start', 'append': '    # End', 'dedent': 4}\n    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n    content, lines = reader.read()\n    # The prepend/append should preserve their 4 spaces, while file content is dedented by 4\n    assert content == (\"    # Start\\n\"\n                       \"def baz():\\n\"\n                       \"    pass\\n\"\n                       \"\\n\"\n                       \"    # End\\n\")\n\n\n@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/code.py",
+        "before": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.dedent_filter,\n                       self.prepend_filter,\n                       self.append_filter]",
+        "after": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.prepend_filter,\n                       self.append_filter,\n                       self.dedent_filter]",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sphinx/directives/code.py",
+        "before": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.prepend_filter,\n                       self.append_filter,\n                       self.dedent_filter]",
+        "after": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.dedent_filter,\n                       self.prepend_filter,\n                       self.append_filter]",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/directives/code.py b/sphinx/directives/code.py\nindex dc44ed314..9437fe9a5 100644\n--- a/sphinx/directives/code.py\n+++ b/sphinx/directives/code.py\n@@ -224,9 +224,9 @@ class LiteralIncludeReader:\n                        self.start_filter,\n                        self.end_filter,\n                        self.lines_filter,\n+                       self.dedent_filter,\n                        self.prepend_filter,\n-                       self.append_filter,\n-                       self.dedent_filter]\n+                       self.append_filter]\n             lines = self.read_file(self.filename, location=location)\n             for func in filters:\n                 lines = func(lines, location=location)\ndiff --git a/tests/test_directive_code.py b/tests/test_directive_code.py\nindex 98a9aa899..bcd97fb09 100644\n--- a/tests/test_directive_code.py\n+++ b/tests/test_directive_code.py\n@@ -251,6 +251,21 @@ def test_LiteralIncludeReader_dedent(literal_inc_path):\n                        \"\\n\")\n \n \n+@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")\n+def test_LiteralIncludeReader_prepend_append_dedent(literal_inc_path):\n+    # Test that prepend/append content is not dedented\n+    # Using lines 9-11 which contain \"    def baz():\" with 4 spaces of indentation\n+    options = {'lines': '9-11', 'prepend': '    # Start', 'append': '    # End', 'dedent': 4}\n+    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n+    content, lines = reader.read()\n+    # The prepend/append should preserve their 4 spaces, while file content is dedented by 4\n+    assert content == (\"    # Start\\n\"\n+                       \"def baz():\\n\"\n+                       \"    pass\\n\"\n+                       \"\\n\"\n+                       \"    # End\\n\")\n+\n+\n @pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")\n def test_LiteralIncludeReader_tabwidth(testroot):\n     # tab-width: 4\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      8,
+      12,
+      13
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      3,
+      8,
+      12,
+      13
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 1,
+    "edit_list_after_file_min": [
+      3,
+      8,
+      12,
+      13
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      3,
+      8,
+      12,
+      13
+    ],
+    "edit_list_after_refinement": [
+      3,
+      8,
+      12,
+      13
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 4,
+  "reduction": "4_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/code.py",
+          "before": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.prepend_filter,\n                       self.append_filter,\n                       self.dedent_filter]",
+          "after": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.dedent_filter,\n                       self.prepend_filter,\n                       self.append_filter]",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/test_directive_code.py",
+          "before": "    # dedent: None\n    options = {'lines': '9-11', 'dedent': None}\n    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n    content, lines = reader.read()\n    assert content == (\"def baz():\\n\"\n                       \"    pass\\n\"\n                       \"\\n\")\n\n\n@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")",
+          "after": "    # dedent: None\n    options = {'lines': '9-11', 'dedent': None}\n    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n    content, lines = reader.read()\n    assert content == (\"def baz():\\n\"\n                       \"    pass\\n\"\n                       \"\\n\")\n\n\n@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")\ndef test_LiteralIncludeReader_prepend_append_dedent(literal_inc_path):\n    # Test that prepend/append content is not dedented\n    # Using lines 9-11 which contain \"    def baz():\" with 4 spaces of indentation\n    options = {'lines': '9-11', 'prepend': '    # Start', 'append': '    # End', 'dedent': 4}\n    reader = LiteralIncludeReader(literal_inc_path, options, DUMMY_CONFIG)\n    content, lines = reader.read()\n    # The prepend/append should preserve their 4 spaces, while file content is dedented by 4\n    assert content == (\"    # Start\\n\"\n                       \"def baz():\\n\"\n                       \"    pass\\n\"\n                       \"\\n\"\n                       \"    # End\\n\")\n\n\n@pytest.mark.xfail(os.name != 'posix', reason=\"Not working on windows\")",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/code.py",
+          "before": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.dedent_filter,\n                       self.prepend_filter,\n                       self.append_filter]",
+          "after": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.prepend_filter,\n                       self.append_filter,\n                       self.dedent_filter]",
+          "explanation": "classic_swe step 41 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/directives/code.py",
+          "before": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.prepend_filter,\n                       self.append_filter,\n                       self.dedent_filter]",
+          "after": "            filters = [self.pyobject_filter,\n                       self.start_filter,\n                       self.end_filter,\n                       self.lines_filter,\n                       self.dedent_filter,\n                       self.prepend_filter,\n                       self.append_filter]",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 40,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 40,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "sphinx/directives/code.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/test_directive_code.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/directives/code.py",
+      "tests/test_directive_code.py"
+    ],
+    "gold_files": [
+      "sphinx/directives/code.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 17,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

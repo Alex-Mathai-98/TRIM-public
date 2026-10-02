@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (journal_buckets_v2) {\n\t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n\t\tu64 total = 0;\n\n\t\tfor (unsigned i = 0; i < nr; i++) {\n\t\t\tu64 n = le64_to_cpu(journal_buckets_v2->d[i].nr);\n\n\t\t\tif (n > UINT_MAX)\n\t\t\t\treturn -BCH_ERR_ENOMEM_dev_journal_init;\n\t\t\ttotal += n;\n\t\t\tif (total > UINT_MAX)\n\t\t\t\treturn -BCH_ERR_ENOMEM_dev_journal_init;\n\t\t}\n\t\tja->nr = total;\n\t} else if (journal_buckets) {",
+          "before": "\tif (journal_buckets_v2) {\n\t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n\n\t\tfor (unsigned i = 0; i < nr; i++)\n\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n\t} else if (journal_buckets) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/journal.c b/fs/bcachefs/journal.c\nindex 649e3a01608a..f6ed3d407288 100644\n--- a/fs/bcachefs/journal.c\n+++ b/fs/bcachefs/journal.c\n@@ -1307,9 +1307,18 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)\n \n \tif (journal_buckets_v2) {\n \t\tunsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);\n+\t\tu64 total = 0;\n \n-\t\tfor (unsigned i = 0; i < nr; i++)\n-\t\t\tja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\t\tfor (unsigned i = 0; i < nr; i++) {\n+\t\t\tu64 n = le64_to_cpu(journal_buckets_v2->d[i].nr);\n+\n+\t\t\tif (n > UINT_MAX)\n+\t\t\t\treturn -BCH_ERR_ENOMEM_dev_journal_init;\n+\t\t\ttotal += n;\n+\t\t\tif (total > UINT_MAX)\n+\t\t\t\treturn -BCH_ERR_ENOMEM_dev_journal_init;\n+\t\t}\n+\t\tja->nr = total;\n \t} else if (journal_buckets) {\n \t\tja->nr = bch2_nr_journal_buckets(journal_buckets);\n \t}",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/bcachefs/journal.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 16
+}

@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\told_cred = ovl_override_creds(inode->i_sb);\n\tif ((realfile->f_mode & FMODE_ATOMIC_POS) && file_count(realfile) > 1) {\n\t\tmutex_lock(&realfile->f_pos_lock);\n\t\tret = vfs_llseek(realfile, offset, whence);\n\t\tmutex_unlock(&realfile->f_pos_lock);\n\t} else {\n\t\tret = vfs_llseek(realfile, offset, whence);\n\t}\n\tovl_revert_creds(old_cred);",
+          "before": "\told_cred = ovl_override_creds(inode->i_sb);\n\tret = vfs_llseek(realfile, offset, whence);\n\tovl_revert_creds(old_cred);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c\nindex 969b458100fe..e96f3aad6b66 100644\n--- a/fs/overlayfs/file.c\n+++ b/fs/overlayfs/file.c\n@@ -274,7 +274,13 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)\n \trealfile->f_pos = file->f_pos;\n \n \told_cred = ovl_override_creds(inode->i_sb);\n-\tret = vfs_llseek(realfile, offset, whence);\n+\tif ((realfile->f_mode & FMODE_ATOMIC_POS) && file_count(realfile) > 1) {\n+\t\tmutex_lock(&realfile->f_pos_lock);\n+\t\tret = vfs_llseek(realfile, offset, whence);\n+\t\tmutex_unlock(&realfile->f_pos_lock);\n+\t} else {\n+\t\tret = vfs_llseek(realfile, offset, whence);\n+\t}\n \tovl_revert_creds(old_cred);\n \n \tfile->f_pos = realfile->f_pos;",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "fs/overlayfs/file.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif ((realfile->f_mode & FMODE_ATOMIC_POS) && file_count(realfile) > 1) {\n\t\tmutex_lock_nested(&realfile->f_pos_lock, SINGLE_DEPTH_NESTING);\n\t\tret = vfs_llseek(realfile, offset, whence);\n\t\tmutex_unlock(&realfile->f_pos_lock);\n\t} else {",
+          "before": "\tif ((realfile->f_mode & FMODE_ATOMIC_POS) && file_count(realfile) > 1) {\n\t\tmutex_lock(&realfile->f_pos_lock);\n\t\tret = vfs_llseek(realfile, offset, whence);\n\t\tmutex_unlock(&realfile->f_pos_lock);\n\t} else {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c\nindex 969b458100fe..e332bc6ad020 100644\n--- a/fs/overlayfs/file.c\n+++ b/fs/overlayfs/file.c\n@@ -274,7 +274,13 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)\n \trealfile->f_pos = file->f_pos;\n \n \told_cred = ovl_override_creds(inode->i_sb);\n-\tret = vfs_llseek(realfile, offset, whence);\n+\tif ((realfile->f_mode & FMODE_ATOMIC_POS) && file_count(realfile) > 1) {\n+\t\tmutex_lock_nested(&realfile->f_pos_lock, SINGLE_DEPTH_NESTING);\n+\t\tret = vfs_llseek(realfile, offset, whence);\n+\t\tmutex_unlock(&realfile->f_pos_lock);\n+\t} else {\n+\t\tret = vfs_llseek(realfile, offset, whence);\n+\t}\n \tovl_revert_creds(old_cred);\n \n \tfile->f_pos = realfile->f_pos;",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/overlayfs/file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 1,
+      "start_step": 29
+    }
+  ],
+  "success_step": 29
+}

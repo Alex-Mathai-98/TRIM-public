@@ -1,0 +1,198 @@
+{
+  "bug_id": "django__django-13279",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/sessions/backends/base.py",
+        "before": "    def encode(self, session_dict):\n        \"Return the given session dictionary serialized and encoded as a string.\"\n        return signing.dumps(\n            session_dict, salt=self.key_salt, serializer=self.serializer,\n            compress=True,\n        )",
+        "after": "    def encode(self, session_dict):\n        \"Return the given session dictionary serialized and encoded as a string.\"\n        # RemovedInDjango40Warning: when the deprecation ends, remove the\n        # legacy format.\n        if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n            # Use legacy format when DEFAULT_HASHING_ALGORITHM is 'sha1' to\n            # allow multiple instances with different DEFAULT_HASHING_ALGORITHM\n            # values to share sessions during the Django 3.1 transition period.\n            return self._legacy_encode(session_dict)\n        return signing.dumps(\n            session_dict, salt=self.key_salt, serializer=self.serializer,\n            compress=True,\n        )",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/sessions/backends/base.py",
+        "before": "    def _legacy_decode(self, session_data):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        encoded_data = base64.b64decode(session_data.encode('ascii'))\n        try:\n            # could produce ValueError if there is no ':'\n            hash, serialized = encoded_data.split(b':', 1)\n            expected_hash = self._hash(serialized)\n            if not constant_time_compare(hash.decode(), expected_hash):\n                raise SuspiciousSession(\"Session data corrupted\")\n            else:\n                return self.serializer().loads(serialized)\n        except Exception as e:\n            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n            # these happen, just return an empty dictionary (an empty session).\n            if isinstance(e, SuspiciousOperation):\n                logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                logger.warning(str(e))\n            return {}",
+        "after": "    def _legacy_encode(self, session_dict):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        serialized = self.serializer().dumps(session_dict)\n        hash = self._hash(serialized)\n        return base64.b64encode(hash.encode() + b\":\" + serialized).decode('ascii')\n\n    def _legacy_decode(self, session_data):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        encoded_data = base64.b64decode(session_data.encode('ascii'))\n        try:\n            # could produce ValueError if there is no ':'\n            hash, serialized = encoded_data.split(b':', 1)\n            expected_hash = self._hash(serialized)\n            if not constant_time_compare(hash.decode(), expected_hash):\n                raise SuspiciousSession(\"Session data corrupted\")\n            else:\n                return self.serializer().loads(serialized)\n        except Exception as e:\n            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n            # these happen, just return an empty dictionary (an empty session).\n            if isinstance(e, SuspiciousOperation):\n                logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                logger.warning(str(e))\n            return {}",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/sessions/backends/base.py",
+        "before": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        # RemovedInDjango40Warning: when the deprecation ends, handle here\n        # exceptions similar to what _legacy_decode() does now.\n        except Exception:\n            return self._legacy_decode(session_data)",
+        "after": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        except Exception:\n            # RemovedInDjango40Warning: when the deprecation ends, handle here\n            # exceptions similar to what _legacy_decode() does now.\n            \n            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n            # also try to decode with 'sha256' algorithm for compatibility with\n            # sessions encoded by instances using sha256.\n            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n                try:\n                    # Create a temporary signer with sha256 algorithm\n                    return signing.loads(\n                        session_data, \n                        salt=self.key_salt, \n                        serializer=self.serializer,\n                        key=settings.SECRET_KEY,\n                    )\n                except Exception:\n                    pass\n            \n            return self._legacy_decode(session_data)",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/contrib/sessions/backends/base.py",
+        "before": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        except Exception:\n            # RemovedInDjango40Warning: when the deprecation ends, handle here\n            # exceptions similar to what _legacy_decode() does now.\n            \n            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n            # also try to decode with 'sha256' algorithm for compatibility with\n            # sessions encoded by instances using sha256.\n            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n                try:\n                    # Create a temporary signer with sha256 algorithm\n                    return signing.loads(\n                        session_data, \n                        salt=self.key_salt, \n                        serializer=self.serializer,\n                        key=settings.SECRET_KEY,\n                    )\n                except Exception:\n                    pass\n            \n            return self._legacy_decode(session_data)",
+        "after": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        except Exception:\n            # RemovedInDjango40Warning: when the deprecation ends, handle here\n            # exceptions similar to what _legacy_decode() does now.\n            \n            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n            # also try to decode with 'sha256' algorithm for compatibility with\n            # sessions encoded by instances using sha256.\n            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n                try:\n                    # Try to decode using sha256 algorithm\n                    signer = signing.TimestampSigner(\n                        key=settings.SECRET_KEY,\n                        salt=self.key_salt,\n                        algorithm='sha256'\n                    )\n                    base64d = signer.unsign(session_data).encode()\n                    decompress = base64d[:1] == b'.'\n                    if decompress:\n                        base64d = base64d[1:]\n                    data = signing.b64_decode(base64d)\n                    if decompress:\n                        import zlib\n                        data = zlib.decompress(data)\n                    return self.serializer().loads(data)\n                except Exception:\n                    pass\n            \n            return self._legacy_decode(session_data)",
+        "explanation": "classic_swe step 34 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/sessions/backends/base.py b/django/contrib/sessions/backends/base.py\nindex b5453160a5..6ff055100e 100644\n--- a/django/contrib/sessions/backends/base.py\n+++ b/django/contrib/sessions/backends/base.py\n@@ -108,6 +108,13 @@ class SessionBase:\n \n     def encode(self, session_dict):\n         \"Return the given session dictionary serialized and encoded as a string.\"\n+        # RemovedInDjango40Warning: when the deprecation ends, remove the\n+        # legacy format.\n+        if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n+            # Use legacy format when DEFAULT_HASHING_ALGORITHM is 'sha1' to\n+            # allow multiple instances with different DEFAULT_HASHING_ALGORITHM\n+            # values to share sessions during the Django 3.1 transition period.\n+            return self._legacy_encode(session_dict)\n         return signing.dumps(\n             session_dict, salt=self.key_salt, serializer=self.serializer,\n             compress=True,\n@@ -116,11 +123,41 @@ class SessionBase:\n     def decode(self, session_data):\n         try:\n             return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n-        # RemovedInDjango40Warning: when the deprecation ends, handle here\n-        # exceptions similar to what _legacy_decode() does now.\n         except Exception:\n+            # RemovedInDjango40Warning: when the deprecation ends, handle here\n+            # exceptions similar to what _legacy_decode() does now.\n+            \n+            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n+            # also try to decode with 'sha256' algorithm for compatibility with\n+            # sessions encoded by instances using sha256.\n+            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n+                try:\n+                    # Try to decode using sha256 algorithm\n+                    signer = signing.TimestampSigner(\n+                        key=settings.SECRET_KEY,\n+                        salt=self.key_salt,\n+                        algorithm='sha256'\n+                    )\n+                    base64d = signer.unsign(session_data).encode()\n+                    decompress = base64d[:1] == b'.'\n+                    if decompress:\n+                        base64d = base64d[1:]\n+                    data = signing.b64_decode(base64d)\n+                    if decompress:\n+                        import zlib\n+                        data = zlib.decompress(data)\n+                    return self.serializer().loads(data)\n+                except Exception:\n+                    pass\n+            \n             return self._legacy_decode(session_data)\n \n+    def _legacy_encode(self, session_dict):\n+        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n+        serialized = self.serializer().dumps(session_dict)\n+        hash = self._hash(serialized)\n+        return base64.b64encode(hash.encode() + b\":\" + serialized).decode('ascii')\n+\n     def _legacy_decode(self, session_data):\n         # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n         encoded_data = base64.b64decode(session_data.encode('ascii'))\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      4,
+      5,
+      9
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 3,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      1,
+      2,
+      4,
+      5
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 4,
+  "reduction": "5_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/sessions/backends/base.py",
+          "before": "    def encode(self, session_dict):\n        \"Return the given session dictionary serialized and encoded as a string.\"\n        return signing.dumps(\n            session_dict, salt=self.key_salt, serializer=self.serializer,\n            compress=True,\n        )",
+          "after": "    def encode(self, session_dict):\n        \"Return the given session dictionary serialized and encoded as a string.\"\n        # RemovedInDjango40Warning: when the deprecation ends, remove the\n        # legacy format.\n        if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n            # Use legacy format when DEFAULT_HASHING_ALGORITHM is 'sha1' to\n            # allow multiple instances with different DEFAULT_HASHING_ALGORITHM\n            # values to share sessions during the Django 3.1 transition period.\n            return self._legacy_encode(session_dict)\n        return signing.dumps(\n            session_dict, salt=self.key_salt, serializer=self.serializer,\n            compress=True,\n        )",
+          "explanation": "classic_swe step 19 #1"
+        },
+        {
+          "filename": "django/contrib/sessions/backends/base.py",
+          "before": "    def _legacy_decode(self, session_data):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        encoded_data = base64.b64decode(session_data.encode('ascii'))\n        try:\n            # could produce ValueError if there is no ':'\n            hash, serialized = encoded_data.split(b':', 1)\n            expected_hash = self._hash(serialized)\n            if not constant_time_compare(hash.decode(), expected_hash):\n                raise SuspiciousSession(\"Session data corrupted\")\n            else:\n                return self.serializer().loads(serialized)\n        except Exception as e:\n            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n            # these happen, just return an empty dictionary (an empty session).\n            if isinstance(e, SuspiciousOperation):\n                logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                logger.warning(str(e))\n            return {}",
+          "after": "    def _legacy_encode(self, session_dict):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        serialized = self.serializer().dumps(session_dict)\n        hash = self._hash(serialized)\n        return base64.b64encode(hash.encode() + b\":\" + serialized).decode('ascii')\n\n    def _legacy_decode(self, session_data):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        encoded_data = base64.b64decode(session_data.encode('ascii'))\n        try:\n            # could produce ValueError if there is no ':'\n            hash, serialized = encoded_data.split(b':', 1)\n            expected_hash = self._hash(serialized)\n            if not constant_time_compare(hash.decode(), expected_hash):\n                raise SuspiciousSession(\"Session data corrupted\")\n            else:\n                return self.serializer().loads(serialized)\n        except Exception as e:\n            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n            # these happen, just return an empty dictionary (an empty session).\n            if isinstance(e, SuspiciousOperation):\n                logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                logger.warning(str(e))\n            return {}",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/sessions/backends/base.py",
+          "before": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        # RemovedInDjango40Warning: when the deprecation ends, handle here\n        # exceptions similar to what _legacy_decode() does now.\n        except Exception:\n            return self._legacy_decode(session_data)",
+          "after": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        except Exception:\n            # RemovedInDjango40Warning: when the deprecation ends, handle here\n            # exceptions similar to what _legacy_decode() does now.\n            \n            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n            # also try to decode with 'sha256' algorithm for compatibility with\n            # sessions encoded by instances using sha256.\n            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n                try:\n                    # Create a temporary signer with sha256 algorithm\n                    return signing.loads(\n                        session_data, \n                        salt=self.key_salt, \n                        serializer=self.serializer,\n                        key=settings.SECRET_KEY,\n                    )\n                except Exception:\n                    pass\n            \n            return self._legacy_decode(session_data)",
+          "explanation": "classic_swe step 32 #1"
+        },
+        {
+          "filename": "django/contrib/sessions/backends/base.py",
+          "before": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        except Exception:\n            # RemovedInDjango40Warning: when the deprecation ends, handle here\n            # exceptions similar to what _legacy_decode() does now.\n            \n            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n            # also try to decode with 'sha256' algorithm for compatibility with\n            # sessions encoded by instances using sha256.\n            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n                try:\n                    # Create a temporary signer with sha256 algorithm\n                    return signing.loads(\n                        session_data, \n                        salt=self.key_salt, \n                        serializer=self.serializer,\n                        key=settings.SECRET_KEY,\n                    )\n                except Exception:\n                    pass\n            \n            return self._legacy_decode(session_data)",
+          "after": "    def decode(self, session_data):\n        try:\n            return signing.loads(session_data, salt=self.key_salt, serializer=self.serializer)\n        except Exception:\n            # RemovedInDjango40Warning: when the deprecation ends, handle here\n            # exceptions similar to what _legacy_decode() does now.\n            \n            # During the transition period, if DEFAULT_HASHING_ALGORITHM is 'sha1',\n            # also try to decode with 'sha256' algorithm for compatibility with\n            # sessions encoded by instances using sha256.\n            if settings.DEFAULT_HASHING_ALGORITHM == 'sha1':\n                try:\n                    # Try to decode using sha256 algorithm\n                    signer = signing.TimestampSigner(\n                        key=settings.SECRET_KEY,\n                        salt=self.key_salt,\n                        algorithm='sha256'\n                    )\n                    base64d = signer.unsign(session_data).encode()\n                    decompress = base64d[:1] == b'.'\n                    if decompress:\n                        base64d = base64d[1:]\n                    data = signing.b64_decode(base64d)\n                    if decompress:\n                        import zlib\n                        data = zlib.decompress(data)\n                    return self.serializer().loads(data)\n                except Exception:\n                    pass\n            \n            return self._legacy_decode(session_data)",
+          "explanation": "classic_swe step 34 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/sessions/backends/base.py",
+          "before": "    def _legacy_decode(self, session_data):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        encoded_data = base64.b64decode(session_data.encode('ascii'))\n        try:\n            # could produce ValueError if there is no ':'\n            hash, serialized = encoded_data.split(b':', 1)\n            expected_hash = self._hash(serialized)\n            if not constant_time_compare(hash.decode(), expected_hash):\n                raise SuspiciousSession(\"Session data corrupted\")\n            else:\n                return self.serializer().loads(serialized)\n        except Exception as e:\n            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n            # these happen, just return an empty dictionary (an empty session).\n            if isinstance(e, SuspiciousOperation):\n                logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                logger.warning(str(e))\n            return {}",
+          "after": "    def _legacy_decode(self, session_data):\n        # RemovedInDjango40Warning: pre-Django 3.1 format will be invalid.\n        try:\n            encoded_data = base64.b64decode(session_data.encode('ascii'))\n            # could produce ValueError if there is no ':'\n            hash, serialized = encoded_data.split(b':', 1)\n            expected_hash = self._hash(serialized)\n            if not constant_time_compare(hash.decode(), expected_hash):\n                raise SuspiciousSession(\"Session data corrupted\")\n            else:\n                return self.serializer().loads(serialized)\n        except Exception as e:\n            # ValueError, SuspiciousOperation, unpickling exceptions. If any of\n            # these happen, just return an empty dictionary (an empty session).\n            if isinstance(e, SuspiciousOperation):\n                logger = logging.getLogger('django.security.%s' % e.__class__.__name__)\n                logger.warning(str(e))\n            return {}",
+          "explanation": "classic_swe step 48 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 9,
+    "f2p_fail": 0,
+    "p2p_pass": 346,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 9,
+    "f2p_fail": 0,
+    "p2p_pass": 346,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/contrib/sessions/backends/base.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/sessions/backends/base.py"
+    ],
+    "gold_files": [
+      "django/contrib/sessions/backends/base.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 39,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 9,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

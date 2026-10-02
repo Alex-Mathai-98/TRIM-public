@@ -1,0 +1,72 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index a4cc72986e36..5562e994614f 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -6,6 +6,7 @@
+ #include "bkey_methods.h"
+ #include "bkey_sort.h"
+ #include "btree_cache.h"
++#include "bset.h"
+ #include "btree_io.h"
+ #include "btree_iter.h"
+ #include "btree_locking.h"
+@@ -959,12 +960,15 @@ static int validate_bset_keys(struct bch_fs *c, struct btree *b,
+ 			break;
+ 		}
+ 
+-		if (btree_err_on(k->format > KEY_FORMAT_CURRENT,
+-				 -BCH_ERR_btree_node_read_err_fixable,
+-				 c, NULL, b, i, k,
+-				 btree_node_bkey_bad_format,
+-				 "invalid bkey format %u", k->format))
++		if (k->format > KEY_FORMAT_CURRENT) {
++			printk(KERN_ERR "bcachefs: validate found invalid format %u at bset %p\n", k->format, i);
++			btree_err_on(true,
++				     -BCH_ERR_btree_node_read_err_fixable,
++				     c, NULL, b, i, k,
++				     btree_node_bkey_bad_format,
++				     "invalid bkey format %u", k->format);
+ 			goto drop_this_key;
++		}
+ 
+ 		if (btree_err_on(!bkeyp_u64s_valid(&b->format, k),
+ 				 -BCH_ERR_btree_node_read_err_fixable,
+@@ -1286,7 +1290,8 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 
+ 	b->data->keys.u64s = sorted->keys.u64s;
+ 	*sorted = *b->data;
+-	swap(sorted, b->data);
++	memcpy(b->data, sorted, btree_buf_bytes(b));
++	bch2_bset_set_no_aux_tree(b, b->set);
+ 	set_btree_bset(b, b->set, &b->data->keys);
+ 	b->nsets = 1;
+ 	b->data->keys.journal_seq = cpu_to_le64(max_journal_seq);
+@@ -1301,7 +1306,19 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 	i = &b->data->keys;
+ 	for (k = i->start; k != vstruct_last(i);) {
+ 		struct bkey tmp;
+-		struct bkey_s u = __bkey_disassemble(b, k, &tmp);
++		struct bkey_s u;
++
++		if (k->format > KEY_FORMAT_CURRENT) {
++			btree_err_on(true,
++				     -BCH_ERR_btree_node_read_err_fixable,
++				     c, NULL, b, i, k,
++				     btree_node_bkey_bad_format,
++				     "invalid bkey format %u after merge", k->format);
++			ret = -BCH_ERR_btree_node_read_err_bad_node;
++			goto fsck_err;
++		}
++
++		u = __bkey_disassemble(b, k, &tmp);
+ 
+ 		ret = btree_node_bkey_val_validate(c, b, u.s_c, READ);
+ 		if (ret == -BCH_ERR_fsck_delete_bkey ||
+@@ -1329,6 +1346,7 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		k = bkey_p_next(k);
+ 	}
+ 
++	bch2_bset_set_no_aux_tree(b, b->set);
+ 	bch2_bset_build_aux_tree(b, b->set, false);
+ 
+ 	set_needs_whiteout(btree_bset_first(b), true);

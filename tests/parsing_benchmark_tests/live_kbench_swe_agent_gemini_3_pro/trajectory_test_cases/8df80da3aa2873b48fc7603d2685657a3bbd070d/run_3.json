@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tlock_sock(sk);\n\tpsock = kcm->tx_psock;\n\tif (psock) {\n\t\t/* A psock was reserved, so we need to kill it since it\n\t\t * may already have some bytes queued from a message. We\n\t\t * need to do this after removing kcm from tx_wait list.\n\t\t */\n\t\tkcm_abort_tx_psock(psock, EPIPE, false);\n\t\tunreserve_psock(kcm);\n\t}\n\trelease_sock(sk);\n\n\t/* Cancel work. After this point there should be no outside references\n\t * to the kcm socket.\n\t */\n\tcancel_work_sync(&kcm->tx_work);\n\n\tWARN_ON(kcm->tx_wait);\n\tWARN_ON(kcm->tx_psock);",
+          "before": "\t/* Cancel work. After this point there should be no outside references\n\t * to the kcm socket.\n\t */\n\tcancel_work_sync(&kcm->tx_work);\n\n\tlock_sock(sk);\n\tpsock = kcm->tx_psock;\n\tif (psock) {\n\t\t/* A psock was reserved, so we need to kill it since it\n\t\t * may already have some bytes queued from a message. We\n\t\t * need to do this after removing kcm from tx_wait list.\n\t\t */\n\t\tkcm_abort_tx_psock(psock, EPIPE, false);\n\t\tunreserve_psock(kcm);\n\t}\n\trelease_sock(sk);\n\n\tWARN_ON(kcm->tx_wait);\n\tWARN_ON(kcm->tx_psock);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/kcm/kcmsock.c b/net/kcm/kcmsock.c\nindex a4971e6fa943..4ab968b9b858 100644\n--- a/net/kcm/kcmsock.c\n+++ b/net/kcm/kcmsock.c\n@@ -1711,11 +1711,6 @@ static int kcm_release(struct socket *sock)\n \t}\n \tspin_unlock_bh(&mux->lock);\n \n-\t/* Cancel work. After this point there should be no outside references\n-\t * to the kcm socket.\n-\t */\n-\tcancel_work_sync(&kcm->tx_work);\n-\n \tlock_sock(sk);\n \tpsock = kcm->tx_psock;\n \tif (psock) {\n@@ -1728,6 +1723,11 @@ static int kcm_release(struct socket *sock)\n \t}\n \trelease_sock(sk);\n \n+\t/* Cancel work. After this point there should be no outside references\n+\t * to the kcm socket.\n+\t */\n+\tcancel_work_sync(&kcm->tx_work);\n+\n \tWARN_ON(kcm->tx_wait);\n \tWARN_ON(kcm->tx_psock);",
+          "explanation": "classic_swe step 12 #1",
+          "filename": "net/kcm/kcmsock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        }
+      ],
+      "end_step": 12,
+      "revision_index": 0,
+      "start_step": 12
+    }
+  ],
+  "success_step": 12
+}

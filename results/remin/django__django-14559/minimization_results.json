@@ -1,0 +1,137 @@
+{
+  "bug_id": "django__django-14559",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "        if not objs:\n            return\n        # PK is used twice in the resulting update query, once in the filter\n        # and once in the WHEN. Each field will also have one CAST.\n        max_batch_size = connections[self.db].ops.bulk_batch_size(['pk', 'pk'] + fields, objs)\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        requires_casting = connections[self.db].features.requires_casted_case_in_updates\n        batches = (objs[i:i + batch_size] for i in range(0, len(objs), batch_size))\n        updates = []\n        for batch_objs in batches:\n            update_kwargs = {}\n            for field in fields:\n                when_statements = []\n                for obj in batch_objs:\n                    attr = getattr(obj, field.attname)\n                    if not isinstance(attr, Expression):\n                        attr = Value(attr, output_field=field)\n                    when_statements.append(When(pk=obj.pk, then=attr))\n                case_statement = Case(*when_statements, output_field=field)\n                if requires_casting:\n                    case_statement = Cast(case_statement, output_field=field)\n                update_kwargs[field.attname] = case_statement\n            updates.append(([obj.pk for obj in batch_objs], update_kwargs))\n        with transaction.atomic(using=self.db, savepoint=False):\n            for pks, update_kwargs in updates:\n                self.filter(pk__in=pks).update(**update_kwargs)",
+        "after": "        if not objs:\n            return 0\n        # PK is used twice in the resulting update query, once in the filter\n        # and once in the WHEN. Each field will also have one CAST.\n        max_batch_size = connections[self.db].ops.bulk_batch_size(['pk', 'pk'] + fields, objs)\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        requires_casting = connections[self.db].features.requires_casted_case_in_updates\n        batches = (objs[i:i + batch_size] for i in range(0, len(objs), batch_size))\n        updates = []\n        for batch_objs in batches:\n            update_kwargs = {}\n            for field in fields:\n                when_statements = []\n                for obj in batch_objs:\n                    attr = getattr(obj, field.attname)\n                    if not isinstance(attr, Expression):\n                        attr = Value(attr, output_field=field)\n                    when_statements.append(When(pk=obj.pk, then=attr))\n                case_statement = Case(*when_statements, output_field=field)\n                if requires_casting:\n                    case_statement = Cast(case_statement, output_field=field)\n                update_kwargs[field.attname] = case_statement\n            updates.append(([obj.pk for obj in batch_objs], update_kwargs))\n        rows_updated = 0\n        with transaction.atomic(using=self.db, savepoint=False):\n            for pks, update_kwargs in updates:\n                rows_updated += self.filter(pk__in=pks).update(**update_kwargs)\n        return rows_updated",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/query.py b/django/db/models/query.py\nindex 387deca527..f14ff8d094 100644\n--- a/django/db/models/query.py\n+++ b/django/db/models/query.py\n@@ -541,7 +541,7 @@ class QuerySet:\n         if any(f.primary_key for f in fields):\n             raise ValueError('bulk_update() cannot be used with primary key fields.')\n         if not objs:\n-            return\n+            return 0\n         # PK is used twice in the resulting update query, once in the filter\n         # and once in the WHEN. Each field will also have one CAST.\n         max_batch_size = connections[self.db].ops.bulk_batch_size(['pk', 'pk'] + fields, objs)\n@@ -563,9 +563,11 @@ class QuerySet:\n                     case_statement = Cast(case_statement, output_field=field)\n                 update_kwargs[field.attname] = case_statement\n             updates.append(([obj.pk for obj in batch_objs], update_kwargs))\n+        rows_updated = 0\n         with transaction.atomic(using=self.db, savepoint=False):\n             for pks, update_kwargs in updates:\n-                self.filter(pk__in=pks).update(**update_kwargs)\n+                rows_updated += self.filter(pk__in=pks).update(**update_kwargs)\n+        return rows_updated\n     bulk_update.alters_data = True\n \n     def get_or_create(self, defaults=None, **kwargs):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      3,
+      4,
+      5
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 1,
+  "reduction": "4_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/query.py",
+          "before": "        if not objs:\n            return\n        # PK is used twice in the resulting update query, once in the filter\n        # and once in the WHEN. Each field will also have one CAST.\n        max_batch_size = connections[self.db].ops.bulk_batch_size(['pk', 'pk'] + fields, objs)\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        requires_casting = connections[self.db].features.requires_casted_case_in_updates\n        batches = (objs[i:i + batch_size] for i in range(0, len(objs), batch_size))\n        updates = []\n        for batch_objs in batches:\n            update_kwargs = {}\n            for field in fields:\n                when_statements = []\n                for obj in batch_objs:\n                    attr = getattr(obj, field.attname)\n                    if not isinstance(attr, Expression):\n                        attr = Value(attr, output_field=field)\n                    when_statements.append(When(pk=obj.pk, then=attr))\n                case_statement = Case(*when_statements, output_field=field)\n                if requires_casting:\n                    case_statement = Cast(case_statement, output_field=field)\n                update_kwargs[field.attname] = case_statement\n            updates.append(([obj.pk for obj in batch_objs], update_kwargs))\n        with transaction.atomic(using=self.db, savepoint=False):\n            for pks, update_kwargs in updates:\n                self.filter(pk__in=pks).update(**update_kwargs)",
+          "after": "        if not objs:\n            return 0\n        # PK is used twice in the resulting update query, once in the filter\n        # and once in the WHEN. Each field will also have one CAST.\n        max_batch_size = connections[self.db].ops.bulk_batch_size(['pk', 'pk'] + fields, objs)\n        batch_size = min(batch_size, max_batch_size) if batch_size else max_batch_size\n        requires_casting = connections[self.db].features.requires_casted_case_in_updates\n        batches = (objs[i:i + batch_size] for i in range(0, len(objs), batch_size))\n        updates = []\n        for batch_objs in batches:\n            update_kwargs = {}\n            for field in fields:\n                when_statements = []\n                for obj in batch_objs:\n                    attr = getattr(obj, field.attname)\n                    if not isinstance(attr, Expression):\n                        attr = Value(attr, output_field=field)\n                    when_statements.append(When(pk=obj.pk, then=attr))\n                case_statement = Case(*when_statements, output_field=field)\n                if requires_casting:\n                    case_statement = Cast(case_statement, output_field=field)\n                update_kwargs[field.attname] = case_statement\n            updates.append(([obj.pk for obj in batch_objs], update_kwargs))\n        rows_updated = 0\n        with transaction.atomic(using=self.db, savepoint=False):\n            for pks, update_kwargs in updates:\n                rows_updated += self.filter(pk__in=pks).update(**update_kwargs)\n        return rows_updated",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "docs/ref/models/querysets.txt",
+          "before": ".. method:: bulk_update(objs, fields, batch_size=None)\n\nThis method efficiently updates the given fields on the provided model\ninstances, generally with one query::",
+          "after": ".. method:: bulk_update(objs, fields, batch_size=None)\n\nThis method efficiently updates the given fields on the provided model\ninstances, generally with one query, and returns the number of rows matched::",
+          "explanation": "classic_swe step 31 #1"
+        },
+        {
+          "filename": "docs/ref/models/querysets.txt",
+          "before": ":meth:`.QuerySet.update` is used to save the changes, so this is more efficient\nthan iterating through the list of models and calling ``save()`` on each of\nthem, but it has a few caveats:",
+          "after": ":meth:`.QuerySet.update` is used to save the changes, so this is more efficient\nthan iterating through the list of models and calling ``save()`` on each of\nthem, but it has a few caveats:\n\nThe method returns the total number of rows matched by all the update queries.\nNote that the number of rows matched may not be equal to the number of rows\nactually updated if some rows already have the new values.",
+          "explanation": "classic_swe step 33 #1"
+        },
+        {
+          "filename": "docs/ref/models/querysets.txt",
+          "before": "    >>> objs = [\n    ...    Entry.objects.create(headline='Entry 1'),\n    ...    Entry.objects.create(headline='Entry 2'),\n    ... ]\n    >>> objs[0].headline = 'This is entry 1'\n    >>> objs[1].headline = 'This is entry 2'\n    >>> Entry.objects.bulk_update(objs, ['headline'])",
+          "after": "    >>> objs = [\n    ...    Entry.objects.create(headline='Entry 1'),\n    ...    Entry.objects.create(headline='Entry 2'),\n    ... ]\n    >>> objs[0].headline = 'This is entry 1'\n    >>> objs[1].headline = 'This is entry 2'\n    >>> Entry.objects.bulk_update(objs, ['headline'])\n    2",
+          "explanation": "classic_swe step 34 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 3,
+    "f2p_fail": 0,
+    "p2p_pass": 23,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 3,
+    "f2p_fail": 0,
+    "p2p_pass": 23,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/query.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/query.py"
+    ],
+    "gold_files": [
+      "django/db/models/query.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 4,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

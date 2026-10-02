@@ -1,0 +1,47 @@
+diff --git a/net/ipv6/ip6mr.c b/net/ipv6/ip6mr.c
+index a35f4f1c6589..8806627922c2 100644
+--- a/net/ipv6/ip6mr.c
++++ b/net/ipv6/ip6mr.c
+@@ -2373,7 +2373,7 @@ int ip6_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)
+ 	int err;
+ 	int vif;
+ 
+-	WARN_ON_ONCE(!rcu_read_lock_held());
++	rcu_read_lock();
+ 
+ 	if (IP6CB(skb)->flags & IP6SKB_FORWARDED)
+ 		goto ip6_output;
+@@ -2383,6 +2383,7 @@ int ip6_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)
+ 	err = ip6mr_fib_lookup(net, &fl6, &mrt);
+ 	if (err < 0) {
+ 		kfree_skb(skb);
++		rcu_read_unlock();
+ 		return err;
+ 	}
+ 
+@@ -2399,8 +2400,11 @@ int ip6_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)
+ 	/* No usable cache entry */
+ 	if (!cache) {
+ 		vif = ip6mr_find_vif(mrt, dev);
+-		if (vif >= 0)
+-			return ip6mr_cache_unresolved(mrt, vif, skb, dev);
++		if (vif >= 0) {
++			err = ip6mr_cache_unresolved(mrt, vif, skb, dev);
++			rcu_read_unlock();
++			return err;
++		}
+ 		goto ip6_output;
+ 	}
+ 
+@@ -2410,9 +2414,11 @@ int ip6_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)
+ 		goto ip6_output;
+ 
+ 	ip6_mr_output_finish(net, mrt, dev, skb, cache);
++	rcu_read_unlock();
+ 	return 0;
+ 
+ ip6_output:
++	rcu_read_unlock();
+ 	return ip6_output(net, sk, skb);
+ }
+ 

@@ -1,0 +1,42 @@
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 5e9ebf0c5312..ea08518be18a 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -4341,6 +4341,9 @@ static void btusb_disconnect(struct usb_interface *intf)
+ {
+ 	struct btusb_data *data = usb_get_intfdata(intf);
+ 	struct hci_dev *hdev;
++	struct usb_device *udev;
++	struct gpio_desc *reset_gpio;
++	int oob_wake_irq;
+ 
+ 	BT_DBG("intf %p", intf);
+ 
+@@ -4348,6 +4351,11 @@ static void btusb_disconnect(struct usb_interface *intf)
+ 		return;
+ 
+ 	hdev = data->hdev;
++	/* Save values that might be needed after data is freed */
++	udev = data->udev;
++	oob_wake_irq = data->oob_wake_irq;
++	reset_gpio = data->reset_gpio;
++
+ 	usb_set_intfdata(data->intf, NULL);
+ 
+ 	if (data->isoc)
+@@ -4376,11 +4384,11 @@ static void btusb_disconnect(struct usb_interface *intf)
+ 			usb_driver_release_interface(&btusb_driver, data->isoc);
+ 	}
+ 
+-	if (data->oob_wake_irq)
+-		device_init_wakeup(&data->udev->dev, false);
++	if (oob_wake_irq)
++		device_init_wakeup(&udev->dev, false);
+ 
+-	if (data->reset_gpio)
+-		gpiod_put(data->reset_gpio);
++	if (reset_gpio)
++		gpiod_put(reset_gpio);
+ 
+ 	hci_free_dev(hdev);
+ }

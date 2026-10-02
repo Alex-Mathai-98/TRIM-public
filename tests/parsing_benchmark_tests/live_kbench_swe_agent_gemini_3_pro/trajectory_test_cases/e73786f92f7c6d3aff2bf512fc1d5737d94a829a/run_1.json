@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tint nr = 0;\n\n\twhile (*lines) {\n\t\tif (nr >= 200) {\n\t\t\tprintk(\"%s... truncated\\n\", prefix);\n\t\t\tbreak;\n\t\t}\n\t\tp = strchrnul(lines, '\\n');\n\t\tif (!*p && string_is_spaces(lines))\n\t\t\tbreak;\n\n\t\tprintk(\"%s%.*s\\n\", prefix, (int) (p - lines), lines);\n\t\tif (!*p)\n\t\t\tbreak;\n\t\tlines = p + 1;\n\t\tnr++;\n\t}\n",
+          "before": "\twhile (*lines) {\n\t\tp = strchrnul(lines, '\\n');\n\t\tif (!*p && string_is_spaces(lines))\n\t\t\tbreak;\n\n\t\tprintk(\"%s%.*s\\n\", prefix, (int) (p - lines), lines);\n\t\tif (!*p)\n\t\t\tbreak;\n\t\tlines = p + 1;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/util.c b/fs/bcachefs/util.c\nindex dc3817f545fa..8bbea350cffe 100644\n--- a/fs/bcachefs/util.c\n+++ b/fs/bcachefs/util.c\n@@ -280,7 +280,13 @@ void bch2_print_string_as_lines(const char *prefix, const char *lines,\n \t\tlocked = console_trylock();\n \t}\n \n+\tint nr = 0;\n+\n \twhile (*lines) {\n+\t\tif (nr >= 200) {\n+\t\t\tprintk(\"%s... truncated\\n\", prefix);\n+\t\t\tbreak;\n+\t\t}\n \t\tp = strchrnul(lines, '\\n');\n \t\tif (!*p && string_is_spaces(lines))\n \t\t\tbreak;\n@@ -289,6 +295,7 @@ void bch2_print_string_as_lines(const char *prefix, const char *lines,\n \t\tif (!*p)\n \t\t\tbreak;\n \t\tlines = p + 1;\n+\t\tnr++;\n \t}\n \tif (locked)\n \t\tconsole_unlock();",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "fs/bcachefs/util.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 0,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "\twhile (*lines) {\n\t\tp = strchrnul(lines, '\\n');\n\t\tif (!*p && string_is_spaces(lines))\n\t\t\tbreak;\n\n\t\tprintk(\"%s%.*s\\n\", prefix, (int) (p - lines), lines);\n\t\tif (!*p)\n\t\t\tbreak;\n\t\tlines = p + 1;\n\t}\n",
+          "before": "\tint nr = 0;\n\n\twhile (*lines) {\n\t\tif (nr >= 200) {\n\t\t\tprintk(\"%s... truncated\\n\", prefix);\n\t\t\tbreak;\n\t\t}\n\t\tp = strchrnul(lines, '\\n');\n\t\tif (!*p && string_is_spaces(lines))\n\t\t\tbreak;\n\n\t\tprintk(\"%s%.*s\\n\", prefix, (int) (p - lines), lines);\n\t\tif (!*p)\n\t\t\tbreak;\n\t\tlines = p + 1;\n\t\tnr++;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "fs/bcachefs/util.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        },
+        {
+          "after": "\tstruct buckets_in_flight *buckets = kzalloc(sizeof(*buckets), GFP_KERNEL);\n\tu64 last, wait;\n\tint ret;\n\n\tif (!buckets)\n\t\treturn -ENOMEM;\n\n\tret = rhashtable_init(&buckets->table, &bch_move_bucket_params);\n\tbch_err_msg(c, ret, \"allocating copygc buckets in flight\");\n\tif (ret) {\n\t\tkfree(buckets);\n\t\treturn ret;\n\t}\n",
+          "before": "\tstruct buckets_in_flight buckets = {};\n\tu64 last, wait;\n\n\tint ret = rhashtable_init(&buckets.table, &bch_move_bucket_params);\n\tbch_err_msg(c, ret, \"allocating copygc buckets in flight\");\n\tif (ret)\n\t\treturn ret;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/movinggc.c b/fs/bcachefs/movinggc.c\nindex 6d7b1d5f7697..6f030e6a1e19 100644\n--- a/fs/bcachefs/movinggc.c\n+++ b/fs/bcachefs/movinggc.c\n@@ -347,13 +347,19 @@ static int bch2_copygc_thread(void *arg)\n \tstruct moving_context ctxt;\n \tstruct bch_move_stats move_stats;\n \tstruct io_clock *clock = &c->io_clock[WRITE];\n-\tstruct buckets_in_flight buckets = {};\n+\tstruct buckets_in_flight *buckets = kzalloc(sizeof(*buckets), GFP_KERNEL);\n \tu64 last, wait;\n+\tint ret;\n+\n+\tif (!buckets)\n+\t\treturn -ENOMEM;\n \n-\tint ret = rhashtable_init(&buckets.table, &bch_move_bucket_params);\n+\tret = rhashtable_init(&buckets->table, &bch_move_bucket_params);\n \tbch_err_msg(c, ret, \"allocating copygc buckets in flight\");\n-\tif (ret)\n+\tif (ret) {\n+\t\tkfree(buckets);\n \t\treturn ret;\n+\t}\n \n \tset_freezable();",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "fs/bcachefs/movinggc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        },
+        {
+          "after": "\t\tif (!c->opts.copygc_enabled) {\n\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n\t\t\tkthread_wait_freezable(c->opts.copygc_enabled ||\n\t\t\t\t\t       kthread_should_stop());\n\t\t}\n\n\t\tif (unlikely(freezing(current))) {\n\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n\t\t\t__refrigerator(false);\n\t\t\tcontinue;\n\t\t}\n\n\t\tlast = atomic64_read(&clock->now);\n\t\twait = bch2_copygc_wait_amount(c);\n\n\t\tif (wait > clock->max_slop) {\n\t\t\tc->copygc_wait_at = last;\n\t\t\tc->copygc_wait = last + wait;\n\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n\t\t\ttrace_and_count(c, copygc_wait, c, wait, last + wait);\n\t\t\tbch2_kthread_io_clock_wait(clock, last + wait,\n\t\t\t\t\tMAX_SCHEDULE_TIMEOUT);\n\t\t\tcontinue;\n\t\t}\n\n\t\tc->copygc_wait = 0;\n\n\t\tc->copygc_running = true;\n\t\tret = bch2_copygc(&ctxt, buckets, &did_work);\n\t\tc->copygc_running = false;\n\n\t\twake_up(&c->copygc_running_wq);\n\n\t\tif (!wait && !did_work) {\n\t\t\tu64 min_member_capacity = bch2_min_rw_member_capacity(c);\n\n\t\t\tif (min_member_capacity == U64_MAX)\n\t\t\t\tmin_member_capacity = 128 * 2048;\n\n\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n\t\t\tbch2_kthread_io_clock_wait(clock, last + (min_member_capacity >> 6),\n\t\t\t\t\tMAX_SCHEDULE_TIMEOUT);\n\t\t}\n\t}\n\n\tmove_buckets_wait(&ctxt, buckets, true);\n\trhashtable_destroy(&buckets->table);\n\tkfree(buckets);\n\tbch2_moving_ctxt_exit(&ctxt);\n\tbch2_move_stats_exit(&move_stats, c);\n\n\treturn 0;\n",
+          "before": "\t\tif (!c->opts.copygc_enabled) {\n\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n\t\t\tkthread_wait_freezable(c->opts.copygc_enabled ||\n\t\t\t\t\t       kthread_should_stop());\n\t\t}\n\n\t\tif (unlikely(freezing(current))) {\n\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n\t\t\t__refrigerator(false);\n\t\t\tcontinue;\n\t\t}\n\n\t\tlast = atomic64_read(&clock->now);\n\t\twait = bch2_copygc_wait_amount(c);\n\n\t\tif (wait > clock->max_slop) {\n\t\t\tc->copygc_wait_at = last;\n\t\t\tc->copygc_wait = last + wait;\n\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n\t\t\ttrace_and_count(c, copygc_wait, c, wait, last + wait);\n\t\t\tbch2_kthread_io_clock_wait(clock, last + wait,\n\t\t\t\t\tMAX_SCHEDULE_TIMEOUT);\n\t\t\tcontinue;\n\t\t}\n\n\t\tc->copygc_wait = 0;\n\n\t\tc->copygc_running = true;\n\t\tret = bch2_copygc(&ctxt, &buckets, &did_work);\n\t\tc->copygc_running = false;\n\n\t\twake_up(&c->copygc_running_wq);\n\n\t\tif (!wait && !did_work) {\n\t\t\tu64 min_member_capacity = bch2_min_rw_member_capacity(c);\n\n\t\t\tif (min_member_capacity == U64_MAX)\n\t\t\t\tmin_member_capacity = 128 * 2048;\n\n\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n\t\t\tbch2_kthread_io_clock_wait(clock, last + (min_member_capacity >> 6),\n\t\t\t\t\tMAX_SCHEDULE_TIMEOUT);\n\t\t}\n\t}\n\n\tmove_buckets_wait(&ctxt, &buckets, true);\n\trhashtable_destroy(&buckets.table);\n\tbch2_moving_ctxt_exit(&ctxt);\n\tbch2_move_stats_exit(&move_stats, c);\n\n\treturn 0;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/movinggc.c b/fs/bcachefs/movinggc.c\nindex 6d7b1d5f7697..ef9cda242ac1 100644\n--- a/fs/bcachefs/movinggc.c\n+++ b/fs/bcachefs/movinggc.c\n@@ -347,13 +347,19 @@ static int bch2_copygc_thread(void *arg)\n \tstruct moving_context ctxt;\n \tstruct bch_move_stats move_stats;\n \tstruct io_clock *clock = &c->io_clock[WRITE];\n-\tstruct buckets_in_flight buckets = {};\n+\tstruct buckets_in_flight *buckets = kzalloc(sizeof(*buckets), GFP_KERNEL);\n \tu64 last, wait;\n+\tint ret;\n+\n+\tif (!buckets)\n+\t\treturn -ENOMEM;\n \n-\tint ret = rhashtable_init(&buckets.table, &bch_move_bucket_params);\n+\tret = rhashtable_init(&buckets->table, &bch_move_bucket_params);\n \tbch_err_msg(c, ret, \"allocating copygc buckets in flight\");\n-\tif (ret)\n+\tif (ret) {\n+\t\tkfree(buckets);\n \t\treturn ret;\n+\t}\n \n \tset_freezable();\n \n@@ -376,13 +382,13 @@ static int bch2_copygc_thread(void *arg)\n \t\tcond_resched();\n \n \t\tif (!c->opts.copygc_enabled) {\n-\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n+\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n \t\t\tkthread_wait_freezable(c->opts.copygc_enabled ||\n \t\t\t\t\t       kthread_should_stop());\n \t\t}\n \n \t\tif (unlikely(freezing(current))) {\n-\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n+\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n \t\t\t__refrigerator(false);\n \t\t\tcontinue;\n \t\t}\n@@ -393,7 +399,7 @@ static int bch2_copygc_thread(void *arg)\n \t\tif (wait > clock->max_slop) {\n \t\t\tc->copygc_wait_at = last;\n \t\t\tc->copygc_wait = last + wait;\n-\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n+\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n \t\t\ttrace_and_count(c, copygc_wait, c, wait, last + wait);\n \t\t\tbch2_kthread_io_clock_wait(clock, last + wait,\n \t\t\t\t\tMAX_SCHEDULE_TIMEOUT);\n@@ -403,7 +409,7 @@ static int bch2_copygc_thread(void *arg)\n \t\tc->copygc_wait = 0;\n \n \t\tc->copygc_running = true;\n-\t\tret = bch2_copygc(&ctxt, &buckets, &did_work);\n+\t\tret = bch2_copygc(&ctxt, buckets, &did_work);\n \t\tc->copygc_running = false;\n \n \t\twake_up(&c->copygc_running_wq);\n@@ -414,14 +420,15 @@ static int bch2_copygc_thread(void *arg)\n \t\t\tif (min_member_capacity == U64_MAX)\n \t\t\t\tmin_member_capacity = 128 * 2048;\n \n-\t\t\tmove_buckets_wait(&ctxt, &buckets, true);\n+\t\t\tmove_buckets_wait(&ctxt, buckets, true);\n \t\t\tbch2_kthread_io_clock_wait(clock, last + (min_member_capacity >> 6),\n \t\t\t\t\tMAX_SCHEDULE_TIMEOUT);\n \t\t}\n \t}\n \n-\tmove_buckets_wait(&ctxt, &buckets, true);\n-\trhashtable_destroy(&buckets.table);\n+\tmove_buckets_wait(&ctxt, buckets, true);\n+\trhashtable_destroy(&buckets->table);\n+\tkfree(buckets);\n \tbch2_moving_ctxt_exit(&ctxt);\n \tbch2_move_stats_exit(&move_stats, c);",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "fs/bcachefs/movinggc.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 1,
+      "start_step": 39
+    }
+  ],
+  "success_step": 42
+}

@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n\t\tsk->sk_state = TCP_CLOSING;\n",
+          "before": "\tif (vsock_stream_has_data(vsk) <= 0)\n\t\tsk->sk_state = TCP_CLOSING;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..e98b41596c16 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1211,7 +1211,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "net/vmw_vsock/virtio_transport_common.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (!sock_flag(sk, SOCK_DONE)) {\n\t\tif (vsk->transport)\n\t\t\t(void)virtio_transport_reset(vsk, NULL);\n\n\t\tvirtio_transport_do_close(vsk, false);\n\t}\n",
+          "before": "\tif (!sock_flag(sk, SOCK_DONE)) {\n\t\t(void)virtio_transport_reset(vsk, NULL);\n\n\t\tvirtio_transport_do_close(vsk, false);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..c627bfad092c 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1211,7 +1211,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);\n \n@@ -1236,7 +1236,8 @@ static void virtio_transport_close_timeout(struct work_struct *work)\n \tlock_sock(sk);\n \n \tif (!sock_flag(sk, SOCK_DONE)) {\n-\t\t(void)virtio_transport_reset(vsk, NULL);\n+\t\tif (vsk->transport)\n+\t\t\t(void)virtio_transport_reset(vsk, NULL);\n \n \t\tvirtio_transport_do_close(vsk, false);\n \t}",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "net/vmw_vsock/virtio_transport_common.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 1,
+      "start_step": 36
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tvsk->close_work_scheduled = false;\n\n\t\tif (vsk->transport)\n\t\t\tvirtio_transport_remove_sock(vsk);\n\n\t\t/* Release refcnt obtained when we scheduled the timeout */\n",
+          "before": "\t\tvsk->close_work_scheduled = false;\n\n\t\tvirtio_transport_remove_sock(vsk);\n\n\t\t/* Release refcnt obtained when we scheduled the timeout */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..153d3a59299f 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1211,7 +1211,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);\n \n@@ -1219,7 +1219,8 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \t    (!cancel_timeout || cancel_delayed_work(&vsk->close_work))) {\n \t\tvsk->close_work_scheduled = false;\n \n-\t\tvirtio_transport_remove_sock(vsk);\n+\t\tif (vsk->transport)\n+\t\t\tvirtio_transport_remove_sock(vsk);\n \n \t\t/* Release refcnt obtained when we scheduled the timeout */\n \t\tsock_put(sk);\n@@ -1236,7 +1237,8 @@ static void virtio_transport_close_timeout(struct work_struct *work)\n \tlock_sock(sk);\n \n \tif (!sock_flag(sk, SOCK_DONE)) {\n-\t\t(void)virtio_transport_reset(vsk, NULL);\n+\t\tif (vsk->transport)\n+\t\t\t(void)virtio_transport_reset(vsk, NULL);\n \n \t\tvirtio_transport_do_close(vsk, false);\n \t}",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "net/vmw_vsock/virtio_transport_common.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 2,
+      "start_step": 40
+    }
+  ],
+  "success_step": 40
+}

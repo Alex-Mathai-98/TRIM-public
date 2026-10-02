@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,\n\t\t\t       int size, gfp_t gfp, void (*destroy)(void *))\n{\n\tvoid **queues;\n\tint i, err = 0;\n\n\tqueues = kmalloc_array(nrings, sizeof(*queues), gfp);\n\tif (!queues)\n\t\treturn -ENOMEM;\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tqueues[i] = __ptr_ring_init_queue_alloc(size, gfp);\n\t\tif (!queues[i]) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto nomem;\n\t\t}\n\t}\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tstruct ptr_ring *r = rings[i];\n\t\tunsigned long flags;\n\t\tvoid **old_queue;\n\t\tvoid **dropped = NULL;\n\t\tint dropped_cnt = 0;\n\t\tint producer = 0;\n\t\tvoid *ptr;\n\t\tint old_size;\n\n\t\told_size = r->size;\n\t\tdropped = kmalloc_array(old_size, sizeof(void *), gfp);\n\t\tif (!dropped) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto nomem;\n\t\t}\n\n\t\tspin_lock_irqsave(&r->consumer_lock, flags);\n\t\tspin_lock(&r->producer_lock);\n\n\t\twhile ((ptr = __ptr_ring_consume(r))) {\n\t\t\tif (producer < size)\n\t\t\t\tqueues[i][producer++] = ptr;\n\t\t\telse if (dropped_cnt < old_size)\n\t\t\t\tdropped[dropped_cnt++] = ptr;\n\t\t}\n\n\t\tif (producer >= size)\n\t\t\tproducer = 0;\n\t\t__ptr_ring_set_size(r, size);\n\t\tr->producer = producer;\n\t\tr->consumer_head = 0;\n\t\tr->consumer_tail = 0;\n\t\told_queue = r->queue;\n\t\tr->queue = queues[i];\n\t\tqueues[i] = NULL;\n\n\t\tspin_unlock(&r->producer_lock);\n\t\tspin_unlock_irqrestore(&r->consumer_lock, flags);\n\n\t\tif (dropped) {\n\t\t\tint j;\n\n\t\t\tfor (j = 0; j < dropped_cnt; j++)\n\t\t\t\tdestroy(dropped[j]);\n\t\t\tkfree(dropped);\n\t\t}\n\t\tkvfree(old_queue);\n\t}\n\n\tkfree(queues);\n\treturn 0;\n\nnomem:\n\tfor (i = 0; i < nrings; ++i)\n\t\tkvfree(queues[i]);\n\tkfree(queues);\n\treturn err;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3684,0 +3685,78 @@\n+static int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,\n+\t\t\t       int size, gfp_t gfp, void (*destroy)(void *))\n+{\n+\tvoid **queues;\n+\tint i, err = 0;\n+\n+\tqueues = kmalloc_array(nrings, sizeof(*queues), gfp);\n+\tif (!queues)\n+\t\treturn -ENOMEM;\n+\n+\tfor (i = 0; i < nrings; ++i) {\n+\t\tqueues[i] = __ptr_ring_init_queue_alloc(size, gfp);\n+\t\tif (!queues[i]) {\n+\t\t\terr = -ENOMEM;\n+\t\t\tgoto nomem;\n+\t\t}\n+\t}\n+\n+\tfor (i = 0; i < nrings; ++i) {\n+\t\tstruct ptr_ring *r = rings[i];\n+\t\tunsigned long flags;\n+\t\tvoid **old_queue;\n+\t\tvoid **dropped = NULL;\n+\t\tint dropped_cnt = 0;\n+\t\tint producer = 0;\n+\t\tvoid *ptr;\n+\t\tint old_size;\n+\n+\t\told_size = r->size;\n+\t\tdropped = kmalloc_array(old_size, sizeof(void *), gfp);\n+\t\tif (!dropped) {\n+\t\t\terr = -ENOMEM;\n+\t\t\tgoto nomem;\n+\t\t}\n+\n+\t\tspin_lock_irqsave(&r->consumer_lock, flags);\n+\t\tspin_lock(&r->producer_lock);\n+\n+\t\twhile ((ptr = __ptr_ring_consume(r))) {\n+\t\t\tif (producer < size)\n+\t\t\t\tqueues[i][producer++] = ptr;\n+\t\t\telse if (dropped_cnt < old_size)\n+\t\t\t\tdropped[dropped_cnt++] = ptr;\n+\t\t}\n+\n+\t\tif (producer >= size)\n+\t\t\tproducer = 0;\n+\t\t__ptr_ring_set_size(r, size);\n+\t\tr->producer = producer;\n+\t\tr->consumer_head = 0;\n+\t\tr->consumer_tail = 0;\n+\t\told_queue = r->queue;\n+\t\tr->queue = queues[i];\n+\t\tqueues[i] = NULL;\n+\n+\t\tspin_unlock(&r->producer_lock);\n+\t\tspin_unlock_irqrestore(&r->consumer_lock, flags);\n+\n+\t\tif (dropped) {\n+\t\t\tint j;\n+\n+\t\t\tfor (j = 0; j < dropped_cnt; j++)\n+\t\t\t\tdestroy(dropped[j]);\n+\t\t\tkfree(dropped);\n+\t\t}\n+\t\tkvfree(old_queue);\n+\t}\n+\n+\tkfree(queues);\n+\treturn 0;\n+\n+nomem:\n+\tfor (i = 0; i < nrings; ++i)\n+\t\tkvfree(queues[i]);\n+\tkfree(queues);\n+\treturn err;\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 42",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 3685,
+          "step_index": 42
+        },
+        {
+          "after": "\n\tret = tun_ptr_ring_resize(rings, n,\n\t\t\t\t       dev->tx_queue_len, GFP_KERNEL,\n\t\t\t\t       tun_ptr_free);\n",
+          "before": "\n\tret = ptr_ring_resize_multiple(rings, n,\n\t\t\t\t       dev->tx_queue_len, GFP_KERNEL,\n\t\t\t\t       tun_ptr_free);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3782 +3782 @@\n-\tret = ptr_ring_resize_multiple(rings, n,\n+\tret = tun_ptr_ring_resize(rings, n,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 44",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 0,
+      "start_step": 42
+    },
+    {
+      "edits": [
+        {
+          "after": "\nstatic int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,\n\t\t\t       int size, gfp_t gfp, void (*destroy)(void *))\n{\n\tvoid ***queues;\n\tint i, err = 0;\n\n\tqueues = kmalloc_array(nrings, sizeof(*queues), gfp);\n\tif (!queues)\n\t\treturn -ENOMEM;\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tqueues[i] = __ptr_ring_init_queue_alloc_noprof(size, gfp);\n\t\tif (!queues[i]) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto nomem;\n\t\t}\n\t}\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tstruct ptr_ring *r = rings[i];\n\t\tunsigned long flags;\n\t\tvoid **old_queue;\n\t\tvoid **dropped = NULL;\n\t\tint dropped_cnt = 0;\n\t\tint producer = 0;\n\t\tvoid *ptr;\n\t\tint old_size;\n\n\t\told_size = r->size;\n\t\tdropped = kmalloc_array(old_size, sizeof(void *), gfp);\n\t\tif (!dropped) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto nomem;\n\t\t}\n\n\t\tspin_lock_irqsave(&r->consumer_lock, flags);\n\t\tspin_lock(&r->producer_lock);\n\n\t\twhile ((ptr = __ptr_ring_consume(r))) {\n\t\t\tif (producer < size)\n\t\t\t\tqueues[i][producer++] = ptr;\n\t\t\telse if (dropped_cnt < old_size)\n\t\t\t\tdropped[dropped_cnt++] = ptr;\n\t\t}\n\n\t\tif (producer >= size)\n\t\t\tproducer = 0;\n\t\t__ptr_ring_set_size(r, size);\n\t\tr->producer = producer;\n\t\tr->consumer_head = 0;\n\t\tr->consumer_tail = 0;\n\t\told_queue = r->queue;\n\t\tr->queue = queues[i];\n\t\tqueues[i] = NULL;\n\n\t\tspin_unlock(&r->producer_lock);\n\t\tspin_unlock_irqrestore(&r->consumer_lock, flags);\n\n\t\tif (dropped) {\n\t\t\tint j;\n\n\t\t\tfor (j = 0; j < dropped_cnt; j++)\n\t\t\t\tdestroy(dropped[j]);\n\t\t\tkfree(dropped);\n\t\t}\n\t\tkvfree(old_queue);\n\t}\n\n\tkfree(queues);\n\treturn 0;\n\nnomem:\n\tfor (i = 0; i < nrings; ++i)\n\t\tkvfree(queues[i]);\n\tkfree(queues);\n\treturn err;\n}\n",
+          "before": "\nstatic int tun_ptr_ring_resize(struct ptr_ring **rings, unsigned int nrings,\n\t\t\t       int size, gfp_t gfp, void (*destroy)(void *))\n{\n\tvoid **queues;\n\tint i, err = 0;\n\n\tqueues = kmalloc_array(nrings, sizeof(*queues), gfp);\n\tif (!queues)\n\t\treturn -ENOMEM;\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tqueues[i] = __ptr_ring_init_queue_alloc(size, gfp);\n\t\tif (!queues[i]) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto nomem;\n\t\t}\n\t}\n\n\tfor (i = 0; i < nrings; ++i) {\n\t\tstruct ptr_ring *r = rings[i];\n\t\tunsigned long flags;\n\t\tvoid **old_queue;\n\t\tvoid **dropped = NULL;\n\t\tint dropped_cnt = 0;\n\t\tint producer = 0;\n\t\tvoid *ptr;\n\t\tint old_size;\n\n\t\told_size = r->size;\n\t\tdropped = kmalloc_array(old_size, sizeof(void *), gfp);\n\t\tif (!dropped) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto nomem;\n\t\t}\n\n\t\tspin_lock_irqsave(&r->consumer_lock, flags);\n\t\tspin_lock(&r->producer_lock);\n\n\t\twhile ((ptr = __ptr_ring_consume(r))) {\n\t\t\tif (producer < size)\n\t\t\t\tqueues[i][producer++] = ptr;\n\t\t\telse if (dropped_cnt < old_size)\n\t\t\t\tdropped[dropped_cnt++] = ptr;\n\t\t}\n\n\t\tif (producer >= size)\n\t\t\tproducer = 0;\n\t\t__ptr_ring_set_size(r, size);\n\t\tr->producer = producer;\n\t\tr->consumer_head = 0;\n\t\tr->consumer_tail = 0;\n\t\told_queue = r->queue;\n\t\tr->queue = queues[i];\n\t\tqueues[i] = NULL;\n\n\t\tspin_unlock(&r->producer_lock);\n\t\tspin_unlock_irqrestore(&r->consumer_lock, flags);\n\n\t\tif (dropped) {\n\t\t\tint j;\n\n\t\t\tfor (j = 0; j < dropped_cnt; j++)\n\t\t\t\tdestroy(dropped[j]);\n\t\t\tkfree(dropped);\n\t\t}\n\t\tkvfree(old_queue);\n\t}\n\n\tkfree(queues);\n\treturn 0;\n\nnomem:\n\tfor (i = 0; i < nrings; ++i)\n\t\tkvfree(queues[i]);\n\tkfree(queues);\n\treturn err;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3688 +3688 @@\n-\tvoid **queues;\n+\tvoid ***queues;\n@@ -3696 +3696 @@\n-\t\tqueues[i] = __ptr_ring_init_queue_alloc(size, gfp);\n+\t\tqueues[i] = __ptr_ring_init_queue_alloc_noprof(size, gfp);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 56",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 56
+        }
+      ],
+      "end_step": 56,
+      "revision_index": 1,
+      "start_step": 56
+    }
+  ],
+  "success_step": 56
+}

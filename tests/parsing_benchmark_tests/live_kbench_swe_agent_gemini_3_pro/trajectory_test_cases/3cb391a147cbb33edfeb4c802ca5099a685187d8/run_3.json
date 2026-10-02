@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&smc->clcsock_release_lock);\n\tif (smc->clcsock) {\n\t\ttcp = smc->clcsock;\n\t\tsmc->clcsock = NULL;\n\t}\n\tmutex_unlock(&smc->clcsock_release_lock);\n\tif (tcp)\n\t\tsock_release(tcp);\n}\n",
+          "before": "\tmutex_lock(&smc->clcsock_release_lock);\n\tif (smc->clcsock) {\n\t\ttcp = smc->clcsock;\n\t\tsmc->clcsock = NULL;\n\t\tsock_release(tcp);\n\t}\n\tmutex_unlock(&smc->clcsock_release_lock);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/smc_close.c b/net/smc/smc_close.c\nindex 10219f55aad1..a911e9ee19f1 100644\n--- a/net/smc/smc_close.c\n+++ b/net/smc/smc_close.c\n@@ -31,9 +31,10 @@ void smc_clcsock_release(struct smc_sock *smc)\n \tif (smc->clcsock) {\n \t\ttcp = smc->clcsock;\n \t\tsmc->clcsock = NULL;\n-\t\tsock_release(tcp);\n \t}\n \tmutex_unlock(&smc->clcsock_release_lock);\n+\tif (tcp)\n+\t\tsock_release(tcp);\n }\n \n static void smc_close_cleanup_listen(struct sock *parent)",
+          "explanation": "classic_swe step 8 #1",
+          "filename": "net/smc/smc_close.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 8
+        },
+        {
+          "after": "void smc_clcsock_release(struct smc_sock *smc)\n{\n\tstruct socket *tcp = NULL;\n\n\tif (smc->listen_smc && current_work() != &smc->smc_listen_work)\n",
+          "before": "void smc_clcsock_release(struct smc_sock *smc)\n{\n\tstruct socket *tcp;\n\n\tif (smc->listen_smc && current_work() != &smc->smc_listen_work)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/smc_close.c b/net/smc/smc_close.c\nindex 10219f55aad1..f3974dadc056 100644\n--- a/net/smc/smc_close.c\n+++ b/net/smc/smc_close.c\n@@ -23,7 +23,7 @@\n /* release the clcsock that is assigned to the smc_sock */\n void smc_clcsock_release(struct smc_sock *smc)\n {\n-\tstruct socket *tcp;\n+\tstruct socket *tcp = NULL;\n \n \tif (smc->listen_smc && current_work() != &smc->smc_listen_work)\n \t\tcancel_work_sync(&smc->smc_listen_work);\n@@ -31,9 +31,10 @@ void smc_clcsock_release(struct smc_sock *smc)\n \tif (smc->clcsock) {\n \t\ttcp = smc->clcsock;\n \t\tsmc->clcsock = NULL;\n-\t\tsock_release(tcp);\n \t}\n \tmutex_unlock(&smc->clcsock_release_lock);\n+\tif (tcp)\n+\t\tsock_release(tcp);\n }\n \n static void smc_close_cleanup_listen(struct sock *parent)",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "net/smc/smc_close.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        }
+      ],
+      "end_step": 9,
+      "revision_index": 0,
+      "start_step": 8
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct socket *clcsock;\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3e6cb35baf25..65d025f0f88d 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -3059,6 +3059,8 @@ int smc_setsockopt(struct socket *sock, int level, int optname,\n \tstruct sock *sk = sock->sk;\n \tstruct smc_sock *smc;\n \tint val, rc;\n+\tstruct socket *clcsock;\n+\n \n \tif (level == SOL_TCP && optname == TCP_ULP)\n \t\treturn -EOPNOTSUPP;\ndiff --git a/net/smc/smc_close.c b/net/smc/smc_close.c\nindex 10219f55aad1..f3974dadc056 100644\n--- a/net/smc/smc_close.c\n+++ b/net/smc/smc_close.c\n@@ -23,7 +23,7 @@\n /* release the clcsock that is assigned to the smc_sock */\n void smc_clcsock_release(struct smc_sock *smc)\n {\n-\tstruct socket *tcp;\n+\tstruct socket *tcp = NULL;\n \n \tif (smc->listen_smc && current_work() != &smc->smc_listen_work)\n \t\tcancel_work_sync(&smc->smc_listen_work);\n@@ -31,9 +31,10 @@ void smc_clcsock_release(struct smc_sock *smc)\n \tif (smc->clcsock) {\n \t\ttcp = smc->clcsock;\n \t\tsmc->clcsock = NULL;\n-\t\tsock_release(tcp);\n \t}\n \tmutex_unlock(&smc->clcsock_release_lock);\n+\tif (tcp)\n+\t\tsock_release(tcp);\n }\n \n static void smc_close_cleanup_listen(struct sock *parent)",
+          "explanation": "classic_swe step 17 insert #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 3062,
+          "step_index": 17
+        },
+        {
+          "after": "\tmutex_lock(&smc->clcsock_release_lock);\n\tif (!smc->clcsock) {\n\t\tmutex_unlock(&smc->clcsock_release_lock);\n\t\treturn -EBADF;\n\t}\n\tclcsock = smc->clcsock;\n\tihold(SOCK_INODE(clcsock));\n\tmutex_unlock(&smc->clcsock_release_lock);\n\n\tif (unlikely(!clcsock->ops->setsockopt))\n\t\trc = -EOPNOTSUPP;\n\telse\n\t\trc = clcsock->ops->setsockopt(clcsock, level, optname,\n\t\t\t\t\t      optval, optlen);\n\tif (clcsock->sk->sk_err) {\n\t\tsk->sk_err = clcsock->sk->sk_err;\n\t\tsk_error_report(sk);\n\t}\n\tiput(SOCK_INODE(clcsock));\n",
+          "before": "\tmutex_lock(&smc->clcsock_release_lock);\n\tif (!smc->clcsock) {\n\t\tmutex_unlock(&smc->clcsock_release_lock);\n\t\treturn -EBADF;\n\t}\n\tif (unlikely(!smc->clcsock->ops->setsockopt))\n\t\trc = -EOPNOTSUPP;\n\telse\n\t\trc = smc->clcsock->ops->setsockopt(smc->clcsock, level, optname,\n\t\t\t\t\t\t   optval, optlen);\n\tif (smc->clcsock->sk->sk_err) {\n\t\tsk->sk_err = smc->clcsock->sk->sk_err;\n\t\tsk_error_report(sk);\n\t}\n\tmutex_unlock(&smc->clcsock_release_lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3e6cb35baf25..f37460c70307 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -3059,6 +3059,8 @@ int smc_setsockopt(struct socket *sock, int level, int optname,\n \tstruct sock *sk = sock->sk;\n \tstruct smc_sock *smc;\n \tint val, rc;\n+\tstruct socket *clcsock;\n+\n \n \tif (level == SOL_TCP && optname == TCP_ULP)\n \t\treturn -EOPNOTSUPP;\n@@ -3075,16 +3077,20 @@ int smc_setsockopt(struct socket *sock, int level, int optname,\n \t\tmutex_unlock(&smc->clcsock_release_lock);\n \t\treturn -EBADF;\n \t}\n-\tif (unlikely(!smc->clcsock->ops->setsockopt))\n+\tclcsock = smc->clcsock;\n+\tihold(SOCK_INODE(clcsock));\n+\tmutex_unlock(&smc->clcsock_release_lock);\n+\n+\tif (unlikely(!clcsock->ops->setsockopt))\n \t\trc = -EOPNOTSUPP;\n \telse\n-\t\trc = smc->clcsock->ops->setsockopt(smc->clcsock, level, optname,\n-\t\t\t\t\t\t   optval, optlen);\n-\tif (smc->clcsock->sk->sk_err) {\n-\t\tsk->sk_err = smc->clcsock->sk->sk_err;\n+\t\trc = clcsock->ops->setsockopt(clcsock, level, optname,\n+\t\t\t\t\t      optval, optlen);\n+\tif (clcsock->sk->sk_err) {\n+\t\tsk->sk_err = clcsock->sk->sk_err;\n \t\tsk_error_report(sk);\n \t}\n-\tmutex_unlock(&smc->clcsock_release_lock);\n+\tiput(SOCK_INODE(clcsock));\n \n \tif (optlen < sizeof(int))\n \t\treturn -EINVAL;\ndiff --git a/net/smc/smc_close.c b/net/smc/smc_close.c\nindex 10219f55aad1..f3974dadc056 100644\n--- a/net/smc/smc_close.c\n+++ b/net/smc/smc_close.c\n@@ -23,7 +23,7 @@\n /* release the clcsock that is assigned to the smc_sock */\n void smc_clcsock_release(struct smc_sock *smc)\n {\n-\tstruct socket *tcp;\n+\tstruct socket *tcp = NULL;\n \n \tif (smc->listen_smc && current_work() != &smc->smc_listen_work)\n \t\tcancel_work_sync(&smc->smc_listen_work);\n@@ -31,9 +31,10 @@ void smc_clcsock_release(struct smc_sock *smc)\n \tif (smc->clcsock) {\n \t\ttcp = smc->clcsock;\n \t\tsmc->clcsock = NULL;\n-\t\tsock_release(tcp);\n \t}\n \tmutex_unlock(&smc->clcsock_release_lock);\n+\tif (tcp)\n+\t\tsock_release(tcp);\n }\n \n static void smc_close_cleanup_listen(struct sock *parent)",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 1,
+      "start_step": 17
+    }
+  ],
+  "success_step": 18
+}

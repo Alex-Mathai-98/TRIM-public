@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#define _GNU_SOURCE\n#include <endian.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <sys/syscall.h>\n#include <sys/types.h>\n#include <unistd.h>\n#include <linux/io_uring.h>\n\n#ifndef __NR_io_uring_setup\n#define __NR_io_uring_setup 425\n#endif\n#ifndef __NR_io_uring_enter\n#define __NR_io_uring_enter 426\n#endif\n\nint main()\n{\n    struct io_uring_params params = {0};\n    params.flags = IORING_SETUP_NO_SQARRAY | IORING_SETUP_CQSIZE;\n    params.cq_entries = 0x80;\n\n    int fd = syscall(__NR_io_uring_setup, 0x10d, &params);\n    if (fd < 0) {\n        perror(\"io_uring_setup\");\n        return 1;\n    }\n\n    // Prepare metadata for generic request (IO_URING_METADATA_GENERIC is 4)\n    uint32_t metadata = 0xfffffffc; \n    \n    // Attempt to enter io_uring - this seems to be where the setup happens\n    syscall(__NR_io_uring_enter, fd, 0x3516, 0, 0, 0, 0);\n\n    char path[32];\n    sprintf(path, \"/proc/self/fdinfo/%d\", fd);\n    \n    FILE *fp = fopen(path, \"r\");\n    if (!fp) {\n        perror(\"fopen fdinfo\");\n        return 1;\n    }\n\n    char buf[1024];\n    while (fgets(buf, sizeof(buf), fp)) {\n        // Just reading to trigger fdinfo\n    }\n    \n    fclose(fp);\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/reproduce_crash.c\n+++ /linux/reproduce_crash.c\n@@ -1,0 +2,54 @@\n+#define _GNU_SOURCE\n+#include <endian.h>\n+#include <stdint.h>\n+#include <stdio.h>\n+#include <stdlib.h>\n+#include <string.h>\n+#include <sys/syscall.h>\n+#include <sys/types.h>\n+#include <unistd.h>\n+#include <linux/io_uring.h>\n+\n+#ifndef __NR_io_uring_setup\n+#define __NR_io_uring_setup 425\n+#endif\n+#ifndef __NR_io_uring_enter\n+#define __NR_io_uring_enter 426\n+#endif\n+\n+int main()\n+{\n+    struct io_uring_params params = {0};\n+    params.flags = IORING_SETUP_NO_SQARRAY | IORING_SETUP_CQSIZE;\n+    params.cq_entries = 0x80;\n+\n+    int fd = syscall(__NR_io_uring_setup, 0x10d, &params);\n+    if (fd < 0) {\n+        perror(\"io_uring_setup\");\n+        return 1;\n+    }\n+\n+    // Prepare metadata for generic request (IO_URING_METADATA_GENERIC is 4)\n+    uint32_t metadata = 0xfffffffc;\n+\n+    // Attempt to enter io_uring - this seems to be where the setup happens\n+    syscall(__NR_io_uring_enter, fd, 0x3516, 0, 0, 0, 0);\n+\n+    char path[32];\n+    sprintf(path, \"/proc/self/fdinfo/%d\", fd);\n+\n+    FILE *fp = fopen(path, \"r\");\n+    if (!fp) {\n+        perror(\"fopen fdinfo\");\n+        return 1;\n+    }\n+\n+    char buf[1024];\n+    while (fgets(buf, sizeof(buf), fp)) {\n+        // Just reading to trigger fdinfo\n+    }\n+\n+    fclose(fp);\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 12",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        },
+        {
+          "after": "\n#ifndef __NR_io_uring_enter\n#define __NR_io_uring_enter 426\n#endif\n\n#ifndef IORING_SETUP_NO_SQARRAY\n#define IORING_SETUP_NO_SQARRAY (1U << 16)\n#endif\n\nint main()\n",
+          "before": "\n#ifndef __NR_io_uring_enter\n#define __NR_io_uring_enter 426\n#endif\n\nint main()\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/reproduce_crash.c\n+++ /linux/reproduce_crash.c\n@@ -17,0 +18,4 @@\n+#endif\n+\n+#ifndef IORING_SETUP_NO_SQARRAY\n+#define IORING_SETUP_NO_SQARRAY (1U << 16)",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 18",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "\n\n\tseq_printf(m, \"SQEs:\\t%u\\n\", sq_tail - sq_head);\n\tsq_tail = sq_head + min(sq_tail - sq_head, ctx->sq_entries);\n\twhile (sq_head < sq_tail) {\n\t\tstruct io_uring_sqe *sqe;\n\t\tunsigned int sq_idx;\n\n",
+          "before": "\n\n\tseq_printf(m, \"SQEs:\\t%u\\n\", sq_tail - sq_head);\n\twhile (sq_head < sq_tail) {\n\t\tstruct io_uring_sqe *sqe;\n\t\tunsigned int sq_idx;\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/fdinfo.c\n+++ /linux/io_uring/fdinfo.c\n@@ -91,0 +92 @@\n+\tsq_tail = sq_head + min(sq_tail - sq_head, ctx->sq_entries);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 26",
+          "filename": "io_uring/fdinfo.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "\n\n\n\tseq_printf(m, \"CQEs:\\t%u\\n\", cq_tail - cq_head);\n\tcq_tail = cq_head + min(cq_tail - cq_head, ctx->cq_entries);\n\twhile (cq_head < cq_tail) {\n\t\tstruct io_uring_cqe *cqe;\n\t\tbool cqe32 = false;\n\n\n",
+          "before": "\n\n\n\tseq_printf(m, \"CQEs:\\t%u\\n\", cq_tail - cq_head);\n\twhile (cq_head < cq_tail) {\n\t\tstruct io_uring_cqe *cqe;\n\t\tbool cqe32 = false;\n\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/io_uring/fdinfo.c\n+++ /linux/io_uring/fdinfo.c\n@@ -147,0 +148 @@\n+\tcq_tail = cq_head + min(cq_tail - cq_head, ctx->cq_entries);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 28",
+          "filename": "io_uring/fdinfo.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 0,
+      "start_step": 12
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 32 rm #1",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 32 rm #2",
+          "filename": "reproduce_crash",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 1,
+      "start_step": 32
+    }
+  ],
+  "success_step": 32
+}

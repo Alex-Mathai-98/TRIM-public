@@ -1,0 +1,24 @@
+diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c
+index 55f039ec3d59..d2cbc93bca9f 100644
+--- a/net/xfrm/xfrm_user.c
++++ b/net/xfrm/xfrm_user.c
+@@ -223,6 +223,19 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,
+ 
+ 	switch (p->sel.family) {
+ 	case AF_UNSPEC:
++		if (!(p->flags & XFRM_STATE_AF_UNSPEC)) {
++			if (p->family == AF_INET) {
++				if (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {
++					NL_SET_ERR_MSG(extack, "Invalid prefix length in selector (must be <= 32 for IPv4)");
++					goto out;
++				}
++			} else if (p->family == AF_INET6) {
++				if (p->sel.prefixlen_d > 128 || p->sel.prefixlen_s > 128) {
++					NL_SET_ERR_MSG(extack, "Invalid prefix length in selector (must be <= 128 for IPv6)");
++					goto out;
++				}
++			}
++		}
+ 		break;
+ 
+ 	case AF_INET:

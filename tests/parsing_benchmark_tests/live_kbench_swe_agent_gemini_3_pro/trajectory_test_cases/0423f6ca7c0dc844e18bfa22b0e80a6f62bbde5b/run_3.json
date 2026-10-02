@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static bool ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n{\n\treturn ni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node) == mi;\n}\n",
+          "before": "static void ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n{\n\tni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c\nindex 9881d7dce93d..89fa55e90fed 100644\n--- a/fs/ntfs3/frecord.c\n+++ b/fs/ntfs3/frecord.c\n@@ -55,9 +55,9 @@ static struct mft_inode *ni_find_mi(struct ntfs_inode *ni, CLST rno)\n /*\n  * ni_add_mi - Add new mft_inode into ntfs_inode.\n  */\n-static void ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n+static bool ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n {\n-\tni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node);\n+\treturn ni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node) == mi;\n }\n \n /*",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "fs/ntfs3/frecord.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        },
+        {
+          "after": "\tif (!ni_add_mi(ni, r)) {\n\t\tmi_put(r);\n\t\treturn -EINVAL;\n\t}\n\nout:\n",
+          "before": "\tni_add_mi(ni, r);\n\nout:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c\nindex 9881d7dce93d..80c7798fbeb0 100644\n--- a/fs/ntfs3/frecord.c\n+++ b/fs/ntfs3/frecord.c\n@@ -55,9 +55,9 @@ static struct mft_inode *ni_find_mi(struct ntfs_inode *ni, CLST rno)\n /*\n  * ni_add_mi - Add new mft_inode into ntfs_inode.\n  */\n-static void ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n+static bool ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n {\n-\tni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node);\n+\treturn ni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node) == mi;\n }\n \n /*\n@@ -153,7 +153,10 @@ int ni_load_mi_ex(struct ntfs_inode *ni, CLST rno, struct mft_inode **mi)\n \t\treturn err;\n \t}\n \n-\tni_add_mi(ni, r);\n+\tif (!ni_add_mi(ni, r)) {\n+\t\tmi_put(r);\n+\t\treturn -EINVAL;\n+\t}\n \n out:\n \tif (mi)",
+          "explanation": "classic_swe step 46 #1",
+          "filename": "fs/ntfs3/frecord.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        },
+        {
+          "after": "\tmi_get_ref(&ni->mi, &m->mrec->parent_ref);\n\n\tif (!ni_add_mi(ni, m)) {\n\t\tmi_put(m);\n\t\treturn false;\n\t}\n\n\t*mi = m;\n\treturn true;\n}\n",
+          "before": "\tmi_get_ref(&ni->mi, &m->mrec->parent_ref);\n\n\tni_add_mi(ni, m);\n\t*mi = m;\n\treturn true;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ntfs3/frecord.c b/fs/ntfs3/frecord.c\nindex 9881d7dce93d..ecb3d74a0015 100644\n--- a/fs/ntfs3/frecord.c\n+++ b/fs/ntfs3/frecord.c\n@@ -55,9 +55,9 @@ static struct mft_inode *ni_find_mi(struct ntfs_inode *ni, CLST rno)\n /*\n  * ni_add_mi - Add new mft_inode into ntfs_inode.\n  */\n-static void ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n+static bool ni_add_mi(struct ntfs_inode *ni, struct mft_inode *mi)\n {\n-\tni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node);\n+\treturn ni_ins_mi(ni, &ni->mi_tree, mi->rno, &mi->node) == mi;\n }\n \n /*\n@@ -153,7 +153,10 @@ int ni_load_mi_ex(struct ntfs_inode *ni, CLST rno, struct mft_inode **mi)\n \t\treturn err;\n \t}\n \n-\tni_add_mi(ni, r);\n+\tif (!ni_add_mi(ni, r)) {\n+\t\tmi_put(r);\n+\t\treturn -EINVAL;\n+\t}\n \n out:\n \tif (mi)\n@@ -325,7 +328,11 @@ bool ni_add_subrecord(struct ntfs_inode *ni, CLST rno, struct mft_inode **mi)\n \n \tmi_get_ref(&ni->mi, &m->mrec->parent_ref);\n \n-\tni_add_mi(ni, m);\n+\tif (!ni_add_mi(ni, m)) {\n+\t\tmi_put(m);\n+\t\treturn false;\n+\t}\n+\n \t*mi = m;\n \treturn true;\n }",
+          "explanation": "classic_swe step 47 #1",
+          "filename": "fs/ntfs3/frecord.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 0,
+      "start_step": 45
+    }
+  ],
+  "success_step": 47
+}

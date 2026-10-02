@@ -1,0 +1,30 @@
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 77db3b5fe4ac..fc9fe1f69047 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -611,6 +611,16 @@ static void xfrm_state_gc_destroy(struct xfrm_state *x)
+ 		x->type->destructor(x);
+ 		xfrm_put_type(x->type);
+ 	}
++
++	if (x->tunnel) {
++		struct xfrm_state *t = x->tunnel;
++
++		if (atomic_dec_return(&t->tunnel_users) == 1)
++			xfrm_state_delete(t);
++		xfrm_state_put(t);
++		x->tunnel = NULL;
++	}
++
+ 	if (x->xfrag.page)
+ 		put_page(x->xfrag.page);
+ 	xfrm_dev_state_free(x);
+@@ -3297,7 +3307,7 @@ void xfrm_state_fini(struct net *net)
+ 	unsigned int sz;
+ 
+ 	flush_work(&net->xfrm.state_hash_work);
+-	xfrm_state_flush(net, IPSEC_PROTO_ANY, false);
++	xfrm_state_flush(net, 0, false);
+ 	flush_work(&xfrm_state_gc_work);
+ 
+ 	WARN_ON(!list_empty(&net->xfrm.state_all));

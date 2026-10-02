@@ -1,0 +1,28 @@
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index fd81cff11617..61195a3eb084 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -1956,7 +1956,8 @@ static int maybe_exit_scc(struct bpf_verifier_env *env, struct bpf_verifier_stat
+ }
+ 
+ /* Lookup an bpf_scc_visit instance corresponding to @st callchain
+- * and add @backedge to visit->backedges. @st callchain must exist.
++ * and add @backedge to visit->backedges.
++ * Returns 0 on success, 1 if no SCC exists (backedge not added), negative on error.
+  */
+ static int add_scc_backedge(struct bpf_verifier_env *env,
+ 			    struct bpf_verifier_state *st,
+@@ -1965,11 +1966,8 @@ static int add_scc_backedge(struct bpf_verifier_env *env,
+ 	struct bpf_scc_callchain callchain;
+ 	struct bpf_scc_visit *visit;
+ 
+-	if (!compute_scc_callchain(env, st, &callchain)) {
+-		verifier_bug(env, "add backedge: no SCC in verification path, insn_idx %d",
+-			     st->insn_idx);
+-		return -EFAULT;
+-	}
++	if (!compute_scc_callchain(env, st, &callchain))
++		return 1; /* no SCC, backedge not added */
+ 	visit = scc_visit_lookup(env, &callchain);
+ 	if (!visit) {
+ 		verifier_bug(env, "add backedge: no visit info for call chain %s",

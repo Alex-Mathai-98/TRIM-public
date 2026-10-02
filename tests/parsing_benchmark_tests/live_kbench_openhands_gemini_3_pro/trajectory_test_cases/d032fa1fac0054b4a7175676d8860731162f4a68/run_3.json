@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n{\n\tint err;\n\tbool partscan = false;\n\tbool size_changed = false;\n\tunsigned int memflags;\n\tloff_t new_size = 0;\n\n\terr = mutex_lock_killable(&lo->lo_mutex);\n\tif (err)\n\t\treturn err;\n\tif (lo->lo_state != Lo_bound) {\n\t\terr = -ENXIO;\n\t\tgoto out_unlock;\n\t}\n\n\tif (lo->lo_offset != info->lo_offset ||\n\t    lo->lo_sizelimit != info->lo_sizelimit) {\n\t\tsize_changed = true;\n\t\tsync_blockdev(lo->lo_device);\n\t\tinvalidate_bdev(lo->lo_device);\n\t}\n\n\t/* I/O needs to be drained before changing lo_offset or lo_sizelimit */\n\tmemflags = blk_mq_freeze_queue(lo->lo_queue);\n\n\terr = loop_set_status_from_info(lo, info);\n\tif (err)\n\t\tgoto out_unfreeze;\n\n\tpartscan = !(lo->lo_flags & LO_FLAGS_PARTSCAN) &&\n\t\t(info->lo_flags & LO_FLAGS_PARTSCAN);\n\n\tlo->lo_flags &= ~LOOP_SET_STATUS_CLEARABLE_FLAGS;\n\tlo->lo_flags |= (info->lo_flags & LOOP_SET_STATUS_SETTABLE_FLAGS);\n\n\tif (size_changed) {\n\t\tnew_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n\t\t\t\t\t   lo->lo_backing_file);\n\t}\n\n\t/* update the direct I/O flag if lo_offset changed */\n\tloop_update_dio(lo);\n\nout_unfreeze:\n\tblk_mq_unfreeze_queue(lo->lo_queue, memflags);\n\n\tif (size_changed && !err)\n\t\tloop_set_size(lo, new_size);\n\n\tif (partscan)\n\t\tclear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);\nout_unlock:\n\tmutex_unlock(&lo->lo_mutex);\n\tif (partscan)\n\t\tloop_reread_partitions(lo);\n\n\treturn err;\n}",
+          "before": "loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n{\n\tint err;\n\tbool partscan = false;\n\tbool size_changed = false;\n\tunsigned int memflags;\n\n\terr = mutex_lock_killable(&lo->lo_mutex);\n\tif (err)\n\t\treturn err;\n\tif (lo->lo_state != Lo_bound) {\n\t\terr = -ENXIO;\n\t\tgoto out_unlock;\n\t}\n\n\tif (lo->lo_offset != info->lo_offset ||\n\t    lo->lo_sizelimit != info->lo_sizelimit) {\n\t\tsize_changed = true;\n\t\tsync_blockdev(lo->lo_device);\n\t\tinvalidate_bdev(lo->lo_device);\n\t}\n\n\t/* I/O needs to be drained before changing lo_offset or lo_sizelimit */\n\tmemflags = blk_mq_freeze_queue(lo->lo_queue);\n\n\terr = loop_set_status_from_info(lo, info);\n\tif (err)\n\t\tgoto out_unfreeze;\n\n\tpartscan = !(lo->lo_flags & LO_FLAGS_PARTSCAN) &&\n\t\t(info->lo_flags & LO_FLAGS_PARTSCAN);\n\n\tlo->lo_flags &= ~LOOP_SET_STATUS_CLEARABLE_FLAGS;\n\tlo->lo_flags |= (info->lo_flags & LOOP_SET_STATUS_SETTABLE_FLAGS);\n\n\tif (size_changed) {\n\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n\t\t\t\t\t   lo->lo_backing_file);\n\t\tloop_set_size(lo, new_size);\n\t}\n\n\t/* update the direct I/O flag if lo_offset changed */\n\tloop_update_dio(lo);\n\nout_unfreeze:\n\tblk_mq_unfreeze_queue(lo->lo_queue, memflags);\n\tif (partscan)\n\t\tclear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);\nout_unlock:\n\tmutex_unlock(&lo->lo_mutex);\n\tif (partscan)\n\t\tloop_reread_partitions(lo);\n\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/block/loop.c\n+++ /linux/drivers/block/loop.c\n@@ -1221,0 +1222 @@\n+\tloff_t new_size = 0;\n@@ -1252 +1253 @@\n-\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n+\t\tnew_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n@@ -1254 +1254,0 @@\n-\t\tloop_set_size(lo, new_size);\n@@ -1261,0 +1262,4 @@\n+\n+\tif (size_changed && !err)\n+\t\tloop_set_size(lo, new_size);\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 57",
+          "filename": "drivers/block/loop.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 0,
+      "start_step": 57
+    }
+  ],
+  "success_step": 57
+}

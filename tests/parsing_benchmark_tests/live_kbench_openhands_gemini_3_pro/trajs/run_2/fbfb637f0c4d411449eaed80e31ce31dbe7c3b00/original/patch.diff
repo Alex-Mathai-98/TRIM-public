@@ -1,0 +1,76 @@
+diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c
+index 6e4afb2b5441..08c92f93dbe0 100644
+--- a/fs/bcachefs/btree_cache.c
++++ b/fs/bcachefs/btree_cache.c
+@@ -195,6 +195,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)
+ 
+ 	u64 mask = bc->pinned_nodes_mask[!!b->c.level];
+ 
++	if (b->c.btree_id >= BITS_PER_TYPE(mask))
++		return false;
++
+ 	return ((mask & BIT_ULL(b->c.btree_id)) &&
+ 		bbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&
+ 		bbpos_cmp(bc->pinned_nodes_end, pos) >= 0);
+@@ -1375,10 +1378,16 @@ void bch2_btree_id_to_text(struct printbuf *out, enum btree_id btree)
+ 
+ void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)
+ {
++	unsigned root_level = 0;
++
++	if (b->c.btree_id < BTREE_ID_NR ||
++	    (b->c.btree_id - BTREE_ID_NR) < c->btree_roots_extra.nr)
++		root_level = bch2_btree_id_root(c, b->c.btree_id)->level;
++
+ 	prt_printf(out, "%s level %u/%u\n  ",
+ 	       bch2_btree_id_str(b->c.btree_id),
+ 	       b->c.level,
+-	       bch2_btree_id_root(c, b->c.btree_id)->level);
++	       root_level);
+ 	bch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));
+ }
+ 
+diff --git a/fs/bcachefs/btree_types.h b/fs/bcachefs/btree_types.h
+index 4568a41fefaf..45e08cd009cc 100644
+--- a/fs/bcachefs/btree_types.h
++++ b/fs/bcachefs/btree_types.h
+@@ -795,6 +795,9 @@ static inline bool btree_node_type_is_extents(enum btree_node_type type)
+ #undef x
+ 	;
+ 
++	if (type >= BITS_PER_TYPE(mask))
++		return false;
++
+ 	return BIT_ULL(type) & mask;
+ }
+ 
+@@ -811,6 +814,9 @@ static inline bool btree_type_has_snapshots(enum btree_id id)
+ #undef x
+ 	;
+ 
++	if (id >= BITS_PER_TYPE(mask))
++		return false;
++
+ 	return BIT_ULL(id) & mask;
+ }
+ 
+@@ -822,6 +828,9 @@ static inline bool btree_type_has_snapshot_field(enum btree_id id)
+ #undef x
+ 	;
+ 
++	if (id >= BITS_PER_TYPE(mask))
++		return false;
++
+ 	return BIT_ULL(id) & mask;
+ }
+ 
+@@ -833,6 +842,9 @@ static inline bool btree_type_has_ptrs(enum btree_id id)
+ #undef x
+ 	;
+ 
++	if (id >= BITS_PER_TYPE(mask))
++		return false;
++
+ 	return BIT_ULL(id) & mask;
+ }
+ 

@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (err < 0) {\n\t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n\t\t\t\tput_page(alloc_frag->page);\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\trcu_read_unlock();\n\t\t\tlocal_bh_enable();\n\t\t\treturn NULL;\n\t\t}\n\n\t\tif (err == XDP_REDIRECT)\n\t\t\txdp_do_flush();\n\t\tif (err != XDP_PASS) {\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\trcu_read_unlock();\n\t\t\tlocal_bh_enable();\n\t\t\treturn NULL;\n\t\t}",
+          "before": "\t\tif (err < 0) {\n\t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n\t\t\t\tput_page(alloc_frag->page);\n\t\t\tgoto out;\n\t\t}\n\n\t\tif (err == XDP_REDIRECT)\n\t\t\txdp_do_flush();\n\t\tif (err != XDP_PASS)\n\t\t\tgoto out;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 1d06c560c5e6..982d280393c6 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1719,13 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n-\t\t\tgoto out;\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\trcu_read_unlock();\n+\t\t\tlocal_bh_enable();\n+\t\t\treturn NULL;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n-\t\t\tgoto out;\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\trcu_read_unlock();\n+\t\t\tlocal_bh_enable();\n+\t\t\treturn NULL;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;",
+          "explanation": "classic_swe step 66 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        },
+        {
+          "after": "\treturn __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);\n}",
+          "before": "\treturn __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);\n\nout:\n\tbpf_net_ctx_clear(bpf_net_ctx);\n\trcu_read_unlock();\n\tlocal_bh_enable();\n\treturn NULL;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 1d06c560c5e6..a9c7d9dd544a 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1719,13 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n-\t\t\tgoto out;\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\trcu_read_unlock();\n+\t\t\tlocal_bh_enable();\n+\t\t\treturn NULL;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n-\t\t\tgoto out;\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\trcu_read_unlock();\n+\t\t\tlocal_bh_enable();\n+\t\t\treturn NULL;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n@@ -1735,12 +1742,6 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \tlocal_bh_enable();\n \n \treturn __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);\n-\n-out:\n-\tbpf_net_ctx_clear(bpf_net_ctx);\n-\trcu_read_unlock();\n-\tlocal_bh_enable();\n-\treturn NULL;\n }\n \n /* Get packet from user space buffer */",
+          "explanation": "classic_swe step 67 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "\tstruct page_frag *alloc_frag = &current->task_frag;\n\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx = NULL;",
+          "before": "\tstruct page_frag *alloc_frag = &current->task_frag;\n\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/tun.c b/drivers/net/tun.c\nindex 1d06c560c5e6..80e560c9ac38 100644\n--- a/drivers/net/tun.c\n+++ b/drivers/net/tun.c\n@@ -1661,7 +1661,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\t\t\t     int len, int *skb_xdp)\n {\n \tstruct page_frag *alloc_frag = &current->task_frag;\n-\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n+\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx = NULL;\n \tstruct bpf_prog *xdp_prog;\n \tint buflen = SKB_DATA_ALIGN(sizeof(struct skb_shared_info));\n \tchar *buf;\n@@ -1719,13 +1719,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \t\tif (err < 0) {\n \t\t\tif (act == XDP_REDIRECT || act == XDP_TX)\n \t\t\t\tput_page(alloc_frag->page);\n-\t\t\tgoto out;\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\trcu_read_unlock();\n+\t\t\tlocal_bh_enable();\n+\t\t\treturn NULL;\n \t\t}\n \n \t\tif (err == XDP_REDIRECT)\n \t\t\txdp_do_flush();\n-\t\tif (err != XDP_PASS)\n-\t\t\tgoto out;\n+\t\tif (err != XDP_PASS) {\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\trcu_read_unlock();\n+\t\t\tlocal_bh_enable();\n+\t\t\treturn NULL;\n+\t\t}\n \n \t\tpad = xdp.data - xdp.data_hard_start;\n \t\tlen = xdp.data_end - xdp.data;\n@@ -1735,12 +1742,6 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,\n \tlocal_bh_enable();\n \n \treturn __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);\n-\n-out:\n-\tbpf_net_ctx_clear(bpf_net_ctx);\n-\trcu_read_unlock();\n-\tlocal_bh_enable();\n-\treturn NULL;\n }\n \n /* Get packet from user space buffer */",
+          "explanation": "classic_swe step 69 #1",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "revision_index": 0,
+      "start_step": 66
+    }
+  ],
+  "success_step": 69
+}

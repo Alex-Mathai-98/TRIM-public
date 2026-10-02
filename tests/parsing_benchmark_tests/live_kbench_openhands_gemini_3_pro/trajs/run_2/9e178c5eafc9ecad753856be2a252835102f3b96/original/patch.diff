@@ -1,0 +1,47 @@
+diff --git a/fs/ocfs2/quota_global.c b/fs/ocfs2/quota_global.c
+index e85b1ccf81be..4ed0fbfb4fb0 100644
+--- a/fs/ocfs2/quota_global.c
++++ b/fs/ocfs2/quota_global.c
+@@ -1025,6 +1025,8 @@ static void ocfs2_destroy_dquot(struct dquot *dquot)
+ 	kmem_cache_free(ocfs2_dquot_cachep, dquot);
+ }
+ 
++static struct lock_class_key ocfs2_dquot_lock_key;
++
+ const struct dquot_operations ocfs2_quota_operations = {
+ 	/* We never make dquot dirty so .write_dquot is never called */
+ 	.acquire_dquot	= ocfs2_acquire_dquot,
+@@ -1034,4 +1036,5 @@ const struct dquot_operations ocfs2_quota_operations = {
+ 	.alloc_dquot	= ocfs2_alloc_dquot,
+ 	.destroy_dquot	= ocfs2_destroy_dquot,
+ 	.get_next_id	= ocfs2_get_next_id,
++	.dq_lock_key	= &ocfs2_dquot_lock_key,
+ };
+diff --git a/fs/quota/dquot.c b/fs/quota/dquot.c
+index 6c4a6ee1fa2b..0c6cbc2a0bdb 100644
+--- a/fs/quota/dquot.c
++++ b/fs/quota/dquot.c
+@@ -902,7 +902,10 @@ static struct dquot *get_empty_dquot(struct super_block *sb, int type)
+ 	if(!dquot)
+ 		return NULL;
+ 
+-	mutex_init(&dquot->dq_lock);
++	if (sb->dq_op->dq_lock_key)
++		mutex_init_with_key(&dquot->dq_lock, sb->dq_op->dq_lock_key);
++	else
++		mutex_init(&dquot->dq_lock);
+ 	INIT_LIST_HEAD(&dquot->dq_free);
+ 	INIT_LIST_HEAD(&dquot->dq_inuse);
+ 	INIT_HLIST_NODE(&dquot->dq_hash);
+diff --git a/include/linux/quota.h b/include/linux/quota.h
+index 89a0d83ddad0..086e08601d94 100644
+--- a/include/linux/quota.h
++++ b/include/linux/quota.h
+@@ -337,6 +337,7 @@ struct dquot_operations {
+ 	int (*get_inode_usage) (struct inode *, qsize_t *);
+ 	/* Get next ID with active quota structure */
+ 	int (*get_next_id) (struct super_block *sb, struct kqid *qid);
++	struct lock_class_key *dq_lock_key;
+ };
+ 
+ struct path;

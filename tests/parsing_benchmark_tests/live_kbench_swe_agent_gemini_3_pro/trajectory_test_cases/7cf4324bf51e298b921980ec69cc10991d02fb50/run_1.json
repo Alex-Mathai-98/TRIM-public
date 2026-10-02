@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tu64 end = start + sectors;\n\n\tif (m->btree_bitmap_shift > 57 || end > (1ULL << 63))\n\t\treturn;\n\n\tint resize = ilog2(roundup_pow_of_two(end)) - (m->btree_bitmap_shift + 6);\n\tif (resize > 0) {\n\t\tif (m->btree_bitmap_shift + resize > 57)\n\t\t\treturn;\n\n\t\tu64 new_bitmap = 0;\n\n\t\tfor (unsigned i = 0; i < 64; i++)\n\t\t\tif (bitmap & BIT_ULL(i))\n\t\t\t\tnew_bitmap |= BIT_ULL(i >> resize);\n\t\tbitmap = new_bitmap;\n\t\tm->btree_bitmap_shift += resize;\n\t}\n\n\tfor (unsigned bit = start >> m->btree_bitmap_shift;\n",
+          "before": "\tu64 end = start + sectors;\n\n\tint resize = ilog2(roundup_pow_of_two(end)) - (m->btree_bitmap_shift + 6);\n\tif (resize > 0) {\n\t\tu64 new_bitmap = 0;\n\n\t\tfor (unsigned i = 0; i < 64; i++)\n\t\t\tif (bitmap & BIT_ULL(i))\n\t\t\t\tnew_bitmap |= BIT_ULL(i >> resize);\n\t\tbitmap = new_bitmap;\n\t\tm->btree_bitmap_shift += resize;\n\t}\n\n\tBUG_ON(m->btree_bitmap_shift > 57);\n\tBUG_ON(end > 64ULL << m->btree_bitmap_shift);\n\n\tfor (unsigned bit = start >> m->btree_bitmap_shift;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c\nindex fb08dd680dac..df591b62ba4c 100644\n--- a/fs/bcachefs/sb-members.c\n+++ b/fs/bcachefs/sb-members.c\n@@ -439,8 +439,14 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns\n \n \tu64 end = start + sectors;\n \n+\tif (m->btree_bitmap_shift > 57 || end > (1ULL << 63))\n+\t\treturn;\n+\n \tint resize = ilog2(roundup_pow_of_two(end)) - (m->btree_bitmap_shift + 6);\n \tif (resize > 0) {\n+\t\tif (m->btree_bitmap_shift + resize > 57)\n+\t\t\treturn;\n+\n \t\tu64 new_bitmap = 0;\n \n \t\tfor (unsigned i = 0; i < 64; i++)\n@@ -450,9 +456,6 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns\n \t\tm->btree_bitmap_shift += resize;\n \t}\n \n-\tBUG_ON(m->btree_bitmap_shift > 57);\n-\tBUG_ON(end > 64ULL << m->btree_bitmap_shift);\n-\n \tfor (unsigned bit = start >> m->btree_bitmap_shift;\n \t     (u64) bit << m->btree_bitmap_shift < end;\n \t     bit++)",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "fs/bcachefs/sb-members.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        },
+        {
+          "after": "\tif (sectors == 0 || end < start || m->btree_bitmap_shift > 57 || end > (1ULL << 63))\n\t\treturn;\n",
+          "before": "\tif (m->btree_bitmap_shift > 57 || end > (1ULL << 63))\n\t\treturn;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c\nindex fb08dd680dac..2be03cb36917 100644\n--- a/fs/bcachefs/sb-members.c\n+++ b/fs/bcachefs/sb-members.c\n@@ -439,8 +439,14 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns\n \n \tu64 end = start + sectors;\n \n+\tif (sectors == 0 || end < start || m->btree_bitmap_shift > 57 || end > (1ULL << 63))\n+\t\treturn;\n+\n \tint resize = ilog2(roundup_pow_of_two(end)) - (m->btree_bitmap_shift + 6);\n \tif (resize > 0) {\n+\t\tif (m->btree_bitmap_shift + resize > 57)\n+\t\t\treturn;\n+\n \t\tu64 new_bitmap = 0;\n \n \t\tfor (unsigned i = 0; i < 64; i++)\n@@ -450,9 +456,6 @@ static void __bch2_dev_btree_bitmap_mark(struct bch_sb_field_members_v2 *mi, uns\n \t\tm->btree_bitmap_shift += resize;\n \t}\n \n-\tBUG_ON(m->btree_bitmap_shift > 57);\n-\tBUG_ON(end > 64ULL << m->btree_bitmap_shift);\n-\n \tfor (unsigned bit = start >> m->btree_bitmap_shift;\n \t     (u64) bit << m->btree_bitmap_shift < end;\n \t     bit++)",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/bcachefs/sb-members.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 15
+    }
+  ],
+  "success_step": 16
+}

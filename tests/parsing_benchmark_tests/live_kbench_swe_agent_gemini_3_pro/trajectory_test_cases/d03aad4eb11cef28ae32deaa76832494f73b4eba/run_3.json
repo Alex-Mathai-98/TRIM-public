@@ -1,0 +1,236 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6,
+      7
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tictx->idev = imon_init_idev(ictx);\n\tif (!ictx->idev) {\n\t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n\t\tgoto idev_setup_failed;\n\t}\n\n\tictx->rdev = imon_init_rdev(ictx);\n\tif (!ictx->rdev) {\n\t\tdev_err(dev, \"%s: rc device setup failed\\n\", __func__);\n\t\tgoto rdev_setup_failed;\n\t}\n\n\tictx->dev_present_intf0 = true;\n\n\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n\tif (ret) {\n\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tmutex_unlock(&ictx->lock);\n\treturn ictx;\n\nurb_submit_failed:\n\trc_unregister_device(ictx->rdev);\nrdev_setup_failed:\n\tinput_unregister_device(ictx->idev);\nidev_setup_failed:\n\tusb_kill_urb(ictx->rx_urb_intf0);\nfind_endpoint_failed:",
+          "before": "\tusb_fill_int_urb(ictx->rx_urb_intf0, ictx->usbdev_intf0,\n\t\tusb_rcvintpipe(ictx->usbdev_intf0,\n\t\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf0, ictx,\n\t\tictx->rx_endpoint_intf0->bInterval);\n\n\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n\tif (ret) {\n\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tictx->idev = imon_init_idev(ictx);\n\tif (!ictx->idev) {\n\t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n\t\tgoto idev_setup_failed;\n\t}\n\n\tictx->rdev = imon_init_rdev(ictx);\n\tif (!ictx->rdev) {\n\t\tdev_err(dev, \"%s: rc device setup failed\\n\", __func__);\n\t\tgoto rdev_setup_failed;\n\t}\n\n\tictx->dev_present_intf0 = true;\n\n\tmutex_unlock(&ictx->lock);\n\treturn ictx;\n\nrdev_setup_failed:\n\tinput_unregister_device(ictx->idev);\nidev_setup_failed:\n\tusb_kill_urb(ictx->rx_urb_intf0);\nurb_submit_failed:\nfind_endpoint_failed:",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..977ebbe77e04 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -2255,19 +2255,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tgoto find_endpoint_failed;\n \t}\n \n-\tusb_fill_int_urb(ictx->rx_urb_intf0, ictx->usbdev_intf0,\n-\t\tusb_rcvintpipe(ictx->usbdev_intf0,\n-\t\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n-\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n-\t\tusb_rx_callback_intf0, ictx,\n-\t\tictx->rx_endpoint_intf0->bInterval);\n-\n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n@@ -2282,14 +2269,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "\tusb_fill_int_urb(ictx->rx_urb_intf0, ictx->usbdev_intf0,\n\t\tusb_rcvintpipe(ictx->usbdev_intf0,\n\t\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf0, ictx,\n\t\tictx->rx_endpoint_intf0->bInterval);\n\n\tictx->idev = imon_init_idev(ictx);",
+          "before": "\tictx->idev = imon_init_idev(ictx);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..1f12caab585b 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -2262,12 +2262,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tusb_rx_callback_intf0, ictx,\n \t\tictx->rx_endpoint_intf0->bInterval);\n \n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n@@ -2282,14 +2276,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "\tictx->dev_present_intf1 = true;\n\n\tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n\n\tif (ret) {\n\t\tictx->dev_present_intf1 = false;\n\t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tmutex_unlock(&ictx->lock);\n\treturn ictx;",
+          "before": "\tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n\n\tif (ret) {\n\t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tictx->dev_present_intf1 = true;\n\n\tmutex_unlock(&ictx->lock);\n\treturn ictx;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..cb3af5cc2e17 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -2262,12 +2262,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tusb_rx_callback_intf0, ictx,\n \t\tictx->rx_endpoint_intf0->bInterval);\n \n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n@@ -2282,14 +2276,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);\n@@ -2343,15 +2344,16 @@ static struct imon_context *imon_init_intf1(struct usb_interface *intf,\n \t\tusb_rx_callback_intf1, ictx,\n \t\tictx->rx_endpoint_intf1->bInterval);\n \n+\tictx->dev_present_intf1 = true;\n+\n \tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n \n \tif (ret) {\n+\t\tictx->dev_present_intf1 = false;\n \t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n \t\tgoto urb_submit_failed;\n \t}\n \n-\tictx->dev_present_intf1 = true;\n-\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 1,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf0, ictx,\n\t\tmax_t(u8, ictx->rx_endpoint_intf0->bInterval, 5));",
+          "before": "\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf0, ictx,\n\t\tictx->rx_endpoint_intf0->bInterval);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..bafe67b1fa18 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -2260,13 +2260,7 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n \t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n \t\tusb_rx_callback_intf0, ictx,\n-\t\tictx->rx_endpoint_intf0->bInterval);\n-\n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n+\t\tmax_t(u8, ictx->rx_endpoint_intf0->bInterval, 5));\n \n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n@@ -2282,14 +2276,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);\n@@ -2343,15 +2344,16 @@ static struct imon_context *imon_init_intf1(struct usb_interface *intf,\n \t\tusb_rx_callback_intf1, ictx,\n \t\tictx->rx_endpoint_intf1->bInterval);\n \n+\tictx->dev_present_intf1 = true;\n+\n \tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n \n \tif (ret) {\n+\t\tictx->dev_present_intf1 = false;\n \t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n \t\tgoto urb_submit_failed;\n \t}\n \n-\tictx->dev_present_intf1 = true;\n-\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf1, ictx,\n\t\tmax_t(u8, ictx->rx_endpoint_intf1->bInterval, 5));",
+          "before": "\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf1, ictx,\n\t\tictx->rx_endpoint_intf1->bInterval);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..c3678a0f6abe 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -2260,13 +2260,7 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n \t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n \t\tusb_rx_callback_intf0, ictx,\n-\t\tictx->rx_endpoint_intf0->bInterval);\n-\n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n+\t\tmax_t(u8, ictx->rx_endpoint_intf0->bInterval, 5));\n \n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n@@ -2282,14 +2276,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);\n@@ -2341,17 +2342,18 @@ static struct imon_context *imon_init_intf1(struct usb_interface *intf,\n \t\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n \t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n \t\tusb_rx_callback_intf1, ictx,\n-\t\tictx->rx_endpoint_intf1->bInterval);\n+\t\tmax_t(u8, ictx->rx_endpoint_intf1->bInterval, 5));\n+\n+\tictx->dev_present_intf1 = true;\n \n \tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n \n \tif (ret) {\n+\t\tictx->dev_present_intf1 = false;\n \t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n \t\tgoto urb_submit_failed;\n \t}\n \n-\tictx->dev_present_intf1 = true;\n-\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 2,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t/* Wait for transmission to complete (or abort) */\n\t\tretval = wait_for_completion_interruptible_timeout(\n\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(1000));\n\t\tif (!retval) {\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"packet tx timeout\\n\");\n\t\t\treturn -ETIMEDOUT;\n\t\t} else if (retval < 0) {\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n\t\t} else {\n\t\t\tretval = 0;\n\t\t}\n\n\t\tictx->tx.busy = false;",
+          "before": "\t\t/* Wait for transmission to complete (or abort) */\n\t\tretval = wait_for_completion_interruptible(\n\t\t\t\t&ictx->tx.finished);\n\t\tif (retval) {\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n\t\t}\n\n\t\tictx->tx.busy = false;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..eb6b3f2c9b23 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -646,11 +646,17 @@ static int send_packet(struct imon_context *ictx)\n \t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n \t} else {\n \t\t/* Wait for transmission to complete (or abort) */\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tretval = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(1000));\n+\t\tif (!retval) {\n+\t\t\tusb_kill_urb(ictx->tx_urb);\n+\t\t\tpr_err_ratelimited(\"packet tx timeout\\n\");\n+\t\t\treturn -ETIMEDOUT;\n+\t\t} else if (retval < 0) {\n \t\t\tusb_kill_urb(ictx->tx_urb);\n \t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n+\t\t} else {\n+\t\t\tretval = 0;\n \t\t}\n \n \t\tictx->tx.busy = false;\n@@ -2260,13 +2266,7 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n \t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n \t\tusb_rx_callback_intf0, ictx,\n-\t\tictx->rx_endpoint_intf0->bInterval);\n-\n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n+\t\tmax_t(u8, ictx->rx_endpoint_intf0->bInterval, 5));\n \n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n@@ -2282,14 +2282,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);\n@@ -2341,17 +2348,18 @@ static struct imon_context *imon_init_intf1(struct usb_interface *intf,\n \t\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n \t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n \t\tusb_rx_callback_intf1, ictx,\n-\t\tictx->rx_endpoint_intf1->bInterval);\n+\t\tmax_t(u8, ictx->rx_endpoint_intf1->bInterval, 5));\n+\n+\tictx->dev_present_intf1 = true;\n \n \tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n \n \tif (ret) {\n+\t\tictx->dev_present_intf1 = false;\n \t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n \t\tgoto urb_submit_failed;\n \t}\n \n-\tictx->dev_present_intf1 = true;\n-\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "revision_index": 3,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf0, ictx,\n\t\tictx->rx_endpoint_intf0->bInterval);",
+          "before": "\t\tictx->rx_endpoint_intf0->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf0, ictx,\n\t\tmax_t(u8, ictx->rx_endpoint_intf0->bInterval, 5));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..e0d5b8a64c7c 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -646,11 +646,17 @@ static int send_packet(struct imon_context *ictx)\n \t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n \t} else {\n \t\t/* Wait for transmission to complete (or abort) */\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tretval = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(1000));\n+\t\tif (!retval) {\n+\t\t\tusb_kill_urb(ictx->tx_urb);\n+\t\t\tpr_err_ratelimited(\"packet tx timeout\\n\");\n+\t\t\treturn -ETIMEDOUT;\n+\t\t} else if (retval < 0) {\n \t\t\tusb_kill_urb(ictx->tx_urb);\n \t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n+\t\t} else {\n+\t\t\tretval = 0;\n \t\t}\n \n \t\tictx->tx.busy = false;\n@@ -2262,12 +2268,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tusb_rx_callback_intf0, ictx,\n \t\tictx->rx_endpoint_intf0->bInterval);\n \n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n@@ -2282,14 +2282,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);\n@@ -2341,17 +2348,18 @@ static struct imon_context *imon_init_intf1(struct usb_interface *intf,\n \t\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n \t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n \t\tusb_rx_callback_intf1, ictx,\n-\t\tictx->rx_endpoint_intf1->bInterval);\n+\t\tmax_t(u8, ictx->rx_endpoint_intf1->bInterval, 5));\n+\n+\tictx->dev_present_intf1 = true;\n \n \tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n \n \tif (ret) {\n+\t\tictx->dev_present_intf1 = false;\n \t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n \t\tgoto urb_submit_failed;\n \t}\n \n-\tictx->dev_present_intf1 = true;\n-\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf1, ictx,\n\t\tictx->rx_endpoint_intf1->bInterval);",
+          "before": "\t\tictx->rx_endpoint_intf1->bEndpointAddress),\n\t\tictx->usb_rx_buf, sizeof(ictx->usb_rx_buf),\n\t\tusb_rx_callback_intf1, ictx,\n\t\tmax_t(u8, ictx->rx_endpoint_intf1->bInterval, 5));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..503f498e4e76 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -646,11 +646,17 @@ static int send_packet(struct imon_context *ictx)\n \t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n \t} else {\n \t\t/* Wait for transmission to complete (or abort) */\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tretval = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(1000));\n+\t\tif (!retval) {\n+\t\t\tusb_kill_urb(ictx->tx_urb);\n+\t\t\tpr_err_ratelimited(\"packet tx timeout\\n\");\n+\t\t\treturn -ETIMEDOUT;\n+\t\t} else if (retval < 0) {\n \t\t\tusb_kill_urb(ictx->tx_urb);\n \t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n+\t\t} else {\n+\t\t\tretval = 0;\n \t\t}\n \n \t\tictx->tx.busy = false;\n@@ -2262,12 +2268,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tusb_rx_callback_intf0, ictx,\n \t\tictx->rx_endpoint_intf0->bInterval);\n \n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n@@ -2282,14 +2282,21 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \n \tictx->dev_present_intf0 = true;\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret) {\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\t\tgoto urb_submit_failed;\n+\t}\n+\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;\n \n+urb_submit_failed:\n+\trc_unregister_device(ictx->rdev);\n rdev_setup_failed:\n \tinput_unregister_device(ictx->idev);\n idev_setup_failed:\n \tusb_kill_urb(ictx->rx_urb_intf0);\n-urb_submit_failed:\n find_endpoint_failed:\n \tusb_put_dev(ictx->usbdev_intf0);\n \tmutex_unlock(&ictx->lock);\n@@ -2343,15 +2350,16 @@ static struct imon_context *imon_init_intf1(struct usb_interface *intf,\n \t\tusb_rx_callback_intf1, ictx,\n \t\tictx->rx_endpoint_intf1->bInterval);\n \n+\tictx->dev_present_intf1 = true;\n+\n \tret = usb_submit_urb(ictx->rx_urb_intf1, GFP_KERNEL);\n \n \tif (ret) {\n+\t\tictx->dev_present_intf1 = false;\n \t\tpr_err(\"usb_submit_urb failed for intf1 (%d)\\n\", ret);\n \t\tgoto urb_submit_failed;\n \t}\n \n-\tictx->dev_present_intf1 = true;\n-\n \tmutex_unlock(&ictx->lock);\n \treturn ictx;",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 4,
+      "start_step": 35
+    }
+  ],
+  "success_step": 36
+}

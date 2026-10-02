@@ -1,0 +1,24 @@
+diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c
+index 8da1b68821a0..1c44f1f49c46 100644
+--- a/fs/bcachefs/backpointers.c
++++ b/fs/bcachefs/backpointers.c
+@@ -796,7 +796,7 @@ static enum alloc_sector_counter data_type_to_alloc_counter(enum bch_data_type t
+ 	case BCH_DATA_parity:
+ 		return ALLOC_stripe;
+ 	default:
+-		BUG();
++		return ALLOC_SECTORS_NR;
+ 	}
+ }
+ 
+@@ -847,7 +847,9 @@ static int check_bucket_backpointer_mismatch(struct btree_trans *trans, struct b
+ 		if (bp.v->bucket_gen != a->gen)
+ 			continue;
+ 
+-		sectors[data_type_to_alloc_counter(bp.v->data_type)] += bp.v->bucket_len;
++		enum alloc_sector_counter dt = data_type_to_alloc_counter(bp.v->data_type);
++		if (dt < ALLOC_SECTORS_NR)
++			sectors[dt] += bp.v->bucket_len;
+ 	};
+ 	bch2_trans_iter_exit(trans, &iter);
+ 	if (ret)

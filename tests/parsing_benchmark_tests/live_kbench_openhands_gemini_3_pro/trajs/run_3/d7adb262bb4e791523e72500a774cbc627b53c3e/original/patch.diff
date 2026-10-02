@@ -1,0 +1,27 @@
+diff --git a/fs/hfs/bnode.c b/fs/hfs/bnode.c
+index 6add6ebfef89..d8e5a62ed3ea 100644
+--- a/fs/hfs/bnode.c
++++ b/fs/hfs/bnode.c
+@@ -62,12 +62,20 @@ void hfs_bnode_read_key(struct hfs_bnode *node, void *key, int off)
+ 
+ 	tree = node->tree;
+ 	if (node->type == HFS_NODE_LEAF ||
+-	    tree->attributes & HFS_TREE_VARIDXKEYS)
++	    tree->attributes & HFS_TREE_VARIDXKEYS) {
+ 		key_len = hfs_bnode_read_u8(node, off) + 1;
+-	else
++		if (key_len > tree->max_key_len + 1)
++			key_len = tree->max_key_len + 1;
++	} else
+ 		key_len = tree->max_key_len + 1;
+ 
+ 	hfs_bnode_read(node, key, off, key_len);
++
++	if (node->type == HFS_NODE_LEAF ||
++	    tree->attributes & HFS_TREE_VARIDXKEYS) {
++		if (((u8 *)key)[0] > tree->max_key_len)
++			((u8 *)key)[0] = tree->max_key_len;
++	}
+ }
+ 
+ void hfs_bnode_write(struct hfs_bnode *node, void *buf, int off, int len)

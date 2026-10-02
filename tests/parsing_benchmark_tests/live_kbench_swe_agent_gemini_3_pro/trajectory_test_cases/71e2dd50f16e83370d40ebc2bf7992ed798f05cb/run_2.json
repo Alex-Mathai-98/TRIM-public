@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Extent block #%llu has an invalid h_fs_generation of #%u\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t le32_to_cpu(eb->h_fs_generation));\n\t\tgoto bail;\n\t}\n\n\tif (le16_to_cpu(eb->h_list.l_next_free_rec) >\n\t    le16_to_cpu(eb->h_list.l_count)) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Extent block #%llu has next_free_rec %u > count %u\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t le16_to_cpu(eb->h_list.l_next_free_rec),\n\t\t\t\t le16_to_cpu(eb->h_list.l_count));\n\t\tgoto bail;\n\t}\n\n\tif (le16_to_cpu(eb->h_list.l_count) > ocfs2_extent_recs_per_eb(sb)) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Extent block #%llu has count %u > max %u\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t le16_to_cpu(eb->h_list.l_count),\n\t\t\t\t ocfs2_extent_recs_per_eb(sb));\n\t\tgoto bail;\n\t}\n",
+          "before": "\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation)\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Extent block #%llu has an invalid h_fs_generation of #%u\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t le32_to_cpu(eb->h_fs_generation));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c\nindex 5cf698785fae..a2e8a75c7f73 100644\n--- a/fs/ocfs2/alloc.c\n+++ b/fs/ocfs2/alloc.c\n@@ -916,11 +916,32 @@ static int ocfs2_validate_extent_block(struct super_block *sb,\n \t\tgoto bail;\n \t}\n \n-\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation)\n+\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation) {\n \t\trc = ocfs2_error(sb,\n \t\t\t\t \"Extent block #%llu has an invalid h_fs_generation of #%u\\n\",\n \t\t\t\t (unsigned long long)bh->b_blocknr,\n \t\t\t\t le32_to_cpu(eb->h_fs_generation));\n+\t\tgoto bail;\n+\t}\n+\n+\tif (le16_to_cpu(eb->h_list.l_next_free_rec) >\n+\t    le16_to_cpu(eb->h_list.l_count)) {\n+\t\trc = ocfs2_error(sb,\n+\t\t\t\t \"Extent block #%llu has next_free_rec %u > count %u\\n\",\n+\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t le16_to_cpu(eb->h_list.l_next_free_rec),\n+\t\t\t\t le16_to_cpu(eb->h_list.l_count));\n+\t\tgoto bail;\n+\t}\n+\n+\tif (le16_to_cpu(eb->h_list.l_count) > ocfs2_extent_recs_per_eb(sb)) {\n+\t\trc = ocfs2_error(sb,\n+\t\t\t\t \"Extent block #%llu has count %u > max %u\\n\",\n+\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t le16_to_cpu(eb->h_list.l_count),\n+\t\t\t\t ocfs2_extent_recs_per_eb(sb));\n+\t\tgoto bail;\n+\t}\n bail:\n \treturn rc;\n }",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/ocfs2/alloc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (rc) {\n\t\tmlog(ML_ERROR, \"Checksum failed for dinode %llu\\n\",\n\t\t     (unsigned long long)bh->b_blocknr);\n\t\tgoto bail;\n\t}\n\n\t/*\n\t * Errors after here are fatal.\n\t */\n\n\trc = -EINVAL;\n\n\tif (!OCFS2_IS_VALID_DINODE(di)) {\n\t\trc = ocfs2_error(sb, \"Invalid dinode #%llu: signature = %.*s\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr, 7,\n\t\t\t\t di->i_signature);\n\t\tgoto bail;\n\t}\n\n\tif (le64_to_cpu(di->i_blkno) != bh->b_blocknr) {\n\t\trc = ocfs2_error(sb, \"Invalid dinode #%llu: i_blkno is %llu\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t (unsigned long long)le64_to_cpu(di->i_blkno));\n\t\tgoto bail;\n\t}\n\n\tif (!(di->i_flags & cpu_to_le32(OCFS2_VALID_FL))) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Invalid dinode #%llu: OCFS2_VALID_FL not set\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr);\n\t\tgoto bail;\n\t}\n\n\tif (le32_to_cpu(di->i_fs_generation) !=\n\t    OCFS2_SB(sb)->fs_generation) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Invalid dinode #%llu: fs_generation is %u\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t le32_to_cpu(di->i_fs_generation));\n\t\tgoto bail;\n\t}\n\n\tif (!(di->i_flags & cpu_to_le32(OCFS2_INLINE_DATA_FL | OCFS2_CHAIN_FL |\n\t\t\t\t\tOCFS2_SUPER_BLOCK_FL |\n\t\t\t\t\tOCFS2_LOCAL_ALLOC_FL |\n\t\t\t\t\tOCFS2_DEALLOC_FL))) {\n\t\tstruct ocfs2_extent_list *el = &di->id2.i_list;\n\n\t\tif (le16_to_cpu(el->l_next_free_rec) >\n\t\t    le16_to_cpu(el->l_count)) {\n\t\t\trc = ocfs2_error(sb,\n\t\t\t\t\t \"Dinode #%llu has next_free_rec %u > count %u\\n\",\n\t\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t\t le16_to_cpu(el->l_next_free_rec),\n\t\t\t\t\t le16_to_cpu(el->l_count));\n\t\t\tgoto bail;\n\t\t}\n\n\t\tif (le16_to_cpu(el->l_count) >\n\t\t    ocfs2_extent_recs_per_inode(sb)) {\n\t\t\trc = ocfs2_error(sb,\n\t\t\t\t\t \"Dinode #%llu has count %u > max %u\\n\",\n\t\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t\t le16_to_cpu(el->l_count),\n\t\t\t\t\t ocfs2_extent_recs_per_inode(sb));\n\t\t\tgoto bail;\n\t\t}\n\t}\n",
+          "before": "\tif (rc) {\n\t\tmlog(ML_ERROR, \"Checksum failed for dinode %llu\\n\",\n\t\t     (unsigned long long)bh->b_blocknr);\n\t\tgoto bail;\n\t}\n\n\t/*\n\t * Errors after here are fatal.\n\t */\n\n\trc = -EINVAL;\n\n\tif (!OCFS2_IS_VALID_DINODE(di)) {\n\t\trc = ocfs2_error(sb, \"Invalid dinode #%llu: signature = %.*s\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr, 7,\n\t\t\t\t di->i_signature);\n\t\tgoto bail;\n\t}\n\n\tif (le64_to_cpu(di->i_blkno) != bh->b_blocknr) {\n\t\trc = ocfs2_error(sb, \"Invalid dinode #%llu: i_blkno is %llu\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t (unsigned long long)le64_to_cpu(di->i_blkno));\n\t\tgoto bail;\n\t}\n\n\tif (!(di->i_flags & cpu_to_le32(OCFS2_VALID_FL))) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Invalid dinode #%llu: OCFS2_VALID_FL not set\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr);\n\t\tgoto bail;\n\t}\n\n\tif (le32_to_cpu(di->i_fs_generation) !=\n\t    OCFS2_SB(sb)->fs_generation) {\n\t\trc = ocfs2_error(sb,\n\t\t\t\t \"Invalid dinode #%llu: fs_generation is %u\\n\",\n\t\t\t\t (unsigned long long)bh->b_blocknr,\n\t\t\t\t le32_to_cpu(di->i_fs_generation));\n\t\tgoto bail;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c\nindex 5cf698785fae..a2e8a75c7f73 100644\n--- a/fs/ocfs2/alloc.c\n+++ b/fs/ocfs2/alloc.c\n@@ -916,11 +916,32 @@ static int ocfs2_validate_extent_block(struct super_block *sb,\n \t\tgoto bail;\n \t}\n \n-\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation)\n+\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation) {\n \t\trc = ocfs2_error(sb,\n \t\t\t\t \"Extent block #%llu has an invalid h_fs_generation of #%u\\n\",\n \t\t\t\t (unsigned long long)bh->b_blocknr,\n \t\t\t\t le32_to_cpu(eb->h_fs_generation));\n+\t\tgoto bail;\n+\t}\n+\n+\tif (le16_to_cpu(eb->h_list.l_next_free_rec) >\n+\t    le16_to_cpu(eb->h_list.l_count)) {\n+\t\trc = ocfs2_error(sb,\n+\t\t\t\t \"Extent block #%llu has next_free_rec %u > count %u\\n\",\n+\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t le16_to_cpu(eb->h_list.l_next_free_rec),\n+\t\t\t\t le16_to_cpu(eb->h_list.l_count));\n+\t\tgoto bail;\n+\t}\n+\n+\tif (le16_to_cpu(eb->h_list.l_count) > ocfs2_extent_recs_per_eb(sb)) {\n+\t\trc = ocfs2_error(sb,\n+\t\t\t\t \"Extent block #%llu has count %u > max %u\\n\",\n+\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t le16_to_cpu(eb->h_list.l_count),\n+\t\t\t\t ocfs2_extent_recs_per_eb(sb));\n+\t\tgoto bail;\n+\t}\n bail:\n \treturn rc;\n }\ndiff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c\nindex cd3173062ae3..bce24ff0d10b 100644\n--- a/fs/ocfs2/inode.c\n+++ b/fs/ocfs2/inode.c\n@@ -1416,6 +1416,33 @@ int ocfs2_validate_inode_block(struct super_block *sb,\n \t\tgoto bail;\n \t}\n \n+\tif (!(di->i_flags & cpu_to_le32(OCFS2_INLINE_DATA_FL | OCFS2_CHAIN_FL |\n+\t\t\t\t\tOCFS2_SUPER_BLOCK_FL |\n+\t\t\t\t\tOCFS2_LOCAL_ALLOC_FL |\n+\t\t\t\t\tOCFS2_DEALLOC_FL))) {\n+\t\tstruct ocfs2_extent_list *el = &di->id2.i_list;\n+\n+\t\tif (le16_to_cpu(el->l_next_free_rec) >\n+\t\t    le16_to_cpu(el->l_count)) {\n+\t\t\trc = ocfs2_error(sb,\n+\t\t\t\t\t \"Dinode #%llu has next_free_rec %u > count %u\\n\",\n+\t\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t\t le16_to_cpu(el->l_next_free_rec),\n+\t\t\t\t\t le16_to_cpu(el->l_count));\n+\t\t\tgoto bail;\n+\t\t}\n+\n+\t\tif (le16_to_cpu(el->l_count) >\n+\t\t    ocfs2_extent_recs_per_inode(sb)) {\n+\t\t\trc = ocfs2_error(sb,\n+\t\t\t\t\t \"Dinode #%llu has count %u > max %u\\n\",\n+\t\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t\t le16_to_cpu(el->l_count),\n+\t\t\t\t\t ocfs2_extent_recs_per_inode(sb));\n+\t\t\tgoto bail;\n+\t\t}\n+\t}\n+\n \trc = 0;\n \n bail:",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "fs/ocfs2/inode.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 1,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\trc = ocfs2_read_block(ci, eb_blkno, &tmp,\n\t\t\t      ocfs2_validate_extent_block);\n\n\t/*\n\t * If the block is cached, ocfs2_read_block() might not validate it.\n\t * Double check just to be sure.\n\t */\n\tif (!rc) {\n\t\trc = ocfs2_validate_extent_block(ocfs2_metadata_cache_get_super(ci),\n\t\t\t\t\t\t tmp);\n\t\tif (rc) {\n\t\t\tif (!*bh)\n\t\t\t\tbrelse(tmp);\n\t\t\tgoto out;\n\t\t}\n\t}\n\n\t/* If ocfs2_read_block() got us a new bh, pass it up. */\n\tif (!rc && !*bh)\n\t\t*bh = tmp;\n\nout:\n\treturn rc;\n",
+          "before": "\trc = ocfs2_read_block(ci, eb_blkno, &tmp,\n\t\t\t      ocfs2_validate_extent_block);\n\n\t/* If ocfs2_read_block() got us a new bh, pass it up. */\n\tif (!rc && !*bh)\n\t\t*bh = tmp;\n\n\treturn rc;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c\nindex 5cf698785fae..787f6b857159 100644\n--- a/fs/ocfs2/alloc.c\n+++ b/fs/ocfs2/alloc.c\n@@ -916,11 +916,32 @@ static int ocfs2_validate_extent_block(struct super_block *sb,\n \t\tgoto bail;\n \t}\n \n-\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation)\n+\tif (le32_to_cpu(eb->h_fs_generation) != OCFS2_SB(sb)->fs_generation) {\n \t\trc = ocfs2_error(sb,\n \t\t\t\t \"Extent block #%llu has an invalid h_fs_generation of #%u\\n\",\n \t\t\t\t (unsigned long long)bh->b_blocknr,\n \t\t\t\t le32_to_cpu(eb->h_fs_generation));\n+\t\tgoto bail;\n+\t}\n+\n+\tif (le16_to_cpu(eb->h_list.l_next_free_rec) >\n+\t    le16_to_cpu(eb->h_list.l_count)) {\n+\t\trc = ocfs2_error(sb,\n+\t\t\t\t \"Extent block #%llu has next_free_rec %u > count %u\\n\",\n+\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t le16_to_cpu(eb->h_list.l_next_free_rec),\n+\t\t\t\t le16_to_cpu(eb->h_list.l_count));\n+\t\tgoto bail;\n+\t}\n+\n+\tif (le16_to_cpu(eb->h_list.l_count) > ocfs2_extent_recs_per_eb(sb)) {\n+\t\trc = ocfs2_error(sb,\n+\t\t\t\t \"Extent block #%llu has count %u > max %u\\n\",\n+\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t le16_to_cpu(eb->h_list.l_count),\n+\t\t\t\t ocfs2_extent_recs_per_eb(sb));\n+\t\tgoto bail;\n+\t}\n bail:\n \treturn rc;\n }\n@@ -934,10 +955,25 @@ int ocfs2_read_extent_block(struct ocfs2_caching_info *ci, u64 eb_blkno,\n \trc = ocfs2_read_block(ci, eb_blkno, &tmp,\n \t\t\t      ocfs2_validate_extent_block);\n \n+\t/*\n+\t * If the block is cached, ocfs2_read_block() might not validate it.\n+\t * Double check just to be sure.\n+\t */\n+\tif (!rc) {\n+\t\trc = ocfs2_validate_extent_block(ocfs2_metadata_cache_get_super(ci),\n+\t\t\t\t\t\t tmp);\n+\t\tif (rc) {\n+\t\t\tif (!*bh)\n+\t\t\t\tbrelse(tmp);\n+\t\t\tgoto out;\n+\t\t}\n+\t}\n+\n \t/* If ocfs2_read_block() got us a new bh, pass it up. */\n \tif (!rc && !*bh)\n \t\t*bh = tmp;\n \n+out:\n \treturn rc;\n }\n \ndiff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c\nindex cd3173062ae3..bce24ff0d10b 100644\n--- a/fs/ocfs2/inode.c\n+++ b/fs/ocfs2/inode.c\n@@ -1416,6 +1416,33 @@ int ocfs2_validate_inode_block(struct super_block *sb,\n \t\tgoto bail;\n \t}\n \n+\tif (!(di->i_flags & cpu_to_le32(OCFS2_INLINE_DATA_FL | OCFS2_CHAIN_FL |\n+\t\t\t\t\tOCFS2_SUPER_BLOCK_FL |\n+\t\t\t\t\tOCFS2_LOCAL_ALLOC_FL |\n+\t\t\t\t\tOCFS2_DEALLOC_FL))) {\n+\t\tstruct ocfs2_extent_list *el = &di->id2.i_list;\n+\n+\t\tif (le16_to_cpu(el->l_next_free_rec) >\n+\t\t    le16_to_cpu(el->l_count)) {\n+\t\t\trc = ocfs2_error(sb,\n+\t\t\t\t\t \"Dinode #%llu has next_free_rec %u > count %u\\n\",\n+\t\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t\t le16_to_cpu(el->l_next_free_rec),\n+\t\t\t\t\t le16_to_cpu(el->l_count));\n+\t\t\tgoto bail;\n+\t\t}\n+\n+\t\tif (le16_to_cpu(el->l_count) >\n+\t\t    ocfs2_extent_recs_per_inode(sb)) {\n+\t\t\trc = ocfs2_error(sb,\n+\t\t\t\t\t \"Dinode #%llu has count %u > max %u\\n\",\n+\t\t\t\t\t (unsigned long long)bh->b_blocknr,\n+\t\t\t\t\t le16_to_cpu(el->l_count),\n+\t\t\t\t\t ocfs2_extent_recs_per_inode(sb));\n+\t\t\tgoto bail;\n+\t\t}\n+\t}\n+\n \trc = 0;\n \n bail:",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "fs/ocfs2/alloc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 2,
+      "start_step": 37
+    }
+  ],
+  "success_step": 37
+}

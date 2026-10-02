@@ -1,0 +1,79 @@
+diff --git a/mm/mremap.c b/mm/mremap.c
+index 33b642076205..ff80863919f9 100644
+--- a/mm/mremap.c
++++ b/mm/mremap.c
+@@ -335,6 +335,17 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,
+ 
+ 	if (!arch_supports_page_table_move())
+ 		return false;
++
++	/*
++	 * If this pmd belongs to a uffd vma with remap events disabled, we need
++	 * to ensure that the uffd-wp state is cleared from all pgtables. This
++	 * means recursing into lower page tables in move_page_tables(), and we
++	 * can reuse the existing code if we simply treat the entry as "not
++	 * moved".
++	 */
++	if (vma_has_uffd_without_event_remap(vma))
++		return false;
++
+ 	/*
+ 	 * The destination pmd shouldn't be established, free_pgtables()
+ 	 * should have released it.
+@@ -361,15 +372,6 @@ static bool move_normal_pmd(struct pagetable_move_control *pmc,
+ 	if (WARN_ON_ONCE(!pmd_none(*new_pmd)))
+ 		return false;
+ 
+-	/* If this pmd belongs to a uffd vma with remap events disabled, we need
+-	 * to ensure that the uffd-wp state is cleared from all pgtables. This
+-	 * means recursing into lower page tables in move_page_tables(), and we
+-	 * can reuse the existing code if we simply treat the entry as "not
+-	 * moved".
+-	 */
+-	if (vma_has_uffd_without_event_remap(vma))
+-		return false;
+-
+ 	/*
+ 	 * We don't have to worry about the ordering of src and dst
+ 	 * ptlocks because exclusive mmap_lock prevents deadlock.
+@@ -418,14 +420,9 @@ static bool move_normal_pud(struct pagetable_move_control *pmc,
+ 
+ 	if (!arch_supports_page_table_move())
+ 		return false;
+-	/*
+-	 * The destination pud shouldn't be established, free_pgtables()
+-	 * should have released it.
+-	 */
+-	if (WARN_ON_ONCE(!pud_none(*new_pud)))
+-		return false;
+ 
+-	/* If this pud belongs to a uffd vma with remap events disabled, we need
++	/*
++	 * If this pud belongs to a uffd vma with remap events disabled, we need
+ 	 * to ensure that the uffd-wp state is cleared from all pgtables. This
+ 	 * means recursing into lower page tables in move_page_tables(), and we
+ 	 * can reuse the existing code if we simply treat the entry as "not
+@@ -434,6 +431,13 @@ static bool move_normal_pud(struct pagetable_move_control *pmc,
+ 	if (vma_has_uffd_without_event_remap(vma))
+ 		return false;
+ 
++	/*
++	 * The destination pud shouldn't be established, free_pgtables()
++	 * should have released it.
++	 */
++	if (WARN_ON_ONCE(!pud_none(*new_pud)))
++		return false;
++
+ 	/*
+ 	 * We don't have to worry about the ordering of src and dst
+ 	 * ptlocks because exclusive mmap_lock prevents deadlock.
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..c21c3efe9631
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "2e389a5a110ab1b51c75694b8f71e89843f3dbe8": 89787
++}
+\ No newline at end of file

@@ -1,0 +1,153 @@
+{
+  "bug_id": "scikit-learn__scikit-learn-11310",
+  "short_path": [
+    [
+      {
+        "filename": "sklearn/model_selection/_search.py",
+        "before": "import operator\nimport warnings\n\nimport numpy as np",
+        "after": "import operator\nimport time\nimport warnings\n\nimport numpy as np",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sklearn/model_selection/_search.py",
+        "before": "        if self.refit:\n            self.best_estimator_ = clone(base_estimator).set_params(\n                **self.best_params_)\n            if y is not None:\n                self.best_estimator_.fit(X, y, **fit_params)\n            else:\n                self.best_estimator_.fit(X, **fit_params)",
+        "after": "        if self.refit:\n            # Time the refit process\n            refit_start_time = time.time()\n            self.best_estimator_ = clone(base_estimator).set_params(\n                **self.best_params_)\n            if y is not None:\n                self.best_estimator_.fit(X, y, **fit_params)\n            else:\n                self.best_estimator_.fit(X, **fit_params)\n            refit_end_time = time.time()\n            self.refit_time_ = refit_end_time - refit_start_time",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sklearn/model_selection/_search.py b/sklearn/model_selection/_search.py\nindex 99d6096af7..ceaec72abc 100644\n--- a/sklearn/model_selection/_search.py\n+++ b/sklearn/model_selection/_search.py\n@@ -17,6 +17,7 @@ from collections import Mapping, namedtuple, defaultdict, Sequence, Iterable\n from functools import partial, reduce\n from itertools import product\n import operator\n+import time\n import warnings\n \n import numpy as np\n@@ -764,12 +765,16 @@ class BaseSearchCV(six.with_metaclass(ABCMeta, BaseEstimator,\n                 self.best_index_]\n \n         if self.refit:\n+            # Time the refit process\n+            refit_start_time = time.time()\n             self.best_estimator_ = clone(base_estimator).set_params(\n                 **self.best_params_)\n             if y is not None:\n                 self.best_estimator_.fit(X, y, **fit_params)\n             else:\n                 self.best_estimator_.fit(X, **fit_params)\n+            refit_end_time = time.time()\n+            self.refit_time_ = refit_end_time - refit_start_time\n \n         # Store the only scorer not as a dict for single metric evaluation\n         self.scorer_ = scorers if self.multimetric_ else scorers['score']\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      7,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      1,
+      2
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      1,
+      2
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 2,
+  "reduction": "4_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/model_selection/_search.py",
+          "before": "import operator\nimport warnings\n\nimport numpy as np",
+          "after": "import operator\nimport time\nimport warnings\n\nimport numpy as np",
+          "explanation": "classic_swe step 15 #1"
+        },
+        {
+          "filename": "sklearn/model_selection/_search.py",
+          "before": "        if self.refit:\n            self.best_estimator_ = clone(base_estimator).set_params(\n                **self.best_params_)\n            if y is not None:\n                self.best_estimator_.fit(X, y, **fit_params)\n            else:\n                self.best_estimator_.fit(X, **fit_params)",
+          "after": "        if self.refit:\n            # Time the refit process\n            refit_start_time = time.time()\n            self.best_estimator_ = clone(base_estimator).set_params(\n                **self.best_params_)\n            if y is not None:\n                self.best_estimator_.fit(X, y, **fit_params)\n            else:\n                self.best_estimator_.fit(X, **fit_params)\n            refit_end_time = time.time()\n            self.refit_time_ = refit_end_time - refit_start_time",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/model_selection/_search.py",
+          "before": "    n_splits_ : int\n        The number of cross-validation splits (folds/iterations).\n\n    Notes\n    ------\n    The parameters selected are those that maximize the score of the left out",
+          "after": "    n_splits_ : int\n        The number of cross-validation splits (folds/iterations).\n\n    refit_time_ : float\n        Seconds used for refitting the best model on the whole dataset.\n\n        This is present only if ``refit`` is not False.\n\n    Notes\n    ------\n    The parameters selected are those that maximize the score of the left out",
+          "explanation": "classic_swe step 35 #1"
+        },
+        {
+          "filename": "sklearn/model_selection/_search.py",
+          "before": "    n_splits_ : int\n        The number of cross-validation splits (folds/iterations).\n\n    Notes\n    -----\n    The parameters selected are those that maximize the score of the held-out",
+          "after": "    n_splits_ : int\n        The number of cross-validation splits (folds/iterations).\n\n    refit_time_ : float\n        Seconds used for refitting the best model on the whole dataset.\n\n        This is present only if ``refit`` is not False.\n\n    Notes\n    -----\n    The parameters selected are those that maximize the score of the held-out",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 50,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 50,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sklearn/model_selection/_search.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sklearn/model_selection/_search.py"
+    ],
+    "gold_files": [
+      "sklearn/model_selection/_search.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 4,
+    "minimized_added_lines": 5,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 14,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

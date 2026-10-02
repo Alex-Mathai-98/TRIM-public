@@ -1,0 +1,57 @@
+diff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c
+index 954f6a96e0f4..8b50e7ddf082 100644
+--- a/fs/bcachefs/journal_io.c
++++ b/fs/bcachefs/journal_io.c
+@@ -605,7 +605,7 @@ static int journal_entry_data_usage_validate(struct bch_fs *c,
+ 		goto out;
+ 	}
+ 
+-	if (journal_entry_err_on(bch2_replicas_entry_validate(&u->r, c, &err),
++	if (journal_entry_err_on(bch2_replicas_entry_sb_validate(&u->r, c->disk_sb.sb, &err),
+ 				 c, version, jset, entry,
+ 				 journal_entry_data_usage_bad_size,
+ 				 "invalid journal entry usage: %s", err.buf)) {
+diff --git a/fs/bcachefs/replicas.c b/fs/bcachefs/replicas.c
+index bcb3276747e0..b941e34d6b8c 100644
+--- a/fs/bcachefs/replicas.c
++++ b/fs/bcachefs/replicas.c
+@@ -66,7 +66,7 @@ void bch2_replicas_entry_to_text(struct printbuf *out,
+ 	prt_printf(out, "]");
+ }
+ 
+-static int bch2_replicas_entry_validate_locked(struct bch_replicas_entry_v1 *r,
++int bch2_replicas_entry_sb_validate(struct bch_replicas_entry_v1 *r,
+ 					       struct bch_sb *sb,
+ 					       struct printbuf *err)
+ {
+@@ -99,7 +99,7 @@ int bch2_replicas_entry_validate(struct bch_replicas_entry_v1 *r,
+ 				 struct printbuf *err)
+ {
+ 	mutex_lock(&c->sb_lock);
+-	int ret = bch2_replicas_entry_validate_locked(r, c->disk_sb.sb, err);
++	int ret = bch2_replicas_entry_sb_validate(r, c->disk_sb.sb, err);
+ 	mutex_unlock(&c->sb_lock);
+ 	return ret;
+ }
+@@ -686,7 +686,7 @@ static int bch2_cpu_replicas_validate(struct bch_replicas_cpu *cpu_r,
+ 		struct bch_replicas_entry_v1 *e =
+ 			cpu_replicas_entry(cpu_r, i);
+ 
+-		int ret = bch2_replicas_entry_validate_locked(e, sb, err);
++		int ret = bch2_replicas_entry_sb_validate(e, sb, err);
+ 		if (ret)
+ 			return ret;
+ 
+diff --git a/fs/bcachefs/replicas.h b/fs/bcachefs/replicas.h
+index 5aba2c1ce133..ec57ce502d58 100644
+--- a/fs/bcachefs/replicas.h
++++ b/fs/bcachefs/replicas.h
+@@ -9,6 +9,8 @@
+ void bch2_replicas_entry_sort(struct bch_replicas_entry_v1 *);
+ void bch2_replicas_entry_to_text(struct printbuf *,
+ 				 struct bch_replicas_entry_v1 *);
++int bch2_replicas_entry_sb_validate(struct bch_replicas_entry_v1 *,
++				 struct bch_sb *, struct printbuf *);
+ int bch2_replicas_entry_validate(struct bch_replicas_entry_v1 *,
+ 				 struct bch_fs *, struct printbuf *);
+ void bch2_cpu_replicas_to_text(struct printbuf *, struct bch_replicas_cpu *);

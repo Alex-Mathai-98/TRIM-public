@@ -1,0 +1,23 @@
+diff --git a/arch/x86/mm/pat/set_memory.c b/arch/x86/mm/pat/set_memory.c
+index d2d54b8c4dbb..0d9d55ccd357 100644
+--- a/arch/x86/mm/pat/set_memory.c
++++ b/arch/x86/mm/pat/set_memory.c
+@@ -446,7 +446,17 @@ static void cpa_flush(struct cpa_data *cpa, int cache)
+ 	}
+ 
+ 	start = fix_addr(__cpa_addr(cpa, 0));
+-	end =   fix_addr(__cpa_addr(cpa, cpa->numpages));
++	/*
++	 * Addresses in an array are not guaranteed to be contiguous
++	 * or ordered. Computing a range for them using the last element
++	 * is unreliable and the element at index numpages is out of bounds.
++	 * Force a full flush for arrays.
++	 */
++	if (cpa->flags & (CPA_PAGES_ARRAY | CPA_ARRAY))
++		end = TLB_FLUSH_ALL;
++	else
++		end = fix_addr(__cpa_addr(cpa, cpa->numpages));
++
+ 	if (cpa->force_flush_all)
+ 		end = TLB_FLUSH_ALL;
+ 

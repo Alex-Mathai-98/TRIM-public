@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct udp_bearer *ub = container_of(work, struct udp_bearer, work);\n\tstruct udp_replicast *rcast, *tmp;\n\tstruct net *net;\n\n\tlist_for_each_entry_safe(rcast, tmp, &ub->rcast.list, list) {\n\t\tdst_cache_destroy(&rcast->dst_cache);\n\t\tlist_del_rcu(&rcast->list);\n\t\tkfree_rcu(rcast, rcu);\n\t}\n\n\tdst_cache_destroy(&ub->rcast.dst_cache);\n\tnet = sock_net(ub->ubsock->sk);\n\tudp_tunnel_sock_release(ub->ubsock);\n\tsynchronize_net();\n\tatomic_dec(&tipc_net(net)->wq_count);\n\tkfree(ub);\n}",
+          "before": "\tstruct udp_bearer *ub = container_of(work, struct udp_bearer, work);\n\tstruct udp_replicast *rcast, *tmp;\n\n\tlist_for_each_entry_safe(rcast, tmp, &ub->rcast.list, list) {\n\t\tdst_cache_destroy(&rcast->dst_cache);\n\t\tlist_del_rcu(&rcast->list);\n\t\tkfree_rcu(rcast, rcu);\n\t}\n\n\tdst_cache_destroy(&ub->rcast.dst_cache);\n\tudp_tunnel_sock_release(ub->ubsock);\n\tsynchronize_net();\n\tatomic_dec(&tipc_net(sock_net(ub->ubsock->sk))->wq_count);\n\tkfree(ub);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tipc/udp_media.c b/net/tipc/udp_media.c\nindex b7e25e7e9933..3d49aaf67fb7 100644\n--- a/net/tipc/udp_media.c\n+++ b/net/tipc/udp_media.c\n@@ -807,6 +807,7 @@ static void cleanup_bearer(struct work_struct *work)\n {\n \tstruct udp_bearer *ub = container_of(work, struct udp_bearer, work);\n \tstruct udp_replicast *rcast, *tmp;\n+\tstruct net *net;\n \n \tlist_for_each_entry_safe(rcast, tmp, &ub->rcast.list, list) {\n \t\tdst_cache_destroy(&rcast->dst_cache);\n@@ -815,9 +816,10 @@ static void cleanup_bearer(struct work_struct *work)\n \t}\n \n \tdst_cache_destroy(&ub->rcast.dst_cache);\n+\tnet = sock_net(ub->ubsock->sk);\n \tudp_tunnel_sock_release(ub->ubsock);\n \tsynchronize_net();\n-\tatomic_dec(&tipc_net(sock_net(ub->ubsock->sk))->wq_count);\n+\tatomic_dec(&tipc_net(net)->wq_count);\n \tkfree(ub);\n }",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "net/tipc/udp_media.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        }
+      ],
+      "end_step": 13,
+      "revision_index": 0,
+      "start_step": 13
+    }
+  ],
+  "success_step": 13
+}

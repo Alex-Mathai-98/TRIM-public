@@ -1,0 +1,31 @@
+diff --git a/net/socket.c b/net/socket.c
+index e1bf93508f05..04932300fd1e 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -503,12 +503,22 @@ EXPORT_SYMBOL(sock_alloc_file);
+ 
+ static int sock_map_fd(struct socket *sock, int flags)
+ {
+-	int fd;
++	struct file *newfile;
++	int fd = get_unused_fd_flags(flags);
+ 
+-	fd = FD_ADD(flags, sock_alloc_file(sock, flags, NULL));
+-	if (fd < 0)
++	if (unlikely(fd < 0)) {
+ 		sock_release(sock);
+-	return fd;
++		return fd;
++	}
++
++	newfile = sock_alloc_file(sock, flags, NULL);
++	if (likely(!IS_ERR(newfile))) {
++		fd_install(fd, newfile);
++		return fd;
++	}
++
++	put_unused_fd(fd);
++	return PTR_ERR(newfile);
+ }
+ 
+ /**

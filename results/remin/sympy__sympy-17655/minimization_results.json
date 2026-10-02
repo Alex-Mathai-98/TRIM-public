@@ -1,0 +1,209 @@
+{
+  "bug_id": "sympy__sympy-17655",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/geometry/point.py",
+        "before": "    def __mul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When multiplying a Point by a floating point number,\n        the coordinates of the Point will be changed to Floats:\n\n        >>> Point(1, 2)*0.1\n        Point2D(0.1, 0.2)\n\n        If this is not desired, the `scale` method can be used or\n        else only multiply or divide by integers:\n\n        >>> Point(1, 2).scale(1.1, 1.1)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2)*11/10\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        factor = sympify(factor)\n        coords = [simplify(x*factor) for x in self.args]\n        return Point(coords, evaluate=False)\n\n    def __neg__(self):",
+        "after": "    def __mul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When multiplying a Point by a floating point number,\n        the coordinates of the Point will be changed to Floats:\n\n        >>> Point(1, 2)*0.1\n        Point2D(0.1, 0.2)\n\n        If this is not desired, the `scale` method can be used or\n        else only multiply or divide by integers:\n\n        >>> Point(1, 2).scale(1.1, 1.1)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2)*11/10\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        factor = sympify(factor)\n        coords = [simplify(x*factor) for x in self.args]\n        return Point(coords, evaluate=False)\n\n    def __rmul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n\n        This method handles cases like `factor * point` where the factor\n        is on the left side of the multiplication operator.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        This enables both `point * factor` and `factor * point` to work:\n\n        >>> Point(1, 2) * 3\n        Point2D(3, 6)\n        >>> 3 * Point(1, 2)\n        Point2D(3, 6)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.__mul__\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        return self.__mul__(factor)\n\n    def __neg__(self):",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/geometry/point.py",
+        "before": "from sympy.core.add import Add",
+        "after": "from sympy.core.add import Add\nfrom sympy.core.mul import Mul",
+        "explanation": "classic_swe step 22 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/geometry/point.py",
+        "before": "    def __add__(self, other):\n        \"\"\"Add other to self by incrementing self's coordinates by\n        those of other.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When sequences of coordinates are passed to Point methods, they\n        are converted to a Point internally. This __add__ method does\n        not do that so if floating point values are used, a floating\n        point result (in terms of SymPy Floats) will be returned.\n\n        >>> Point(1, 2) + (.1, .2)\n        Point2D(1.1, 2.2)\n\n        If this is not desired, the `translate` method can be used or\n        another Point can be added:\n\n        >>> Point(1, 2).translate(.1, .2)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2) + Point(.1, .2)\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.translate\n\n        \"\"\"\n        try:\n            s, o = Point._normalize_dimension(self, Point(other, evaluate=False))\n        except TypeError:\n            raise GeometryError(\"Don't know how to add {} and a Point object\".format(other))\n\n        coords = [simplify(a + b) for a, b in zip(s, o)]\n        return Point(coords, evaluate=False)",
+        "after": "    def __add__(self, other):\n        \"\"\"Add other to self by incrementing self's coordinates by\n        those of other.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When sequences of coordinates are passed to Point methods, they\n        are converted to a Point internally. This __add__ method does\n        not do that so if floating point values are used, a floating\n        point result (in terms of SymPy Floats) will be returned.\n\n        >>> Point(1, 2) + (.1, .2)\n        Point2D(1.1, 2.2)\n\n        If this is not desired, the `translate` method can be used or\n        another Point can be added:\n\n        >>> Point(1, 2).translate(.1, .2)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2) + Point(.1, .2)\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.translate\n\n        \"\"\"\n        # Handle Mul expressions that contain a Point (e.g., 2.0*Point(1, 1))\n        if isinstance(other, Mul):\n            # Check if the Mul expression contains exactly one Point\n            point_args = [arg for arg in other.args if isinstance(arg, Point)]\n            if len(point_args) == 1:\n                # Extract the Point and the scalar factor\n                point = point_args[0]\n                scalar_args = [arg for arg in other.args if not isinstance(arg, Point)]\n                if scalar_args:\n                    # Multiply the scalar factors together\n                    scalar = Mul(*scalar_args)\n                    # Create a new Point by multiplying the original point by the scalar\n                    scaled_point = point * scalar\n                    # Now add this scaled point to self\n                    return self + scaled_point\n        \n        try:\n            s, o = Point._normalize_dimension(self, Point(other, evaluate=False))\n        except TypeError:\n            raise GeometryError(\"Don't know how to add {} and a Point object\".format(other))\n\n        coords = [simplify(a + b) for a, b in zip(s, o)]\n        return Point(coords, evaluate=False)",
+        "explanation": "classic_swe step 23 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/geometry/point.py",
+        "before": "    def __rmul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n\n        This method handles cases like `factor * point` where the factor\n        is on the left side of the multiplication operator.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        This enables both `point * factor` and `factor * point` to work:\n\n        >>> Point(1, 2) * 3\n        Point2D(3, 6)\n        >>> 3 * Point(1, 2)\n        Point2D(3, 6)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.__mul__\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        return self.__mul__(factor)",
+        "after": "    def __rmul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n\n        This method handles cases like `factor * point` where the factor\n        is on the left side of the multiplication operator.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        This enables both `point * factor` and `factor * point` to work:\n\n        >>> Point(1, 2) * 3\n        Point2D(3, 6)\n        >>> 3 * Point(1, 2)\n        Point2D(3, 6)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.__mul__\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        return self.__mul__(factor)\n\n    def as_coeff_Mul(self, rational=False):\n        \"\"\"Efficiently extract the coefficient of a product.\n        \n        For a Point, this always returns (S.One, self) since a Point\n        cannot be decomposed into a coefficient and a remaining factor.\n        \n        This method is required for compatibility with SymPy's Mul class.\n        \"\"\"\n        return S.One, self",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/geometry/point.py b/sympy/geometry/point.py\nindex 7c978c47be..ce11f225c2 100644\n--- a/sympy/geometry/point.py\n+++ b/sympy/geometry/point.py\n@@ -32,6 +32,7 @@\n from sympy.core.numbers import Float\n from sympy.core.evaluate import global_evaluate\n from sympy.core.add import Add\n+from sympy.core.mul import Mul\n from sympy.utilities.iterables import uniq\n from sympy.utilities.misc import filldedent, func_name, Undecidable\n \n@@ -213,6 +214,22 @@ def __add__(self, other):\n         sympy.geometry.point.Point.translate\n \n         \"\"\"\n+        # Handle Mul expressions that contain a Point (e.g., 2.0*Point(1, 1))\n+        if isinstance(other, Mul):\n+            # Check if the Mul expression contains exactly one Point\n+            point_args = [arg for arg in other.args if isinstance(arg, Point)]\n+            if len(point_args) == 1:\n+                # Extract the Point and the scalar factor\n+                point = point_args[0]\n+                scalar_args = [arg for arg in other.args if not isinstance(arg, Point)]\n+                if scalar_args:\n+                    # Multiply the scalar factors together\n+                    scalar = Mul(*scalar_args)\n+                    # Create a new Point by multiplying the original point by the scalar\n+                    scaled_point = point * scalar\n+                    # Now add this scaled point to self\n+                    return self + scaled_point\n+        \n         try:\n             s, o = Point._normalize_dimension(self, Point(other, evaluate=False))\n         except TypeError:\n@@ -278,6 +295,42 @@ def __mul__(self, factor):\n         coords = [simplify(x*factor) for x in self.args]\n         return Point(coords, evaluate=False)\n \n+    def __rmul__(self, factor):\n+        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n+\n+        This method handles cases like `factor * point` where the factor\n+        is on the left side of the multiplication operator.\n+\n+        Notes\n+        =====\n+\n+        >>> from sympy.geometry.point import Point\n+\n+        This enables both `point * factor` and `factor * point` to work:\n+\n+        >>> Point(1, 2) * 3\n+        Point2D(3, 6)\n+        >>> 3 * Point(1, 2)\n+        Point2D(3, 6)\n+\n+        See Also\n+        ========\n+\n+        sympy.geometry.point.Point.__mul__\n+        sympy.geometry.point.Point.scale\n+        \"\"\"\n+        return self.__mul__(factor)\n+\n+    def as_coeff_Mul(self, rational=False):\n+        \"\"\"Efficiently extract the coefficient of a product.\n+        \n+        For a Point, this always returns (S.One, self) since a Point\n+        cannot be decomposed into a coefficient and a remaining factor.\n+        \n+        This method is required for compatibility with SymPy's Mul class.\n+        \"\"\"\n+        return S.One, self\n+\n     def __neg__(self):\n         \"\"\"Negate the point.\"\"\"\n         coords = [-x for x in self.args]\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      3,
+      4,
+      8,
+      14
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 3,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 2,
+    "greedy_removal_node_not_applicable": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      1,
+      3,
+      4,
+      8
+    ],
+    "edit_list_after_file_min": [
+      1,
+      3,
+      4,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_still_crashes": 2,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      1,
+      3,
+      4,
+      8
+    ],
+    "edit_list_after_refinement": [
+      1,
+      3,
+      4,
+      8
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 4,
+  "reduction": "5_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/geometry/point.py",
+          "before": "    def __mul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When multiplying a Point by a floating point number,\n        the coordinates of the Point will be changed to Floats:\n\n        >>> Point(1, 2)*0.1\n        Point2D(0.1, 0.2)\n\n        If this is not desired, the `scale` method can be used or\n        else only multiply or divide by integers:\n\n        >>> Point(1, 2).scale(1.1, 1.1)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2)*11/10\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        factor = sympify(factor)\n        coords = [simplify(x*factor) for x in self.args]\n        return Point(coords, evaluate=False)\n\n    def __neg__(self):",
+          "after": "    def __mul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When multiplying a Point by a floating point number,\n        the coordinates of the Point will be changed to Floats:\n\n        >>> Point(1, 2)*0.1\n        Point2D(0.1, 0.2)\n\n        If this is not desired, the `scale` method can be used or\n        else only multiply or divide by integers:\n\n        >>> Point(1, 2).scale(1.1, 1.1)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2)*11/10\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        factor = sympify(factor)\n        coords = [simplify(x*factor) for x in self.args]\n        return Point(coords, evaluate=False)\n\n    def __rmul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n\n        This method handles cases like `factor * point` where the factor\n        is on the left side of the multiplication operator.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        This enables both `point * factor` and `factor * point` to work:\n\n        >>> Point(1, 2) * 3\n        Point2D(3, 6)\n        >>> 3 * Point(1, 2)\n        Point2D(3, 6)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.__mul__\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        return self.__mul__(factor)\n\n    def __neg__(self):",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/geometry/point.py",
+          "before": "from sympy.core.add import Add",
+          "after": "from sympy.core.add import Add\nfrom sympy.core.mul import Mul",
+          "explanation": "classic_swe step 22 #1"
+        },
+        {
+          "filename": "sympy/geometry/point.py",
+          "before": "    def __add__(self, other):\n        \"\"\"Add other to self by incrementing self's coordinates by\n        those of other.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When sequences of coordinates are passed to Point methods, they\n        are converted to a Point internally. This __add__ method does\n        not do that so if floating point values are used, a floating\n        point result (in terms of SymPy Floats) will be returned.\n\n        >>> Point(1, 2) + (.1, .2)\n        Point2D(1.1, 2.2)\n\n        If this is not desired, the `translate` method can be used or\n        another Point can be added:\n\n        >>> Point(1, 2).translate(.1, .2)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2) + Point(.1, .2)\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.translate\n\n        \"\"\"\n        try:\n            s, o = Point._normalize_dimension(self, Point(other, evaluate=False))\n        except TypeError:\n            raise GeometryError(\"Don't know how to add {} and a Point object\".format(other))\n\n        coords = [simplify(a + b) for a, b in zip(s, o)]\n        return Point(coords, evaluate=False)",
+          "after": "    def __add__(self, other):\n        \"\"\"Add other to self by incrementing self's coordinates by\n        those of other.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        When sequences of coordinates are passed to Point methods, they\n        are converted to a Point internally. This __add__ method does\n        not do that so if floating point values are used, a floating\n        point result (in terms of SymPy Floats) will be returned.\n\n        >>> Point(1, 2) + (.1, .2)\n        Point2D(1.1, 2.2)\n\n        If this is not desired, the `translate` method can be used or\n        another Point can be added:\n\n        >>> Point(1, 2).translate(.1, .2)\n        Point2D(11/10, 11/5)\n        >>> Point(1, 2) + Point(.1, .2)\n        Point2D(11/10, 11/5)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.translate\n\n        \"\"\"\n        # Handle Mul expressions that contain a Point (e.g., 2.0*Point(1, 1))\n        if isinstance(other, Mul):\n            # Check if the Mul expression contains exactly one Point\n            point_args = [arg for arg in other.args if isinstance(arg, Point)]\n            if len(point_args) == 1:\n                # Extract the Point and the scalar factor\n                point = point_args[0]\n                scalar_args = [arg for arg in other.args if not isinstance(arg, Point)]\n                if scalar_args:\n                    # Multiply the scalar factors together\n                    scalar = Mul(*scalar_args)\n                    # Create a new Point by multiplying the original point by the scalar\n                    scaled_point = point * scalar\n                    # Now add this scaled point to self\n                    return self + scaled_point\n        \n        try:\n            s, o = Point._normalize_dimension(self, Point(other, evaluate=False))\n        except TypeError:\n            raise GeometryError(\"Don't know how to add {} and a Point object\".format(other))\n\n        coords = [simplify(a + b) for a, b in zip(s, o)]\n        return Point(coords, evaluate=False)",
+          "explanation": "classic_swe step 23 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/geometry/point.py",
+          "before": "    def __rmul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n\n        This method handles cases like `factor * point` where the factor\n        is on the left side of the multiplication operator.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        This enables both `point * factor` and `factor * point` to work:\n\n        >>> Point(1, 2) * 3\n        Point2D(3, 6)\n        >>> 3 * Point(1, 2)\n        Point2D(3, 6)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.__mul__\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        return self.__mul__(factor)",
+          "after": "    def __rmul__(self, factor):\n        \"\"\"Multiply point's coordinates by a factor (right multiplication).\n\n        This method handles cases like `factor * point` where the factor\n        is on the left side of the multiplication operator.\n\n        Notes\n        =====\n\n        >>> from sympy.geometry.point import Point\n\n        This enables both `point * factor` and `factor * point` to work:\n\n        >>> Point(1, 2) * 3\n        Point2D(3, 6)\n        >>> 3 * Point(1, 2)\n        Point2D(3, 6)\n\n        See Also\n        ========\n\n        sympy.geometry.point.Point.__mul__\n        sympy.geometry.point.Point.scale\n        \"\"\"\n        return self.__mul__(factor)\n\n    def as_coeff_Mul(self, rational=False):\n        \"\"\"Efficiently extract the coefficient of a product.\n        \n        For a Point, this always returns (S.One, self) since a Point\n        cannot be decomposed into a coefficient and a remaining factor.\n        \n        This method is required for compatibility with SymPy's Mul class.\n        \"\"\"\n        return S.One, self",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/geometry/point.py",
+          "before": "        # Handle Mul expressions that contain a Point (e.g., 2.0*Point(1, 1))\n        if isinstance(other, Mul):\n            # Check if the Mul expression contains exactly one Point\n            point_args = [arg for arg in other.args if isinstance(arg, Point)]\n            if len(point_args) == 1:\n                # Extract the Point and the scalar factor\n                point = point_args[0]\n                scalar_args = [arg for arg in other.args if not isinstance(arg, Point)]\n                if scalar_args:\n                    # Multiply the scalar factors together\n                    scalar = Mul(*scalar_args)\n                    # Create a new Point by multiplying the original point by the scalar\n                    scaled_point = point * scalar\n                    # Now add this scaled point to self\n                    return self + scaled_point",
+          "after": "        # Handle Mul expressions that contain a Point (e.g., 2.0*Point(1, 1))\n        if isinstance(other, Mul):\n            # Check if the Mul expression contains exactly one Point\n            point_args = [arg for arg in other.args if isinstance(arg, Point)]\n            if len(point_args) == 1:\n                # Extract the Point and the scalar factor\n                point = point_args[0]\n                scalar_args = [arg for arg in other.args if not isinstance(arg, Point)]\n                if scalar_args:\n                    # Multiply the scalar factors together\n                    scalar = Mul(*scalar_args)\n                    # Create a new Point by multiplying the original point by the scalar\n                    scaled_point = point * scalar\n                    # Now add this scaled point to self\n                    return self + scaled_point\n                else:\n                    # If there are no scalar factors, just add the point directly\n                    return self + point",
+          "explanation": "classic_swe step 62 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 9,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 9,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/geometry/point.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/geometry/point.py"
+    ],
+    "gold_files": [
+      "sympy/geometry/point.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 1,
+    "minimized_added_lines": 53,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 4,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

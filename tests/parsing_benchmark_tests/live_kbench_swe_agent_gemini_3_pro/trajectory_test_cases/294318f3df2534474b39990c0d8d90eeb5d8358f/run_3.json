@@ -1,0 +1,236 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6,
+      7
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void destroy_super_work(struct work_struct *work)\n{\n\tstruct super_block *s = container_of(work, struct super_block,\n\t\t\t\t\t\t\tdestroy_work);\n\tfsnotify_sb_free(s);\n\tsecurity_sb_free(s);\n\tif (refcount_read(&s->s_user_ns->ns.__ns_ref) == 1 &&\n\t    atomic_read(&s->s_user_ns->ns.__ns_ref_active) > 0) {\n\t\tprintk(KERN_WARNING \"DEBUG: Destroying SB %s (%p). UserNS %p. Ref: %d, Active: %d\\n\",\n\t\t\ts->s_type ? s->s_type->name : \"sub-type-unknown\", s,\n\t\t\ts->s_user_ns,\n\t\t\trefcount_read(&s->s_user_ns->ns.__ns_ref),\n\t\t\tatomic_read(&s->s_user_ns->ns.__ns_ref_active));\n\t}\n\tput_user_ns(s->s_user_ns);\n\tkfree(s->s_subtype);\n",
+          "before": "static void destroy_super_work(struct work_struct *work)\n{\n\tstruct super_block *s = container_of(work, struct super_block,\n\t\t\t\t\t\t\tdestroy_work);\n\tfsnotify_sb_free(s);\n\tsecurity_sb_free(s);\n\tput_user_ns(s->s_user_ns);\n\tkfree(s->s_subtype);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/super.c b/fs/super.c\nindex 5bab94fb7e03..095374a43f4e 100644\n--- a/fs/super.c\n+++ b/fs/super.c\n@@ -277,6 +277,14 @@ static void destroy_super_work(struct work_struct *work)\n \t\t\t\t\t\t\tdestroy_work);\n \tfsnotify_sb_free(s);\n \tsecurity_sb_free(s);\n+\tif (refcount_read(&s->s_user_ns->ns.__ns_ref) == 1 &&\n+\t    atomic_read(&s->s_user_ns->ns.__ns_ref_active) > 0) {\n+\t\tprintk(KERN_WARNING \"DEBUG: Destroying SB %s (%p). UserNS %p. Ref: %d, Active: %d\\n\",\n+\t\t\ts->s_type ? s->s_type->name : \"sub-type-unknown\", s,\n+\t\t\ts->s_user_ns,\n+\t\t\trefcount_read(&s->s_user_ns->ns.__ns_ref),\n+\t\t\tatomic_read(&s->s_user_ns->ns.__ns_ref_active));\n+\t}\n \tput_user_ns(s->s_user_ns);\n \tkfree(s->s_subtype);\n \tfor (int i = 0; i < SB_FREEZE_LEVELS; i++)",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/super.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 0,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "\tsecurity_sb_free(s);\n\tput_user_ns(s->s_user_ns);\n\tkfree(s->s_subtype);\n",
+          "before": "\tsecurity_sb_free(s);\n\tif (refcount_read(&s->s_user_ns->ns.__ns_ref) == 1 &&\n\t    atomic_read(&s->s_user_ns->ns.__ns_ref_active) > 0) {\n\t\tprintk(KERN_WARNING \"DEBUG: Destroying SB %s (%p). UserNS %p. Ref: %d, Active: %d\\n\",\n\t\t\ts->s_type ? s->s_type->name : \"sub-type-unknown\", s,\n\t\t\ts->s_user_ns,\n\t\t\trefcount_read(&s->s_user_ns->ns.__ns_ref),\n\t\t\tatomic_read(&s->s_user_ns->ns.__ns_ref_active));\n\t}\n\tput_user_ns(s->s_user_ns);\n\tkfree(s->s_subtype);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 49 #1",
+          "filename": "fs/super.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        },
+        {
+          "after": "\t/*\n\t * Caller needs to wait for an RCU grace period to have passed\n\t * after making the mount point inaccessible to new accesses.\n\t */\n\tns_tree_remove(ns);\n\tmntput(ns->mq_mnt);\n",
+          "before": "\t/*\n\t * Caller needs to wait for an RCU grace period to have passed\n\t * after making the mount point inaccessible to new accesses.\n\t */\n\tmntput(ns->mq_mnt);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/ipc/namespace.c b/ipc/namespace.c\nindex 59b12fcb40bd..5a372efce6c2 100644\n--- a/ipc/namespace.c\n+++ b/ipc/namespace.c\n@@ -151,6 +151,7 @@ static void free_ipc_ns(struct ipc_namespace *ns)\n \t * Caller needs to wait for an RCU grace period to have passed\n \t * after making the mount point inaccessible to new accesses.\n \t */\n+\tns_tree_remove(ns);\n \tmntput(ns->mq_mnt);\n \tsem_exit_ns(ns);\n \tmsg_exit_ns(ns);",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "ipc/namespace.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        }
+      ],
+      "end_step": 51,
+      "revision_index": 1,
+      "start_step": 49
+    },
+    {
+      "edits": [
+        {
+          "after": "\t/*\n\t * Caller needs to wait for an RCU grace period to have passed\n\t * after making the mount point inaccessible to new accesses.\n\t */\n\tif (ns_tree_active(ns))\n\t\tns_tree_remove(ns);\n\tmntput(ns->mq_mnt);\n",
+          "before": "\t/*\n\t * Caller needs to wait for an RCU grace period to have passed\n\t * after making the mount point inaccessible to new accesses.\n\t */\n\tns_tree_remove(ns);\n\tmntput(ns->mq_mnt);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/ipc/namespace.c b/ipc/namespace.c\nindex 59b12fcb40bd..12e8a6c498ea 100644\n--- a/ipc/namespace.c\n+++ b/ipc/namespace.c\n@@ -151,6 +151,8 @@ static void free_ipc_ns(struct ipc_namespace *ns)\n \t * Caller needs to wait for an RCU grace period to have passed\n \t * after making the mount point inaccessible to new accesses.\n \t */\n+\tif (ns_tree_active(ns))\n+\t\tns_tree_remove(ns);\n \tmntput(ns->mq_mnt);\n \tsem_exit_ns(ns);\n \tmsg_exit_ns(ns);",
+          "explanation": "classic_swe step 56 #1",
+          "filename": "ipc/namespace.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 56
+        },
+        {
+          "after": "fail_mq:\n\tretire_mq_sysctls(ns);\n\n\tif (ns->mq_mnt) {\n\t\tmntput(ns->mq_mnt);\n\t\tput_ipc_ns(ns);\n\t\treturn ERR_PTR(err);\n\t}\n",
+          "before": "fail_mq:\n\tretire_mq_sysctls(ns);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/ipc/namespace.c b/ipc/namespace.c\nindex 59b12fcb40bd..0bb64f720ba9 100644\n--- a/ipc/namespace.c\n+++ b/ipc/namespace.c\n@@ -95,6 +95,12 @@ static struct ipc_namespace *create_ipc_ns(struct user_namespace *user_ns,\n fail_mq:\n \tretire_mq_sysctls(ns);\n \n+\tif (ns->mq_mnt) {\n+\t\tmntput(ns->mq_mnt);\n+\t\tput_ipc_ns(ns);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n fail_put:\n \tput_user_ns(ns->user_ns);\n \tns_common_free(ns);\n@@ -151,6 +157,8 @@ static void free_ipc_ns(struct ipc_namespace *ns)\n \t * Caller needs to wait for an RCU grace period to have passed\n \t * after making the mount point inaccessible to new accesses.\n \t */\n+\tif (ns_tree_active(ns))\n+\t\tns_tree_remove(ns);\n \tmntput(ns->mq_mnt);\n \tsem_exit_ns(ns);\n \tmsg_exit_ns(ns);",
+          "explanation": "classic_swe step 59 #1",
+          "filename": "ipc/namespace.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "revision_index": 2,
+      "start_step": 56
+    },
+    {
+      "edits": [
+        {
+          "after": "fail_mq:\n\tretire_mq_sysctls(ns);\n\n\tif (ns->mq_mnt) {\n\t\tmntput(ns->mq_mnt);\n\t\tns->mq_mnt = NULL;\n\t\tput_ipc_ns(ns);\n\t\treturn ERR_PTR(err);\n\t}\n",
+          "before": "fail_mq:\n\tretire_mq_sysctls(ns);\n\n\tif (ns->mq_mnt) {\n\t\tmntput(ns->mq_mnt);\n\t\tput_ipc_ns(ns);\n\t\treturn ERR_PTR(err);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/ipc/namespace.c b/ipc/namespace.c\nindex 59b12fcb40bd..e79e3393f32c 100644\n--- a/ipc/namespace.c\n+++ b/ipc/namespace.c\n@@ -95,6 +95,13 @@ static struct ipc_namespace *create_ipc_ns(struct user_namespace *user_ns,\n fail_mq:\n \tretire_mq_sysctls(ns);\n \n+\tif (ns->mq_mnt) {\n+\t\tmntput(ns->mq_mnt);\n+\t\tns->mq_mnt = NULL;\n+\t\tput_ipc_ns(ns);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n fail_put:\n \tput_user_ns(ns->user_ns);\n \tns_common_free(ns);\n@@ -151,6 +158,8 @@ static void free_ipc_ns(struct ipc_namespace *ns)\n \t * Caller needs to wait for an RCU grace period to have passed\n \t * after making the mount point inaccessible to new accesses.\n \t */\n+\tif (ns_tree_active(ns))\n+\t\tns_tree_remove(ns);\n \tmntput(ns->mq_mnt);\n \tsem_exit_ns(ns);\n \tmsg_exit_ns(ns);",
+          "explanation": "classic_swe step 68 #1",
+          "filename": "ipc/namespace.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 68
+        }
+      ],
+      "end_step": 68,
+      "revision_index": 3,
+      "start_step": 68
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (atomic_dec_and_test(&ns->__ns_ref_active)) {\n\t\tVFS_WARN_ON_ONCE(is_initial_namespace(ns));\n\t\tVFS_WARN_ON_ONCE(!__ns_ref_read(ns));\n\t}\n}\n",
+          "before": "\tif (atomic_dec_and_test(&ns->__ns_ref_active)) {\n\t\tVFS_WARN_ON_ONCE(is_initial_namespace(ns));\n\t\tVFS_WARN_ON_ONCE(!__ns_ref_read(ns));\n\t\t__ns_ref_active_put_owner(ns);\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/ns_common.h b/include/linux/ns_common.h\nindex 791b18dc77d0..fb40f513e2e3 100644\n--- a/include/linux/ns_common.h\n+++ b/include/linux/ns_common.h\n@@ -325,7 +325,6 @@ static __always_inline void __ns_ref_active_put(struct ns_common *ns)\n \tif (atomic_dec_and_test(&ns->__ns_ref_active)) {\n \t\tVFS_WARN_ON_ONCE(is_initial_namespace(ns));\n \t\tVFS_WARN_ON_ONCE(!__ns_ref_read(ns));\n-\t\t__ns_ref_active_put_owner(ns);\n \t}\n }\n #define ns_ref_active_put(__ns) \\\ndiff --git a/ipc/namespace.c b/ipc/namespace.c\nindex 59b12fcb40bd..e79e3393f32c 100644\n--- a/ipc/namespace.c\n+++ b/ipc/namespace.c\n@@ -95,6 +95,13 @@ static struct ipc_namespace *create_ipc_ns(struct user_namespace *user_ns,\n fail_mq:\n \tretire_mq_sysctls(ns);\n \n+\tif (ns->mq_mnt) {\n+\t\tmntput(ns->mq_mnt);\n+\t\tns->mq_mnt = NULL;\n+\t\tput_ipc_ns(ns);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n fail_put:\n \tput_user_ns(ns->user_ns);\n \tns_common_free(ns);\n@@ -151,6 +158,8 @@ static void free_ipc_ns(struct ipc_namespace *ns)\n \t * Caller needs to wait for an RCU grace period to have passed\n \t * after making the mount point inaccessible to new accesses.\n \t */\n+\tif (ns_tree_active(ns))\n+\t\tns_tree_remove(ns);\n \tmntput(ns->mq_mnt);\n \tsem_exit_ns(ns);\n \tmsg_exit_ns(ns);",
+          "explanation": "classic_swe step 71 #1",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 71
+        },
+        {
+          "after": "\twrite_sequnlock(&ns_tree_lock);\n\n\t__ns_ref_active_put_owner(ns);\n}\nEXPORT_SYMBOL_GPL(__ns_tree_remove);\n",
+          "before": "\twrite_sequnlock(&ns_tree_lock);\n}\nEXPORT_SYMBOL_GPL(__ns_tree_remove);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/ns_common.h b/include/linux/ns_common.h\nindex 791b18dc77d0..fb40f513e2e3 100644\n--- a/include/linux/ns_common.h\n+++ b/include/linux/ns_common.h\n@@ -325,7 +325,6 @@ static __always_inline void __ns_ref_active_put(struct ns_common *ns)\n \tif (atomic_dec_and_test(&ns->__ns_ref_active)) {\n \t\tVFS_WARN_ON_ONCE(is_initial_namespace(ns));\n \t\tVFS_WARN_ON_ONCE(!__ns_ref_read(ns));\n-\t\t__ns_ref_active_put_owner(ns);\n \t}\n }\n #define ns_ref_active_put(__ns) \\\ndiff --git a/ipc/namespace.c b/ipc/namespace.c\nindex 59b12fcb40bd..e79e3393f32c 100644\n--- a/ipc/namespace.c\n+++ b/ipc/namespace.c\n@@ -95,6 +95,13 @@ static struct ipc_namespace *create_ipc_ns(struct user_namespace *user_ns,\n fail_mq:\n \tretire_mq_sysctls(ns);\n \n+\tif (ns->mq_mnt) {\n+\t\tmntput(ns->mq_mnt);\n+\t\tns->mq_mnt = NULL;\n+\t\tput_ipc_ns(ns);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n fail_put:\n \tput_user_ns(ns->user_ns);\n \tns_common_free(ns);\n@@ -151,6 +158,8 @@ static void free_ipc_ns(struct ipc_namespace *ns)\n \t * Caller needs to wait for an RCU grace period to have passed\n \t * after making the mount point inaccessible to new accesses.\n \t */\n+\tif (ns_tree_active(ns))\n+\t\tns_tree_remove(ns);\n \tmntput(ns->mq_mnt);\n \tsem_exit_ns(ns);\n \tmsg_exit_ns(ns);\ndiff --git a/kernel/nstree.c b/kernel/nstree.c\nindex f27f772a6762..dbe8412ad3e8 100644\n--- a/kernel/nstree.c\n+++ b/kernel/nstree.c\n@@ -216,6 +216,8 @@ void __ns_tree_remove(struct ns_common *ns, struct ns_tree *ns_tree)\n \t}\n \n \twrite_sequnlock(&ns_tree_lock);\n+\n+\t__ns_ref_active_put_owner(ns);\n }\n EXPORT_SYMBOL_GPL(__ns_tree_remove);",
+          "explanation": "classic_swe step 72 #1",
+          "filename": "kernel/nstree.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 72
+        }
+      ],
+      "end_step": 72,
+      "revision_index": 4,
+      "start_step": 71
+    }
+  ],
+  "success_step": 72
+}

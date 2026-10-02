@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)\n{\n\tstruct iommufd_eventq *eventq = filep->private_data;\n\n\tif (!eventq)\n\t\treturn 0;\n\n\trefcount_dec(&eventq->obj.users);\n\tiommufd_ctx_put(eventq->ictx);\n\treturn 0;\n}",
+          "before": "static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)\n{\n\tstruct iommufd_eventq *eventq = filep->private_data;\n\n\trefcount_dec(&eventq->obj.users);\n\tiommufd_ctx_put(eventq->ictx);\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/eventq.c b/drivers/iommu/iommufd/eventq.c\nindex fc4de63b0bce..0e1cef3946e2 100644\n--- a/drivers/iommu/iommufd/eventq.c\n+++ b/drivers/iommu/iommufd/eventq.c\n@@ -373,6 +373,9 @@ static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)\n {\n \tstruct iommufd_eventq *eventq = filep->private_data;\n \n+\tif (!eventq)\n+\t\treturn 0;\n+\n \trefcount_dec(&eventq->obj.users);\n \tiommufd_ctx_put(eventq->ictx);\n \treturn 0;",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "drivers/iommu/iommufd/eventq.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        },
+        {
+          "after": "\tfdno = get_unused_fd_flags(O_CLOEXEC);\n\tif (fdno < 0) {\n\t\trefcount_dec(&eventq->obj.users);\n\t\tiommufd_ctx_put(eventq->ictx);\n\t\tfilep->private_data = NULL;\n\t\tfput(filep);\n\t}\n\treturn fdno;",
+          "before": "\tfdno = get_unused_fd_flags(O_CLOEXEC);\n\tif (fdno < 0)\n\t\tfput(filep);\n\treturn fdno;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/eventq.c b/drivers/iommu/iommufd/eventq.c\nindex fc4de63b0bce..b6f21607b94e 100644\n--- a/drivers/iommu/iommufd/eventq.c\n+++ b/drivers/iommu/iommufd/eventq.c\n@@ -373,6 +373,9 @@ static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)\n {\n \tstruct iommufd_eventq *eventq = filep->private_data;\n \n+\tif (!eventq)\n+\t\treturn 0;\n+\n \trefcount_dec(&eventq->obj.users);\n \tiommufd_ctx_put(eventq->ictx);\n \treturn 0;\n@@ -409,8 +412,12 @@ static int iommufd_eventq_init(struct iommufd_eventq *eventq, char *name,\n \trefcount_inc(&eventq->obj.users);\n \n \tfdno = get_unused_fd_flags(O_CLOEXEC);\n-\tif (fdno < 0)\n+\tif (fdno < 0) {\n+\t\trefcount_dec(&eventq->obj.users);\n+\t\tiommufd_ctx_put(eventq->ictx);\n+\t\tfilep->private_data = NULL;\n \t\tfput(filep);\n+\t}\n \treturn fdno;\n }",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "drivers/iommu/iommufd/eventq.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        }
+      ],
+      "end_step": 10,
+      "revision_index": 0,
+      "start_step": 9
+    },
+    {
+      "edits": [
+        {
+          "after": "out_put_fdno:\n\tput_unused_fd(fdno);\n\trefcount_dec(&fault->common.obj.users);\n\tiommufd_ctx_put(fault->common.ictx);\n\tfault->common.filep->private_data = NULL;\n\tfput(fault->common.filep);\n\treturn rc;\n}",
+          "before": "out_put_fdno:\n\tput_unused_fd(fdno);\n\tfput(fault->common.filep);\n\treturn rc;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/eventq.c b/drivers/iommu/iommufd/eventq.c\nindex fc4de63b0bce..d495cb97f40d 100644\n--- a/drivers/iommu/iommufd/eventq.c\n+++ b/drivers/iommu/iommufd/eventq.c\n@@ -373,6 +373,9 @@ static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)\n {\n \tstruct iommufd_eventq *eventq = filep->private_data;\n \n+\tif (!eventq)\n+\t\treturn 0;\n+\n \trefcount_dec(&eventq->obj.users);\n \tiommufd_ctx_put(eventq->ictx);\n \treturn 0;\n@@ -409,8 +412,12 @@ static int iommufd_eventq_init(struct iommufd_eventq *eventq, char *name,\n \trefcount_inc(&eventq->obj.users);\n \n \tfdno = get_unused_fd_flags(O_CLOEXEC);\n-\tif (fdno < 0)\n+\tif (fdno < 0) {\n+\t\trefcount_dec(&eventq->obj.users);\n+\t\tiommufd_ctx_put(eventq->ictx);\n+\t\tfilep->private_data = NULL;\n \t\tfput(filep);\n+\t}\n \treturn fdno;\n }\n \n@@ -452,6 +459,9 @@ int iommufd_fault_alloc(struct iommufd_ucmd *ucmd)\n \treturn 0;\n out_put_fdno:\n \tput_unused_fd(fdno);\n+\trefcount_dec(&fault->common.obj.users);\n+\tiommufd_ctx_put(fault->common.ictx);\n+\tfault->common.filep->private_data = NULL;\n \tfput(fault->common.filep);\n \treturn rc;\n }",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "drivers/iommu/iommufd/eventq.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "out_put_fdno:\n\tput_unused_fd(fdno);\n\trefcount_dec(&veventq->common.obj.users);\n\tiommufd_ctx_put(veventq->common.ictx);\n\tveventq->common.filep->private_data = NULL;\n\tfput(veventq->common.filep);\nout_abort:",
+          "before": "out_put_fdno:\n\tput_unused_fd(fdno);\n\tfput(veventq->common.filep);\nout_abort:",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/eventq.c b/drivers/iommu/iommufd/eventq.c\nindex fc4de63b0bce..795bb4ddacec 100644\n--- a/drivers/iommu/iommufd/eventq.c\n+++ b/drivers/iommu/iommufd/eventq.c\n@@ -373,6 +373,9 @@ static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)\n {\n \tstruct iommufd_eventq *eventq = filep->private_data;\n \n+\tif (!eventq)\n+\t\treturn 0;\n+\n \trefcount_dec(&eventq->obj.users);\n \tiommufd_ctx_put(eventq->ictx);\n \treturn 0;\n@@ -409,8 +412,12 @@ static int iommufd_eventq_init(struct iommufd_eventq *eventq, char *name,\n \trefcount_inc(&eventq->obj.users);\n \n \tfdno = get_unused_fd_flags(O_CLOEXEC);\n-\tif (fdno < 0)\n+\tif (fdno < 0) {\n+\t\trefcount_dec(&eventq->obj.users);\n+\t\tiommufd_ctx_put(eventq->ictx);\n+\t\tfilep->private_data = NULL;\n \t\tfput(filep);\n+\t}\n \treturn fdno;\n }\n \n@@ -452,6 +459,9 @@ int iommufd_fault_alloc(struct iommufd_ucmd *ucmd)\n \treturn 0;\n out_put_fdno:\n \tput_unused_fd(fdno);\n+\trefcount_dec(&fault->common.obj.users);\n+\tiommufd_ctx_put(fault->common.ictx);\n+\tfault->common.filep->private_data = NULL;\n \tfput(fault->common.filep);\n \treturn rc;\n }\n@@ -536,6 +546,9 @@ int iommufd_veventq_alloc(struct iommufd_ucmd *ucmd)\n \n out_put_fdno:\n \tput_unused_fd(fdno);\n+\trefcount_dec(&veventq->common.obj.users);\n+\tiommufd_ctx_put(veventq->common.ictx);\n+\tveventq->common.filep->private_data = NULL;\n \tfput(veventq->common.filep);\n out_abort:\n \tiommufd_object_abort_and_destroy(ucmd->ictx, &veventq->common.obj);",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "drivers/iommu/iommufd/eventq.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 1,
+      "start_step": 18
+    }
+  ],
+  "success_step": 24
+}

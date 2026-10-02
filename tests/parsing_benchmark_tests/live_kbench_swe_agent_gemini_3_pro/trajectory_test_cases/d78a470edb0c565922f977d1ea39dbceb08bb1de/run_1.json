@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!strp->copy_mode && force_refresh) {\n\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n\t\t\tif (tcp_sk(strp->sk)->repair)\n\t\t\t\treturn;\n\t\t\tif (WARN_ON(1))\n\t\t\t\treturn;\n\t\t}\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}",
+          "before": "\tif (!strp->copy_mode && force_refresh) {\n\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n\t\t\treturn;\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tls/tls_strp.c b/net/tls/tls_strp.c\nindex 77e33e1e340e..4b23623e4e38 100644\n--- a/net/tls/tls_strp.c\n+++ b/net/tls/tls_strp.c\n@@ -483,8 +483,12 @@ void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n \tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n \n \tif (!strp->copy_mode && force_refresh) {\n-\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n-\t\t\treturn;\n+\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n+\t\t\tif (tcp_sk(strp->sk)->repair)\n+\t\t\t\treturn;\n+\t\t\tif (WARN_ON(1))\n+\t\t\t\treturn;\n+\t\t}\n \n \t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n \t}",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "net/tls/tls_strp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    },
+    {
+      "edits": [
+        {
+          "after": "int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);",
+          "before": "void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tls/tls.h b/net/tls/tls.h\nindex 774859b63f0d..0769012dbeeb 100644\n--- a/net/tls/tls.h\n+++ b/net/tls/tls.h\n@@ -196,7 +196,7 @@ void tls_strp_msg_done(struct tls_strparser *strp);\n int tls_rx_msg_size(struct tls_strparser *strp, struct sk_buff *skb);\n void tls_rx_msg_ready(struct tls_strparser *strp);\n \n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n int tls_strp_msg_cow(struct tls_sw_context_rx *ctx);\n struct sk_buff *tls_strp_msg_detach(struct tls_sw_context_rx *ctx);\n int tls_strp_msg_hold(struct tls_strparser *strp, struct sk_buff_head *dst);\ndiff --git a/net/tls/tls_strp.c b/net/tls/tls_strp.c\nindex 77e33e1e340e..4b23623e4e38 100644\n--- a/net/tls/tls_strp.c\n+++ b/net/tls/tls_strp.c\n@@ -483,8 +483,12 @@ void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n \tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n \n \tif (!strp->copy_mode && force_refresh) {\n-\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n-\t\t\treturn;\n+\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n+\t\t\tif (tcp_sk(strp->sk)->repair)\n+\t\t\t\treturn;\n+\t\t\tif (WARN_ON(1))\n+\t\t\t\treturn;\n+\t\t}\n \n \t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n \t}",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "net/tls/tls.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n{\n\tstruct strp_msg *rxm;\n\tstruct tls_msg *tlm;\n\n\tDEBUG_NET_WARN_ON_ONCE(!strp->msg_ready);\n\tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n\n\tif (!strp->copy_mode && force_refresh) {\n\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n\t\t\tif (tcp_sk(strp->sk)->repair)\n\t\t\t\treturn -EIO;\n\t\t\tif (WARN_ON(1))\n\t\t\t\treturn -EIO;\n\t\t}\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}\n\n\trxm = strp_msg(strp->anchor);\n\trxm->full_len\t= strp->stm.full_len;\n\trxm->offset\t= strp->stm.offset;\n\ttlm = tls_msg(strp->anchor);\n\ttlm->control\t= strp->mark;\n\n\treturn 0;\n}",
+          "before": "void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n{\n\tstruct strp_msg *rxm;\n\tstruct tls_msg *tlm;\n\n\tDEBUG_NET_WARN_ON_ONCE(!strp->msg_ready);\n\tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n\n\tif (!strp->copy_mode && force_refresh) {\n\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n\t\t\tif (tcp_sk(strp->sk)->repair)\n\t\t\t\treturn;\n\t\t\tif (WARN_ON(1))\n\t\t\t\treturn;\n\t\t}\n\n\t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n\t}\n\n\trxm = strp_msg(strp->anchor);\n\trxm->full_len\t= strp->stm.full_len;\n\trxm->offset\t= strp->stm.offset;\n\ttlm = tls_msg(strp->anchor);\n\ttlm->control\t= strp->mark;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tls/tls.h b/net/tls/tls.h\nindex 774859b63f0d..0769012dbeeb 100644\n--- a/net/tls/tls.h\n+++ b/net/tls/tls.h\n@@ -196,7 +196,7 @@ void tls_strp_msg_done(struct tls_strparser *strp);\n int tls_rx_msg_size(struct tls_strparser *strp, struct sk_buff *skb);\n void tls_rx_msg_ready(struct tls_strparser *strp);\n \n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n int tls_strp_msg_cow(struct tls_sw_context_rx *ctx);\n struct sk_buff *tls_strp_msg_detach(struct tls_sw_context_rx *ctx);\n int tls_strp_msg_hold(struct tls_strparser *strp, struct sk_buff_head *dst);\ndiff --git a/net/tls/tls_strp.c b/net/tls/tls_strp.c\nindex 77e33e1e340e..3612ceba181f 100644\n--- a/net/tls/tls_strp.c\n+++ b/net/tls/tls_strp.c\n@@ -474,7 +474,7 @@ static void tls_strp_load_anchor_with_queue(struct tls_strparser *strp, int len)\n \tstrp->stm.offset = offset;\n }\n \n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n {\n \tstruct strp_msg *rxm;\n \tstruct tls_msg *tlm;\n@@ -483,8 +483,12 @@ void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n \tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n \n \tif (!strp->copy_mode && force_refresh) {\n-\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n-\t\t\treturn;\n+\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n+\t\t\tif (tcp_sk(strp->sk)->repair)\n+\t\t\t\treturn -EIO;\n+\t\t\tif (WARN_ON(1))\n+\t\t\t\treturn -EIO;\n+\t\t}\n \n \t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n \t}\n@@ -494,6 +498,8 @@ void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n \trxm->offset\t= strp->stm.offset;\n \ttlm = tls_msg(strp->anchor);\n \ttlm->control\t= strp->mark;\n+\n+\treturn 0;\n }\n \n /* Called with lock held on lower socket */",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "net/tls/tls_strp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "\tret = tls_strp_msg_load(&ctx->strp, released);\n\tif (ret)\n\t\treturn ret;\n\n\treturn 1;",
+          "before": "\ttls_strp_msg_load(&ctx->strp, released);\n\n\treturn 1;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/tls/tls.h b/net/tls/tls.h\nindex 774859b63f0d..0769012dbeeb 100644\n--- a/net/tls/tls.h\n+++ b/net/tls/tls.h\n@@ -196,7 +196,7 @@ void tls_strp_msg_done(struct tls_strparser *strp);\n int tls_rx_msg_size(struct tls_strparser *strp, struct sk_buff *skb);\n void tls_rx_msg_ready(struct tls_strparser *strp);\n \n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh);\n int tls_strp_msg_cow(struct tls_sw_context_rx *ctx);\n struct sk_buff *tls_strp_msg_detach(struct tls_sw_context_rx *ctx);\n int tls_strp_msg_hold(struct tls_strparser *strp, struct sk_buff_head *dst);\ndiff --git a/net/tls/tls_strp.c b/net/tls/tls_strp.c\nindex 77e33e1e340e..3612ceba181f 100644\n--- a/net/tls/tls_strp.c\n+++ b/net/tls/tls_strp.c\n@@ -474,7 +474,7 @@ static void tls_strp_load_anchor_with_queue(struct tls_strparser *strp, int len)\n \tstrp->stm.offset = offset;\n }\n \n-void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n+int tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n {\n \tstruct strp_msg *rxm;\n \tstruct tls_msg *tlm;\n@@ -483,8 +483,12 @@ void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n \tDEBUG_NET_WARN_ON_ONCE(!strp->stm.full_len);\n \n \tif (!strp->copy_mode && force_refresh) {\n-\t\tif (WARN_ON(tcp_inq(strp->sk) < strp->stm.full_len))\n-\t\t\treturn;\n+\t\tif (tcp_inq(strp->sk) < strp->stm.full_len) {\n+\t\t\tif (tcp_sk(strp->sk)->repair)\n+\t\t\t\treturn -EIO;\n+\t\t\tif (WARN_ON(1))\n+\t\t\t\treturn -EIO;\n+\t\t}\n \n \t\ttls_strp_load_anchor_with_queue(strp, strp->stm.full_len);\n \t}\n@@ -494,6 +498,8 @@ void tls_strp_msg_load(struct tls_strparser *strp, bool force_refresh)\n \trxm->offset\t= strp->stm.offset;\n \ttlm = tls_msg(strp->anchor);\n \ttlm->control\t= strp->mark;\n+\n+\treturn 0;\n }\n \n /* Called with lock held on lower socket */\ndiff --git a/net/tls/tls_sw.c b/net/tls/tls_sw.c\nindex 914d4e1516a3..b18ee26f53d8 100644\n--- a/net/tls/tls_sw.c\n+++ b/net/tls/tls_sw.c\n@@ -1360,7 +1360,9 @@ tls_rx_rec_wait(struct sock *sk, struct sk_psock *psock, bool nonblock,\n \t\t\treturn sock_intr_errno(timeo);\n \t}\n \n-\ttls_strp_msg_load(&ctx->strp, released);\n+\tret = tls_strp_msg_load(&ctx->strp, released);\n+\tif (ret)\n+\t\treturn ret;\n \n \treturn 1;\n }",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "net/tls/tls_sw.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 1,
+      "start_step": 16
+    }
+  ],
+  "success_step": 24
+}

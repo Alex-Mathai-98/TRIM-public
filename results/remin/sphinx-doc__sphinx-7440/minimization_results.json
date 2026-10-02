@@ -1,0 +1,156 @@
+{
+  "bug_id": "sphinx-doc__sphinx-7440",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/domains/std.py",
+        "before": "    std = cast(StandardDomain, env.get_domain('std'))\n    std.note_object('term', termtext.lower(), node_id, location=term)",
+        "after": "    std = cast(StandardDomain, env.get_domain('std'))\n    std.note_object('term', termtext, node_id, location=term)",
+        "explanation": "classic_swe step 24 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/test_domain_std.py",
+        "before": "def test_glossary_conflicted_labels(app):\n    text = (\".. _term-foo:\\n\"\n            \".. glossary::\\n\"\n            \"\\n\"\n            \"   foo\\n\")\n    restructuredtext.parse(app, text)\n    objects = list(app.env.get_domain(\"std\").get_objects())\n    assert (\"foo\", \"foo\", \"term\", \"index\", \"term-0\", -1) in objects",
+        "after": "def test_glossary_conflicted_labels(app):\n    text = (\".. _term-foo:\\n\"\n            \".. glossary::\\n\"\n            \"\\n\"\n            \"   foo\\n\")\n    restructuredtext.parse(app, text)\n    objects = list(app.env.get_domain(\"std\").get_objects())\n    assert (\"foo\", \"foo\", \"term\", \"index\", \"term-0\", -1) in objects\n\n\ndef test_glossary_case_sensitivity(app, status, warning):\n    # Terms with different cases should be allowed\n    text = (\".. glossary::\\n\"\n            \"\\n\"\n            \"   MySQL\\n\"\n            \"       The MySQL database system.\\n\"\n            \"\\n\"\n            \"   mysql\\n\"\n            \"       A command-line tool for MySQL.\\n\")\n    restructuredtext.parse(app, text, \"case_sensitivity\")\n    \n    # Should not generate duplicate term warnings\n    assert \"duplicate term description\" not in warning.getvalue()\n    \n    # Both terms should be registered\n    objects = list(app.env.get_domain(\"std\").get_objects())\n    mysql_objects = [obj for obj in objects if obj[0] in ('MySQL', 'mysql')]\n    assert len(mysql_objects) == 2\n    assert (\"MySQL\", \"MySQL\", \"term\", \"case_sensitivity\", \"term-MySQL\", -1) in objects\n    assert (\"mysql\", \"mysql\", \"term\", \"case_sensitivity\", \"term-mysql\", -1) in objects",
+        "explanation": "classic_swe step 49 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/domains/std.py b/sphinx/domains/std.py\nindex d820cfe5c..edc110d2a 100644\n--- a/sphinx/domains/std.py\n+++ b/sphinx/domains/std.py\n@@ -305,7 +305,7 @@ def make_glossary_term(env: \"BuildEnvironment\", textnodes: Iterable[Node], index\n         term['ids'].append(node_id)\n \n     std = cast(StandardDomain, env.get_domain('std'))\n-    std.note_object('term', termtext.lower(), node_id, location=term)\n+    std.note_object('term', termtext, node_id, location=term)\n \n     # add an index entry too\n     indexnode = addnodes.index()\ndiff --git a/tests/test_domain_std.py b/tests/test_domain_std.py\nindex aa1d29eb1..333741d88 100644\n--- a/tests/test_domain_std.py\n+++ b/tests/test_domain_std.py\n@@ -280,6 +280,28 @@ def test_glossary_conflicted_labels(app):\n     assert (\"foo\", \"foo\", \"term\", \"index\", \"term-0\", -1) in objects\n \n \n+def test_glossary_case_sensitivity(app, status, warning):\n+    # Terms with different cases should be allowed\n+    text = (\".. glossary::\\n\"\n+            \"\\n\"\n+            \"   MySQL\\n\"\n+            \"       The MySQL database system.\\n\"\n+            \"\\n\"\n+            \"   mysql\\n\"\n+            \"       A command-line tool for MySQL.\\n\")\n+    restructuredtext.parse(app, text, \"case_sensitivity\")\n+    \n+    # Should not generate duplicate term warnings\n+    assert \"duplicate term description\" not in warning.getvalue()\n+    \n+    # Both terms should be registered\n+    objects = list(app.env.get_domain(\"std\").get_objects())\n+    mysql_objects = [obj for obj in objects if obj[0] in ('MySQL', 'mysql')]\n+    assert len(mysql_objects) == 2\n+    assert (\"MySQL\", \"MySQL\", \"term\", \"case_sensitivity\", \"term-MySQL\", -1) in objects\n+    assert (\"mysql\", \"mysql\", \"term\", \"case_sensitivity\", \"term-mysql\", -1) in objects\n+\n+\n def test_cmdoption(app):\n     text = (\".. program:: ls\\n\"\n             \"\\n\"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      10
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      10
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      1,
+      2,
+      10
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "greedy_removal_edit_no_crash": 1,
+    "edit_list_after_greedy": [
+      1,
+      10
+    ],
+    "greedy_removal_edit_still_crashes": 1,
+    "edit_list_after_refinement": [
+      1,
+      10
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 2,
+  "reduction": "3_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/domains/std.py",
+          "before": "    std = cast(StandardDomain, env.get_domain('std'))\n    std.note_object('term', termtext.lower(), node_id, location=term)",
+          "after": "    std = cast(StandardDomain, env.get_domain('std'))\n    std.note_object('term', termtext, node_id, location=term)",
+          "explanation": "classic_swe step 24 #1"
+        },
+        {
+          "filename": "sphinx/domains/std.py",
+          "before": "    def _resolve_obj_xref(self, env: \"BuildEnvironment\", fromdocname: str,\n                          builder: \"Builder\", typ: str, target: str,\n                          node: pending_xref, contnode: Element) -> Element:\n        objtypes = self.objtypes_for_role(typ) or []\n        for objtype in objtypes:\n            if (objtype, target) in self.objects:\n                docname, labelid = self.objects[objtype, target]\n                break\n        else:\n            docname, labelid = '', ''\n        if not docname:\n            return None\n        return make_refnode(builder, fromdocname, docname,\n                            labelid, contnode)",
+          "after": "    def _resolve_obj_xref(self, env: \"BuildEnvironment\", fromdocname: str,\n                          builder: \"Builder\", typ: str, target: str,\n                          node: pending_xref, contnode: Element) -> Element:\n        objtypes = self.objtypes_for_role(typ) or []\n        for objtype in objtypes:\n            # For terms, use case-insensitive lookup\n            if objtype == 'term':\n                # Try to find a term with case-insensitive matching\n                for (stored_objtype, stored_target), (docname, labelid) in self.objects.items():\n                    if stored_objtype == 'term' and stored_target.lower() == target.lower():\n                        return make_refnode(builder, fromdocname, docname,\n                                            labelid, contnode)\n            else:\n                if (objtype, target) in self.objects:\n                    docname, labelid = self.objects[objtype, target]\n                    return make_refnode(builder, fromdocname, docname,\n                                        labelid, contnode)\n        return None",
+          "explanation": "classic_swe step 31 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/test_domain_std.py",
+          "before": "def test_glossary_conflicted_labels(app):\n    text = (\".. _term-foo:\\n\"\n            \".. glossary::\\n\"\n            \"\\n\"\n            \"   foo\\n\")\n    restructuredtext.parse(app, text)\n    objects = list(app.env.get_domain(\"std\").get_objects())\n    assert (\"foo\", \"foo\", \"term\", \"index\", \"term-0\", -1) in objects",
+          "after": "def test_glossary_conflicted_labels(app):\n    text = (\".. _term-foo:\\n\"\n            \".. glossary::\\n\"\n            \"\\n\"\n            \"   foo\\n\")\n    restructuredtext.parse(app, text)\n    objects = list(app.env.get_domain(\"std\").get_objects())\n    assert (\"foo\", \"foo\", \"term\", \"index\", \"term-0\", -1) in objects\n\n\ndef test_glossary_case_sensitivity(app, status, warning):\n    # Terms with different cases should be allowed\n    text = (\".. glossary::\\n\"\n            \"\\n\"\n            \"   MySQL\\n\"\n            \"       The MySQL database system.\\n\"\n            \"\\n\"\n            \"   mysql\\n\"\n            \"       A command-line tool for MySQL.\\n\")\n    restructuredtext.parse(app, text, \"case_sensitivity\")\n    \n    # Should not generate duplicate term warnings\n    assert \"duplicate term description\" not in warning.getvalue()\n    \n    # Both terms should be registered\n    objects = list(app.env.get_domain(\"std\").get_objects())\n    mysql_objects = [obj for obj in objects if obj[0] in ('MySQL', 'mysql')]\n    assert len(mysql_objects) == 2\n    assert (\"MySQL\", \"MySQL\", \"term\", \"case_sensitivity\", \"term-MySQL\", -1) in objects\n    assert (\"mysql\", \"mysql\", \"term\", \"case_sensitivity\", \"term-mysql\", -1) in objects",
+          "explanation": "classic_swe step 49 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 12,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 12,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "sphinx/domains/std.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/test_domain_std.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/domains/std.py",
+      "tests/test_domain_std.py"
+    ],
+    "gold_files": [
+      "sphinx/domains/std.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 23,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

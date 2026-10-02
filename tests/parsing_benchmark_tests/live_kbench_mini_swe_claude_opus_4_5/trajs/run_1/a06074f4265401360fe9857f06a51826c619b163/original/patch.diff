@@ -1,0 +1,52 @@
+diff --git a/include/linux/mmap_lock.h b/include/linux/mmap_lock.h
+index 4706c6769902..e005a6f8f99c 100644
+--- a/include/linux/mmap_lock.h
++++ b/include/linux/mmap_lock.h
+@@ -211,6 +211,21 @@ static inline void mmap_read_unlock(struct mm_struct *mm)
+ 	up_read(&mm->mmap_lock);
+ }
+ 
++/*
++ * These non-trace versions are used by BPF to avoid recursion when
++ * a BPF program is attached to mmap_lock tracepoints and calls
++ * bpf_get_stack() which needs to acquire mmap_lock.
++ */
++static inline bool mmap_read_trylock_non_trace(struct mm_struct *mm)
++{
++	return down_read_trylock(&mm->mmap_lock) != 0;
++}
++
++static inline void mmap_read_unlock_non_trace(struct mm_struct *mm)
++{
++	up_read(&mm->mmap_lock);
++}
++
+ static inline void mmap_read_unlock_non_owner(struct mm_struct *mm)
+ {
+ 	__mmap_lock_trace_released(mm, false);
+diff --git a/kernel/bpf/mmap_unlock_work.h b/kernel/bpf/mmap_unlock_work.h
+index 5d18d7d85bef..626e64b87478 100644
+--- a/kernel/bpf/mmap_unlock_work.h
++++ b/kernel/bpf/mmap_unlock_work.h
+@@ -49,7 +49,7 @@ static inline bool bpf_mmap_unlock_get_irq_work(struct mmap_unlock_irq_work **wo
+ static inline void bpf_mmap_unlock_mm(struct mmap_unlock_irq_work *work, struct mm_struct *mm)
+ {
+ 	if (!work) {
+-		mmap_read_unlock(mm);
++		mmap_read_unlock_non_trace(mm);
+ 	} else {
+ 		work->mm = mm;
+ 
+diff --git a/kernel/bpf/stackmap.c b/kernel/bpf/stackmap.c
+index 3615c06b7dfa..7cabab2befe5 100644
+--- a/kernel/bpf/stackmap.c
++++ b/kernel/bpf/stackmap.c
+@@ -154,7 +154,7 @@ static void stack_map_get_build_id_offset(struct bpf_stack_build_id *id_offs,
+ 	 * build_id.
+ 	 */
+ 	if (!user || !current || !current->mm || irq_work_busy ||
+-	    !mmap_read_trylock(current->mm)) {
++	    !mmap_read_trylock_non_trace(current->mm)) {
+ 		/* cannot access current->mm, fall back to ips */
+ 		for (i = 0; i < trace_nr; i++) {
+ 			id_offs[i].status = BPF_STACK_BUILD_ID_IP;

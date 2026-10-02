@@ -1,0 +1,23 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6abc9f17ea3c..68dd6f1f8a0c 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1098,8 +1098,16 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 
+ 		if (first) {
+ 			if (good_csum_type) {
+-				struct bch_csum csum = csum_vstruct(c, BSET_CSUM_TYPE(i), nonce, b->data);
+-				bool csum_bad = bch2_crc_cmp(b->data->csum, csum);
++				struct bch_csum csum = { 0 };
++				bool csum_bad;
++
++				if (vstruct_end(i) > (void *) b->data + btree_buf_bytes(b)) {
++					csum_bad = true;
++				} else {
++					csum = csum_vstruct(c, BSET_CSUM_TYPE(i), nonce, b->data);
++					csum_bad = bch2_crc_cmp(b->data->csum, csum);
++				}
++
+ 				if (csum_bad)
+ 					bch2_io_error(ca, BCH_MEMBER_ERROR_checksum);
+ 

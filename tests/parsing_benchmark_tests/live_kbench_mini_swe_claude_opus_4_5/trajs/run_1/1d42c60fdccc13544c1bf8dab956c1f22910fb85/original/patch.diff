@@ -1,0 +1,42 @@
+diff --git a/drivers/media/test-drivers/vidtv/vidtv_channel.c b/drivers/media/test-drivers/vidtv/vidtv_channel.c
+index 7838e6272712..1ae6229ce65c 100644
+--- a/drivers/media/test-drivers/vidtv/vidtv_channel.c
++++ b/drivers/media/test-drivers/vidtv/vidtv_channel.c
+@@ -471,7 +471,7 @@ int vidtv_channel_si_init(struct vidtv_mux *m)
+ 	m->si.pmt_secs = vidtv_psi_pmt_create_sec_for_each_pat_entry(m->si.pat,
+ 								     m->pcr_pid);
+ 	if (!m->si.pmt_secs)
+-		goto free_eit;
++		goto free_si;
+ 
+ 	vidtv_channel_pmt_match_sections(m->channels,
+ 					 m->si.pmt_secs,
+@@ -481,8 +481,18 @@ int vidtv_channel_si_init(struct vidtv_mux *m)
+ 
+ 	return 0;
+ 
+-free_eit:
++free_si:
++	/*
++	 * Free SI tables in reverse order.
++	 * At this point, programs, services, and events have been assigned
++	 * to the tables, so they will be freed when the tables are destroyed.
++	 */
+ 	vidtv_psi_eit_table_destroy(m->si.eit);
++	vidtv_psi_nit_table_destroy(m->si.nit);
++	vidtv_channel_destroy_service_list(service_list);
++	vidtv_psi_sdt_table_destroy(m->si.sdt);
++	vidtv_psi_pat_table_destroy(m->si.pat);
++	return -ENOMEM;
+ free_nit:
+ 	vidtv_psi_nit_table_destroy(m->si.nit);
+ free_service_list:
+@@ -497,7 +507,7 @@ int vidtv_channel_si_init(struct vidtv_mux *m)
+ 	vidtv_psi_sdt_table_destroy(m->si.sdt);
+ free_pat:
+ 	vidtv_psi_pat_table_destroy(m->si.pat);
+-	return 0;
++	return -ENOMEM;
+ }
+ 
+ void vidtv_channel_si_destroy(struct vidtv_mux *m)

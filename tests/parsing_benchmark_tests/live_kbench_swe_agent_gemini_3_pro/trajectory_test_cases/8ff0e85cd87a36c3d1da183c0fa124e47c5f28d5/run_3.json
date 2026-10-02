@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (kthread_should_stop())\n\t\t\tbreak;\n\n\t\tif (time_to_inject(sbi, FAULT_CHECKPOINT))\n\t\t\tf2fs_stop_checkpoint(sbi, false,\n\t\t\t\t\tSTOP_CP_REASON_FAULT_INJECT);\n\n\t\tif (!sb_start_intwrite_trylock(sbi->sb)) {\n\t\t\tstat_other_skip_bggc_count(sbi);\n\t\t\tcontinue;\n\t\t}\n",
+          "before": "\t\tif (kthread_should_stop())\n\t\t\tbreak;\n\n\t\tif (sbi->sb->s_writers.frozen >= SB_FREEZE_WRITE) {\n\t\t\tincrease_sleep_time(gc_th, &wait_ms);\n\t\t\tstat_other_skip_bggc_count(sbi);\n\t\t\tcontinue;\n\t\t}\n\n\t\tif (time_to_inject(sbi, FAULT_CHECKPOINT))\n\t\t\tf2fs_stop_checkpoint(sbi, false,\n\t\t\t\t\tSTOP_CP_REASON_FAULT_INJECT);\n\n\t\tif (!sb_start_write_trylock(sbi->sb)) {\n\t\t\tstat_other_skip_bggc_count(sbi);\n\t\t\tcontinue;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c\nindex 8b8025772340..b4a95cf05f0a 100644\n--- a/fs/f2fs/gc.c\n+++ b/fs/f2fs/gc.c\n@@ -66,17 +66,11 @@ static int gc_thread_func(void *data)\n \t\tif (kthread_should_stop())\n \t\t\tbreak;\n \n-\t\tif (sbi->sb->s_writers.frozen >= SB_FREEZE_WRITE) {\n-\t\t\tincrease_sleep_time(gc_th, &wait_ms);\n-\t\t\tstat_other_skip_bggc_count(sbi);\n-\t\t\tcontinue;\n-\t\t}\n-\n \t\tif (time_to_inject(sbi, FAULT_CHECKPOINT))\n \t\t\tf2fs_stop_checkpoint(sbi, false,\n \t\t\t\t\tSTOP_CP_REASON_FAULT_INJECT);\n \n-\t\tif (!sb_start_write_trylock(sbi->sb)) {\n+\t\tif (!sb_start_intwrite_trylock(sbi->sb)) {\n \t\t\tstat_other_skip_bggc_count(sbi);\n \t\t\tcontinue;\n \t\t}",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "fs/f2fs/gc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "\t\tsb_end_intwrite(sbi->sb);\n",
+          "before": "\t\tsb_end_write(sbi->sb);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c\nindex 8b8025772340..730873fff6f4 100644\n--- a/fs/f2fs/gc.c\n+++ b/fs/f2fs/gc.c\n@@ -66,17 +66,11 @@ static int gc_thread_func(void *data)\n \t\tif (kthread_should_stop())\n \t\t\tbreak;\n \n-\t\tif (sbi->sb->s_writers.frozen >= SB_FREEZE_WRITE) {\n-\t\t\tincrease_sleep_time(gc_th, &wait_ms);\n-\t\t\tstat_other_skip_bggc_count(sbi);\n-\t\t\tcontinue;\n-\t\t}\n-\n \t\tif (time_to_inject(sbi, FAULT_CHECKPOINT))\n \t\t\tf2fs_stop_checkpoint(sbi, false,\n \t\t\t\t\tSTOP_CP_REASON_FAULT_INJECT);\n \n-\t\tif (!sb_start_write_trylock(sbi->sb)) {\n+\t\tif (!sb_start_intwrite_trylock(sbi->sb)) {\n \t\t\tstat_other_skip_bggc_count(sbi);\n \t\t\tcontinue;\n \t\t}\n@@ -180,7 +174,7 @@ static int gc_thread_func(void *data)\n \t\t\t}\n \t\t\tspin_unlock(&sbi->gc_remaining_trials_lock);\n \t\t}\n-\t\tsb_end_write(sbi->sb);\n+\t\tsb_end_intwrite(sbi->sb);\n \n \t} while (!kthread_should_stop());\n \treturn 0;",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/f2fs/gc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 22
+    }
+  ],
+  "success_step": 23
+}

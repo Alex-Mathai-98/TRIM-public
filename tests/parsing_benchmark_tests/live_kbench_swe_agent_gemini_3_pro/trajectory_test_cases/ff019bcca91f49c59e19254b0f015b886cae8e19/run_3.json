@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <linux/slab.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c\nindex 524d4658fa40..ef10d7e112c5 100644\n--- a/fs/ext4/orphan.c\n+++ b/fs/ext4/orphan.c\n@@ -4,6 +4,7 @@\n #include <linux/fs.h>\n #include <linux/quotaops.h>\n #include <linux/buffer_head.h>\n+#include <linux/slab.h>\n \n #include \"ext4.h\"\n #include \"ext4_jbd2.h\"",
+          "explanation": "classic_swe step 25 insert #1",
+          "filename": "fs/ext4/orphan.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 7,
+          "step_index": 25
+        },
+        {
+          "after": "\tint i, j;\n\tunsigned long blocks;\n\tint ret;",
+          "before": "\tint i, j;\n\tint ret;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c\nindex 524d4658fa40..8c045582cfcf 100644\n--- a/fs/ext4/orphan.c\n+++ b/fs/ext4/orphan.c\n@@ -4,6 +4,7 @@\n #include <linux/fs.h>\n #include <linux/quotaops.h>\n #include <linux/buffer_head.h>\n+#include <linux/slab.h>\n \n #include \"ext4.h\"\n #include \"ext4_jbd2.h\"\n@@ -572,6 +573,7 @@ int ext4_init_orphan_info(struct super_block *sb)\n \tstruct ext4_orphan_info *oi = &EXT4_SB(sb)->s_orphan_info;\n \tstruct inode *inode;\n \tint i, j;\n+\tunsigned long blocks;\n \tint ret;\n \tint free;\n \t__le32 *bdata;",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/ext4/orphan.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\tblocks = inode->i_size >> sb->s_blocksize_bits;\n\tif (blocks * sizeof(struct ext4_orphan_block) > KMALLOC_MAX_SIZE) {\n\t\text4_msg(sb, KERN_ERR, \"orphan file is too big\");\n\t\tret = -ENOMEM;\n\t\tgoto out_put;\n\t}\n\n\toi->of_binfo = kmalloc_array(blocks,\n\t\t\t\t     sizeof(struct ext4_orphan_block),\n\t\t\t\t     GFP_KERNEL);\n\tif (!oi->of_binfo) {\n\t\tret = -ENOMEM;\n\t\tgoto out_put;\n\t}\n\toi->of_blocks = blocks;\n\toi->of_csum_seed = EXT4_I(inode)->i_csum_seed;",
+          "before": "\toi->of_blocks = inode->i_size >> sb->s_blocksize_bits;\n\toi->of_csum_seed = EXT4_I(inode)->i_csum_seed;\n\toi->of_binfo = kmalloc_array(oi->of_blocks,\n\t\t\t\t     sizeof(struct ext4_orphan_block),\n\t\t\t\t     GFP_KERNEL);\n\tif (!oi->of_binfo) {\n\t\tret = -ENOMEM;\n\t\tgoto out_put;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/orphan.c b/fs/ext4/orphan.c\nindex 524d4658fa40..8219509941ed 100644\n--- a/fs/ext4/orphan.c\n+++ b/fs/ext4/orphan.c\n@@ -4,6 +4,7 @@\n #include <linux/fs.h>\n #include <linux/quotaops.h>\n #include <linux/buffer_head.h>\n+#include <linux/slab.h>\n \n #include \"ext4.h\"\n #include \"ext4_jbd2.h\"\n@@ -572,6 +573,7 @@ int ext4_init_orphan_info(struct super_block *sb)\n \tstruct ext4_orphan_info *oi = &EXT4_SB(sb)->s_orphan_info;\n \tstruct inode *inode;\n \tint i, j;\n+\tunsigned long blocks;\n \tint ret;\n \tint free;\n \t__le32 *bdata;\n@@ -587,15 +589,22 @@ int ext4_init_orphan_info(struct super_block *sb)\n \t\text4_msg(sb, KERN_ERR, \"get orphan inode failed\");\n \t\treturn PTR_ERR(inode);\n \t}\n-\toi->of_blocks = inode->i_size >> sb->s_blocksize_bits;\n-\toi->of_csum_seed = EXT4_I(inode)->i_csum_seed;\n-\toi->of_binfo = kmalloc_array(oi->of_blocks,\n+\tblocks = inode->i_size >> sb->s_blocksize_bits;\n+\tif (blocks * sizeof(struct ext4_orphan_block) > KMALLOC_MAX_SIZE) {\n+\t\text4_msg(sb, KERN_ERR, \"orphan file is too big\");\n+\t\tret = -ENOMEM;\n+\t\tgoto out_put;\n+\t}\n+\n+\toi->of_binfo = kmalloc_array(blocks,\n \t\t\t\t     sizeof(struct ext4_orphan_block),\n \t\t\t\t     GFP_KERNEL);\n \tif (!oi->of_binfo) {\n \t\tret = -ENOMEM;\n \t\tgoto out_put;\n \t}\n+\toi->of_blocks = blocks;\n+\toi->of_csum_seed = EXT4_I(inode)->i_csum_seed;\n \tfor (i = 0; i < oi->of_blocks; i++) {\n \t\toi->of_binfo[i].ob_bh = ext4_bread(NULL, inode, i, 0);\n \t\tif (IS_ERR(oi->of_binfo[i].ob_bh)) {",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/ext4/orphan.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 25
+    }
+  ],
+  "success_step": 29
+}

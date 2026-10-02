@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-14500",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/migrations/executor.py",
+        "before": "        # For replacement migrations, record individual statuses\n        if migration.replaces:\n            for app_label, name in migration.replaces:\n                self.recorder.record_unapplied(app_label, name)\n        else:\n            self.recorder.record_unapplied(migration.app_label, migration.name)",
+        "after": "        # For replacement migrations, record individual statuses\n        if migration.replaces:\n            for app_label, name in migration.replaces:\n                self.recorder.record_unapplied(app_label, name)\n            # If the replaced migration files are still on disk, also mark the\n            # squashed migration as unapplied\n            replaced_migrations_on_disk = all(\n                (app_label, name) in self.loader.disk_migrations\n                for app_label, name in migration.replaces\n            )\n            if replaced_migrations_on_disk:\n                self.recorder.record_unapplied(migration.app_label, migration.name)\n        else:\n            self.recorder.record_unapplied(migration.app_label, migration.name)",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/migrations/executor.py b/django/db/migrations/executor.py\nindex 57042a8690..2165e7cf62 100644\n--- a/django/db/migrations/executor.py\n+++ b/django/db/migrations/executor.py\n@@ -254,6 +254,14 @@ class MigrationExecutor:\n         if migration.replaces:\n             for app_label, name in migration.replaces:\n                 self.recorder.record_unapplied(app_label, name)\n+            # If the replaced migration files are still on disk, also mark the\n+            # squashed migration as unapplied\n+            replaced_migrations_on_disk = all(\n+                (app_label, name) in self.loader.disk_migrations\n+                for app_label, name in migration.replaces\n+            )\n+            if replaced_migrations_on_disk:\n+                self.recorder.record_unapplied(migration.app_label, migration.name)\n         else:\n             self.recorder.record_unapplied(migration.app_label, migration.name)\n         # Report progress\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/executor.py",
+          "before": "        # For replacement migrations, record individual statuses\n        if migration.replaces:\n            for app_label, name in migration.replaces:\n                self.recorder.record_unapplied(app_label, name)\n        else:\n            self.recorder.record_unapplied(migration.app_label, migration.name)",
+          "after": "        # For replacement migrations, record individual statuses\n        if migration.replaces:\n            for app_label, name in migration.replaces:\n                self.recorder.record_unapplied(app_label, name)\n            # If the replaced migration files are still on disk, also mark the\n            # squashed migration as unapplied\n            replaced_migrations_on_disk = all(\n                (app_label, name) in self.loader.disk_migrations\n                for app_label, name in migration.replaces\n            )\n            if replaced_migrations_on_disk:\n                self.recorder.record_unapplied(migration.app_label, migration.name)\n        else:\n            self.recorder.record_unapplied(migration.app_label, migration.name)",
+          "explanation": "classic_swe step 27 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 21,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 21,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/migrations/executor.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/migrations/executor.py"
+    ],
+    "gold_files": [
+      "django/db/migrations/executor.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

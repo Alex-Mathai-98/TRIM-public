@@ -1,0 +1,46 @@
+diff --git a/kernel/nsproxy.c b/kernel/nsproxy.c
+index 94c2cfe0afa1..0e92eccb249e 100644
+--- a/kernel/nsproxy.c
++++ b/kernel/nsproxy.c
+@@ -185,10 +185,12 @@ int copy_namespaces(u64 flags, struct task_struct *tsk)
+ 	return 0;
+ }
+ 
+-void free_nsproxy(struct nsproxy *ns)
++/*
++ * Free an nsproxy that was never activated (i.e., nsproxy_ns_active_get was never called).
++ * This does NOT decrement the active reference count of namespaces.
++ */
++static void free_inactive_nsproxy(struct nsproxy *ns)
+ {
+-	nsproxy_ns_active_put(ns);
+-
+ 	put_mnt_ns(ns->mnt_ns);
+ 	put_uts_ns(ns->uts_ns);
+ 	put_ipc_ns(ns->ipc_ns);
+@@ -200,6 +202,16 @@ void free_nsproxy(struct nsproxy *ns)
+ 	kmem_cache_free(nsproxy_cachep, ns);
+ }
+ 
++/*
++ * Free an nsproxy that was in active use (i.e., installed in a task's nsproxy).
++ * This decrements the active reference count of all namespaces before freeing.
++ */
++void free_nsproxy(struct nsproxy *ns)
++{
++	nsproxy_ns_active_put(ns);
++	free_inactive_nsproxy(ns);
++}
++
+ /*
+  * Called from unshare. Unshare all the namespaces part of nsproxy.
+  * On success, returns the new nsproxy.
+@@ -338,7 +350,7 @@ static void put_nsset(struct nsset *nsset)
+ 	if (nsset->fs && (flags & CLONE_NEWNS) && (flags & ~CLONE_NEWNS))
+ 		free_fs_struct(nsset->fs);
+ 	if (nsset->nsproxy)
+-		free_nsproxy(nsset->nsproxy);
++		free_inactive_nsproxy(nsset->nsproxy);
+ }
+ 
+ static int prepare_nsset(unsigned flags, struct nsset *nsset)

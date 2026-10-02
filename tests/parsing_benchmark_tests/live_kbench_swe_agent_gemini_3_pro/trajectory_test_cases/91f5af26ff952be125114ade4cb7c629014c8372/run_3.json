@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3,
+      4,
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tswitch (p->sel.family) {\n\tcase AF_UNSPEC:\n\t\tbreak;\n\n\tcase AF_INET:\n\t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n\t\t\tpr_err(\"XFRM: verify_newsa_info AF_INET prefixlen_d=%d prefixlen_s=%d\\n\", p->sel.prefixlen_d, p->sel.prefixlen_s);\n\t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n\t\t\tgoto out;\n\t\t}\n\n\t\tbreak;\n",
+          "before": "\tswitch (p->sel.family) {\n\tcase AF_UNSPEC:\n\t\tbreak;\n\n\tcase AF_INET:\n\t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n\t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n\t\t\tgoto out;\n\t\t}\n\n\t\tbreak;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c\nindex 55f039ec3d59..20a177b90e4c 100644\n--- a/net/xfrm/xfrm_user.c\n+++ b/net/xfrm/xfrm_user.c\n@@ -227,6 +227,7 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,\n \n \tcase AF_INET:\n \t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n+\t\t\tpr_err(\"XFRM: verify_newsa_info AF_INET prefixlen_d=%d prefixlen_s=%d\\n\", p->sel.prefixlen_d, p->sel.prefixlen_s);\n \t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n \t\t\tgoto out;\n \t\t}",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "net/xfrm/xfrm_user.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        },
+        {
+          "after": "\tif (x->km.state == XFRM_STATE_VALID) {\n\t\tif (x->sel.family == AF_INET && family == AF_INET && (x->sel.prefixlen_d > 32 || x->sel.prefixlen_s > 32)) {\n\t\t\tpr_err(\"XFRM: xfrm_state_look_at BAD STATE: x->sel.family=%d family=%d prefixlen_s=%d prefixlen_d=%d\\n\",\n\t\t\t\tx->sel.family, family, x->sel.prefixlen_s, x->sel.prefixlen_d);\n\t\t}\n\t\tif ((x->sel.family &&\n\t\t     (x->sel.family != family ||\n\t\t      !xfrm_selector_match(&x->sel, fl, family))) ||\n",
+          "before": "\tif (x->km.state == XFRM_STATE_VALID) {\n\t\tif ((x->sel.family &&\n\t\t     (x->sel.family != family ||\n\t\t      !xfrm_selector_match(&x->sel, fl, family))) ||\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c\nindex 37478d36a8df..05396e61e13f 100644\n--- a/net/xfrm/xfrm_state.c\n+++ b/net/xfrm/xfrm_state.c\n@@ -1167,6 +1167,10 @@ static void xfrm_state_look_at(struct xfrm_policy *pol, struct xfrm_state *x,\n \t *    selector.\n \t */\n \tif (x->km.state == XFRM_STATE_VALID) {\n+\t\tif (x->sel.family == AF_INET && family == AF_INET && (x->sel.prefixlen_d > 32 || x->sel.prefixlen_s > 32)) {\n+\t\t\tpr_err(\"XFRM: xfrm_state_look_at BAD STATE: x->sel.family=%d family=%d prefixlen_s=%d prefixlen_d=%d\\n\",\n+\t\t\t\tx->sel.family, family, x->sel.prefixlen_s, x->sel.prefixlen_d);\n+\t\t}\n \t\tif ((x->sel.family &&\n \t\t     (x->sel.family != family ||\n \t\t      !xfrm_selector_match(&x->sel, fl, family))) ||\ndiff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c\nindex 55f039ec3d59..20a177b90e4c 100644\n--- a/net/xfrm/xfrm_user.c\n+++ b/net/xfrm/xfrm_user.c\n@@ -227,6 +227,7 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,\n \n \tcase AF_INET:\n \t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n+\t\t\tpr_err(\"XFRM: verify_newsa_info AF_INET prefixlen_d=%d prefixlen_s=%d\\n\", p->sel.prefixlen_d, p->sel.prefixlen_s);\n \t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n \t\t\tgoto out;\n \t\t}",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (x->km.state == XFRM_STATE_VALID) {\n\t\tif ((x->sel.family &&\n\t\t     (x->sel.family != family ||\n\t\t      !xfrm_selector_match(&x->sel, fl, family))) ||\n",
+          "before": "\tif (x->km.state == XFRM_STATE_VALID) {\n\t\tif (x->sel.family == AF_INET && family == AF_INET && (x->sel.prefixlen_d > 32 || x->sel.prefixlen_s > 32)) {\n\t\t\tpr_err(\"XFRM: xfrm_state_look_at BAD STATE: x->sel.family=%d family=%d prefixlen_s=%d prefixlen_d=%d\\n\",\n\t\t\t\tx->sel.family, family, x->sel.prefixlen_s, x->sel.prefixlen_d);\n\t\t}\n\t\tif ((x->sel.family &&\n\t\t     (x->sel.family != family ||\n\t\t      !xfrm_selector_match(&x->sel, fl, family))) ||\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c\nindex 55f039ec3d59..20a177b90e4c 100644\n--- a/net/xfrm/xfrm_user.c\n+++ b/net/xfrm/xfrm_user.c\n@@ -227,6 +227,7 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,\n \n \tcase AF_INET:\n \t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n+\t\t\tpr_err(\"XFRM: verify_newsa_info AF_INET prefixlen_d=%d prefixlen_s=%d\\n\", p->sel.prefixlen_d, p->sel.prefixlen_s);\n \t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n \t\t\tgoto out;\n \t\t}",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        },
+        {
+          "after": "\tswitch (p->sel.family) {\n\tcase AF_UNSPEC:\n\t\tbreak;\n\n\tcase AF_INET:\n\t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n\t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n\t\t\tgoto out;\n\t\t}\n\n\t\tbreak;\n",
+          "before": "\tswitch (p->sel.family) {\n\tcase AF_UNSPEC:\n\t\tbreak;\n\n\tcase AF_INET:\n\t\tif (p->sel.prefixlen_d > 32 || p->sel.prefixlen_s > 32) {\n\t\t\tpr_err(\"XFRM: verify_newsa_info AF_INET prefixlen_d=%d prefixlen_s=%d\\n\", p->sel.prefixlen_d, p->sel.prefixlen_s);\n\t\t\tNL_SET_ERR_MSG(extack, \"Invalid prefix length in selector (must be <= 32 for IPv4)\");\n\t\t\tgoto out;\n\t\t}\n\n\t\tbreak;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "net/xfrm/xfrm_user.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "\tint err;\n\tu16 family;\n\tu8 sa_dir = attrs[XFRMA_SA_DIR] ? nla_get_u8(attrs[XFRMA_SA_DIR]) : 0;\n\n\terr = -EINVAL;\n",
+          "before": "\tint err;\n\tu8 sa_dir = attrs[XFRMA_SA_DIR] ? nla_get_u8(attrs[XFRMA_SA_DIR]) : 0;\n\n\terr = -EINVAL;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c\nindex 55f039ec3d59..6b6c8e8d9be5 100644\n--- a/net/xfrm/xfrm_user.c\n+++ b/net/xfrm/xfrm_user.c\n@@ -200,6 +200,7 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,\n \t\t\t     struct netlink_ext_ack *extack)\n {\n \tint err;\n+\tu16 family;\n \tu8 sa_dir = attrs[XFRMA_SA_DIR] ? nla_get_u8(attrs[XFRMA_SA_DIR]) : 0;\n \n \terr = -EINVAL;",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "net/xfrm/xfrm_user.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        },
+        {
+          "after": "\tdefault:\n\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n\t\tgoto out;\n\t}\n\n\tfamily = p->sel.family;\n\tif (family == AF_UNSPEC && !(p->flags & XFRM_STATE_AF_UNSPEC))\n\t\tfamily = p->family;\n\n\tswitch (family) {\n\tcase AF_UNSPEC:\n",
+          "before": "\tdefault:\n\t\tNL_SET_ERR_MSG(extack, \"Invalid address family\");\n\t\tgoto out;\n\t}\n\n\tswitch (p->sel.family) {\n\tcase AF_UNSPEC:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_user.c b/net/xfrm/xfrm_user.c\nindex 55f039ec3d59..611227d1f36b 100644\n--- a/net/xfrm/xfrm_user.c\n+++ b/net/xfrm/xfrm_user.c\n@@ -200,6 +200,7 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,\n \t\t\t     struct netlink_ext_ack *extack)\n {\n \tint err;\n+\tu16 family;\n \tu8 sa_dir = attrs[XFRMA_SA_DIR] ? nla_get_u8(attrs[XFRMA_SA_DIR]) : 0;\n \n \terr = -EINVAL;\n@@ -221,7 +222,11 @@ static int verify_newsa_info(struct xfrm_usersa_info *p,\n \t\tgoto out;\n \t}\n \n-\tswitch (p->sel.family) {\n+\tfamily = p->sel.family;\n+\tif (family == AF_UNSPEC && !(p->flags & XFRM_STATE_AF_UNSPEC))\n+\t\tfamily = p->family;\n+\n+\tswitch (family) {\n \tcase AF_UNSPEC:\n \t\tbreak;",
+          "explanation": "classic_swe step 46 #1",
+          "filename": "net/xfrm/xfrm_user.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        }
+      ],
+      "end_step": 46,
+      "revision_index": 1,
+      "start_step": 42
+    }
+  ],
+  "success_step": 46
+}

@@ -1,0 +1,39 @@
+diff --git a/fs/bcachefs/journal.c b/fs/bcachefs/journal.c
+index 649e3a01608a..956808a232a6 100644
+--- a/fs/bcachefs/journal.c
++++ b/fs/bcachefs/journal.c
+@@ -1308,8 +1308,13 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)
+ 	if (journal_buckets_v2) {
+ 		unsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);
+ 
+-		for (unsigned i = 0; i < nr; i++)
+-			ja->nr += le64_to_cpu(journal_buckets_v2->d[i].nr);
++		for (unsigned i = 0; i < nr; i++) {
++			u64 n = le64_to_cpu(journal_buckets_v2->d[i].nr);
++
++			if (ja->nr + n > UINT_MAX)
++				return -BCH_ERR_ENOMEM_dev_journal_init;
++			ja->nr += n;
++		}
+ 	} else if (journal_buckets) {
+ 		ja->nr = bch2_nr_journal_buckets(journal_buckets);
+ 	}
+@@ -1339,10 +1344,16 @@ int bch2_dev_journal_init(struct bch_dev *ca, struct bch_sb *sb)
+ 		unsigned nr = bch2_sb_field_journal_v2_nr_entries(journal_buckets_v2);
+ 		unsigned dst = 0;
+ 
+-		for (unsigned i = 0; i < nr; i++)
+-			for (unsigned j = 0; j < le64_to_cpu(journal_buckets_v2->d[i].nr); j++)
++		for (unsigned i = 0; i < nr; i++) {
++			u64 n = le64_to_cpu(journal_buckets_v2->d[i].nr);
++
++			for (unsigned j = 0; j < n; j++) {
++				if (dst >= ja->nr)
++					return -BCH_ERR_invalid_sb_journal;
+ 				ja->buckets[dst++] =
+ 					le64_to_cpu(journal_buckets_v2->d[i].start) + j;
++			}
++		}
+ 	} else if (journal_buckets) {
+ 		for (unsigned i = 0; i < ja->nr; i++)
+ 			ja->buckets[i] = le64_to_cpu(journal_buckets->buckets[i]);

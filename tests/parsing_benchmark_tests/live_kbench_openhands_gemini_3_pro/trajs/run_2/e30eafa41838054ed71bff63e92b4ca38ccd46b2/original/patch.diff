@@ -1,0 +1,34 @@
+diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
+index badc2cbc895e..d3886e46bc1e 100644
+--- a/fs/nilfs2/super.c
++++ b/fs/nilfs2/super.c
+@@ -89,18 +89,19 @@ static void nilfs_set_error(struct super_block *sb)
+ 	struct the_nilfs *nilfs = sb->s_fs_info;
+ 	struct nilfs_super_block **sbp;
+ 
+-	down_write(&nilfs->ns_sem);
+-	if (!(nilfs->ns_mount_state & NILFS_ERROR_FS)) {
+-		nilfs->ns_mount_state |= NILFS_ERROR_FS;
+-		sbp = nilfs_prepare_super(sb, 0);
+-		if (likely(sbp)) {
+-			sbp[0]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
+-			if (sbp[1])
+-				sbp[1]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
+-			nilfs_commit_super(sb, NILFS_SB_COMMIT_ALL);
++	if (down_write_trylock(&nilfs->ns_sem)) {
++		if (!(nilfs->ns_mount_state & NILFS_ERROR_FS)) {
++			nilfs->ns_mount_state |= NILFS_ERROR_FS;
++			sbp = nilfs_prepare_super(sb, 0);
++			if (likely(sbp)) {
++				sbp[0]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
++				if (sbp[1])
++					sbp[1]->s_state |= cpu_to_le16(NILFS_ERROR_FS);
++				nilfs_commit_super(sb, NILFS_SB_COMMIT_ALL);
++			}
+ 		}
++		up_write(&nilfs->ns_sem);
+ 	}
+-	up_write(&nilfs->ns_sem);
+ }
+ 
+ /**

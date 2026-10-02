@@ -1,0 +1,135 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (sq_idx > sq_mask) {\n\t\t\tsq_head++;\n\t\t\tcontinue;\n\t\t}\n",
+          "before": "\t\tif (sq_idx > sq_mask)\n\t\t\tcontinue;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/fdinfo.c b/io_uring/fdinfo.c\nindex a3ce92183540..7f85409613ef 100644\n--- a/io_uring/fdinfo.c\n+++ b/io_uring/fdinfo.c\n@@ -100,8 +100,10 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \t\telse\n \t\t\tsq_idx = READ_ONCE(ctx->sq_array[sq_head & sq_mask]);\n \n-\t\tif (sq_idx > sq_mask)\n+\t\tif (sq_idx > sq_mask) {\n+\t\t\tsq_head++;\n \t\t\tcontinue;\n+\t\t}\n \n \t\tsqe = &ctx->sq_sqes[sq_idx << sq_shift];\n \t\topcode = READ_ONCE(sqe->opcode);",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "io_uring/fdinfo.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t} else if (opcode < IORING_OP_LAST && io_issue_defs[opcode].is_128) {\n",
+          "before": "\t\t} else if (io_issue_defs[opcode].is_128) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/fdinfo.c b/io_uring/fdinfo.c\nindex a3ce92183540..ebed35928c6c 100644\n--- a/io_uring/fdinfo.c\n+++ b/io_uring/fdinfo.c\n@@ -100,14 +100,16 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \t\telse\n \t\t\tsq_idx = READ_ONCE(ctx->sq_array[sq_head & sq_mask]);\n \n-\t\tif (sq_idx > sq_mask)\n+\t\tif (sq_idx > sq_mask) {\n+\t\t\tsq_head++;\n \t\t\tcontinue;\n+\t\t}\n \n \t\tsqe = &ctx->sq_sqes[sq_idx << sq_shift];\n \t\topcode = READ_ONCE(sqe->opcode);\n \t\tif (sq_shift) {\n \t\t\tsqe128 = true;\n-\t\t} else if (io_issue_defs[opcode].is_128) {\n+\t\t} else if (opcode < IORING_OP_LAST && io_issue_defs[opcode].is_128) {\n \t\t\tif (!(ctx->flags & IORING_SETUP_SQE_MIXED)) {\n \t\t\t\tseq_printf(m,\n \t\t\t\t\t\"%5u: invalid sqe, 128B entry on non-mixed sq\\n\",",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "io_uring/fdinfo.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 1,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (i = 0; sq_head < sq_tail && i < ctx->sq_entries; i++) {\n",
+          "before": "\twhile (sq_head < sq_tail) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/fdinfo.c b/io_uring/fdinfo.c\nindex a3ce92183540..8730433914a1 100644\n--- a/io_uring/fdinfo.c\n+++ b/io_uring/fdinfo.c\n@@ -89,7 +89,7 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \tseq_printf(m, \"CqTail:\\t%u\\n\", cq_tail);\n \tseq_printf(m, \"CachedCqTail:\\t%u\\n\", data_race(ctx->cached_cq_tail));\n \tseq_printf(m, \"SQEs:\\t%u\\n\", sq_tail - sq_head);\n-\twhile (sq_head < sq_tail) {\n+\tfor (i = 0; sq_head < sq_tail && i < ctx->sq_entries; i++) {\n \t\tstruct io_uring_sqe *sqe;\n \t\tunsigned int sq_idx;\n \t\tbool sqe128 = false;\n@@ -100,14 +100,16 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \t\telse\n \t\t\tsq_idx = READ_ONCE(ctx->sq_array[sq_head & sq_mask]);\n \n-\t\tif (sq_idx > sq_mask)\n+\t\tif (sq_idx > sq_mask) {\n+\t\t\tsq_head++;\n \t\t\tcontinue;\n+\t\t}\n \n \t\tsqe = &ctx->sq_sqes[sq_idx << sq_shift];\n \t\topcode = READ_ONCE(sqe->opcode);\n \t\tif (sq_shift) {\n \t\t\tsqe128 = true;\n-\t\t} else if (io_issue_defs[opcode].is_128) {\n+\t\t} else if (opcode < IORING_OP_LAST && io_issue_defs[opcode].is_128) {\n \t\t\tif (!(ctx->flags & IORING_SETUP_SQE_MIXED)) {\n \t\t\t\tseq_printf(m,\n \t\t\t\t\t\"%5u: invalid sqe, 128B entry on non-mixed sq\\n\",",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "io_uring/fdinfo.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        }
+      ],
+      "end_step": 45,
+      "revision_index": 2,
+      "start_step": 45
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (i = 0; cq_head < cq_tail && i < ctx->cq_entries; i++) {\n",
+          "before": "\twhile (cq_head < cq_tail) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/fdinfo.c b/io_uring/fdinfo.c\nindex a3ce92183540..2380c607c3e5 100644\n--- a/io_uring/fdinfo.c\n+++ b/io_uring/fdinfo.c\n@@ -89,7 +89,7 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \tseq_printf(m, \"CqTail:\\t%u\\n\", cq_tail);\n \tseq_printf(m, \"CachedCqTail:\\t%u\\n\", data_race(ctx->cached_cq_tail));\n \tseq_printf(m, \"SQEs:\\t%u\\n\", sq_tail - sq_head);\n-\twhile (sq_head < sq_tail) {\n+\tfor (i = 0; sq_head < sq_tail && i < ctx->sq_entries; i++) {\n \t\tstruct io_uring_sqe *sqe;\n \t\tunsigned int sq_idx;\n \t\tbool sqe128 = false;\n@@ -100,14 +100,16 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \t\telse\n \t\t\tsq_idx = READ_ONCE(ctx->sq_array[sq_head & sq_mask]);\n \n-\t\tif (sq_idx > sq_mask)\n+\t\tif (sq_idx > sq_mask) {\n+\t\t\tsq_head++;\n \t\t\tcontinue;\n+\t\t}\n \n \t\tsqe = &ctx->sq_sqes[sq_idx << sq_shift];\n \t\topcode = READ_ONCE(sqe->opcode);\n \t\tif (sq_shift) {\n \t\t\tsqe128 = true;\n-\t\t} else if (io_issue_defs[opcode].is_128) {\n+\t\t} else if (opcode < IORING_OP_LAST && io_issue_defs[opcode].is_128) {\n \t\t\tif (!(ctx->flags & IORING_SETUP_SQE_MIXED)) {\n \t\t\t\tseq_printf(m,\n \t\t\t\t\t\"%5u: invalid sqe, 128B entry on non-mixed sq\\n\",\n@@ -144,7 +146,7 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)\n \t\tsq_head++;\n \t}\n \tseq_printf(m, \"CQEs:\\t%u\\n\", cq_tail - cq_head);\n-\twhile (cq_head < cq_tail) {\n+\tfor (i = 0; cq_head < cq_tail && i < ctx->cq_entries; i++) {\n \t\tstruct io_uring_cqe *cqe;\n \t\tbool cqe32 = false;",
+          "explanation": "classic_swe step 49 #1",
+          "filename": "io_uring/fdinfo.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        }
+      ],
+      "end_step": 49,
+      "revision_index": 3,
+      "start_step": 49
+    }
+  ],
+  "success_step": 49
+}

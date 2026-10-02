@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-13089",
+  "short_path": [
+    [
+      {
+        "filename": "django/core/cache/backends/db.py",
+        "before": "            if num > self._max_entries:\n                cull_num = num // self._cull_frequency\n                cursor.execute(\n                    connection.ops.cache_key_culling_sql() % table,\n                    [cull_num])\n                cursor.execute(\"DELETE FROM %s \"\n                               \"WHERE cache_key < %%s\" % table,\n                               [cursor.fetchone()[0]])",
+        "after": "            if num > self._max_entries:\n                cull_num = num // self._cull_frequency\n                cursor.execute(\n                    connection.ops.cache_key_culling_sql() % table,\n                    [cull_num])\n                result = cursor.fetchone()\n                if result:\n                    cursor.execute(\"DELETE FROM %s \"\n                                   \"WHERE cache_key < %%s\" % table,\n                                   [result[0]])",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/core/cache/backends/db.py b/django/core/cache/backends/db.py\nindex 33c79c5a14..6394ba878f 100644\n--- a/django/core/cache/backends/db.py\n+++ b/django/core/cache/backends/db.py\n@@ -267,9 +267,11 @@ class DatabaseCache(BaseDatabaseCache):\n                 cursor.execute(\n                     connection.ops.cache_key_culling_sql() % table,\n                     [cull_num])\n-                cursor.execute(\"DELETE FROM %s \"\n-                               \"WHERE cache_key < %%s\" % table,\n-                               [cursor.fetchone()[0]])\n+                result = cursor.fetchone()\n+                if result:\n+                    cursor.execute(\"DELETE FROM %s \"\n+                                   \"WHERE cache_key < %%s\" % table,\n+                                   [result[0]])\n \n     def clear(self):\n         db = router.db_for_write(self.cache_model_class)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      4
+    ],
+    "edit_list_after_file_min": [
+      4
+    ],
+    "edit_list_after_greedy": [
+      4
+    ],
+    "edit_list_after_refinement": [
+      4
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/core/cache/backends/db.py",
+          "before": "            if num > self._max_entries:\n                cull_num = num // self._cull_frequency\n                cursor.execute(\n                    connection.ops.cache_key_culling_sql() % table,\n                    [cull_num])\n                cursor.execute(\"DELETE FROM %s \"\n                               \"WHERE cache_key < %%s\" % table,\n                               [cursor.fetchone()[0]])",
+          "after": "            if num > self._max_entries:\n                cull_num = num // self._cull_frequency\n                cursor.execute(\n                    connection.ops.cache_key_culling_sql() % table,\n                    [cull_num])\n                result = cursor.fetchone()\n                if result:\n                    cursor.execute(\"DELETE FROM %s \"\n                                   \"WHERE cache_key < %%s\" % table,\n                                   [result[0]])",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 352,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 352,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/core/cache/backends/db.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/core/cache/backends/db.py"
+    ],
+    "gold_files": [
+      "django/core/cache/backends/db.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 5,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

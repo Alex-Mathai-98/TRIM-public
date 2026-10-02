@@ -1,0 +1,40 @@
+diff --git a/io_uring/fdinfo.c b/io_uring/fdinfo.c
+index a3ce92183540..ce02e9fff481 100644
+--- a/io_uring/fdinfo.c
++++ b/io_uring/fdinfo.c
+@@ -74,6 +74,16 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 	if (ctx->flags & IORING_SETUP_SQE128)
+ 		sq_shift = 1;
+ 
++	/*
++	 * Cap the number of entries to iterate to the max ring size, avoids
++	 * iterating for a potentially long time if userspace has set the
++	 * tail to a very large value.
++	 */
++	if (sq_tail - sq_head > ctx->sq_entries)
++		sq_tail = sq_head + ctx->sq_entries;
++	if (cq_tail - cq_head > ctx->cq_entries)
++		cq_tail = cq_head + ctx->cq_entries;
++
+ 	/*
+ 	 * we may get imprecise sqe and cqe info if uring is actively running
+ 	 * since we get cached_sq_head and cached_cq_tail without uring_lock
+@@ -100,14 +110,16 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 		else
+ 			sq_idx = READ_ONCE(ctx->sq_array[sq_head & sq_mask]);
+ 
+-		if (sq_idx > sq_mask)
++		if (sq_idx > sq_mask) {
++			sq_head++;
+ 			continue;
++		}
+ 
+ 		sqe = &ctx->sq_sqes[sq_idx << sq_shift];
+ 		opcode = READ_ONCE(sqe->opcode);
+ 		if (sq_shift) {
+ 			sqe128 = true;
+-		} else if (io_issue_defs[opcode].is_128) {
++		} else if (opcode < IORING_OP_LAST && io_issue_defs[opcode].is_128) {
+ 			if (!(ctx->flags & IORING_SETUP_SQE_MIXED)) {
+ 				seq_printf(m,
+ 					"%5u: invalid sqe, 128B entry on non-mixed sq\n",

@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct btree *bch2_backpointer_get_node(struct btree_trans *trans,\n\t\t\t\t\tstruct btree_iter *iter,\n\t\t\t\t\tstruct bpos bp_pos,\n\t\t\t\t\tstruct bch_backpointer bp)\n{\n\tstruct bch_fs *c = trans->c;\n\n\tmemset(iter, 0, sizeof(*iter));\n\n\tif (!bp.level)\n\t\treturn ERR_PTR(-EIO);\n\n\tstruct bpos bucket;\n\tif (!bp_pos_to_bucket_nodev(c, bp_pos, &bucket))\n\t\treturn ERR_PTR(-EIO);\n\n\tunsigned depth = bp.level - 1;\n\n\tbch2_trans_iter_init_common(trans, iter,\n\t\t\t\t    bp.btree_id,\n\t\t\t\t    bp.pos,\n\t\t\t\t    0,\n\t\t\t\t    depth,\n\t\t\t\t    __bch2_btree_iter_flags(trans, bp.btree_id,\n\t\t\t\t\t    BTREE_ITER_not_extents|\n\t\t\t\t\t    BTREE_ITER_snapshot_field|\n\t\t\t\t\t    BTREE_ITER_all_snapshots),\n\t\t\t\t    _RET_IP_);\n\titer->min_depth = depth;\n\n\tstruct btree_path *path = btree_iter_path(trans, iter);\n\tif (path->level != depth)\n\t\treturn ERR_PTR(-EIO);\n\n\tstruct btree *b = bch2_btree_iter_peek_node(iter);",
+          "before": "struct btree *bch2_backpointer_get_node(struct btree_trans *trans,\n\t\t\t\t\tstruct btree_iter *iter,\n\t\t\t\t\tstruct bpos bp_pos,\n\t\t\t\t\tstruct bch_backpointer bp)\n{\n\tstruct bch_fs *c = trans->c;\n\n\tBUG_ON(!bp.level);\n\n\tstruct bpos bucket;\n\tif (!bp_pos_to_bucket_nodev(c, bp_pos, &bucket))\n\t\treturn ERR_PTR(-EIO);\n\n\tbch2_trans_node_iter_init(trans, iter,\n\t\t\t\t  bp.btree_id,\n\t\t\t\t  bp.pos,\n\t\t\t\t  0,\n\t\t\t\t  bp.level - 1,\n\t\t\t\t  0);\n\tstruct btree *b = bch2_btree_iter_peek_node(iter);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/backpointers.c b/fs/bcachefs/backpointers.c\nindex 47455a85c909..eedaabec50b1 100644\n--- a/fs/bcachefs/backpointers.c\n+++ b/fs/bcachefs/backpointers.c\n@@ -349,18 +349,33 @@ struct btree *bch2_backpointer_get_node(struct btree_trans *trans,\n {\n \tstruct bch_fs *c = trans->c;\n \n-\tBUG_ON(!bp.level);\n+\tmemset(iter, 0, sizeof(*iter));\n+\n+\tif (!bp.level)\n+\t\treturn ERR_PTR(-EIO);\n \n \tstruct bpos bucket;\n \tif (!bp_pos_to_bucket_nodev(c, bp_pos, &bucket))\n \t\treturn ERR_PTR(-EIO);\n \n-\tbch2_trans_node_iter_init(trans, iter,\n-\t\t\t\t  bp.btree_id,\n-\t\t\t\t  bp.pos,\n-\t\t\t\t  0,\n-\t\t\t\t  bp.level - 1,\n-\t\t\t\t  0);\n+\tunsigned depth = bp.level - 1;\n+\n+\tbch2_trans_iter_init_common(trans, iter,\n+\t\t\t\t    bp.btree_id,\n+\t\t\t\t    bp.pos,\n+\t\t\t\t    0,\n+\t\t\t\t    depth,\n+\t\t\t\t    __bch2_btree_iter_flags(trans, bp.btree_id,\n+\t\t\t\t\t    BTREE_ITER_not_extents|\n+\t\t\t\t\t    BTREE_ITER_snapshot_field|\n+\t\t\t\t\t    BTREE_ITER_all_snapshots),\n+\t\t\t\t    _RET_IP_);\n+\titer->min_depth = depth;\n+\n+\tstruct btree_path *path = btree_iter_path(trans, iter);\n+\tif (path->level != depth)\n+\t\treturn ERR_PTR(-EIO);\n+\n \tstruct btree *b = bch2_btree_iter_peek_node(iter);\n \tif (IS_ERR_OR_NULL(b))\n \t\tgoto err;",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "fs/bcachefs/backpointers.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 0,
+      "start_step": 20
+    }
+  ],
+  "success_step": 20
+}

@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static inline bool ovl_should_lock_real_pos(struct file *realfile)\n{\n\t/*\n\t * We need to hold f_pos_lock if the file is one of those that\n\t * require it (e.g. FMODE_ATOMIC_POS or directories with iterate_shared).\n\t * We can't use the VFS helper file_needs_f_pos_lock() because it is\n\t * private to fs/file.c.\n\t */\n\treturn (realfile->f_mode & FMODE_ATOMIC_POS) ||\n\t       realfile->f_op->iterate_shared;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c\nindex 969b458100fe..4ebc1723b8f4 100644\n--- a/fs/overlayfs/file.c\n+++ b/fs/overlayfs/file.c\n@@ -240,6 +240,18 @@ static int ovl_release(struct inode *inode, struct file *file)\n \treturn 0;\n }\n \n+static inline bool ovl_should_lock_real_pos(struct file *realfile)\n+{\n+\t/*\n+\t * We need to hold f_pos_lock if the file is one of those that\n+\t * require it (e.g. FMODE_ATOMIC_POS or directories with iterate_shared).\n+\t * We can't use the VFS helper file_needs_f_pos_lock() because it is\n+\t * private to fs/file.c.\n+\t */\n+\treturn (realfile->f_mode & FMODE_ATOMIC_POS) ||\n+\t       realfile->f_op->iterate_shared;\n+}\n+\n static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)\n {\n \tstruct inode *inode = file_inode(file);",
+          "explanation": "classic_swe step 36 insert #1",
+          "filename": "fs/overlayfs/file.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 243,
+          "step_index": 36
+        },
+        {
+          "after": "\tovl_inode_lock(inode);\n\tif (ovl_should_lock_real_pos(realfile))\n\t\tmutex_lock(&realfile->f_pos_lock);\n\n\trealfile->f_pos = file->f_pos;\n\n\told_cred = ovl_override_creds(inode->i_sb);\n\tret = vfs_llseek(realfile, offset, whence);\n\tovl_revert_creds(old_cred);\n\n\tfile->f_pos = realfile->f_pos;\n\tif (ovl_should_lock_real_pos(realfile))\n\t\tmutex_unlock(&realfile->f_pos_lock);\n\n\tovl_inode_unlock(inode);",
+          "before": "\tovl_inode_lock(inode);\n\trealfile->f_pos = file->f_pos;\n\n\told_cred = ovl_override_creds(inode->i_sb);\n\tret = vfs_llseek(realfile, offset, whence);\n\tovl_revert_creds(old_cred);\n\n\tfile->f_pos = realfile->f_pos;\n\tovl_inode_unlock(inode);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c\nindex 969b458100fe..bc6e03fdd9dd 100644\n--- a/fs/overlayfs/file.c\n+++ b/fs/overlayfs/file.c\n@@ -240,6 +240,18 @@ static int ovl_release(struct inode *inode, struct file *file)\n \treturn 0;\n }\n \n+static inline bool ovl_should_lock_real_pos(struct file *realfile)\n+{\n+\t/*\n+\t * We need to hold f_pos_lock if the file is one of those that\n+\t * require it (e.g. FMODE_ATOMIC_POS or directories with iterate_shared).\n+\t * We can't use the VFS helper file_needs_f_pos_lock() because it is\n+\t * private to fs/file.c.\n+\t */\n+\treturn (realfile->f_mode & FMODE_ATOMIC_POS) ||\n+\t       realfile->f_op->iterate_shared;\n+}\n+\n static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)\n {\n \tstruct inode *inode = file_inode(file);\n@@ -271,6 +283,9 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)\n \t * files, so we use the real file to perform seeks.\n \t */\n \tovl_inode_lock(inode);\n+\tif (ovl_should_lock_real_pos(realfile))\n+\t\tmutex_lock(&realfile->f_pos_lock);\n+\n \trealfile->f_pos = file->f_pos;\n \n \told_cred = ovl_override_creds(inode->i_sb);\n@@ -278,6 +293,9 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)\n \tovl_revert_creds(old_cred);\n \n \tfile->f_pos = realfile->f_pos;\n+\tif (ovl_should_lock_real_pos(realfile))\n+\t\tmutex_unlock(&realfile->f_pos_lock);\n+\n \tovl_inode_unlock(inode);\n \n \treturn ret;",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "fs/overlayfs/file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 0,
+      "start_step": 36
+    }
+  ],
+  "success_step": 38
+}

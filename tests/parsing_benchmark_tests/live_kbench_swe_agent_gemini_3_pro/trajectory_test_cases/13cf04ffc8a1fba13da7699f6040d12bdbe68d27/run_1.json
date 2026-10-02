@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "s64 vsock_stream_has_data(struct vsock_sock *vsk)\n{\n\tif (!vsk->transport)\n\t\treturn 0;\n\n\treturn vsk->transport->stream_has_data(vsk);\n}\nEXPORT_SYMBOL_GPL(vsock_stream_has_data);\n\ns64 vsock_connectible_has_data(struct vsock_sock *vsk)\n{\n\tstruct sock *sk = sk_vsock(vsk);\n\n\tif (vsk->transport) {\n\t\tif (sk->sk_type == SOCK_SEQPACKET)\n\t\t\treturn vsk->transport->seqpacket_has_data(vsk);\n\t\telse\n\t\t\treturn vsock_stream_has_data(vsk);\n\t}\n\n\treturn 0;\n}",
+          "before": "s64 vsock_stream_has_data(struct vsock_sock *vsk)\n{\n\treturn vsk->transport->stream_has_data(vsk);\n}\nEXPORT_SYMBOL_GPL(vsock_stream_has_data);\n\ns64 vsock_connectible_has_data(struct vsock_sock *vsk)\n{\n\tstruct sock *sk = sk_vsock(vsk);\n\n\tif (sk->sk_type == SOCK_SEQPACKET)\n\t\treturn vsk->transport->seqpacket_has_data(vsk);\n\telse\n\t\treturn vsock_stream_has_data(vsk);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c\nindex 5cf8109f672a..1d01c8a6530f 100644\n--- a/net/vmw_vsock/af_vsock.c\n+++ b/net/vmw_vsock/af_vsock.c\n@@ -870,6 +870,9 @@ EXPORT_SYMBOL_GPL(vsock_create_connected);\n \n s64 vsock_stream_has_data(struct vsock_sock *vsk)\n {\n+\tif (!vsk->transport)\n+\t\treturn 0;\n+\n \treturn vsk->transport->stream_has_data(vsk);\n }\n EXPORT_SYMBOL_GPL(vsock_stream_has_data);\n@@ -878,10 +881,14 @@ s64 vsock_connectible_has_data(struct vsock_sock *vsk)\n {\n \tstruct sock *sk = sk_vsock(vsk);\n \n-\tif (sk->sk_type == SOCK_SEQPACKET)\n-\t\treturn vsk->transport->seqpacket_has_data(vsk);\n-\telse\n-\t\treturn vsock_stream_has_data(vsk);\n+\tif (vsk->transport) {\n+\t\tif (sk->sk_type == SOCK_SEQPACKET)\n+\t\t\treturn vsk->transport->seqpacket_has_data(vsk);\n+\t\telse\n+\t\t\treturn vsock_stream_has_data(vsk);\n+\t}\n+\n+\treturn 0;\n }\n EXPORT_SYMBOL_GPL(vsock_connectible_has_data);",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "net/vmw_vsock/af_vsock.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 0,
+      "start_step": 18
+    }
+  ],
+  "success_step": 18
+}

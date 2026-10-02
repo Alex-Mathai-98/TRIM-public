@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstatus = ocfs2_read_inode_block(inode, &bh);\n\tif (status < 0) {\n\t\tiput(inode);\n\t\tmlog_errno(status);\n\t\tgoto bail;\n\t}\n\n\t/*\n\t * We need to verify that the truncate log inode structure is valid\n\t * before we make any assumptions about it.\n\t */\n\tif (le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) >\n\t    ocfs2_truncate_recs_per_inode(osb->sb) ||\n\t    le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) == 0) {\n\t\tstatus = -EINVAL;\n\t\tmlog(ML_ERROR, \"Invalid truncate log count %u\\n\",\n\t\t     le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count));\n\t\tiput(inode);\n\t\tbrelse(bh);\n\t\tgoto bail;\n\t}\n\n\t*tl_inode = inode;\n\t*tl_bh    = bh;",
+          "before": "\tstatus = ocfs2_read_inode_block(inode, &bh);\n\tif (status < 0) {\n\t\tiput(inode);\n\t\tmlog_errno(status);\n\t\tgoto bail;\n\t}\n\n\t*tl_inode = inode;\n\t*tl_bh    = bh;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ocfs2/alloc.c\n+++ /linux/fs/ocfs2/alloc.c\n@@ -6173,0 +6174,15 @@\n+\t/*\n+\t * We need to verify that the truncate log inode structure is valid\n+\t * before we make any assumptions about it.\n+\t */\n+\tif (le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) >\n+\t    ocfs2_truncate_recs_per_inode(osb->sb) ||\n+\t    le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) == 0) {\n+\t\tstatus = -EINVAL;\n+\t\tmlog(ML_ERROR, \"Invalid truncate log count %u\\n\",\n+\t\t     le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count));\n+\t\tiput(inode);\n+\t\tbrelse(bh);\n+\t\tgoto bail;\n+\t}\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 64",
+          "filename": "fs/ocfs2/alloc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 64
+        },
+        {
+          "after": "\n\tint status;\n\tstruct inode *inode = NULL;\n\tstruct buffer_head *bh = NULL;\n\tstruct ocfs2_dinode *di;\n\tstruct ocfs2_truncate_log *tl;\n\n\tinode = ocfs2_get_system_file_inode(osb,\n",
+          "before": "\n\tint status;\n\tstruct inode *inode = NULL;\n\tstruct buffer_head *bh = NULL;\n\n\tinode = ocfs2_get_system_file_inode(osb,\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ocfs2/alloc.c\n+++ /linux/fs/ocfs2/alloc.c\n@@ -6156,0 +6157,2 @@\n+\tstruct ocfs2_dinode *di;\n+\tstruct ocfs2_truncate_log *tl;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 68",
+          "filename": "fs/ocfs2/alloc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 68
+        },
+        {
+          "after": "\n\tdi = (struct ocfs2_dinode *) bh->b_data;\n\ttl = &di->id2.i_dealloc;\n\tif (le16_to_cpu(tl->tl_count) > ocfs2_truncate_recs_per_inode(osb->sb) ||\n\t    le16_to_cpu(tl->tl_count) == 0) {\n\t\tstatus = -EINVAL;\n\t\tmlog(ML_ERROR, \"Invalid truncate log count %u\\n\",\n\t\t     le16_to_cpu(tl->tl_count));\n\t\tiput(inode);\n\t\tbrelse(bh);\n\t\tgoto bail;\n\t}\n",
+          "before": "\n\t/*\n\t * We need to verify that the truncate log inode structure is valid\n\t * before we make any assumptions about it.\n\t */\n\tif (le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) >\n\t    ocfs2_truncate_recs_per_inode(osb->sb) ||\n\t    le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) == 0) {\n\t\tstatus = -EINVAL;\n\t\tmlog(ML_ERROR, \"Invalid truncate log count %u\\n\",\n\t\t     le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count));\n\t\tiput(inode);\n\t\tbrelse(bh);\n\t\tgoto bail;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ocfs2/alloc.c\n+++ /linux/fs/ocfs2/alloc.c\n@@ -6176,7 +6176,4 @@\n-\t/*\n-\t * We need to verify that the truncate log inode structure is valid\n-\t * before we make any assumptions about it.\n-\t */\n-\tif (le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) >\n-\t    ocfs2_truncate_recs_per_inode(osb->sb) ||\n-\t    le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count) == 0) {\n+\tdi = (struct ocfs2_dinode *) bh->b_data;\n+\ttl = &di->id2.i_dealloc;\n+\tif (le16_to_cpu(tl->tl_count) > ocfs2_truncate_recs_per_inode(osb->sb) ||\n+\t    le16_to_cpu(tl->tl_count) == 0) {\n@@ -6185 +6182 @@\n-\t\t     le16_to_cpu(((struct ocfs2_dinode *)bh->b_data)->id2.i_dealloc.tl_count));\n+\t\t     le16_to_cpu(tl->tl_count));",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 70",
+          "filename": "fs/ocfs2/alloc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        }
+      ],
+      "end_step": 70,
+      "revision_index": 0,
+      "start_step": 64
+    }
+  ],
+  "success_step": 70
+}

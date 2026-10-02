@@ -1,0 +1,36 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 5cf698785fae..8c5c67a3008c 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -6154,6 +6154,8 @@ static int ocfs2_get_truncate_log_info(struct ocfs2_super *osb,
+ 	int status;
+ 	struct inode *inode = NULL;
+ 	struct buffer_head *bh = NULL;
++	struct ocfs2_dinode *di;
++	struct ocfs2_truncate_log *tl;
+ 
+ 	inode = ocfs2_get_system_file_inode(osb,
+ 					   TRUNCATE_LOG_SYSTEM_INODE,
+@@ -6171,6 +6173,22 @@ static int ocfs2_get_truncate_log_info(struct ocfs2_super *osb,
+ 		goto bail;
+ 	}
+ 
++	di = (struct ocfs2_dinode *) bh->b_data;
++	tl = &di->id2.i_dealloc;
++
++	if (le16_to_cpu(tl->tl_count) > ocfs2_truncate_recs_per_inode(osb->sb) ||
++	    le16_to_cpu(tl->tl_count) == 0) {
++		status = -EINVAL;
++		mlog(ML_ERROR, "Truncate record count on #%llu (truncate log) "
++		     "invalid wanted %u, actual %u\n",
++		     (unsigned long long)le64_to_cpu(di->i_blkno),
++		     ocfs2_truncate_recs_per_inode(osb->sb),
++		     le16_to_cpu(tl->tl_count));
++		brelse(bh);
++		iput(inode);
++		goto bail;
++	}
++
+ 	*tl_inode = inode;
+ 	*tl_bh    = bh;
+ bail:

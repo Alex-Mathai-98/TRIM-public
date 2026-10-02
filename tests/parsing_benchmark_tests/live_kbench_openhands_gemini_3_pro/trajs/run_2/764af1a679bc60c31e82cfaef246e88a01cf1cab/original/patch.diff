@@ -1,0 +1,116 @@
+diff --git a/net/bluetooth/mgmt.c b/net/bluetooth/mgmt.c
+index 1f6d083682b8..054bad6c4cba 100644
+--- a/net/bluetooth/mgmt.c
++++ b/net/bluetooth/mgmt.c
+@@ -1312,21 +1312,25 @@ static int new_settings(struct hci_dev *hdev, struct sock *skip)
+ 				  sizeof(ev), HCI_MGMT_SETTING_EVENTS, skip);
+ }
+ 
++
++struct set_powered_data {
++	struct mgmt_pending_cmd *cmd;
++	u8 val;
++};
++
+ static void mgmt_set_powered_complete(struct hci_dev *hdev, void *data, int err)
+ {
+-	struct mgmt_pending_cmd *cmd = data;
+-	struct mgmt_mode *cp;
++	struct set_powered_data *ctx = data;
++	struct mgmt_pending_cmd *cmd = ctx->cmd;
+ 
+ 	/* Make sure cmd still outstanding. */
+ 	if (cmd != pending_find(MGMT_OP_SET_POWERED, hdev))
+-		return;
+-
+-	cp = cmd->param;
++		goto free;
+ 
+ 	bt_dev_dbg(hdev, "err %d", err);
+ 
+ 	if (!err) {
+-		if (cp->val) {
++		if (ctx->val) {
+ 			hci_dev_lock(hdev);
+ 			restart_le_actions(hdev);
+ 			hci_update_passive_scan(hdev);
+@@ -1338,7 +1342,7 @@ static void mgmt_set_powered_complete(struct hci_dev *hdev, void *data, int err)
+ 		/* Only call new_setting for power on as power off is deferred
+ 		 * to hdev->power_off work which does call hci_dev_do_close.
+ 		 */
+-		if (cp->val)
++		if (ctx->val)
+ 			new_settings(hdev, cmd->sk);
+ 	} else {
+ 		mgmt_cmd_status(cmd->sk, hdev->id, MGMT_OP_SET_POWERED,
+@@ -1346,16 +1350,18 @@ static void mgmt_set_powered_complete(struct hci_dev *hdev, void *data, int err)
+ 	}
+ 
+ 	mgmt_pending_remove(cmd);
++
++free:
++	kfree(ctx);
+ }
+ 
+ static int set_powered_sync(struct hci_dev *hdev, void *data)
+ {
+-	struct mgmt_pending_cmd *cmd = data;
+-	struct mgmt_mode *cp = cmd->param;
++	struct set_powered_data *ctx = data;
+ 
+ 	BT_DBG("%s", hdev->name);
+ 
+-	return hci_set_powered_sync(hdev, cp->val);
++	return hci_set_powered_sync(hdev, ctx->val);
+ }
+ 
+ static int set_powered(struct sock *sk, struct hci_dev *hdev, void *data,
+@@ -1398,19 +1404,36 @@ static int set_powered(struct sock *sk, struct hci_dev *hdev, void *data,
+ 		goto failed;
+ 	}
+ 
+-	/* Cancel potentially blocking sync operation before power off */
+-	if (cp->val == 0x00) {
+-		hci_cmd_sync_cancel_sync(hdev, -EHOSTDOWN);
+-		err = hci_cmd_sync_queue(hdev, set_powered_sync, cmd,
+-					 mgmt_set_powered_complete);
+-	} else {
+-		/* Use hci_cmd_sync_submit since hdev might not be running */
+-		err = hci_cmd_sync_submit(hdev, set_powered_sync, cmd,
+-					  mgmt_set_powered_complete);
+-	}
++	{
++		struct set_powered_data *ctx;
+ 
+-	if (err < 0)
+-		mgmt_pending_remove(cmd);
++		ctx = kmalloc(sizeof(*ctx), GFP_KERNEL);
++		if (!ctx) {
++			mgmt_pending_remove(cmd);
++			err = -ENOMEM;
++			goto failed;
++		}
++
++		ctx->cmd = cmd;
++		ctx->val = cp->val;
++		cmd->user_data = ctx;
++
++		/* Cancel potentially blocking sync operation before power off */
++		if (cp->val == 0x00) {
++			hci_cmd_sync_cancel_sync(hdev, -EHOSTDOWN);
++			err = hci_cmd_sync_queue(hdev, set_powered_sync, ctx,
++						 mgmt_set_powered_complete);
++		} else {
++			/* Use hci_cmd_sync_submit since hdev might not be running */
++			err = hci_cmd_sync_submit(hdev, set_powered_sync, ctx,
++						  mgmt_set_powered_complete);
++		}
++
++		if (err < 0) {
++			kfree(ctx);
++			mgmt_pending_remove(cmd);
++		}
++	}
+ 
+ failed:
+ 	hci_dev_unlock(hdev);

@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tunsigned int memflags;\n\tloff_t new_size = 0;\n\n\terr = mutex_lock_killable(&lo->lo_mutex);",
+          "before": "\tunsigned int memflags;\n\n\terr = mutex_lock_killable(&lo->lo_mutex);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/block/loop.c b/drivers/block/loop.c\nindex f8d136684109..16f16b4a52d2 100644\n--- a/drivers/block/loop.c\n+++ b/drivers/block/loop.c\n@@ -1219,6 +1219,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tbool partscan = false;\n \tbool size_changed = false;\n \tunsigned int memflags;\n+\tloff_t new_size = 0;\n \n \terr = mutex_lock_killable(&lo->lo_mutex);\n \tif (err)",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "drivers/block/loop.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "\tif (size_changed)\n\t\tnew_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n\t\t\t\t    lo->lo_backing_file);",
+          "before": "\tif (size_changed) {\n\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n\t\t\t\t\t   lo->lo_backing_file);\n\t\tloop_set_size(lo, new_size);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/block/loop.c b/drivers/block/loop.c\nindex f8d136684109..f9da52727600 100644\n--- a/drivers/block/loop.c\n+++ b/drivers/block/loop.c\n@@ -1219,6 +1219,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tbool partscan = false;\n \tbool size_changed = false;\n \tunsigned int memflags;\n+\tloff_t new_size = 0;\n \n \terr = mutex_lock_killable(&lo->lo_mutex);\n \tif (err)\n@@ -1248,11 +1249,9 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tlo->lo_flags &= ~LOOP_SET_STATUS_CLEARABLE_FLAGS;\n \tlo->lo_flags |= (info->lo_flags & LOOP_SET_STATUS_SETTABLE_FLAGS);\n \n-\tif (size_changed) {\n-\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n-\t\t\t\t\t   lo->lo_backing_file);\n-\t\tloop_set_size(lo, new_size);\n-\t}\n+\tif (size_changed)\n+\t\tnew_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n+\t\t\t\t    lo->lo_backing_file);\n \n \t/* update the direct I/O flag if lo_offset changed */\n \tloop_update_dio(lo);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "drivers/block/loop.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        },
+        {
+          "after": "out_unlock:\n\tmutex_unlock(&lo->lo_mutex);\n\tif (!err && size_changed)\n\t\tloop_set_size(lo, new_size);\n\tif (partscan)\n\t\tloop_reread_partitions(lo);",
+          "before": "out_unlock:\n\tmutex_unlock(&lo->lo_mutex);\n\tif (partscan)\n\t\tloop_reread_partitions(lo);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/block/loop.c b/drivers/block/loop.c\nindex f8d136684109..4ed151d305ce 100644\n--- a/drivers/block/loop.c\n+++ b/drivers/block/loop.c\n@@ -1219,6 +1219,7 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tbool partscan = false;\n \tbool size_changed = false;\n \tunsigned int memflags;\n+\tloff_t new_size = 0;\n \n \terr = mutex_lock_killable(&lo->lo_mutex);\n \tif (err)\n@@ -1248,11 +1249,9 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \tlo->lo_flags &= ~LOOP_SET_STATUS_CLEARABLE_FLAGS;\n \tlo->lo_flags |= (info->lo_flags & LOOP_SET_STATUS_SETTABLE_FLAGS);\n \n-\tif (size_changed) {\n-\t\tloff_t new_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n-\t\t\t\t\t   lo->lo_backing_file);\n-\t\tloop_set_size(lo, new_size);\n-\t}\n+\tif (size_changed)\n+\t\tnew_size = get_size(lo->lo_offset, lo->lo_sizelimit,\n+\t\t\t\t    lo->lo_backing_file);\n \n \t/* update the direct I/O flag if lo_offset changed */\n \tloop_update_dio(lo);\n@@ -1263,6 +1262,8 @@ loop_set_status(struct loop_device *lo, const struct loop_info64 *info)\n \t\tclear_bit(GD_SUPPRESS_PART_SCAN, &lo->lo_disk->state);\n out_unlock:\n \tmutex_unlock(&lo->lo_mutex);\n+\tif (!err && size_changed)\n+\t\tloop_set_size(lo, new_size);\n \tif (partscan)\n \t\tloop_reread_partitions(lo);",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "drivers/block/loop.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 30
+    }
+  ],
+  "success_step": 32
+}

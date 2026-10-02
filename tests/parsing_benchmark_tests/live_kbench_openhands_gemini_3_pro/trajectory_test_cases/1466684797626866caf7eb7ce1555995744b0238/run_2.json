@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#include <stdio.h>\n#include \"include/uapi/linux/comedi.h\"\n\nint main() {\n    printf(\"sizeof(struct comedi_insn) = %lu\\n\", sizeof(struct comedi_insn));\n    printf(\"sizeof(struct comedi_insnlist) = %lu\\n\", sizeof(struct comedi_insnlist));\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/check_size.c\n+++ /linux/check_size.c\n@@ -1,0 +2,9 @@\n+#include <stdio.h>\n+#include \"include/uapi/linux/comedi.h\"\n+\n+int main() {\n+    printf(\"sizeof(struct comedi_insn) = %lu\\n\", sizeof(struct comedi_insn));\n+    printf(\"sizeof(struct comedi_insnlist) = %lu\\n\", sizeof(struct comedi_insnlist));\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 32",
+          "filename": "check_size.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        },
+        {
+          "after": "\n\t\tinsns = kvcalloc(insnlist.n_insns, sizeof(*insns), GFP_KERNEL);\n\t\tif (!insns) {\n\t\t\trc = -ENOMEM;\n\t\t\tbreak;\n\t\t}\n\t\tif (copy_from_user(insns, insnlist.insns,\n\t\t\t\t   sizeof(*insns) * insnlist.n_insns)) {\n\t\t\trc = -EFAULT;\n\t\t\tkvfree(insns);\n\t\t\tbreak;\n\t\t}\n\t\trc = do_insnlist_ioctl(dev, insns, insnlist.n_insns, file);\n\t\tkvfree(insns);\n",
+          "before": "\n\t\tinsns = kcalloc(insnlist.n_insns, sizeof(*insns), GFP_KERNEL);\n\t\tif (!insns) {\n\t\t\trc = -ENOMEM;\n\t\t\tbreak;\n\t\t}\n\t\tif (copy_from_user(insns, insnlist.insns,\n\t\t\t\t   sizeof(*insns) * insnlist.n_insns)) {\n\t\t\trc = -EFAULT;\n\t\t\tkfree(insns);\n\t\t\tbreak;\n\t\t}\n\t\trc = do_insnlist_ioctl(dev, insns, insnlist.n_insns, file);\n\t\tkfree(insns);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/comedi/comedi_fops.c\n+++ /linux/drivers/comedi/comedi_fops.c\n@@ -2242 +2242 @@\n-\t\tinsns = kcalloc(insnlist.n_insns, sizeof(*insns), GFP_KERNEL);\n+\t\tinsns = kvcalloc(insnlist.n_insns, sizeof(*insns), GFP_KERNEL);\n@@ -2250 +2250 @@\n-\t\t\tkfree(insns);\n+\t\t\tkvfree(insns);\n@@ -2254 +2254 @@\n-\t\tkfree(insns);\n+\t\tkvfree(insns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 89",
+          "filename": "drivers/comedi/comedi_fops.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 89
+        },
+        {
+          "after": "\n\tinsns = kvcalloc(insnlist32.n_insns, sizeof(*insns), GFP_KERNEL);\n\tif (!insns)\n\t\treturn -ENOMEM;\n\n\t/* Copy insn structures. */\n\tinsn32 = compat_ptr(insnlist32.insns);\n\tfor (n = 0; n < insnlist32.n_insns; n++) {\n\t\trc = get_compat_insn(insns + n, insn32 + n);\n\t\tif (rc) {\n\t\t\tkvfree(insns);\n\t\t\treturn rc;\n\t\t}\n\t}\n\n\tmutex_lock(&dev->mutex);\n\trc = do_insnlist_ioctl(dev, insns, insnlist32.n_insns, file);\n\tmutex_unlock(&dev->mutex);\n\tkvfree(insns);\n",
+          "before": "\n\tinsns = kcalloc(insnlist32.n_insns, sizeof(*insns), GFP_KERNEL);\n\tif (!insns)\n\t\treturn -ENOMEM;\n\n\t/* Copy insn structures. */\n\tinsn32 = compat_ptr(insnlist32.insns);\n\tfor (n = 0; n < insnlist32.n_insns; n++) {\n\t\trc = get_compat_insn(insns + n, insn32 + n);\n\t\tif (rc) {\n\t\t\tkfree(insns);\n\t\t\treturn rc;\n\t\t}\n\t}\n\n\tmutex_lock(&dev->mutex);\n\trc = do_insnlist_ioctl(dev, insns, insnlist32.n_insns, file);\n\tmutex_unlock(&dev->mutex);\n\tkfree(insns);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/comedi/comedi_fops.c\n+++ /linux/drivers/comedi/comedi_fops.c\n@@ -3145 +3145 @@\n-\tinsns = kcalloc(insnlist32.n_insns, sizeof(*insns), GFP_KERNEL);\n+\tinsns = kvcalloc(insnlist32.n_insns, sizeof(*insns), GFP_KERNEL);\n@@ -3154 +3154 @@\n-\t\t\tkfree(insns);\n+\t\t\tkvfree(insns);\n@@ -3162 +3162 @@\n-\tkfree(insns);\n+\tkvfree(insns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 91",
+          "filename": "drivers/comedi/comedi_fops.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 91
+        }
+      ],
+      "end_step": 91,
+      "revision_index": 0,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\tinsns = kvcalloc(insnlist.n_insns, sizeof(*insns),\n\t\t\t\t GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);\n",
+          "before": "\n\t\tinsns = kvcalloc(insnlist.n_insns, sizeof(*insns), GFP_KERNEL);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/comedi/comedi_fops.c\n+++ /linux/drivers/comedi/comedi_fops.c\n@@ -2242 +2242,2 @@\n-\t\tinsns = kvcalloc(insnlist.n_insns, sizeof(*insns), GFP_KERNEL);\n+\t\tinsns = kvcalloc(insnlist.n_insns, sizeof(*insns),\n+\t\t\t\t GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 102",
+          "filename": "drivers/comedi/comedi_fops.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 102
+        },
+        {
+          "after": "\n\tinsns = kvcalloc(insnlist32.n_insns, sizeof(*insns),\n\t\t\t GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);\n",
+          "before": "\n\tinsns = kvcalloc(insnlist32.n_insns, sizeof(*insns), GFP_KERNEL);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/comedi/comedi_fops.c\n+++ /linux/drivers/comedi/comedi_fops.c\n@@ -3146 +3146,2 @@\n-\tinsns = kvcalloc(insnlist32.n_insns, sizeof(*insns), GFP_KERNEL);\n+\tinsns = kvcalloc(insnlist32.n_insns, sizeof(*insns),\n+\t\t\t GFP_KERNEL | __GFP_RETRY_MAYFAIL | __GFP_NOWARN);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 112",
+          "filename": "drivers/comedi/comedi_fops.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 112
+        }
+      ],
+      "end_step": 112,
+      "revision_index": 1,
+      "start_step": 102
+    }
+  ],
+  "success_step": 112
+}

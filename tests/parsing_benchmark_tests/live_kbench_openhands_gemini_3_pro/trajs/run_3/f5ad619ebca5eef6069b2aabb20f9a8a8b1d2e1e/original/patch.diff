@@ -1,0 +1,162 @@
+diff --git a/net/mptcp/pm_netlink.c b/net/mptcp/pm_netlink.c
+index f6f0a38a0750..8824512e1e09 100644
+--- a/net/mptcp/pm_netlink.c
++++ b/net/mptcp/pm_netlink.c
+@@ -489,7 +489,7 @@ static void __mptcp_pm_send_ack(struct mptcp_sock *msk, struct mptcp_subflow_con
+ 	pr_debug("send ack for %s\n",
+ 		 prio ? "mp_prio" : (mptcp_pm_should_add_signal(msk) ? "add_addr" : "rm_addr"));
+ 
+-	slow = lock_sock_fast(ssk);
++	slow = lock_sock_fast_nested(ssk);
+ 	if (prio) {
+ 		subflow->send_mp_prio = 1;
+ 		subflow->request_bkup = backup;
+@@ -1212,7 +1212,7 @@ void mptcp_pm_nl_subflow_chk_stale(const struct mptcp_sock *msk, struct sock *ss
+ 		if (iter != subflow && mptcp_subflow_active(iter) &&
+ 		    iter->stale_count < active_max_loss_cnt) {
+ 			/* we have some alternatives, try to mark this subflow as idle ...*/
+-			slow = lock_sock_fast(ssk);
++			slow = lock_sock_fast_nested(ssk);
+ 			if (!tcp_rtx_and_write_queues_empty(ssk)) {
+ 				subflow->stale = 1;
+ 				__mptcp_retransmit_pending_data(sk);
+diff --git a/net/mptcp/protocol.c b/net/mptcp/protocol.c
+index 6d0e201c3eb2..c2ad34c3589a 100644
+--- a/net/mptcp/protocol.c
++++ b/net/mptcp/protocol.c
+@@ -515,7 +515,7 @@ static void mptcp_subflow_send_ack(struct sock *ssk)
+ {
+ 	bool slow;
+ 
+-	slow = lock_sock_fast(ssk);
++	slow = lock_sock_fast_nested(ssk);
+ 	__mptcp_subflow_send_ack(ssk);
+ 	unlock_sock_fast(ssk, slow);
+ }
+@@ -532,7 +532,7 @@ static void mptcp_subflow_cleanup_rbuf(struct sock *ssk)
+ {
+ 	bool slow;
+ 
+-	slow = lock_sock_fast(ssk);
++	slow = lock_sock_fast_nested(ssk);
+ 	if (tcp_can_send_ack(ssk))
+ 		tcp_cleanup_rbuf(ssk, 1);
+ 	unlock_sock_fast(ssk, slow);
+@@ -909,7 +909,7 @@ static void __mptcp_flush_join_list(struct sock *sk, struct list_head *join_list
+ 
+ 	list_for_each_entry_safe(subflow, tmp, join_list, node) {
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+-		bool slow = lock_sock_fast(ssk);
++		bool slow = lock_sock_fast_nested(ssk);
+ 
+ 		list_move_tail(&subflow->node, &msk->conn_list);
+ 		if (!__mptcp_finish_join(msk, ssk))
+@@ -2079,7 +2079,7 @@ static void mptcp_rcv_space_adjust(struct mptcp_sock *msk, int copied)
+ 				bool slow;
+ 
+ 				ssk = mptcp_subflow_tcp_sock(subflow);
+-				slow = lock_sock_fast(ssk);
++				slow = lock_sock_fast_nested(ssk);
+ 				WRITE_ONCE(ssk->sk_rcvbuf, rcvbuf);
+ 				WRITE_ONCE(tcp_sk(ssk)->window_clamp, window_clamp);
+ 				tcp_cleanup_rbuf(ssk, 1);
+@@ -2130,7 +2130,7 @@ static bool __mptcp_move_skbs(struct mptcp_sock *msk)
+ 		if (likely(!ssk))
+ 			break;
+ 
+-		slowpath = lock_sock_fast(ssk);
++		slowpath = lock_sock_fast_nested(ssk);
+ 		mptcp_data_lock(sk);
+ 		__mptcp_update_rmem(sk);
+ 		done = __mptcp_move_skbs_from_subflow(msk, ssk, &moved);
+@@ -2597,7 +2597,7 @@ static void mptcp_check_fastclose(struct mptcp_sock *msk)
+ 		struct sock *tcp_sk = mptcp_subflow_tcp_sock(subflow);
+ 		bool slow;
+ 
+-		slow = lock_sock_fast(tcp_sk);
++		slow = lock_sock_fast_nested(tcp_sk);
+ 		if (tcp_sk->sk_state != TCP_CLOSE) {
+ 			mptcp_send_active_reset_reason(tcp_sk);
+ 			tcp_set_state(tcp_sk, TCP_CLOSE);
+@@ -2743,7 +2743,7 @@ static void mptcp_mp_fail_no_response(struct mptcp_sock *msk)
+ 
+ 	pr_debug("MP_FAIL doesn't respond, reset the subflow\n");
+ 
+-	slow = lock_sock_fast(ssk);
++	slow = lock_sock_fast_nested(ssk);
+ 	mptcp_subflow_reset(ssk);
+ 	WRITE_ONCE(mptcp_subflow_ctx(ssk)->fail_tout, 0);
+ 	unlock_sock_fast(ssk, slow);
+diff --git a/net/mptcp/sockopt.c b/net/mptcp/sockopt.c
+index 505445a9598f..2d9702eabfbe 100644
+--- a/net/mptcp/sockopt.c
++++ b/net/mptcp/sockopt.c
+@@ -77,7 +77,7 @@ static void mptcp_sol_socket_sync_intval(struct mptcp_sock *msk, int optname, in
+ 
+ 	mptcp_for_each_subflow(msk, subflow) {
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+-		bool slow = lock_sock_fast(ssk);
++		bool slow = lock_sock_fast_nested(ssk);
+ 
+ 		switch (optname) {
+ 		case SO_DEBUG:
+@@ -159,7 +159,7 @@ static int mptcp_setsockopt_sol_socket_tstamp(struct mptcp_sock *msk, int optnam
+ 	lock_sock(sk);
+ 	mptcp_for_each_subflow(msk, subflow) {
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+-		bool slow = lock_sock_fast(ssk);
++		bool slow = lock_sock_fast_nested(ssk);
+ 
+ 		sock_set_timestamp(sk, optname, !!val);
+ 		unlock_sock_fast(ssk, slow);
+@@ -235,7 +235,7 @@ static int mptcp_setsockopt_sol_socket_timestamping(struct mptcp_sock *msk,
+ 
+ 	mptcp_for_each_subflow(msk, subflow) {
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+-		bool slow = lock_sock_fast(ssk);
++		bool slow = lock_sock_fast_nested(ssk);
+ 
+ 		sock_set_timestamping(sk, optname, timestamping);
+ 		unlock_sock_fast(ssk, slow);
+@@ -270,7 +270,7 @@ static int mptcp_setsockopt_sol_socket_linger(struct mptcp_sock *msk, sockptr_t
+ 	sockopt_seq_inc(msk);
+ 	mptcp_for_each_subflow(msk, subflow) {
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+-		bool slow = lock_sock_fast(ssk);
++		bool slow = lock_sock_fast_nested(ssk);
+ 
+ 		if (!ling.l_onoff) {
+ 			sock_reset_flag(ssk, SOCK_LINGER);
+@@ -751,7 +751,7 @@ static int mptcp_setsockopt_v4_set_tos(struct mptcp_sock *msk, int optname,
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+ 		bool slow;
+ 
+-		slow = lock_sock_fast(ssk);
++		slow = lock_sock_fast_nested(ssk);
+ 		__ip_sock_set_tos(ssk, val);
+ 		unlock_sock_fast(ssk, slow);
+ 	}
+@@ -1589,7 +1589,7 @@ int mptcp_set_rcvlowat(struct sock *sk, int val)
+ 		struct sock *ssk = mptcp_subflow_tcp_sock(subflow);
+ 		bool slow;
+ 
+-		slow = lock_sock_fast(ssk);
++		slow = lock_sock_fast_nested(ssk);
+ 		WRITE_ONCE(ssk->sk_rcvbuf, space);
+ 		WRITE_ONCE(tcp_sk(ssk)->window_clamp, val);
+ 		unlock_sock_fast(ssk, slow);
+diff --git a/net/mptcp/subflow.c b/net/mptcp/subflow.c
+index 25dde81bcb75..30988b90d909 100644
+--- a/net/mptcp/subflow.c
++++ b/net/mptcp/subflow.c
+@@ -875,7 +875,10 @@ static struct sock *subflow_syn_recv_sock(const struct sock *sk,
+ 		ctx->setsockopt_seq = listener->setsockopt_seq;
+ 
+ 		if (ctx->mp_capable) {
++			/* new msk is created with the same lock class as the child */
++			bh_unlock_sock(child);
+ 			ctx->conn = mptcp_sk_clone_init(listener->conn, &mp_opt, child, req);
++			bh_lock_sock(child);
+ 			if (!ctx->conn)
+ 				goto fallback;
+ 

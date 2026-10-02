@@ -1,0 +1,255 @@
+{
+  "bug_id": "django__django-11265",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        # Generate the inner query.\n        query = Query(self.model)\n        query.add_filter(filter_expr)",
+        "after": "        # Generate the inner query.\n        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        query._filtered_relations = self._filtered_relations.copy()\n        query.add_filter(filter_expr)",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        # Generate the inner query.\n        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        query._filtered_relations = self._filtered_relations.copy()\n        query.add_filter(filter_expr)",
+        "after": "        # Generate the inner query.\n        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        for alias, filtered_relation in self._filtered_relations.items():\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        query.add_filter(filter_expr)",
+        "explanation": "classic_swe step 57 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        for alias, filtered_relation in self._filtered_relations.items():\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        query.add_filter(filter_expr)",
+        "after": "        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        print(f\"DEBUG: Original query has {len(self._filtered_relations)} filtered relations\")\n        for alias, filtered_relation in self._filtered_relations.items():\n            print(f\"DEBUG: Adding filtered relation {alias}: {filtered_relation}\")\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        print(f\"DEBUG: Subquery now has {len(query._filtered_relations)} filtered relations\")\n        print(f\"DEBUG: Adding filter: {filter_expr}\")\n        query.add_filter(filter_expr)\n        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")",
+        "explanation": "classic_swe step 66 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)",
+        "after": "        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+        "explanation": "classic_swe step 69 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")\n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+        "after": "        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")\n        \n        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n        # This ensures they are preserved even if the joins are optimized away\n        for alias, filtered_relation in query._filtered_relations.items():\n            if alias in query.alias_map:\n                join = query.alias_map[alias]\n                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n                    # Build the condition from the FilteredRelation and add it to WHERE\n                    condition_q = join.filtered_relation.condition\n                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n                    query.where.add(where_clause, AND)\n                    print(f\"DEBUG: Added FilteredRelation condition to WHERE: {where_clause}\")\n        \n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+        "explanation": "classic_swe step 74 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/sql/query.py",
+        "before": "        query.annotations = self.annotations.copy()\n        print(f\"DEBUG: Original query has {len(self._filtered_relations)} filtered relations\")\n        for alias, filtered_relation in self._filtered_relations.items():\n            print(f\"DEBUG: Adding filtered relation {alias}: {filtered_relation}\")\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        print(f\"DEBUG: Subquery now has {len(query._filtered_relations)} filtered relations\")\n        print(f\"DEBUG: Adding filter: {filter_expr}\")\n        query.add_filter(filter_expr)\n        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")\n        \n        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n        # This ensures they are preserved even if the joins are optimized away\n        for alias, filtered_relation in query._filtered_relations.items():\n            if alias in query.alias_map:\n                join = query.alias_map[alias]\n                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n                    # Build the condition from the FilteredRelation and add it to WHERE\n                    condition_q = join.filtered_relation.condition\n                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n                    query.where.add(where_clause, AND)\n                    print(f\"DEBUG: Added FilteredRelation condition to WHERE: {where_clause}\")\n        \n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+        "after": "        query.annotations = self.annotations.copy()\n        for alias, filtered_relation in self._filtered_relations.items():\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        query.add_filter(filter_expr)\n        \n        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n        # This ensures they are preserved even if the joins are optimized away\n        for alias, filtered_relation in query._filtered_relations.items():\n            if alias in query.alias_map:\n                join = query.alias_map[alias]\n                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n                    # Build the condition from the FilteredRelation and add it to WHERE\n                    condition_q = join.filtered_relation.condition\n                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n                    query.where.add(where_clause, AND)\n        \n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)",
+        "explanation": "classic_swe step 76 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py\nindex d69c24419b..35c78d7366 100644\n--- a/django/db/models/sql/query.py\n+++ b/django/db/models/sql/query.py\n@@ -1666,7 +1666,26 @@ class Query(BaseExpression):\n             filter_expr = (filter_lhs, OuterRef(filter_rhs.name))\n         # Generate the inner query.\n         query = Query(self.model)\n+        # Copy annotations and filtered relations from the original query\n+        # so that they are available in the subquery for exclude operations\n+        query.annotations = self.annotations.copy()\n+        for alias, filtered_relation in self._filtered_relations.items():\n+            # Clone the filtered relation to avoid modifying the original\n+            cloned_filtered_relation = filtered_relation.clone()\n+            query.add_filtered_relation(cloned_filtered_relation, alias)\n         query.add_filter(filter_expr)\n+        \n+        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n+        # This ensures they are preserved even if the joins are optimized away\n+        for alias, filtered_relation in query._filtered_relations.items():\n+            if alias in query.alias_map:\n+                join = query.alias_map[alias]\n+                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n+                    # Build the condition from the FilteredRelation and add it to WHERE\n+                    condition_q = join.filtered_relation.condition\n+                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n+                    query.where.add(where_clause, AND)\n+        \n         query.clear_ordering(True)\n         # Try to have as simple as possible subquery -> trim leading joins from\n         # the subquery.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "nodes_original_count": 6,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 5,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 4,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 5,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "edit_list_after_node_min": [
+      2,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "edit_list_after_file_min": [
+      2,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 10,
+    "edit_list_after_greedy": [
+      2,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "edit_list_after_refinement": [
+      2,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 6,
+  "reduction": "6_to_6",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        # Generate the inner query.\n        query = Query(self.model)\n        query.add_filter(filter_expr)",
+          "after": "        # Generate the inner query.\n        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        query._filtered_relations = self._filtered_relations.copy()\n        query.add_filter(filter_expr)",
+          "explanation": "classic_swe step 27 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        # Generate the inner query.\n        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        query._filtered_relations = self._filtered_relations.copy()\n        query.add_filter(filter_expr)",
+          "after": "        # Generate the inner query.\n        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        for alias, filtered_relation in self._filtered_relations.items():\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        query.add_filter(filter_expr)",
+          "explanation": "classic_swe step 57 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        for alias, filtered_relation in self._filtered_relations.items():\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        query.add_filter(filter_expr)",
+          "after": "        query = Query(self.model)\n        # Copy annotations and filtered relations from the original query\n        # so that they are available in the subquery for exclude operations\n        query.annotations = self.annotations.copy()\n        print(f\"DEBUG: Original query has {len(self._filtered_relations)} filtered relations\")\n        for alias, filtered_relation in self._filtered_relations.items():\n            print(f\"DEBUG: Adding filtered relation {alias}: {filtered_relation}\")\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        print(f\"DEBUG: Subquery now has {len(query._filtered_relations)} filtered relations\")\n        print(f\"DEBUG: Adding filter: {filter_expr}\")\n        query.add_filter(filter_expr)\n        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")",
+          "explanation": "classic_swe step 66 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)",
+          "after": "        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+          "explanation": "classic_swe step 69 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")\n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+          "after": "        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")\n        \n        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n        # This ensures they are preserved even if the joins are optimized away\n        for alias, filtered_relation in query._filtered_relations.items():\n            if alias in query.alias_map:\n                join = query.alias_map[alias]\n                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n                    # Build the condition from the FilteredRelation and add it to WHERE\n                    condition_q = join.filtered_relation.condition\n                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n                    query.where.add(where_clause, AND)\n                    print(f\"DEBUG: Added FilteredRelation condition to WHERE: {where_clause}\")\n        \n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+          "explanation": "classic_swe step 74 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/query.py",
+          "before": "        query.annotations = self.annotations.copy()\n        print(f\"DEBUG: Original query has {len(self._filtered_relations)} filtered relations\")\n        for alias, filtered_relation in self._filtered_relations.items():\n            print(f\"DEBUG: Adding filtered relation {alias}: {filtered_relation}\")\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        print(f\"DEBUG: Subquery now has {len(query._filtered_relations)} filtered relations\")\n        print(f\"DEBUG: Adding filter: {filter_expr}\")\n        query.add_filter(filter_expr)\n        print(f\"DEBUG: Subquery SQL after adding filter: {query}\")\n        \n        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n        # This ensures they are preserved even if the joins are optimized away\n        for alias, filtered_relation in query._filtered_relations.items():\n            if alias in query.alias_map:\n                join = query.alias_map[alias]\n                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n                    # Build the condition from the FilteredRelation and add it to WHERE\n                    condition_q = join.filtered_relation.condition\n                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n                    query.where.add(where_clause, AND)\n                    print(f\"DEBUG: Added FilteredRelation condition to WHERE: {where_clause}\")\n        \n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        print(f\"DEBUG: Before trim_start: {query}\")\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)\n        print(f\"DEBUG: After trim_start: {query}\")\n        print(f\"DEBUG: trimmed_prefix: {trimmed_prefix}, contains_louter: {contains_louter}\")",
+          "after": "        query.annotations = self.annotations.copy()\n        for alias, filtered_relation in self._filtered_relations.items():\n            # Clone the filtered relation to avoid modifying the original\n            cloned_filtered_relation = filtered_relation.clone()\n            query.add_filtered_relation(cloned_filtered_relation, alias)\n        query.add_filter(filter_expr)\n        \n        # Before trimming, extract FilteredRelation conditions and add them to WHERE clause\n        # This ensures they are preserved even if the joins are optimized away\n        for alias, filtered_relation in query._filtered_relations.items():\n            if alias in query.alias_map:\n                join = query.alias_map[alias]\n                if hasattr(join, 'filtered_relation') and join.filtered_relation:\n                    # Build the condition from the FilteredRelation and add it to WHERE\n                    condition_q = join.filtered_relation.condition\n                    where_clause = query.build_filtered_relation_q(condition_q, reuse=set())\n                    query.where.add(where_clause, AND)\n        \n        query.clear_ordering(True)\n        # Try to have as simple as possible subquery -> trim leading joins from\n        # the subquery.\n        trimmed_prefix, contains_louter = query.trim_start(names_with_path)",
+          "explanation": "classic_swe step 76 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 30,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 30,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 19,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 8,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)\n{\n\tstruct io_async_rw *rw = req->async_data;\n\n\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED)) {\n\t\tio_vec_free(&rw->vec);\n\t\treturn;\n\t}\n\n\tio_alloc_cache_vec_kasan(&rw->vec);\n\tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n\t\tio_vec_free(&rw->vec);\n\n\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {\n\t\tio_req_async_data_clear(req, 0);\n\t} else {\n\t\tio_vec_free(&rw->vec);\n\t}\n}",
+          "before": "static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)\n{\n\tstruct io_async_rw *rw = req->async_data;\n\n\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED))\n\t\treturn;\n\n\tio_alloc_cache_vec_kasan(&rw->vec);\n\tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n\t\tio_vec_free(&rw->vec);\n\n\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw))\n\t\tio_req_async_data_clear(req, 0);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/rw.c b/io_uring/rw.c\nindex 5b2241a5813c..717f27eae796 100644\n--- a/io_uring/rw.c\n+++ b/io_uring/rw.c\n@@ -148,15 +148,20 @@ static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)\n {\n \tstruct io_async_rw *rw = req->async_data;\n \n-\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED))\n+\tif (unlikely(issue_flags & IO_URING_F_UNLOCKED)) {\n+\t\tio_vec_free(&rw->vec);\n \t\treturn;\n+\t}\n \n \tio_alloc_cache_vec_kasan(&rw->vec);\n \tif (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)\n \t\tio_vec_free(&rw->vec);\n \n-\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw))\n+\tif (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {\n \t\tio_req_async_data_clear(req, 0);\n+\t} else {\n+\t\tio_vec_free(&rw->vec);\n+\t}\n }\n \n static void io_req_rw_cleanup(struct io_kiocb *req, unsigned int issue_flags)",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "io_uring/rw.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        }
+      ],
+      "end_step": 51,
+      "revision_index": 0,
+      "start_step": 51
+    }
+  ],
+  "success_step": 51
+}

@@ -1,0 +1,172 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n\t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n\t\t\t\tbool allow_alloc_fallback);\nstruct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n",
+          "before": "struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n\t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n\t\t\t\tbool allow_alloc_fallback);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..8d3d4f6ea0c4 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -714,6 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,\n struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n \t\t\t\tbool allow_alloc_fallback);\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "include/linux/hugetlb.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n{\n\tstruct inode *inode = file_inode(file);\n\tstruct hstate *h = hstate_file(file);\n\tstruct hugepage_subpool *spool = subpool_inode(inode);\n\tstruct resv_map *resv = inode_resv_map(inode);\n\tlong chg;\n\tstruct folio *folio;\n\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n\tint err;\n\n\tidx >>= huge_page_order(h);\n\n\tint nid = numa_node_id();\n\n\tif (resv)\n\t\tchg = region_chg(resv, idx, idx + 1, 1);\n\telse\n\t\tchg = 1;\n\n\tif (chg < 0)\n\t\treturn ERR_PTR(-ENOMEM);\n\n\tif (chg) {\n\t\tif (hugepage_subpool_get_pages(spool, 1))\n\t\t\treturn ERR_PTR(-ENOSPC);\n\n\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n\t\tif (!folio)\n\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n\n\t\tif (!folio) {\n\t\t\thugepage_subpool_put_pages(spool, 1);\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t\t}\n\t} else {\n\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n\t\tif (!folio)\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t}\n\n\tif (folio_test_locked(folio))\n\t\tfolio_unlock(folio);\n\n\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n\tif (err) {\n\t\tfolio_put(folio);\n\t\tif (!chg)\n\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n\t\treturn ERR_PTR(err);\n\t}\n\n\tfolio_unlock(folio);\n\n\treturn folio;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..8d3d4f6ea0c4 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -714,6 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,\n struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n \t\t\t\tbool allow_alloc_fallback);\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n \ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..ea2f12bce9bd 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,60 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n+{\n+\tstruct inode *inode = file_inode(file);\n+\tstruct hstate *h = hstate_file(file);\n+\tstruct hugepage_subpool *spool = subpool_inode(inode);\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong chg;\n+\tstruct folio *folio;\n+\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n+\tint err;\n+\n+\tidx >>= huge_page_order(h);\n+\n+\tint nid = numa_node_id();\n+\n+\tif (resv)\n+\t\tchg = region_chg(resv, idx, idx + 1, 1);\n+\telse\n+\t\tchg = 1;\n+\n+\tif (chg < 0)\n+\t\treturn ERR_PTR(-ENOMEM);\n+\n+\tif (chg) {\n+\t\tif (hugepage_subpool_get_pages(spool, 1))\n+\t\t\treturn ERR_PTR(-ENOSPC);\n+\n+\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n+\t\tif (!folio)\n+\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n+\n+\t\tif (!folio) {\n+\t\t\thugepage_subpool_put_pages(spool, 1);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\t} else {\n+\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n+\t\tif (!folio)\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t}\n+\n+\tif (folio_test_locked(folio))\n+\t\tfolio_unlock(folio);\n+\n+\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n+\tif (err) {\n+\t\tfolio_put(folio);\n+\t\tif (!chg)\n+\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n+\tfolio_unlock(folio);\n+\n+\treturn folio;\n+}",
+          "explanation": "classic_swe step 40 insert #1",
+          "filename": "mm/hugetlb.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 7973,
+          "step_index": 40
+        },
+        {
+          "after": "\tif (is_file_hugepages(memfd))\n\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n",
+          "before": "\tif (is_file_hugepages(memfd)) {\n\t\t/*\n\t\t * The folio would most likely be accessed by a DMA driver,\n\t\t * therefore, we have zone memory constraints where we can\n\t\t * alloc from. Also, the folio will be pinned for an indefinite\n\t\t * amount of time, so it is not expected to be migrated away.\n\t\t */\n\t\tstruct hstate *h = hstate_file(memfd);\n\n\t\tgfp_mask = htlb_alloc_mask(h);\n\t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n\t\tidx >>= huge_page_order(h);\n\n\t\tfolio = alloc_hugetlb_folio_reserve(h,\n\t\t\t\t\t\t    numa_node_id(),\n\t\t\t\t\t\t    NULL,\n\t\t\t\t\t\t    gfp_mask);\n\t\tif (folio) {\n\t\t\terr = hugetlb_add_to_page_cache(folio,\n\t\t\t\t\t\t\tmemfd->f_mapping,\n\t\t\t\t\t\t\tidx);\n\t\t\tif (err) {\n\t\t\t\tfolio_put(folio);\n\t\t\t\treturn ERR_PTR(err);\n\t\t\t}\n\t\t\tfolio_unlock(folio);\n\t\t\treturn folio;\n\t\t}\n\t\treturn ERR_PTR(-ENOMEM);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..8d3d4f6ea0c4 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -714,6 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,\n struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n \t\t\t\tbool allow_alloc_fallback);\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n \ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..ea2f12bce9bd 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,60 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n+{\n+\tstruct inode *inode = file_inode(file);\n+\tstruct hstate *h = hstate_file(file);\n+\tstruct hugepage_subpool *spool = subpool_inode(inode);\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong chg;\n+\tstruct folio *folio;\n+\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n+\tint err;\n+\n+\tidx >>= huge_page_order(h);\n+\n+\tint nid = numa_node_id();\n+\n+\tif (resv)\n+\t\tchg = region_chg(resv, idx, idx + 1, 1);\n+\telse\n+\t\tchg = 1;\n+\n+\tif (chg < 0)\n+\t\treturn ERR_PTR(-ENOMEM);\n+\n+\tif (chg) {\n+\t\tif (hugepage_subpool_get_pages(spool, 1))\n+\t\t\treturn ERR_PTR(-ENOSPC);\n+\n+\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n+\t\tif (!folio)\n+\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n+\n+\t\tif (!folio) {\n+\t\t\thugepage_subpool_put_pages(spool, 1);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\t} else {\n+\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n+\t\tif (!folio)\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t}\n+\n+\tif (folio_test_locked(folio))\n+\t\tfolio_unlock(folio);\n+\n+\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n+\tif (err) {\n+\t\tfolio_put(folio);\n+\t\tif (!chg)\n+\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n+\tfolio_unlock(folio);\n+\n+\treturn folio;\n+}\ndiff --git a/mm/memfd.c b/mm/memfd.c\nindex ab367e61553d..b77e0dde4d80 100644\n--- a/mm/memfd.c\n+++ b/mm/memfd.c\n@@ -73,36 +73,8 @@ struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)\n \tgfp_t gfp_mask;\n \tint err;\n \n-\tif (is_file_hugepages(memfd)) {\n-\t\t/*\n-\t\t * The folio would most likely be accessed by a DMA driver,\n-\t\t * therefore, we have zone memory constraints where we can\n-\t\t * alloc from. Also, the folio will be pinned for an indefinite\n-\t\t * amount of time, so it is not expected to be migrated away.\n-\t\t */\n-\t\tstruct hstate *h = hstate_file(memfd);\n-\n-\t\tgfp_mask = htlb_alloc_mask(h);\n-\t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n-\t\tidx >>= huge_page_order(h);\n-\n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n-\t\t\t\t\t\t    numa_node_id(),\n-\t\t\t\t\t\t    NULL,\n-\t\t\t\t\t\t    gfp_mask);\n-\t\tif (folio) {\n-\t\t\terr = hugetlb_add_to_page_cache(folio,\n-\t\t\t\t\t\t\tmemfd->f_mapping,\n-\t\t\t\t\t\t\tidx);\n-\t\t\tif (err) {\n-\t\t\t\tfolio_put(folio);\n-\t\t\t\treturn ERR_PTR(err);\n-\t\t\t}\n-\t\t\tfolio_unlock(folio);\n-\t\t\treturn folio;\n-\t\t}\n-\t\treturn ERR_PTR(-ENOMEM);\n-\t}\n+\tif (is_file_hugepages(memfd))\n+\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n #endif\n \treturn shmem_read_folio(memfd->f_mapping, idx);\n }",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "mm/memfd.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        },
+        {
+          "after": "#ifdef CONFIG_HUGETLB_PAGE\n\tif (is_file_hugepages(memfd))\n\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n#endif\n",
+          "before": "#ifdef CONFIG_HUGETLB_PAGE\n\tstruct folio *folio;\n\tgfp_t gfp_mask;\n\tint err;\n\n\tif (is_file_hugepages(memfd))\n\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n#endif\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..8d3d4f6ea0c4 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -714,6 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,\n struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n \t\t\t\tbool allow_alloc_fallback);\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n \ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..ea2f12bce9bd 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,60 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n+{\n+\tstruct inode *inode = file_inode(file);\n+\tstruct hstate *h = hstate_file(file);\n+\tstruct hugepage_subpool *spool = subpool_inode(inode);\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong chg;\n+\tstruct folio *folio;\n+\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n+\tint err;\n+\n+\tidx >>= huge_page_order(h);\n+\n+\tint nid = numa_node_id();\n+\n+\tif (resv)\n+\t\tchg = region_chg(resv, idx, idx + 1, 1);\n+\telse\n+\t\tchg = 1;\n+\n+\tif (chg < 0)\n+\t\treturn ERR_PTR(-ENOMEM);\n+\n+\tif (chg) {\n+\t\tif (hugepage_subpool_get_pages(spool, 1))\n+\t\t\treturn ERR_PTR(-ENOSPC);\n+\n+\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n+\t\tif (!folio)\n+\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n+\n+\t\tif (!folio) {\n+\t\t\thugepage_subpool_put_pages(spool, 1);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\t} else {\n+\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n+\t\tif (!folio)\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t}\n+\n+\tif (folio_test_locked(folio))\n+\t\tfolio_unlock(folio);\n+\n+\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n+\tif (err) {\n+\t\tfolio_put(folio);\n+\t\tif (!chg)\n+\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n+\tfolio_unlock(folio);\n+\n+\treturn folio;\n+}\ndiff --git a/mm/memfd.c b/mm/memfd.c\nindex ab367e61553d..143922e78414 100644\n--- a/mm/memfd.c\n+++ b/mm/memfd.c\n@@ -69,40 +69,8 @@ static void memfd_tag_pins(struct xa_state *xas)\n struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)\n {\n #ifdef CONFIG_HUGETLB_PAGE\n-\tstruct folio *folio;\n-\tgfp_t gfp_mask;\n-\tint err;\n-\n-\tif (is_file_hugepages(memfd)) {\n-\t\t/*\n-\t\t * The folio would most likely be accessed by a DMA driver,\n-\t\t * therefore, we have zone memory constraints where we can\n-\t\t * alloc from. Also, the folio will be pinned for an indefinite\n-\t\t * amount of time, so it is not expected to be migrated away.\n-\t\t */\n-\t\tstruct hstate *h = hstate_file(memfd);\n-\n-\t\tgfp_mask = htlb_alloc_mask(h);\n-\t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n-\t\tidx >>= huge_page_order(h);\n-\n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n-\t\t\t\t\t\t    numa_node_id(),\n-\t\t\t\t\t\t    NULL,\n-\t\t\t\t\t\t    gfp_mask);\n-\t\tif (folio) {\n-\t\t\terr = hugetlb_add_to_page_cache(folio,\n-\t\t\t\t\t\t\tmemfd->f_mapping,\n-\t\t\t\t\t\t\tidx);\n-\t\t\tif (err) {\n-\t\t\t\tfolio_put(folio);\n-\t\t\t\treturn ERR_PTR(err);\n-\t\t\t}\n-\t\t\tfolio_unlock(folio);\n-\t\t\treturn folio;\n-\t\t}\n-\t\treturn ERR_PTR(-ENOMEM);\n-\t}\n+\tif (is_file_hugepages(memfd))\n+\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n #endif\n \treturn shmem_read_folio(memfd->f_mapping, idx);\n }",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "mm/memfd.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 0,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n{\n\tstruct inode *inode = file_inode(file);\n\tstruct hstate *h = hstate_file(file);\n\tstruct hugepage_subpool *spool = subpool_inode(inode);\n\tstruct resv_map *resv = inode_resv_map(inode);\n\tlong chg;\n\tstruct folio *folio;\n\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n\tint err;\n\n\tidx >>= huge_page_order(h);\n\n\tint nid = numa_node_id();\n\n\tif (resv && region_count(resv, idx, idx + 1))\n\t\tchg = 0;\n\telse\n\t\tchg = 1;\n\n\tif (chg) {\n\t\tif (hugepage_subpool_get_pages(spool, 1))\n\t\t\treturn ERR_PTR(-ENOSPC);\n\n\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n\t\tif (!folio)\n\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n\n\t\tif (!folio) {\n\t\t\thugepage_subpool_put_pages(spool, 1);\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t\t}\n\t} else {\n\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n\t\tif (!folio)\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t}\n\n\tif (folio_test_locked(folio))\n\t\tfolio_unlock(folio);\n\n\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n\tif (err) {\n\t\tfolio_put(folio);\n\t\tif (!chg)\n\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n\t\treturn ERR_PTR(err);\n\t}\n\n\tfolio_unlock(folio);\n\n\treturn folio;\n}\n",
+          "before": "struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n{\n\tstruct inode *inode = file_inode(file);\n\tstruct hstate *h = hstate_file(file);\n\tstruct hugepage_subpool *spool = subpool_inode(inode);\n\tstruct resv_map *resv = inode_resv_map(inode);\n\tlong chg;\n\tstruct folio *folio;\n\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n\tint err;\n\n\tidx >>= huge_page_order(h);\n\n\tint nid = numa_node_id();\n\n\tif (resv)\n\t\tchg = region_chg(resv, idx, idx + 1, 1);\n\telse\n\t\tchg = 1;\n\n\tif (chg < 0)\n\t\treturn ERR_PTR(-ENOMEM);\n\n\tif (chg) {\n\t\tif (hugepage_subpool_get_pages(spool, 1))\n\t\t\treturn ERR_PTR(-ENOSPC);\n\n\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n\t\tif (!folio)\n\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n\n\t\tif (!folio) {\n\t\t\thugepage_subpool_put_pages(spool, 1);\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t\t}\n\t} else {\n\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n\t\tif (!folio)\n\t\t\treturn ERR_PTR(-ENOMEM);\n\t}\n\n\tif (folio_test_locked(folio))\n\t\tfolio_unlock(folio);\n\n\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n\tif (err) {\n\t\tfolio_put(folio);\n\t\tif (!chg)\n\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n\t\treturn ERR_PTR(err);\n\t}\n\n\tfolio_unlock(folio);\n\n\treturn folio;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..8d3d4f6ea0c4 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -714,6 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,\n struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n \t\t\t\tbool allow_alloc_fallback);\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n \ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..150983dadcd4 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,57 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n+{\n+\tstruct inode *inode = file_inode(file);\n+\tstruct hstate *h = hstate_file(file);\n+\tstruct hugepage_subpool *spool = subpool_inode(inode);\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong chg;\n+\tstruct folio *folio;\n+\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n+\tint err;\n+\n+\tidx >>= huge_page_order(h);\n+\n+\tint nid = numa_node_id();\n+\n+\tif (resv && region_count(resv, idx, idx + 1))\n+\t\tchg = 0;\n+\telse\n+\t\tchg = 1;\n+\n+\tif (chg) {\n+\t\tif (hugepage_subpool_get_pages(spool, 1))\n+\t\t\treturn ERR_PTR(-ENOSPC);\n+\n+\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n+\t\tif (!folio)\n+\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n+\n+\t\tif (!folio) {\n+\t\t\thugepage_subpool_put_pages(spool, 1);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\t} else {\n+\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n+\t\tif (!folio)\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t}\n+\n+\tif (folio_test_locked(folio))\n+\t\tfolio_unlock(folio);\n+\n+\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n+\tif (err) {\n+\t\tfolio_put(folio);\n+\t\tif (!chg)\n+\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n+\tfolio_unlock(folio);\n+\n+\treturn folio;\n+}\ndiff --git a/mm/memfd.c b/mm/memfd.c\nindex ab367e61553d..143922e78414 100644\n--- a/mm/memfd.c\n+++ b/mm/memfd.c\n@@ -69,40 +69,8 @@ static void memfd_tag_pins(struct xa_state *xas)\n struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)\n {\n #ifdef CONFIG_HUGETLB_PAGE\n-\tstruct folio *folio;\n-\tgfp_t gfp_mask;\n-\tint err;\n-\n-\tif (is_file_hugepages(memfd)) {\n-\t\t/*\n-\t\t * The folio would most likely be accessed by a DMA driver,\n-\t\t * therefore, we have zone memory constraints where we can\n-\t\t * alloc from. Also, the folio will be pinned for an indefinite\n-\t\t * amount of time, so it is not expected to be migrated away.\n-\t\t */\n-\t\tstruct hstate *h = hstate_file(memfd);\n-\n-\t\tgfp_mask = htlb_alloc_mask(h);\n-\t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n-\t\tidx >>= huge_page_order(h);\n-\n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n-\t\t\t\t\t\t    numa_node_id(),\n-\t\t\t\t\t\t    NULL,\n-\t\t\t\t\t\t    gfp_mask);\n-\t\tif (folio) {\n-\t\t\terr = hugetlb_add_to_page_cache(folio,\n-\t\t\t\t\t\t\tmemfd->f_mapping,\n-\t\t\t\t\t\t\tidx);\n-\t\t\tif (err) {\n-\t\t\t\tfolio_put(folio);\n-\t\t\t\treturn ERR_PTR(err);\n-\t\t\t}\n-\t\t\tfolio_unlock(folio);\n-\t\t\treturn folio;\n-\t\t}\n-\t\treturn ERR_PTR(-ENOMEM);\n-\t}\n+\tif (is_file_hugepages(memfd))\n+\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n #endif\n \treturn shmem_read_folio(memfd->f_mapping, idx);\n }",
+          "explanation": "classic_swe step 48 #1",
+          "filename": "mm/hugetlb.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 1,
+      "start_step": 48
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (folio_test_locked(folio))\n\t\tfolio_unlock(folio);\n\n\thugetlb_set_folio_subpool(folio, spool);\n\n\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n",
+          "before": "\tif (folio_test_locked(folio))\n\t\tfolio_unlock(folio);\n\n\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h\nindex 42f374e828a2..8d3d4f6ea0c4 100644\n--- a/include/linux/hugetlb.h\n+++ b/include/linux/hugetlb.h\n@@ -714,6 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,\n struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,\n \t\t\t\tnodemask_t *nmask, gfp_t gfp_mask,\n \t\t\t\tbool allow_alloc_fallback);\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx);\n struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n \t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);\n \ndiff --git a/mm/hugetlb.c b/mm/hugetlb.c\nindex 9dc95eac558c..64cbfebb2c24 100644\n--- a/mm/hugetlb.c\n+++ b/mm/hugetlb.c\n@@ -7969,3 +7969,59 @@ void fixup_hugetlb_reservations(struct vm_area_struct *vma)\n \tif (is_vm_hugetlb_page(vma))\n \t\tclear_vma_resv_huge_pages(vma);\n }\n+\n+struct folio *memfd_alloc_hugetlb_folio(struct file *file, pgoff_t idx)\n+{\n+\tstruct inode *inode = file_inode(file);\n+\tstruct hstate *h = hstate_file(file);\n+\tstruct hugepage_subpool *spool = subpool_inode(inode);\n+\tstruct resv_map *resv = inode_resv_map(inode);\n+\tlong chg;\n+\tstruct folio *folio;\n+\tgfp_t gfp_mask = htlb_alloc_mask(h) & ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n+\tint err;\n+\n+\tidx >>= huge_page_order(h);\n+\n+\tint nid = numa_node_id();\n+\n+\tif (resv && region_count(resv, idx, idx + 1))\n+\t\tchg = 0;\n+\telse\n+\t\tchg = 1;\n+\n+\tif (chg) {\n+\t\tif (hugepage_subpool_get_pages(spool, 1))\n+\t\t\treturn ERR_PTR(-ENOSPC);\n+\n+\t\tfolio = alloc_hugetlb_folio_nodemask(h, nid, NULL, gfp_mask, true);\n+\t\tif (!folio)\n+\t\t\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, nid, NULL);\n+\n+\t\tif (!folio) {\n+\t\t\thugepage_subpool_put_pages(spool, 1);\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t\t}\n+\t} else {\n+\t\tfolio = alloc_hugetlb_folio_reserve(h, nid, NULL, gfp_mask);\n+\t\tif (!folio)\n+\t\t\treturn ERR_PTR(-ENOMEM);\n+\t}\n+\n+\tif (folio_test_locked(folio))\n+\t\tfolio_unlock(folio);\n+\n+\thugetlb_set_folio_subpool(folio, spool);\n+\n+\terr = hugetlb_add_to_page_cache(folio, file->f_mapping, idx);\n+\tif (err) {\n+\t\tfolio_put(folio);\n+\t\tif (!chg)\n+\t\t\tfolio_set_hugetlb_restore_reserve(folio);\n+\t\treturn ERR_PTR(err);\n+\t}\n+\n+\tfolio_unlock(folio);\n+\n+\treturn folio;\n+}\ndiff --git a/mm/memfd.c b/mm/memfd.c\nindex ab367e61553d..143922e78414 100644\n--- a/mm/memfd.c\n+++ b/mm/memfd.c\n@@ -69,40 +69,8 @@ static void memfd_tag_pins(struct xa_state *xas)\n struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)\n {\n #ifdef CONFIG_HUGETLB_PAGE\n-\tstruct folio *folio;\n-\tgfp_t gfp_mask;\n-\tint err;\n-\n-\tif (is_file_hugepages(memfd)) {\n-\t\t/*\n-\t\t * The folio would most likely be accessed by a DMA driver,\n-\t\t * therefore, we have zone memory constraints where we can\n-\t\t * alloc from. Also, the folio will be pinned for an indefinite\n-\t\t * amount of time, so it is not expected to be migrated away.\n-\t\t */\n-\t\tstruct hstate *h = hstate_file(memfd);\n-\n-\t\tgfp_mask = htlb_alloc_mask(h);\n-\t\tgfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);\n-\t\tidx >>= huge_page_order(h);\n-\n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n-\t\t\t\t\t\t    numa_node_id(),\n-\t\t\t\t\t\t    NULL,\n-\t\t\t\t\t\t    gfp_mask);\n-\t\tif (folio) {\n-\t\t\terr = hugetlb_add_to_page_cache(folio,\n-\t\t\t\t\t\t\tmemfd->f_mapping,\n-\t\t\t\t\t\t\tidx);\n-\t\t\tif (err) {\n-\t\t\t\tfolio_put(folio);\n-\t\t\t\treturn ERR_PTR(err);\n-\t\t\t}\n-\t\t\tfolio_unlock(folio);\n-\t\t\treturn folio;\n-\t\t}\n-\t\treturn ERR_PTR(-ENOMEM);\n-\t}\n+\tif (is_file_hugepages(memfd))\n+\t\treturn memfd_alloc_hugetlb_folio(memfd, idx);\n #endif\n \treturn shmem_read_folio(memfd->f_mapping, idx);\n }",
+          "explanation": "classic_swe step 58 #1",
+          "filename": "mm/hugetlb.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 58
+        }
+      ],
+      "end_step": 58,
+      "revision_index": 2,
+      "start_step": 58
+    }
+  ],
+  "success_step": 58
+}

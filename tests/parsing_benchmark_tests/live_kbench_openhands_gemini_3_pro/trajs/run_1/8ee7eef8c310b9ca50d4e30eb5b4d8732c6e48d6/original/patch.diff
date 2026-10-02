@@ -1,0 +1,22 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6abc9f17ea3c..a8269de99552 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1075,8 +1075,16 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		bool first = !b->written;
+ 
+ 		if (first) {
++			struct btree_node *bn = b->data;
++
++			btree_err_on(vstruct_bytes(bn) > (ptr_written ?: btree_sectors(c)) << 9,
++				     -BCH_ERR_btree_node_read_err_must_retry,
++				     c, ca, b, NULL, NULL,
++				     bset_past_end_of_btree_node,
++				     "bset past end of btree node");
++
+ 			bne = NULL;
+-			i = &b->data->keys;
++			i = &bn->keys;
+ 		} else {
+ 			bne = write_block(b);
+ 			i = &bne->keys;

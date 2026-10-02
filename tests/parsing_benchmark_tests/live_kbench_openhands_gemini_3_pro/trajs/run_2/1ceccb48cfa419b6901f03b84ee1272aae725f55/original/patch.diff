@@ -1,0 +1,36 @@
+diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c
+index c419005a29dc..e8c258fc700a 100644
+--- a/kernel/bpf/verifier.c
++++ b/kernel/bpf/verifier.c
+@@ -14274,6 +14274,10 @@ static int check_alu_op(struct bpf_verifier_env *env, struct bpf_insn *insn)
+ 			struct bpf_reg_state *dst_reg = regs + insn->dst_reg;
+ 
+ 			if (BPF_CLASS(insn->code) == BPF_ALU64) {
++				if (insn->off != 0 && !insn->imm) {
++					verbose(env, "BPF_MOV uses reserved fields\n");
++					return -EINVAL;
++				}
+ 				if (insn->imm) {
+ 					/* off == BPF_ADDR_SPACE_CAST */
+ 					mark_reg_unknown(env, regs, insn->dst_reg);
+diff --git a/offsets.c b/offsets.c
+new file mode 100644
+index 000000000000..7c59fce197b0
+--- /dev/null
++++ b/offsets.c
+@@ -0,0 +1,15 @@
++
++#include <linux/skbuff.h>
++#include <linux/stddef.h>
++#include <stdio.h>
++
++int main() {
++    printf("Offset of data: %lu\n", offsetof(struct sk_buff, data));
++    printf("Offset of head: %lu\n", offsetof(struct sk_buff, head));
++    printf("Offset of tail: %lu\n", offsetof(struct sk_buff, tail));
++    printf("Offset of end: %lu\n", offsetof(struct sk_buff, end));
++    printf("Offset of len: %lu\n", offsetof(struct sk_buff, len));
++    printf("Offset of data_len: %lu\n", offsetof(struct sk_buff, data_len));
++    printf("Offset of mac_len: %lu\n", offsetof(struct sk_buff, mac_len));
++    return 0;
++}

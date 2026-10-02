@@ -1,0 +1,137 @@
+diff --git a/mm/mmap.c b/mm/mmap.c
+index 582036922d05..0ebda4167874 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -1633,6 +1633,45 @@ SYSCALL_DEFINE2(munmap, unsigned long, addr, size_t, len)
+ /*
+  * Emulation of deprecated remap_file_pages() syscall.
+  */
++
++static struct vm_area_struct *find_remap_vma(struct mm_struct *mm,
++		unsigned long start, unsigned long size)
++{
++	struct vm_area_struct *vma = vma_lookup(mm, start);
++	struct vm_area_struct *next, *prev;
++	struct vma_iterator vmi;
++
++	if (!vma || !(vma->vm_flags & VM_SHARED))
++		return ERR_PTR(-EINVAL);
++
++	if (start + size <= vma->vm_end)
++		return vma;
++
++	prev = vma;
++	vma_iter_init(&vmi, mm, vma->vm_end);
++	for_each_vma_range(vmi, next, start + size) {
++		/* hole between vmas ? */
++		if (next->vm_start != prev->vm_end)
++			return ERR_PTR(-EINVAL);
++
++		if (next->vm_file != vma->vm_file)
++			return ERR_PTR(-EINVAL);
++
++		if (next->vm_flags != vma->vm_flags)
++			return ERR_PTR(-EINVAL);
++
++		if (start + size <= next->vm_end)
++			break;
++
++		prev = next;
++	}
++
++	if (!next)
++		return ERR_PTR(-EINVAL);
++
++	return vma;
++}
++
+ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 		unsigned long, prot, unsigned long, pgoff, unsigned long, flags)
+ {
+@@ -1658,37 +1697,14 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 	if (pgoff + (size >> PAGE_SHIFT) < pgoff)
+ 		return ret;
+ 
+-	if (mmap_write_lock_killable(mm))
++	if (mmap_read_lock_killable(mm))
+ 		return -EINTR;
+ 
+-	vma = vma_lookup(mm, start);
+-
+-	if (!vma || !(vma->vm_flags & VM_SHARED))
+-		goto out;
+-
+-	if (start + size > vma->vm_end) {
+-		VMA_ITERATOR(vmi, mm, vma->vm_end);
+-		struct vm_area_struct *next, *prev = vma;
+-
+-		for_each_vma_range(vmi, next, start + size) {
+-			/* hole between vmas ? */
+-			if (next->vm_start != prev->vm_end)
+-				goto out;
+-
+-			if (next->vm_file != vma->vm_file)
+-				goto out;
+-
+-			if (next->vm_flags != vma->vm_flags)
+-				goto out;
+-
+-			if (start + size <= next->vm_end)
+-				break;
+-
+-			prev = next;
+-		}
+-
+-		if (!next)
+-			goto out;
++	vma = find_remap_vma(mm, start, size);
++	if (IS_ERR(vma)) {
++		ret = PTR_ERR(vma);
++		mmap_read_unlock(mm);
++		return ret;
+ 	}
+ 
+ 	prot |= vma->vm_flags & VM_READ ? PROT_READ : 0;
+@@ -1701,15 +1717,36 @@ SYSCALL_DEFINE5(remap_file_pages, unsigned long, start, unsigned long, size,
+ 		flags |= MAP_LOCKED;
+ 
+ 	file = get_file(vma->vm_file);
+-	ret = security_mmap_file(vma->vm_file, prot, flags);
+-	if (ret)
+-		goto out_fput;
+-	ret = do_mmap(vma->vm_file, start, size,
++	mmap_read_unlock(mm);
++
++	ret = security_mmap_file(file, prot, flags);
++	if (ret) {
++		fput(file);
++		return ret;
++	}
++
++	ret = -EINTR;
++	if (mmap_write_lock_killable(mm)) {
++		fput(file);
++		return ret;
++	}
++
++	vma = find_remap_vma(mm, start, size);
++	if (IS_ERR(vma)) {
++		ret = PTR_ERR(vma);
++		goto out;
++	}
++
++	if (vma->vm_file != file) {
++		ret = -EINVAL;
++		goto out;
++	}
++
++	ret = do_mmap(file, start, size,
+ 			prot, flags, 0, pgoff, &populate, NULL);
+-out_fput:
+-	fput(file);
+ out:
+ 	mmap_write_unlock(mm);
++	fput(file);
+ 	if (populate)
+ 		mm_populate(ret, populate);
+ 	if (!IS_ERR_VALUE(ret))

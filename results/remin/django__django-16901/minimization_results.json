@@ -1,0 +1,123 @@
+{
+  "bug_id": "django__django-16901",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/sql/where.py",
+        "before": "        if self.connector == XOR and not connection.features.supports_logical_xor:\n            # Convert if the database doesn't support XOR:\n            #   a XOR b XOR c XOR ...\n            # to:\n            #   (a OR b OR c OR ...) AND (a + b + c + ...) == 1\n            lhs = self.__class__(self.children, OR)\n            rhs_sum = reduce(\n                operator.add,\n                (Case(When(c, then=1), default=0) for c in self.children),\n            )\n            rhs = Exact(1, rhs_sum)\n            return self.__class__([lhs, rhs], AND, self.negated).as_sql(\n                compiler, connection\n            )",
+        "after": "        if self.connector == XOR and not connection.features.supports_logical_xor:\n            # Convert if the database doesn't support XOR:\n            #   a XOR b XOR c XOR ...\n            # to:\n            #   (a + b + c + ...) % 2 == 1\n            # This is true when an odd number of conditions are true.\n            from django.db.models.functions.math import Mod\n            \n            rhs_sum = reduce(\n                operator.add,\n                (Case(When(c, then=1), default=0) for c in self.children),\n            )\n            rhs_mod = Mod(rhs_sum, 2)\n            rhs = Exact(1, rhs_mod)\n            return self.__class__([rhs], AND, self.negated).as_sql(\n                compiler, connection\n            )",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/sql/where.py b/django/db/models/sql/where.py\nindex aaab1730b7..4781f122b7 100644\n--- a/django/db/models/sql/where.py\n+++ b/django/db/models/sql/where.py\n@@ -129,14 +129,17 @@ class WhereNode(tree.Node):\n             # Convert if the database doesn't support XOR:\n             #   a XOR b XOR c XOR ...\n             # to:\n-            #   (a OR b OR c OR ...) AND (a + b + c + ...) == 1\n-            lhs = self.__class__(self.children, OR)\n+            #   (a + b + c + ...) % 2 == 1\n+            # This is true when an odd number of conditions are true.\n+            from django.db.models.functions.math import Mod\n+            \n             rhs_sum = reduce(\n                 operator.add,\n                 (Case(When(c, then=1), default=0) for c in self.children),\n             )\n-            rhs = Exact(1, rhs_sum)\n-            return self.__class__([lhs, rhs], AND, self.negated).as_sql(\n+            rhs_mod = Mod(rhs_sum, 2)\n+            rhs = Exact(1, rhs_mod)\n+            return self.__class__([rhs], AND, self.negated).as_sql(\n                 compiler, connection\n             )\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      12
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 1,
+  "reduction": "2_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/where.py",
+          "before": "        if self.connector == XOR and not connection.features.supports_logical_xor:\n            # Convert if the database doesn't support XOR:\n            #   a XOR b XOR c XOR ...\n            # to:\n            #   (a OR b OR c OR ...) AND (a + b + c + ...) == 1\n            lhs = self.__class__(self.children, OR)\n            rhs_sum = reduce(\n                operator.add,\n                (Case(When(c, then=1), default=0) for c in self.children),\n            )\n            rhs = Exact(1, rhs_sum)\n            return self.__class__([lhs, rhs], AND, self.negated).as_sql(\n                compiler, connection\n            )",
+          "after": "        if self.connector == XOR and not connection.features.supports_logical_xor:\n            # Convert if the database doesn't support XOR:\n            #   a XOR b XOR c XOR ...\n            # to:\n            #   (a + b + c + ...) % 2 == 1\n            # This is true when an odd number of conditions are true.\n            from django.db.models.functions.math import Mod\n            \n            rhs_sum = reduce(\n                operator.add,\n                (Case(When(c, then=1), default=0) for c in self.children),\n            )\n            rhs_mod = Mod(rhs_sum, 2)\n            rhs = Exact(1, rhs_mod)\n            return self.__class__([rhs], AND, self.negated).as_sql(\n                compiler, connection\n            )",
+          "explanation": "classic_swe step 18 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/sql/where.py",
+          "before": "        if self.connector == XOR and not connection.features.supports_logical_xor:\n            # Convert if the database doesn't support XOR:\n            #   a XOR b XOR c XOR ...\n            # to:\n            #   (a + b + c + ...) % 2 == 1\n            # This is true when an odd number of conditions are true.\n            from django.db.models.functions.math import Mod\n            \n            rhs_sum = reduce(\n                operator.add,\n                (Case(When(c, then=1), default=0) for c in self.children),\n            )\n            rhs_mod = Mod(rhs_sum, 2)\n            rhs = Exact(1, rhs_mod)\n            return self.__class__([rhs], AND, self.negated).as_sql(\n                compiler, connection\n            )",
+          "after": "        if self.connector == XOR and not connection.features.supports_logical_xor:\n            # Convert if the database doesn't support XOR:\n            #   a XOR b XOR c XOR ...\n            # to:\n            #   (a + b + c + ...) % 2 == 1\n            # This is true when an odd number of conditions are true.\n            from django.db.models.functions.math import Mod\n            \n            if not self.children:\n                # Empty XOR should raise FullResultSet (matches original behavior)\n                raise FullResultSet\n            \n            rhs_sum = reduce(\n                operator.add,\n                (Case(When(c, then=1), default=0) for c in self.children),\n            )\n            rhs_mod = Mod(rhs_sum, 2)\n            rhs = Exact(1, rhs_mod)\n            return self.__class__([rhs], AND, self.negated).as_sql(\n                compiler, connection\n            )",
+          "explanation": "classic_swe step 55 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 6,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 6,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/sql/where.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/sql/where.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/where.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 2,
+    "minimized_added_lines": 7,
+    "minimized_deleted_lines": 4,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstruct folio *memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,\n\t\tnodemask_t *nmask, gfp_t gfp_mask)\n{\n\tstruct folio *folio;\n\n\tspin_lock_irq(&hugetlb_lock);\n\tif (available_huge_pages(h)) {\n\t\tfolio = dequeue_hugetlb_folio_nodemask(h, gfp_mask,\n\t\t\t\t\t\tpreferred_nid, nmask);\n\t\tif (folio) {\n\t\t\tspin_unlock_irq(&hugetlb_lock);\n\t\t\treturn folio;\n\t\t}\n\t}\n\tspin_unlock_irq(&hugetlb_lock);\n\n\treturn alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);\n}\n",
+          "before": "\nstruct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n\t\tnodemask_t *nmask, gfp_t gfp_mask)\n{\n\tstruct folio *folio;\n\n\tspin_lock_irq(&hugetlb_lock);\n\tfolio = dequeue_hugetlb_folio_nodemask(h, gfp_mask, preferred_nid,\n\t\t\t\t\t       nmask);\n\tif (folio) {\n\t\tVM_BUG_ON(!h->resv_huge_pages);\n\t\th->resv_huge_pages--;\n\t}\n\n\tspin_unlock_irq(&hugetlb_lock);\n\treturn folio;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/hugetlb.c\n+++ /linux/mm/hugetlb.c\n@@ -2337 +2337 @@\n-struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n+struct folio *memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,\n@@ -2343,7 +2343,8 @@\n-\tfolio = dequeue_hugetlb_folio_nodemask(h, gfp_mask, preferred_nid,\n-\t\t\t\t\t       nmask);\n-\tif (folio) {\n-\t\tVM_BUG_ON(!h->resv_huge_pages);\n-\t\th->resv_huge_pages--;\n-\t}\n-\n+\tif (available_huge_pages(h)) {\n+\t\tfolio = dequeue_hugetlb_folio_nodemask(h, gfp_mask,\n+\t\t\t\t\t\tpreferred_nid, nmask);\n+\t\tif (folio) {\n+\t\t\tspin_unlock_irq(&hugetlb_lock);\n+\t\t\treturn folio;\n+\t\t}\n+\t}\n@@ -2351 +2352,2 @@\n-\treturn folio;\n+\n+\treturn alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 67",
+          "filename": "mm/hugetlb.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "struct folio *memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,\n\t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);",
+          "before": "struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n\t\t\t\t\t  nodemask_t *nmask, gfp_t gfp_mask);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/hugetlb.h\n+++ /linux/include/linux/hugetlb.h\n@@ -717 +717 @@\n-struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n+struct folio *memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 79",
+          "filename": "include/linux/hugetlb.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 79
+        },
+        {
+          "after": "\nstatic inline struct folio *\nmemfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,\n\t\t\t    nodemask_t *nmask, gfp_t gfp_mask)\n{\n\treturn NULL;\n}\n",
+          "before": "\nstatic inline struct folio *\nalloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n\t\t\t    nodemask_t *nmask, gfp_t gfp_mask)\n{\n\treturn NULL;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/hugetlb.h\n+++ /linux/include/linux/hugetlb.h\n@@ -1121 +1121 @@\n-alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,\n+memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 83",
+          "filename": "include/linux/hugetlb.h",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 83
+        },
+        {
+          "after": "\n\t\tfolio = memfd_alloc_hugetlb_folio(h,\n\t\t\t\t\t\t    numa_node_id(),\n\t\t\t\t\t\t    NULL,\n\t\t\t\t\t\t    gfp_mask);\n",
+          "before": "\n\t\tfolio = alloc_hugetlb_folio_reserve(h,\n\t\t\t\t\t\t    numa_node_id(),\n\t\t\t\t\t\t    NULL,\n\t\t\t\t\t\t    gfp_mask);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/memfd.c\n+++ /linux/mm/memfd.c\n@@ -89 +89 @@\n-\t\tfolio = alloc_hugetlb_folio_reserve(h,\n+\t\tfolio = memfd_alloc_hugetlb_folio(h,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 87",
+          "filename": "mm/memfd.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 87
+        }
+      ],
+      "end_step": 87,
+      "revision_index": 0,
+      "start_step": 67
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);\n\tif (folio)\n\t\tfolio_ref_unfreeze(folio, 1);\n\treturn folio;\n}\n",
+          "before": "\n\treturn alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/hugetlb.c\n+++ /linux/mm/hugetlb.c\n@@ -2353 +2353,4 @@\n-\treturn alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);\n+\tfolio = alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);\n+\tif (folio)\n+\t\tfolio_ref_unfreeze(folio, 1);\n+\treturn folio;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 146",
+          "filename": "mm/hugetlb.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 146
+        }
+      ],
+      "end_step": 146,
+      "revision_index": 1,
+      "start_step": 146
+    }
+  ],
+  "success_step": 146
+}

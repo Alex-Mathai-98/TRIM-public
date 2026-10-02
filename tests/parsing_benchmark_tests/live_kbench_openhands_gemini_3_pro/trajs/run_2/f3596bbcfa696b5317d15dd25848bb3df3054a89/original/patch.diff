@@ -1,0 +1,53 @@
+diff --git a/net/bluetooth/sco.c b/net/bluetooth/sco.c
+index 1b8e468d24cf..b61f13de28d1 100644
+--- a/net/bluetooth/sco.c
++++ b/net/bluetooth/sco.c
+@@ -192,7 +192,6 @@ static struct sco_conn *sco_conn_add(struct hci_conn *hcon)
+ 			conn->hcon = hcon;
+ 			sco_conn_unlock(conn);
+ 		}
+-		sco_conn_put(conn);
+ 		return conn;
+ 	}
+ 
+@@ -215,6 +214,7 @@ static struct sco_conn *sco_conn_add(struct hci_conn *hcon)
+ 
+ 	BT_DBG("hcon %p conn %p", hcon, conn);
+ 
++	kref_get(&conn->ref);
+ 	return conn;
+ }
+ 
+@@ -279,6 +279,7 @@ static void __sco_chan_add(struct sco_conn *conn, struct sock *sk,
+ 
+ 	sco_pi(sk)->conn = conn;
+ 	conn->sk = sk;
++	kref_get(&conn->ref);
+ 
+ 	if (parent)
+ 		bt_accept_enqueue(parent, sk, true);
+@@ -345,9 +346,12 @@ static int sco_connect(struct sock *sk)
+ 	err = sco_chan_add(conn, sk, NULL);
+ 	if (err) {
+ 		release_sock(sk);
++		sco_conn_put(conn);
+ 		goto unlock;
+ 	}
+ 
++	sco_conn_put(conn);
++
+ 	/* Update source addr of the socket */
+ 	bacpy(&sco_pi(sk)->src, &hcon->src);
+ 
+@@ -1407,8 +1411,10 @@ static void sco_connect_cfm(struct hci_conn *hcon, __u8 status)
+ 		struct sco_conn *conn;
+ 
+ 		conn = sco_conn_add(hcon);
+-		if (conn)
++		if (conn) {
+ 			sco_conn_ready(conn);
++			sco_conn_put(conn);
++		}
+ 	} else
+ 		sco_conn_del(hcon, bt_to_errno(status));
+ }

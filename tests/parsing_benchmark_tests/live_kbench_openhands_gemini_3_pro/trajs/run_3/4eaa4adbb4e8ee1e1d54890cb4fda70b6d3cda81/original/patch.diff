@@ -1,0 +1,26 @@
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 8ab7868807a7..6ab286fe5a66 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -2592,12 +2592,20 @@ static int nfs_net_init(struct net *net)
+ 
+ 	nfs_clients_init(net);
+ 
++	int ret;
++
+ 	if (!rpc_proc_register(net, &nn->rpcstats)) {
+ 		nfs_clients_exit(net);
+ 		return -ENOMEM;
+ 	}
+ 
+-	return nfs_fs_proc_net_init(net);
++	ret = nfs_fs_proc_net_init(net);
++	if (ret) {
++		rpc_proc_unregister(net, "nfs");
++		nfs_clients_exit(net);
++		return ret;
++	}
++	return 0;
+ }
+ 
+ static void nfs_net_exit(struct net *net)

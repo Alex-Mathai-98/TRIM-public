@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct task_struct *gc_task;",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c\nindex 724bbcb447d3..e5a9bcd83ee7 100644\n--- a/fs/f2fs/gc.c\n+++ b/fs/f2fs/gc.c\n@@ -173,6 +173,7 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)\n {\n \tstruct f2fs_gc_kthread *gc_th;\n \tdev_t dev = sbi->sb->s_bdev->bd_dev;\n+\tstruct task_struct *gc_task;\n \n \tgc_th = f2fs_kmalloc(sbi, sizeof(struct f2fs_gc_kthread), GFP_KERNEL);\n \tif (!gc_th)",
+          "explanation": "classic_swe step 23 insert #1",
+          "filename": "fs/f2fs/gc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 176,
+          "step_index": 23
+        },
+        {
+          "after": "\tinit_waitqueue_head(&gc_th->gc_wait_queue_head);\n\tinit_waitqueue_head(&gc_th->fggc_wq);\n\n\tgc_task = kthread_create(gc_thread_func, sbi,\n\t\t\t\"f2fs_gc-%u:%u\", MAJOR(dev), MINOR(dev));\n\tif (IS_ERR(gc_task)) {\n\t\tint err = PTR_ERR(gc_task);\n\n\t\tkfree(gc_th);\n\t\treturn err;\n\t}\n\n\tgc_th->f2fs_gc_task = gc_task;\n\tsbi->gc_thread = gc_th;\n\twake_up_process(gc_task);",
+          "before": "\tsbi->gc_thread = gc_th;\n\tinit_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);\n\tinit_waitqueue_head(&sbi->gc_thread->fggc_wq);\n\tsbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,\n\t\t\t\"f2fs_gc-%u:%u\", MAJOR(dev), MINOR(dev));\n\tif (IS_ERR(gc_th->f2fs_gc_task)) {\n\t\tint err = PTR_ERR(gc_th->f2fs_gc_task);\n\n\t\tkfree(gc_th);\n\t\tsbi->gc_thread = NULL;\n\t\treturn err;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c\nindex 724bbcb447d3..1c2921c793d7 100644\n--- a/fs/f2fs/gc.c\n+++ b/fs/f2fs/gc.c\n@@ -173,6 +173,7 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)\n {\n \tstruct f2fs_gc_kthread *gc_th;\n \tdev_t dev = sbi->sb->s_bdev->bd_dev;\n+\tstruct task_struct *gc_task;\n \n \tgc_th = f2fs_kmalloc(sbi, sizeof(struct f2fs_gc_kthread), GFP_KERNEL);\n \tif (!gc_th)\n@@ -185,19 +186,22 @@ int f2fs_start_gc_thread(struct f2fs_sb_info *sbi)\n \n \tgc_th->gc_wake = false;\n \n-\tsbi->gc_thread = gc_th;\n-\tinit_waitqueue_head(&sbi->gc_thread->gc_wait_queue_head);\n-\tinit_waitqueue_head(&sbi->gc_thread->fggc_wq);\n-\tsbi->gc_thread->f2fs_gc_task = kthread_run(gc_thread_func, sbi,\n+\tinit_waitqueue_head(&gc_th->gc_wait_queue_head);\n+\tinit_waitqueue_head(&gc_th->fggc_wq);\n+\n+\tgc_task = kthread_create(gc_thread_func, sbi,\n \t\t\t\"f2fs_gc-%u:%u\", MAJOR(dev), MINOR(dev));\n-\tif (IS_ERR(gc_th->f2fs_gc_task)) {\n-\t\tint err = PTR_ERR(gc_th->f2fs_gc_task);\n+\tif (IS_ERR(gc_task)) {\n+\t\tint err = PTR_ERR(gc_task);\n \n \t\tkfree(gc_th);\n-\t\tsbi->gc_thread = NULL;\n \t\treturn err;\n \t}\n \n+\tgc_th->f2fs_gc_task = gc_task;\n+\tsbi->gc_thread = gc_th;\n+\twake_up_process(gc_task);\n+\n \treturn 0;\n }",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "fs/f2fs/gc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 25
+}

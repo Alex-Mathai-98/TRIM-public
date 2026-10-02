@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstatic void cleanup_bearer(struct work_struct *work)\n{\n\tstruct udp_bearer *ub = container_of(work, struct udp_bearer, work);\n\tstruct udp_replicast *rcast, *tmp;\n\tstruct tipc_net *tn;\n\n\ttn = tipc_net(sock_net(ub->ubsock->sk));\n\n\tlist_for_each_entry_safe(rcast, tmp, &ub->rcast.list, list) {\n\t\tdst_cache_destroy(&rcast->dst_cache);\n\t\tlist_del_rcu(&rcast->list);\n\t\tkfree_rcu(rcast, rcu);\n\t}\n\n\tdst_cache_destroy(&ub->rcast.dst_cache);\n\tudp_tunnel_sock_release(ub->ubsock);\n\tsynchronize_net();\n\tatomic_dec(&tn->wq_count);\n\tkfree(ub);\n}\n",
+          "before": "\nstatic void cleanup_bearer(struct work_struct *work)\n{\n\tstruct udp_bearer *ub = container_of(work, struct udp_bearer, work);\n\tstruct udp_replicast *rcast, *tmp;\n\n\tlist_for_each_entry_safe(rcast, tmp, &ub->rcast.list, list) {\n\t\tdst_cache_destroy(&rcast->dst_cache);\n\t\tlist_del_rcu(&rcast->list);\n\t\tkfree_rcu(rcast, rcu);\n\t}\n\n\tdst_cache_destroy(&ub->rcast.dst_cache);\n\tudp_tunnel_sock_release(ub->ubsock);\n\tsynchronize_net();\n\tatomic_dec(&tipc_net(sock_net(ub->ubsock->sk))->wq_count);\n\tkfree(ub);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/tipc/udp_media.c\n+++ /linux/net/tipc/udp_media.c\n@@ -809,0 +810,3 @@\n+\tstruct tipc_net *tn;\n+\n+\ttn = tipc_net(sock_net(ub->ubsock->sk));\n@@ -820 +823 @@\n-\tatomic_dec(&tipc_net(sock_net(ub->ubsock->sk))->wq_count);\n+\tatomic_dec(&tn->wq_count);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 40",
+          "filename": "net/tipc/udp_media.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 0,
+      "start_step": 40
+    }
+  ],
+  "success_step": 40
+}

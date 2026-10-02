@@ -1,0 +1,30 @@
+diff --git a/fs/fat/cache.c b/fs/fat/cache.c
+index 2af424e200b3..1297cf3f9191 100644
+--- a/fs/fat/cache.c
++++ b/fs/fat/cache.c
+@@ -300,7 +300,7 @@ static int fat_bmap_cluster(struct inode *inode, int cluster)
+ 	if (ret < 0)
+ 		return ret;
+ 	else if (ret == FAT_ENT_EOF) {
+-		fat_fs_error(sb, "%s: request beyond EOF (i_pos %lld)",
++		fat_fs_error_ratelimit(sb, "%s: request beyond EOF (i_pos %lld)",
+ 			     __func__, MSDOS_I(inode)->i_pos);
+ 		return -EIO;
+ 	}
+diff --git a/fs/fat/misc.c b/fs/fat/misc.c
+index c7a2d27120ba..734855f22372 100644
+--- a/fs/fat/misc.c
++++ b/fs/fat/misc.c
+@@ -158,10 +158,11 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
+ 			mark_inode_dirty(inode);
+ 	}
+ 	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
+-		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
++		fat_fs_error_ratelimit(sb, "clusters badly computed (%d != %llu)",
+ 			     new_fclus,
+ 			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
+ 		fat_cache_inval_inode(inode);
++		return -EIO;
+ 	}
+ 	inode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);
+ 

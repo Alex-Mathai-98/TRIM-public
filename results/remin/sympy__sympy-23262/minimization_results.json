@@ -1,0 +1,104 @@
+{
+  "bug_id": "sympy__sympy-23262",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/utilities/lambdify.py",
+        "before": "def _recursive_to_string(doprint, arg):\n    \"\"\"Functions in lambdify accept both SymPy types and non-SymPy types such as python\n    lists and tuples. This method ensures that we only call the doprint method of the\n    printer with SymPy types (so that the printer safely can use SymPy-methods).\"\"\"\n    from sympy.matrices.common import MatrixOperations\n    from sympy.core.basic import Basic\n\n    if isinstance(arg, (Basic, MatrixOperations)):\n        return doprint(arg)\n    elif iterable(arg):\n        if isinstance(arg, list):\n            left, right = \"[]\"\n        elif isinstance(arg, tuple):\n            left, right = \"()\"\n        else:\n            raise NotImplementedError(\"unhandled type: %s, %s\" % (type(arg), arg))\n        return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right\n    elif isinstance(arg, str):\n        return arg\n    else:\n        return doprint(arg)",
+        "after": "def _recursive_to_string(doprint, arg):\n    \"\"\"Functions in lambdify accept both SymPy types and non-SymPy types such as python\n    lists and tuples. This method ensures that we only call the doprint method of the\n    printer with SymPy types (so that the printer safely can use SymPy-methods).\"\"\"\n    from sympy.matrices.common import MatrixOperations\n    from sympy.core.basic import Basic\n\n    if isinstance(arg, (Basic, MatrixOperations)):\n        return doprint(arg)\n    elif iterable(arg):\n        if isinstance(arg, list):\n            left, right = \"[]\"\n        elif isinstance(arg, tuple):\n            left, right = \"()\"\n        else:\n            raise NotImplementedError(\"unhandled type: %s, %s\" % (type(arg), arg))\n        \n        # Handle tuple case specially to ensure single-element tuples have trailing comma\n        if isinstance(arg, tuple) and len(arg) == 1:\n            return left + _recursive_to_string(doprint, arg[0]) + ',' + right\n        else:\n            return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right\n    elif isinstance(arg, str):\n        return arg\n    else:\n        return doprint(arg)",
+        "explanation": "classic_swe step 29 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/utilities/lambdify.py b/sympy/utilities/lambdify.py\nindex da67263b19..e8fe9f872e 100644\n--- a/sympy/utilities/lambdify.py\n+++ b/sympy/utilities/lambdify.py\n@@ -961,7 +961,12 @@ def _recursive_to_string(doprint, arg):\n             left, right = \"()\"\n         else:\n             raise NotImplementedError(\"unhandled type: %s, %s\" % (type(arg), arg))\n-        return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right\n+        \n+        # Handle tuple case specially to ensure single-element tuples have trailing comma\n+        if isinstance(arg, tuple) and len(arg) == 1:\n+            return left + _recursive_to_string(doprint, arg[0]) + ',' + right\n+        else:\n+            return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right\n     elif isinstance(arg, str):\n         return arg\n     else:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      3
+    ],
+    "edit_list_after_file_min": [
+      3
+    ],
+    "edit_list_after_greedy": [
+      3
+    ],
+    "edit_list_after_refinement": [
+      3
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/utilities/lambdify.py",
+          "before": "def _recursive_to_string(doprint, arg):\n    \"\"\"Functions in lambdify accept both SymPy types and non-SymPy types such as python\n    lists and tuples. This method ensures that we only call the doprint method of the\n    printer with SymPy types (so that the printer safely can use SymPy-methods).\"\"\"\n    from sympy.matrices.common import MatrixOperations\n    from sympy.core.basic import Basic\n\n    if isinstance(arg, (Basic, MatrixOperations)):\n        return doprint(arg)\n    elif iterable(arg):\n        if isinstance(arg, list):\n            left, right = \"[]\"\n        elif isinstance(arg, tuple):\n            left, right = \"()\"\n        else:\n            raise NotImplementedError(\"unhandled type: %s, %s\" % (type(arg), arg))\n        return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right\n    elif isinstance(arg, str):\n        return arg\n    else:\n        return doprint(arg)",
+          "after": "def _recursive_to_string(doprint, arg):\n    \"\"\"Functions in lambdify accept both SymPy types and non-SymPy types such as python\n    lists and tuples. This method ensures that we only call the doprint method of the\n    printer with SymPy types (so that the printer safely can use SymPy-methods).\"\"\"\n    from sympy.matrices.common import MatrixOperations\n    from sympy.core.basic import Basic\n\n    if isinstance(arg, (Basic, MatrixOperations)):\n        return doprint(arg)\n    elif iterable(arg):\n        if isinstance(arg, list):\n            left, right = \"[]\"\n        elif isinstance(arg, tuple):\n            left, right = \"()\"\n        else:\n            raise NotImplementedError(\"unhandled type: %s, %s\" % (type(arg), arg))\n        \n        # Handle tuple case specially to ensure single-element tuples have trailing comma\n        if isinstance(arg, tuple) and len(arg) == 1:\n            return left + _recursive_to_string(doprint, arg[0]) + ',' + right\n        else:\n            return left +', '.join(_recursive_to_string(doprint, e) for e in arg) + right\n    elif isinstance(arg, str):\n        return arg\n    else:\n        return doprint(arg)",
+          "explanation": "classic_swe step 29 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 61,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 61,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/utilities/lambdify.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/utilities/lambdify.py"
+    ],
+    "gold_files": [
+      "sympy/utilities/lambdify.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 6,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct ext4_xattr_info i = {\n\t\t.value = NULL,\n\t\t.value_len = 0,\n\t\t.name_index = entry->e_name_index,\n\t\t.in_inode = value_size ? !!entry->e_value_inum : 0,\n\t};",
+          "before": "\tstruct ext4_xattr_info i = {\n\t\t.value = NULL,\n\t\t.value_len = 0,\n\t\t.name_index = entry->e_name_index,\n\t\t.in_inode = !!entry->e_value_inum,\n\t};",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/xattr.c\n+++ /linux/fs/ext4/xattr.c\n@@ -2606 +2606 @@\n-\t\t.in_inode = !!entry->e_value_inum,\n+\t\t.in_inode = value_size ? !!entry->e_value_inum : 0,",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 33",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "revision_index": 0,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t/* Save the entry name and the entry value */\n\tif (entry->e_value_inum) {\n\t\tstruct inode *ea_inode;\n\n\t\terror = ext4_xattr_inode_iget(inode,\n\t\t\t\t\t      le32_to_cpu(entry->e_value_inum),\n\t\t\t\t\t      le32_to_cpu(entry->e_hash),\n\t\t\t\t\t      &ea_inode);\n\t\tif (error)\n\t\t\tgoto out;\n\n\t\tif (ea_inode->i_nlink != 1) {\n\t\t\text4_warning_inode(ea_inode,\n\t\t\t\t\t   \"EA inode corrupt: i_nlink=%u\",\n\t\t\t\t\t   ea_inode->i_nlink);\n\t\t\tiput(ea_inode);\n\t\t\terror = -EFSCORRUPTED;\n\t\t\tgoto out;\n\t\t}\n\t\tiput(ea_inode);\n\n\t\tbuffer = kvmalloc(value_size, GFP_NOFS);\n\t\tif (!buffer) {\n\t\t\terror = -ENOMEM;\n\t\t\tgoto out;\n\t\t}\n\t\tneeds_kvfree = 1;\n\t\terror = ext4_xattr_inode_get(inode, entry, buffer, value_size);\n\t\tif (error)\n\t\t\tgoto out;\n\t} else {\n",
+          "before": "\n\t/* Save the entry name and the entry value */\n\tif (entry->e_value_inum) {\n\t\tbuffer = kvmalloc(value_size, GFP_NOFS);\n\t\tif (!buffer) {\n\t\t\terror = -ENOMEM;\n\t\t\tgoto out;\n\t\t}\n\t\tneeds_kvfree = 1;\n\t\terror = ext4_xattr_inode_get(inode, entry, buffer, value_size);\n\t\tif (error)\n\t\t\tgoto out;\n\t} else {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/xattr.c\n+++ /linux/fs/ext4/xattr.c\n@@ -2626,0 +2627,19 @@\n+\t\tstruct inode *ea_inode;\n+\n+\t\terror = ext4_xattr_inode_iget(inode,\n+\t\t\t\t\t      le32_to_cpu(entry->e_value_inum),\n+\t\t\t\t\t      le32_to_cpu(entry->e_hash),\n+\t\t\t\t\t      &ea_inode);\n+\t\tif (error)\n+\t\t\tgoto out;\n+\n+\t\tif (ea_inode->i_nlink != 1) {\n+\t\t\text4_warning_inode(ea_inode,\n+\t\t\t\t\t   \"EA inode corrupt: i_nlink=%u\",\n+\t\t\t\t\t   ea_inode->i_nlink);\n+\t\t\tiput(ea_inode);\n+\t\t\terror = -EFSCORRUPTED;\n+\t\t\tgoto out;\n+\t\t}\n+\t\tiput(ea_inode);\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 71",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 71
+        }
+      ],
+      "end_step": 71,
+      "revision_index": 1,
+      "start_step": 71
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\terr = ext4_xattr_inode_iget(parent, ea_ino,\n\t\t\t\t\t    le32_to_cpu(entry->e_hash),\n\t\t\t\t\t    &ea_inode);\n\t\tif (err)\n\t\t\tcontinue;\n\n\t\tif (ea_inode->i_nlink != 1) {\n\t\t\text4_warning_inode(ea_inode,\n\t\t\t\t\t   \"EA inode corrupt: i_nlink=%u\",\n\t\t\t\t\t   ea_inode->i_nlink);\n\t\t\tiput(ea_inode);\n\t\t\tcontinue;\n\t\t}\n\n\t\terr = ext4_expand_inode_array(ea_inode_array, ea_inode);\n",
+          "before": "\n\t\terr = ext4_xattr_inode_iget(parent, ea_ino,\n\t\t\t\t\t    le32_to_cpu(entry->e_hash),\n\t\t\t\t\t    &ea_inode);\n\t\tif (err)\n\t\t\tcontinue;\n\n\t\terr = ext4_expand_inode_array(ea_inode_array, ea_inode);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ext4/xattr.c\n+++ /linux/fs/ext4/xattr.c\n@@ -1189,0 +1190,8 @@\n+\n+\t\tif (ea_inode->i_nlink != 1) {\n+\t\t\text4_warning_inode(ea_inode,\n+\t\t\t\t\t   \"EA inode corrupt: i_nlink=%u\",\n+\t\t\t\t\t   ea_inode->i_nlink);\n+\t\t\tiput(ea_inode);\n+\t\t\tcontinue;\n+\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 95",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 95
+        }
+      ],
+      "end_step": 95,
+      "revision_index": 2,
+      "start_step": 95
+    }
+  ],
+  "success_step": 95
+}

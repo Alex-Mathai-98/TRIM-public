@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int io_bind(struct io_kiocb *req, unsigned int issue_flags)\n{\n\tstruct io_bind *bind = io_kiocb_to_cmd(req, struct io_bind);\n\tstruct io_async_msghdr *io = req->async_data;\n\tstruct socket *sock;\n\tint ret;\n\n\tsock = sock_from_file(req->file);\n\tif (unlikely(!sock))\n\t\treturn -ENOTSOCK;\n\n\tret = __sys_bind_socket(sock, &io->addr, bind->addr_len);\n\tif (ret < 0)\n\t\treq_set_fail(req);\n\tio_req_set_res(req, ret, 0);\n\treturn 0;\n}\n",
+          "before": "int io_bind(struct io_kiocb *req, unsigned int issue_flags)\n{\n\tstruct io_bind *bind = io_kiocb_to_cmd(req, struct io_bind);\n\tstruct io_async_msghdr *io = req->async_data;\n\tint ret;\n\n\tret = __sys_bind_socket(sock_from_file(req->file),  &io->addr, bind->addr_len);\n\tif (ret < 0)\n\t\treq_set_fail(req);\n\tio_req_set_res(req, ret, 0);\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/net.c b/io_uring/net.c\nindex 25223e11958f..937d710b0687 100644\n--- a/io_uring/net.c\n+++ b/io_uring/net.c\n@@ -1747,9 +1747,14 @@ int io_bind(struct io_kiocb *req, unsigned int issue_flags)\n {\n \tstruct io_bind *bind = io_kiocb_to_cmd(req, struct io_bind);\n \tstruct io_async_msghdr *io = req->async_data;\n+\tstruct socket *sock;\n \tint ret;\n \n-\tret = __sys_bind_socket(sock_from_file(req->file),  &io->addr, bind->addr_len);\n+\tsock = sock_from_file(req->file);\n+\tif (unlikely(!sock))\n+\t\treturn -ENOTSOCK;\n+\n+\tret = __sys_bind_socket(sock, &io->addr, bind->addr_len);\n \tif (ret < 0)\n \t\treq_set_fail(req);\n \tio_req_set_res(req, ret, 0);",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "io_uring/net.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "int io_listen(struct io_kiocb *req, unsigned int issue_flags)\n{\n\tstruct io_listen *listen = io_kiocb_to_cmd(req, struct io_listen);\n\tstruct socket *sock;\n\tint ret;\n\n\tsock = sock_from_file(req->file);\n\tif (unlikely(!sock))\n\t\treturn -ENOTSOCK;\n\n\tret = __sys_listen_socket(sock, listen->backlog);\n\tif (ret < 0)\n\t\treq_set_fail(req);\n\tio_req_set_res(req, ret, 0);\n\treturn 0;\n}\n",
+          "before": "int io_listen(struct io_kiocb *req, unsigned int issue_flags)\n{\n\tstruct io_listen *listen = io_kiocb_to_cmd(req, struct io_listen);\n\tint ret;\n\n\tret = __sys_listen_socket(sock_from_file(req->file), listen->backlog);\n\tif (ret < 0)\n\t\treq_set_fail(req);\n\tio_req_set_res(req, ret, 0);\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/io_uring/net.c b/io_uring/net.c\nindex 25223e11958f..7ebbeab05fea 100644\n--- a/io_uring/net.c\n+++ b/io_uring/net.c\n@@ -1747,9 +1747,14 @@ int io_bind(struct io_kiocb *req, unsigned int issue_flags)\n {\n \tstruct io_bind *bind = io_kiocb_to_cmd(req, struct io_bind);\n \tstruct io_async_msghdr *io = req->async_data;\n+\tstruct socket *sock;\n \tint ret;\n \n-\tret = __sys_bind_socket(sock_from_file(req->file),  &io->addr, bind->addr_len);\n+\tsock = sock_from_file(req->file);\n+\tif (unlikely(!sock))\n+\t\treturn -ENOTSOCK;\n+\n+\tret = __sys_bind_socket(sock, &io->addr, bind->addr_len);\n \tif (ret < 0)\n \t\treq_set_fail(req);\n \tio_req_set_res(req, ret, 0);\n@@ -1770,9 +1775,14 @@ int io_listen_prep(struct io_kiocb *req, const struct io_uring_sqe *sqe)\n int io_listen(struct io_kiocb *req, unsigned int issue_flags)\n {\n \tstruct io_listen *listen = io_kiocb_to_cmd(req, struct io_listen);\n+\tstruct socket *sock;\n \tint ret;\n \n-\tret = __sys_listen_socket(sock_from_file(req->file), listen->backlog);\n+\tsock = sock_from_file(req->file);\n+\tif (unlikely(!sock))\n+\t\treturn -ENOTSOCK;\n+\n+\tret = __sys_listen_socket(sock, listen->backlog);\n \tif (ret < 0)\n \t\treq_set_fail(req);\n \tio_req_set_res(req, ret, 0);",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "io_uring/net.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 21
+    }
+  ],
+  "success_step": 22
+}

@@ -1,0 +1,51 @@
+diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c
+index 8bfe35477654..a2dc66dedc19 100644
+--- a/fs/ntfs3/inode.c
++++ b/fs/ntfs3/inode.c
+@@ -452,6 +452,7 @@ static struct inode *ntfs_read_mft(struct inode *inode,
+ 		ni->std_fa &= ~FILE_ATTRIBUTE_DIRECTORY;
+ 		inode->i_op = &ntfs_link_inode_operations;
+ 		inode->i_fop = NULL;
++		inode->i_link = NULL;
+ 		inode_nohighmem(inode);
+ 	} else if (S_ISREG(mode)) {
+ 		ni->std_fa &= ~FILE_ATTRIBUTE_DIRECTORY;
+@@ -1570,6 +1571,7 @@ int ntfs_create_inode(struct mnt_idmap *idmap, struct inode *dir,
+ 		inode->i_fop = NULL;
+ 		inode->i_mapping->a_ops = &ntfs_aops;
+ 		inode->i_size = size;
++		inode->i_link = NULL;
+ 		inode_nohighmem(inode);
+ 	} else if (S_ISREG(mode)) {
+ 		inode->i_op = &ntfs_file_inode_operations;
+@@ -1690,6 +1692,7 @@ int ntfs_link_inode(struct inode *inode, struct dentry *dentry)
+ {
+ 	int err;
+ 	struct ntfs_inode *ni = ntfs_i(inode);
++	inode->i_link = NULL;
+ 	struct ntfs_sb_info *sbi = inode->i_sb->s_fs_info;
+ 	struct NTFS_DE *de;
+ 
+@@ -2044,6 +2047,10 @@ static const char *ntfs_get_link(struct dentry *de, struct inode *inode,
+ 	if (!ret)
+ 		return ERR_PTR(-ENOMEM);
+ 
++	if ((unsigned long)ret < PAGE_SIZE) {
++		return ERR_PTR(-ENOMEM);
++	}
++
+ 	err = ntfs_readlink_hlp(de, inode, ret, PAGE_SIZE);
+ 	if (err < 0) {
+ 		kfree(ret);
+diff --git a/fs/ntfs3/namei.c b/fs/ntfs3/namei.c
+index b807744fc6a9..ecb0ad63bcbb 100644
+--- a/fs/ntfs3/namei.c
++++ b/fs/ntfs3/namei.c
+@@ -242,6 +242,7 @@ static int ntfs_rename(struct mnt_idmap *idmap, struct inode *dir,
+ 	struct ntfs_inode *new_dir_ni = ntfs_i(new_dir);
+ 	struct inode *inode = d_inode(dentry);
+ 	struct ntfs_inode *ni = ntfs_i(inode);
++	inode->i_link = NULL;
+ 	struct inode *new_inode = d_inode(new_dentry);
+ 	struct NTFS_DE *de, *new_de;
+ 	bool is_same, is_bad;

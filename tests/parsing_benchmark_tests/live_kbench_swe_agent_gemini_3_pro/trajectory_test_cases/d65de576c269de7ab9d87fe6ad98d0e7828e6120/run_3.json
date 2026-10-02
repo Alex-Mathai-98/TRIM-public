@@ -1,0 +1,135 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n",
+          "before": "\tif (vsock_stream_has_data(vsk) <= 0)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..e98b41596c16 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1211,7 +1211,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "net/vmw_vsock/virtio_transport_common.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "\tstruct virtio_vsock_sock *vvs = vsk->trans;\n\n\t/* We don't need to take rx_lock, as the socket is closing and we are\n\t * removing it.\n\t */\n\tif (vvs)\n\t\t__skb_queue_purge(&vvs->rx_queue);\n",
+          "before": "\tstruct virtio_vsock_sock *vvs = vsk->trans;\n\n\t/* We don't need to take rx_lock, as the socket is closing and we are\n\t * removing it.\n\t */\n\t__skb_queue_purge(&vvs->rx_queue);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..2990a8974a36 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1183,7 +1183,8 @@ static void virtio_transport_remove_sock(struct vsock_sock *vsk)\n \t/* We don't need to take rx_lock, as the socket is closing and we are\n \t * removing it.\n \t */\n-\t__skb_queue_purge(&vvs->rx_queue);\n+\tif (vvs)\n+\t\t__skb_queue_purge(&vvs->rx_queue);\n \tvsock_remove_sock(vsk);\n }\n \n@@ -1211,7 +1212,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "net/vmw_vsock/virtio_transport_common.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 28
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (!sock_flag(sk, SOCK_DONE)) {\n\t\tif (vsk->transport)\n\t\t\t(void)virtio_transport_reset(vsk, NULL);\n\n\t\tvirtio_transport_do_close(vsk, false);\n\t}\n",
+          "before": "\tif (!sock_flag(sk, SOCK_DONE)) {\n\t\t(void)virtio_transport_reset(vsk, NULL);\n\n\t\tvirtio_transport_do_close(vsk, false);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..406e903b58f3 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1183,7 +1183,8 @@ static void virtio_transport_remove_sock(struct vsock_sock *vsk)\n \t/* We don't need to take rx_lock, as the socket is closing and we are\n \t * removing it.\n \t */\n-\t__skb_queue_purge(&vvs->rx_queue);\n+\tif (vvs)\n+\t\t__skb_queue_purge(&vvs->rx_queue);\n \tvsock_remove_sock(vsk);\n }\n \n@@ -1211,7 +1212,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);\n \n@@ -1236,7 +1237,8 @@ static void virtio_transport_close_timeout(struct work_struct *work)\n \tlock_sock(sk);\n \n \tif (!sock_flag(sk, SOCK_DONE)) {\n-\t\t(void)virtio_transport_reset(vsk, NULL);\n+\t\tif (vsk->transport)\n+\t\t\t(void)virtio_transport_reset(vsk, NULL);\n \n \t\tvirtio_transport_do_close(vsk, false);\n \t}",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "net/vmw_vsock/virtio_transport_common.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "revision_index": 2,
+      "start_step": 33
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c\nindex 51a494b69be8..406e903b58f3 100644\n--- a/net/vmw_vsock/virtio_transport_common.c\n+++ b/net/vmw_vsock/virtio_transport_common.c\n@@ -1183,7 +1183,8 @@ static void virtio_transport_remove_sock(struct vsock_sock *vsk)\n \t/* We don't need to take rx_lock, as the socket is closing and we are\n \t * removing it.\n \t */\n-\t__skb_queue_purge(&vvs->rx_queue);\n+\tif (vvs)\n+\t\t__skb_queue_purge(&vvs->rx_queue);\n \tvsock_remove_sock(vsk);\n }\n \n@@ -1211,7 +1212,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,\n \n \tsock_set_flag(sk, SOCK_DONE);\n \tvsk->peer_shutdown = SHUTDOWN_MASK;\n-\tif (vsock_stream_has_data(vsk) <= 0)\n+\tif (!vsk->transport || vsock_stream_has_data(vsk) <= 0)\n \t\tsk->sk_state = TCP_CLOSING;\n \tsk->sk_state_change(sk);\n \n@@ -1236,7 +1237,8 @@ static void virtio_transport_close_timeout(struct work_struct *work)\n \tlock_sock(sk);\n \n \tif (!sock_flag(sk, SOCK_DONE)) {\n-\t\t(void)virtio_transport_reset(vsk, NULL);\n+\t\tif (vsk->transport)\n+\t\t\t(void)virtio_transport_reset(vsk, NULL);\n \n \t\tvirtio_transport_do_close(vsk, false);\n \t}",
+          "explanation": "classic_swe step 35 rm #1",
+          "filename": "root/report.txt",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 3,
+      "start_step": 35
+    }
+  ],
+  "success_step": 35
+}

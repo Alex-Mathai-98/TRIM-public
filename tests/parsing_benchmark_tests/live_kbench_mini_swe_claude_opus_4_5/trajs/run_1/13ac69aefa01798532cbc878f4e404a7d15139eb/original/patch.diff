@@ -1,0 +1,22 @@
+diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c
+index fe92e5fa95b4..34e69c405649 100644
+--- a/net/vmw_vsock/virtio_transport_common.c
++++ b/net/vmw_vsock/virtio_transport_common.c
+@@ -105,9 +105,15 @@ static int virtio_transport_fill_skb(struct sk_buff *skb,
+ 				     size_t len,
+ 				     bool zcopy)
+ {
+-	if (zcopy)
+-		return __zerocopy_sg_from_iter(info->msg, NULL, skb,
++	if (zcopy) {
++		int err;
++
++		err = __zerocopy_sg_from_iter(info->msg, NULL, skb,
+ 					       &info->msg->msg_iter, len, NULL);
++		if (err)
++			return err;
++		return skb->len == len ? 0 : -EFAULT;
++	}
+ 
+ 	virtio_vsock_skb_put(skb, len);
+ 	return skb_copy_datagram_from_iter(skb, 0, &info->msg->msg_iter, len);

@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static struct lock_class_key smc_inet_slock_key;\nstatic struct lock_class_key smc_inet_lock_key;\n\nstatic int smc_inet_init_sock(struct sock *sk)\n{\n\tstruct net *net = sock_net(sk);\n\n\t/* init common smc sock */\n\tsmc_sk_init(net, sk, IPPROTO_SMC);\n\n\t/* The created sk is a SMC socket, but created via AF_INET(6).\n\t * If we use the default AF_INET(6) lock keys, we might run into\n\t * lockdep cycles with clcsock_release_lock and rtnl_mutex, because\n\t * the clcsock is also an AF_INET(6) socket and uses the same keys.\n\t *\n\t * For example:\n\t * rtnl_mutex -> sk_lock-AF_INET6 (generic dependency)\n\t * sk_lock-AF_INET6 (smc) -> clcsock_release_lock\n\t * clcsock_release_lock -> rtnl_mutex (closing clc sock)\n\t *\n\t * Break this by using a separate lock class for SMC-over-INET sockets.\n\t */\n\tsock_lock_init_class_and_name(sk, \"slock-AF_INET_SMC\",\n\t\t\t\t      &smc_inet_slock_key,\n\t\t\t\t      \"sk_lock-AF_INET_SMC\",\n\t\t\t\t      &smc_inet_lock_key);\n\n\tinet_csk(sk)->icsk_sync_mss = smc_sync_mss;\n\n\t/* create clcsock */\n\treturn smc_create_clcsk(net, sk, sk->sk_family);\n}\n",
+          "before": "static int smc_inet_init_sock(struct sock *sk)\n{\n\tstruct net *net = sock_net(sk);\n\n\t/* init common smc sock */\n\tsmc_sk_init(net, sk, IPPROTO_SMC);\n\n\tinet_csk(sk)->icsk_sync_mss = smc_sync_mss;\n\n\t/* create clcsock */\n\treturn smc_create_clcsk(net, sk, sk->sk_family);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/smc_inet.c b/net/smc/smc_inet.c\nindex a944e7dcb8b9..72963846ca05 100644\n--- a/net/smc/smc_inet.c\n+++ b/net/smc/smc_inet.c\n@@ -116,6 +116,9 @@ static unsigned int smc_sync_mss(struct sock *sk, u32 pmtu)\n \treturn 0;\n }\n \n+static struct lock_class_key smc_inet_slock_key;\n+static struct lock_class_key smc_inet_lock_key;\n+\n static int smc_inet_init_sock(struct sock *sk)\n {\n \tstruct net *net = sock_net(sk);\n@@ -123,6 +126,23 @@ static int smc_inet_init_sock(struct sock *sk)\n \t/* init common smc sock */\n \tsmc_sk_init(net, sk, IPPROTO_SMC);\n \n+\t/* The created sk is a SMC socket, but created via AF_INET(6).\n+\t * If we use the default AF_INET(6) lock keys, we might run into\n+\t * lockdep cycles with clcsock_release_lock and rtnl_mutex, because\n+\t * the clcsock is also an AF_INET(6) socket and uses the same keys.\n+\t *\n+\t * For example:\n+\t * rtnl_mutex -> sk_lock-AF_INET6 (generic dependency)\n+\t * sk_lock-AF_INET6 (smc) -> clcsock_release_lock\n+\t * clcsock_release_lock -> rtnl_mutex (closing clc sock)\n+\t *\n+\t * Break this by using a separate lock class for SMC-over-INET sockets.\n+\t */\n+\tsock_lock_init_class_and_name(sk, \"slock-AF_INET_SMC\",\n+\t\t\t\t      &smc_inet_slock_key,\n+\t\t\t\t      \"sk_lock-AF_INET_SMC\",\n+\t\t\t\t      &smc_inet_lock_key);\n+\n \tinet_csk(sk)->icsk_sync_mss = smc_sync_mss;\n \n \t/* create clcsock */",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "net/smc/smc_inet.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    }
+  ],
+  "success_step": 11
+}

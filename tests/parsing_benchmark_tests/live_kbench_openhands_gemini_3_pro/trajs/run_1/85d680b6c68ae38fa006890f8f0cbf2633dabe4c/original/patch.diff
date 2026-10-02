@@ -1,0 +1,62 @@
+diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
+index 257333c88710..4e1055cdee2d 100644
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -2964,6 +2964,25 @@ static void bond_miimon_commit(struct bonding *bond)
+  * an acquisition of appropriate locks followed by a commit phase to
+  * implement whatever link state changes are indicated.
+  */
++static bool bond_should_use_rtnl(struct bonding *bond)
++{
++	struct slave *slave;
++	struct list_head *iter;
++
++	if (bond->params.use_carrier)
++		return false;
++
++	bond_for_each_slave_rcu(bond, slave, iter) {
++		if (!netif_running(slave->dev))
++			continue;
++		if (slave->dev->ethtool_ops->get_link &&
++		    !netdev_need_ops_lock(slave->dev))
++			return true;
++	}
++
++	return false;
++}
++
+ static void bond_mii_monitor(struct work_struct *work)
+ {
+ 	struct bonding *bond = container_of(work, struct bonding,
+@@ -2980,6 +2999,31 @@ static void bond_mii_monitor(struct work_struct *work)
+ 		goto re_arm;
+ 
+ 	rcu_read_lock();
++	if (bond_should_use_rtnl(bond)) {
++		rcu_read_unlock();
++
++		if (!rtnl_trylock()) {
++			delay = 1;
++			should_notify_peers = false;
++			goto re_arm;
++		}
++
++		rcu_read_lock();
++		should_notify_peers = bond_should_notify_peers(bond);
++		commit = !!bond_miimon_inspect(bond);
++		if (bond->send_peer_notif)
++			bond->send_peer_notif--;
++		rcu_read_unlock();
++
++		if (commit) {
++			bond_for_each_slave(bond, slave, iter)
++				bond_commit_link_state(slave, BOND_SLAVE_NOTIFY_LATER);
++			bond_miimon_commit(bond);
++		}
++		rtnl_unlock();
++		goto re_arm;
++	}
++
+ 	should_notify_peers = bond_should_notify_peers(bond);
+ 	commit = !!bond_miimon_inspect(bond);
+ 	if (bond->send_peer_notif) {

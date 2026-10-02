@@ -1,0 +1,35 @@
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 6ea1d20676fb..a2157be88790 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -6926,11 +6926,18 @@ static __latent_entropy void net_rx_action(struct softirq_action *h)
+ 	unsigned long time_limit = jiffies +
+ 		usecs_to_jiffies(READ_ONCE(net_hotdata.netdev_budget_usecs));
+ 	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
++	struct bpf_net_context *old_bpf_net_ctx = NULL;
+ 	int budget = READ_ONCE(net_hotdata.netdev_budget);
+ 	LIST_HEAD(list);
+ 	LIST_HEAD(repoll);
+ 
+ 	bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
++	if (!bpf_net_ctx) {
++		old_bpf_net_ctx = current->bpf_net_context;
++		current->bpf_net_context = &__bpf_net_ctx;
++		bpf_net_ctx = &__bpf_net_ctx;
++		bpf_net_ctx->ri.kern_flags = 0;
++	}
+ start:
+ 	sd->in_net_rx_action = true;
+ 	local_irq_disable();
+@@ -6984,7 +6991,10 @@ static __latent_entropy void net_rx_action(struct softirq_action *h)
+ 
+ 	net_rps_action_and_irq_enable(sd);
+ end:
+-	bpf_net_ctx_clear(bpf_net_ctx);
++	if (old_bpf_net_ctx)
++		current->bpf_net_context = old_bpf_net_ctx;
++	else
++		bpf_net_ctx_clear(bpf_net_ctx);
+ }
+ 
+ struct netdev_adjacent {

@@ -1,0 +1,145 @@
+diff --git a/fs/exfat/balloc.c b/fs/exfat/balloc.c
+index 2d2d510f2372..6fc5150bc688 100644
+--- a/fs/exfat/balloc.c
++++ b/fs/exfat/balloc.c
+@@ -183,11 +183,10 @@ void exfat_free_bitmap(struct exfat_sb_info *sbi)
+ 	kvfree(sbi->vol_amap);
+ }
+ 
+-int exfat_set_bitmap(struct inode *inode, unsigned int clu, bool sync)
++int exfat_set_bitmap(struct super_block *sb, unsigned int clu, bool sync)
+ {
+ 	int i, b;
+ 	unsigned int ent_idx;
+-	struct super_block *sb = inode->i_sb;
+ 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
+ 
+ 	if (!is_valid_cluster(sbi, clu))
+@@ -202,11 +201,10 @@ int exfat_set_bitmap(struct inode *inode, unsigned int clu, bool sync)
+ 	return 0;
+ }
+ 
+-int exfat_clear_bitmap(struct inode *inode, unsigned int clu, bool sync)
++int exfat_clear_bitmap(struct super_block *sb, unsigned int clu, bool sync)
+ {
+ 	int i, b;
+ 	unsigned int ent_idx;
+-	struct super_block *sb = inode->i_sb;
+ 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
+ 
+ 	if (!is_valid_cluster(sbi, clu))
+@@ -226,6 +224,29 @@ int exfat_clear_bitmap(struct inode *inode, unsigned int clu, bool sync)
+ 	return 0;
+ }
+ 
++
++bool exfat_test_bitmap(struct super_block *sb, unsigned int clu)
++{
++	int i, b;
++	unsigned int ent_idx;
++	struct exfat_sb_info *sbi = EXFAT_SB(sb);
++
++	if (!sbi->vol_amap)
++		return true;
++
++	if (!is_valid_cluster(sbi, clu))
++		return false;
++
++	ent_idx = CLUSTER_TO_BITMAP_ENT(clu);
++	i = BITMAP_OFFSET_SECTOR_INDEX(sb, ent_idx);
++	b = BITMAP_OFFSET_BIT_IN_SECTOR(sb, ent_idx);
++
++	if (!test_bit_le(b, sbi->vol_amap[i]->b_data))
++		return false;
++
++	return true;
++}
++
+ /*
+  * If the value of "clu" is 0, it means cluster 2 which is the first cluster of
+  * the cluster heap.
+diff --git a/fs/exfat/dir.c b/fs/exfat/dir.c
+index 7229146fe2bf..3045a58e124a 100644
+--- a/fs/exfat/dir.c
++++ b/fs/exfat/dir.c
+@@ -604,6 +604,11 @@ static int exfat_find_location(struct super_block *sb, struct exfat_chain *p_dir
+ 	if (ret)
+ 		return ret;
+ 
++	if (!exfat_test_bitmap(sb, clu)) {
++		exfat_err(sb, "failed to test cluster bit(%u)", clu);
++		return -EIO;
++	}
++
+ 	/* byte offset in cluster */
+ 	off = EXFAT_CLU_OFFSET(off, sbi);
+ 
+diff --git a/fs/exfat/exfat_fs.h b/fs/exfat/exfat_fs.h
+index 38210fb6901c..176fef62574c 100644
+--- a/fs/exfat/exfat_fs.h
++++ b/fs/exfat/exfat_fs.h
+@@ -452,8 +452,9 @@ int exfat_count_num_clusters(struct super_block *sb,
+ /* balloc.c */
+ int exfat_load_bitmap(struct super_block *sb);
+ void exfat_free_bitmap(struct exfat_sb_info *sbi);
+-int exfat_set_bitmap(struct inode *inode, unsigned int clu, bool sync);
+-int exfat_clear_bitmap(struct inode *inode, unsigned int clu, bool sync);
++int exfat_set_bitmap(struct super_block *sb, unsigned int clu, bool sync);
++int exfat_clear_bitmap(struct super_block *sb, unsigned int clu, bool sync);
++bool exfat_test_bitmap(struct super_block *sb, unsigned int clu);
+ unsigned int exfat_find_free_bitmap(struct super_block *sb, unsigned int clu);
+ int exfat_count_used_clusters(struct super_block *sb, unsigned int *ret_count);
+ int exfat_trim_fs(struct inode *inode, struct fstrim_range *range);
+diff --git a/fs/exfat/fatent.c b/fs/exfat/fatent.c
+index 825083634ba2..c9c5f2e3a05e 100644
+--- a/fs/exfat/fatent.c
++++ b/fs/exfat/fatent.c
+@@ -205,7 +205,7 @@ static int __exfat_free_cluster(struct inode *inode, struct exfat_chain *p_chain
+ 				cur_cmap_i = next_cmap_i;
+ 			}
+ 
+-			err = exfat_clear_bitmap(inode, clu, (sync && IS_DIRSYNC(inode)));
++			err = exfat_clear_bitmap(sb, clu, (sync && IS_DIRSYNC(inode)));
+ 			if (err)
+ 				break;
+ 			clu++;
+@@ -233,7 +233,7 @@ static int __exfat_free_cluster(struct inode *inode, struct exfat_chain *p_chain
+ 				cur_cmap_i = next_cmap_i;
+ 			}
+ 
+-			if (exfat_clear_bitmap(inode, clu, (sync && IS_DIRSYNC(inode))))
++			if (exfat_clear_bitmap(sb, clu, (sync && IS_DIRSYNC(inode))))
+ 				break;
+ 
+ 			if (sbi->options.discard) {
+@@ -409,7 +409,7 @@ int exfat_alloc_cluster(struct inode *inode, unsigned int num_alloc,
+ 		}
+ 
+ 		/* update allocation bitmap */
+-		if (exfat_set_bitmap(inode, new_clu, sync_bmap)) {
++		if (exfat_set_bitmap(sb, new_clu, sync_bmap)) {
+ 			ret = -EIO;
+ 			goto free_cluster;
+ 		}
+diff --git a/fs/exfat/super.c b/fs/exfat/super.c
+index 74d451f732c7..bc03f47374d4 100644
+--- a/fs/exfat/super.c
++++ b/fs/exfat/super.c
+@@ -629,6 +629,17 @@ static int __exfat_fill_super(struct super_block *sb,
+ 		goto free_bh;
+ 	}
+ 
++	if (!exfat_test_bitmap(sb, sbi->root_dir)) {
++		exfat_warn(sb, "failed to test first cluster bit of root dir(%u)",
++			   sbi->root_dir);
++		/*
++		 * The first cluster bit of the root directory should never
++		 * be unset except when storage is corrupted. This bit is
++		 * set to allow operations after mount.
++		 */
++		exfat_set_bitmap(sb, sbi->root_dir, false);
++	}
++
+ 	ret = exfat_count_used_clusters(sb, &sbi->used_clusters);
+ 	if (ret) {
+ 		exfat_err(sb, "failed to scan clusters");

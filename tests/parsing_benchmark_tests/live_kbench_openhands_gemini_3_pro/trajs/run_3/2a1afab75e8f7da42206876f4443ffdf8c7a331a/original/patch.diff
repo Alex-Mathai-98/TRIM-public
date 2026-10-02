@@ -1,0 +1,19 @@
+diff --git a/io_uring/rw.c b/io_uring/rw.c
+index 5b2241a5813c..7708e783cb92 100644
+--- a/io_uring/rw.c
++++ b/io_uring/rw.c
+@@ -155,8 +155,13 @@ static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)
+ 	if (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)
+ 		io_vec_free(&rw->vec);
+ 
+-	if (io_alloc_cache_put(&req->ctx->rw_cache, rw))
++	if (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {
+ 		io_req_async_data_clear(req, 0);
++		return;
++	}
++
++	if (rw->vec.iovec != &rw->fast_iov)
++		io_vec_free(&rw->vec);
+ }
+ 
+ static void io_req_rw_cleanup(struct io_kiocb *req, unsigned int issue_flags)

@@ -1,0 +1,145 @@
+{
+  "bug_id": "pytest-dev__pytest-7490",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/skipping.py",
+        "before": "@hookimpl(hookwrapper=True)\ndef pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n    outcome = yield\n    rep = outcome.get_result()\n    xfailed = item._store.get(xfailed_key, None)",
+        "after": "@hookimpl(hookwrapper=True)\ndef pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n    outcome = yield\n    rep = outcome.get_result()\n    xfailed = item._store.get(xfailed_key, None)\n    # Re-evaluate xfail marks after test call to catch dynamically added markers\n    if call.when == \"call\" and not item.config.option.runxfail:\n        xfailed = evaluate_xfail_marks(item)\n        item._store[xfailed_key] = xfailed",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_skipping.py",
+        "before": "        result.stdout.fnmatch_lines([\"*1 failed*\" if strict else \"*1 xpassed*\"])\n        assert result.ret == (1 if strict else 0)\n\n\nclass TestXFailwithSetupTeardown:",
+        "after": "        result.stdout.fnmatch_lines([\"*1 failed*\" if strict else \"*1 xpassed*\"])\n        assert result.ret == (1 if strict else 0)\n\n    def test_dynamic_xfail_during_test_call(self, testdir):\n        \"\"\"Test that dynamically adding xfail marker during test call works correctly.\n        \n        This reproduces the issue from pytest 6 where dynamically added xfail markers\n        in test functions were not being honored.\n        \"\"\"\n        testdir.makepyfile(\n            \"\"\"\n            import pytest\n\n            def test_xfail_test(request):\n                mark = pytest.mark.xfail(reason=\"xfail\")\n                request.node.add_marker(mark)\n                assert 0\n            \"\"\"\n        )\n        result = testdir.runpytest(\"-rsx\")\n        result.assert_outcomes(xfailed=1)\n        result.stdout.fnmatch_lines([\"*XFAIL*test_xfail_test*\", \"*xfail*\"])\n\n\nclass TestXFailwithSetupTeardown:",
+        "explanation": "classic_swe step 43 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/skipping.py b/src/_pytest/skipping.py\nindex 335e10996..185bb4f5c 100644\n--- a/src/_pytest/skipping.py\n+++ b/src/_pytest/skipping.py\n@@ -262,6 +262,10 @@ def pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n     outcome = yield\n     rep = outcome.get_result()\n     xfailed = item._store.get(xfailed_key, None)\n+    # Re-evaluate xfail marks after test call to catch dynamically added markers\n+    if call.when == \"call\" and not item.config.option.runxfail:\n+        xfailed = evaluate_xfail_marks(item)\n+        item._store[xfailed_key] = xfailed\n     # unittest special case, see setting of unexpectedsuccess_key\n     if unexpectedsuccess_key in item._store and rep.when == \"call\":\n         reason = item._store[unexpectedsuccess_key]\ndiff --git a/testing/test_skipping.py b/testing/test_skipping.py\nindex 8fceb37aa..5c7695c0c 100644\n--- a/testing/test_skipping.py\n+++ b/testing/test_skipping.py\n@@ -544,6 +544,26 @@ class TestXFail:\n         result.stdout.fnmatch_lines([\"*1 failed*\" if strict else \"*1 xpassed*\"])\n         assert result.ret == (1 if strict else 0)\n \n+    def test_dynamic_xfail_during_test_call(self, testdir):\n+        \"\"\"Test that dynamically adding xfail marker during test call works correctly.\n+        \n+        This reproduces the issue from pytest 6 where dynamically added xfail markers\n+        in test functions were not being honored.\n+        \"\"\"\n+        testdir.makepyfile(\n+            \"\"\"\n+            import pytest\n+\n+            def test_xfail_test(request):\n+                mark = pytest.mark.xfail(reason=\"xfail\")\n+                request.node.add_marker(mark)\n+                assert 0\n+            \"\"\"\n+        )\n+        result = testdir.runpytest(\"-rsx\")\n+        result.assert_outcomes(xfailed=1)\n+        result.stdout.fnmatch_lines([\"*XFAIL*test_xfail_test*\", \"*xfail*\"])\n+\n \n class TestXFailwithSetupTeardown:\n     def test_failing_setup_issue9(self, testdir):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      8
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      1,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      1,
+      8
+    ],
+    "edit_list_after_refinement": [
+      1,
+      8
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/skipping.py",
+          "before": "@hookimpl(hookwrapper=True)\ndef pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n    outcome = yield\n    rep = outcome.get_result()\n    xfailed = item._store.get(xfailed_key, None)",
+          "after": "@hookimpl(hookwrapper=True)\ndef pytest_runtest_makereport(item: Item, call: CallInfo[None]):\n    outcome = yield\n    rep = outcome.get_result()\n    xfailed = item._store.get(xfailed_key, None)\n    # Re-evaluate xfail marks after test call to catch dynamically added markers\n    if call.when == \"call\" and not item.config.option.runxfail:\n        xfailed = evaluate_xfail_marks(item)\n        item._store[xfailed_key] = xfailed",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "testing/test_skipping.py",
+          "before": "        result.stdout.fnmatch_lines([\"*1 failed*\" if strict else \"*1 xpassed*\"])\n        assert result.ret == (1 if strict else 0)\n\n\nclass TestXFailwithSetupTeardown:",
+          "after": "        result.stdout.fnmatch_lines([\"*1 failed*\" if strict else \"*1 xpassed*\"])\n        assert result.ret == (1 if strict else 0)\n\n    def test_dynamic_xfail_during_test_call(self, testdir):\n        \"\"\"Test that dynamically adding xfail marker during test call works correctly.\n        \n        This reproduces the issue from pytest 6 where dynamically added xfail markers\n        in test functions were not being honored.\n        \"\"\"\n        testdir.makepyfile(\n            \"\"\"\n            import pytest\n\n            def test_xfail_test(request):\n                mark = pytest.mark.xfail(reason=\"xfail\")\n                request.node.add_marker(mark)\n                assert 0\n            \"\"\"\n        )\n        result = testdir.runpytest(\"-rsx\")\n        result.assert_outcomes(xfailed=1)\n        result.stdout.fnmatch_lines([\"*XFAIL*test_xfail_test*\", \"*xfail*\"])\n\n\nclass TestXFailwithSetupTeardown:",
+          "explanation": "classic_swe step 43 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 78,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 78,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "src/_pytest/skipping.py"
+    ],
+    "extra_files_in_minimized": [
+      "testing/test_skipping.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/skipping.py",
+      "testing/test_skipping.py"
+    ],
+    "gold_files": [
+      "src/_pytest/skipping.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 24,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 11,
+    "gold_deleted_lines": 10
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

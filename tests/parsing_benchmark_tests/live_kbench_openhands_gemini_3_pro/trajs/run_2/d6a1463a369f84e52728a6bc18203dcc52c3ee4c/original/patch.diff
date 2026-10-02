@@ -1,0 +1,39 @@
+diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
+index 213206ebdd58..bad789b0b2da 100644
+--- a/fs/ocfs2/dir.c
++++ b/fs/ocfs2/dir.c
+@@ -411,6 +411,11 @@ static struct buffer_head *ocfs2_find_entry_id(const char *name,
+ 	di = (struct ocfs2_dinode *)di_bh->b_data;
+ 	data = &di->id2.i_data;
+ 
++	if (unlikely((u64)i_size_read(dir) > ocfs2_max_inline_data_with_xattr(dir->i_sb, di))) {
++		brelse(di_bh);
++		goto out;
++	}
++
+ 	found = ocfs2_search_dirblock(di_bh, dir, name, namelen, 0,
+ 				      data->id_data, i_size_read(dir), res_dir);
+ 	if (found == 1)
+@@ -3353,6 +3358,9 @@ static int ocfs2_find_dir_space_id(struct inode *dir, struct buffer_head *di_bh,
+ 	unsigned long offset = 0;
+ 	unsigned int rec_len, new_rec_len, free_space;
+ 
++	if (unlikely((u64)i_size_read(dir) > ocfs2_max_inline_data_with_xattr(sb, di)))
++		return -EIO;
++
+ 	/*
+ 	 * This calculates how many free bytes we'd have in block zero, should
+ 	 * this function force expansion to an extent tree.
+@@ -3404,6 +3412,12 @@ static int ocfs2_find_dir_space_id(struct inode *dir, struct buffer_head *di_bh,
+ 	 * dirent can be found.
+ 	 */
+ 	*blocks_wanted = 1;
++
++	if (!last_de) {
++		ret = -ENOENT;
++		goto out;
++	}
++
+ 	new_rec_len = le16_to_cpu(last_de->rec_len) + free_space;
+ 	if (new_rec_len < (rec_len + OCFS2_DIR_REC_LEN(last_de->name_len)))
+ 		*blocks_wanted = 2;

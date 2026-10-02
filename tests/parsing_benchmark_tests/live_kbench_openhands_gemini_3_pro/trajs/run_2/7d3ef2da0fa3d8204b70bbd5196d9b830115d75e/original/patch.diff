@@ -1,0 +1,40 @@
+diff --git a/drivers/net/vxlan/vxlan_core.c b/drivers/net/vxlan/vxlan_core.c
+index 05c10acb2a57..92516189e792 100644
+--- a/drivers/net/vxlan/vxlan_core.c
++++ b/drivers/net/vxlan/vxlan_core.c
+@@ -2898,8 +2898,11 @@ static int vxlan_init(struct net_device *dev)
+ 	struct vxlan_dev *vxlan = netdev_priv(dev);
+ 	int err;
+ 
+-	if (vxlan->cfg.flags & VXLAN_F_VNIFILTER)
+-		vxlan_vnigroup_init(vxlan);
++	if (vxlan->cfg.flags & VXLAN_F_VNIFILTER) {
++		err = vxlan_vnigroup_init(vxlan);
++		if (err)
++			return err;
++	}
+ 
+ 	err = gro_cells_init(&vxlan->gro_cells, dev);
+ 	if (err)
+diff --git a/drivers/net/vxlan/vxlan_vnifilter.c b/drivers/net/vxlan/vxlan_vnifilter.c
+index 6e6e9f05509a..1e72cbec2f0c 100644
+--- a/drivers/net/vxlan/vxlan_vnifilter.c
++++ b/drivers/net/vxlan/vxlan_vnifilter.c
+@@ -909,6 +909,9 @@ void vxlan_vnigroup_uninit(struct vxlan_dev *vxlan)
+ 	struct vxlan_vni_group *vg;
+ 
+ 	vg = rtnl_dereference(vxlan->vnigrp);
++	if (!vg)
++		return;
++
+ 	list_for_each_entry_safe(v, tmp, &vg->vni_list, vlist) {
+ 		rhashtable_remove_fast(&vg->vni_hash, &v->vnode,
+ 				       vxlan_vni_rht_params);
+@@ -922,6 +925,7 @@ void vxlan_vnigroup_uninit(struct vxlan_dev *vxlan)
+ 	}
+ 	rhashtable_destroy(&vg->vni_hash);
+ 	kfree(vg);
++	RCU_INIT_POINTER(vxlan->vnigrp, NULL);
+ }
+ 
+ int vxlan_vnigroup_init(struct vxlan_dev *vxlan)

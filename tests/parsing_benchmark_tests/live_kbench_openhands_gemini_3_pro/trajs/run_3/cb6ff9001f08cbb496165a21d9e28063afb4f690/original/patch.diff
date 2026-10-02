@@ -1,0 +1,48 @@
+diff --git a/fs/kernfs/mount.c b/fs/kernfs/mount.c
+index d1f512b7bf86..8d87de0b196e 100644
+--- a/fs/kernfs/mount.c
++++ b/fs/kernfs/mount.c
+@@ -220,9 +220,9 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,
+ 		return dentry;
+ 
+ 	root = kernfs_root(kn);
+-	guard(rwsem_read)(&root->kernfs_rwsem);
+-
++	rcu_read_lock();
+ 	knparent = find_next_ancestor(kn, NULL);
++	rcu_read_unlock();
+ 	if (WARN_ON(!knparent)) {
+ 		dput(dentry);
+ 		return ERR_PTR(-EINVAL);
+@@ -232,16 +232,29 @@ struct dentry *kernfs_node_dentry(struct kernfs_node *kn,
+ 		struct dentry *dtmp;
+ 		struct kernfs_node *kntmp;
+ 		const char *name;
++		char *name_copy;
+ 
+ 		if (kn == knparent)
+ 			return dentry;
++
++		rcu_read_lock();
+ 		kntmp = find_next_ancestor(kn, knparent);
+ 		if (WARN_ON(!kntmp)) {
++			rcu_read_unlock();
+ 			dput(dentry);
+ 			return ERR_PTR(-EINVAL);
+ 		}
+-		name = rcu_dereference(kntmp->name);
+-		dtmp = lookup_positive_unlocked(name, dentry, strlen(name));
++		name = kernfs_rcu_name(kntmp);
++		name_copy = kstrdup(name, GFP_ATOMIC);
++		rcu_read_unlock();
++
++		if (!name_copy) {
++			dput(dentry);
++			return ERR_PTR(-ENOMEM);
++		}
++
++		dtmp = lookup_positive_unlocked(name_copy, dentry, strlen(name_copy));
++		kfree(name_copy);
+ 		dput(dentry);
+ 		if (IS_ERR(dtmp))
+ 			return dtmp;

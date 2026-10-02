@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock(&net->packet.sklist_lock);\n\tsk_for_each(sk, &net->packet.sklist) {\n\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\tswitch (msg) {",
+          "before": "\trcu_read_lock();\n\tsk_for_each_rcu(sk, &net->packet.sklist) {\n\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\tswitch (msg) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/packet/af_packet.c\n+++ /linux/net/packet/af_packet.c\n@@ -4240,2 +4240,2 @@\n-\trcu_read_lock();\n-\tsk_for_each_rcu(sk, &net->packet.sklist) {\n+\tmutex_lock(&net->packet.sklist_lock);\n+\tsk_for_each(sk, &net->packet.sklist) {",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 39",
+          "filename": "net/packet/af_packet.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        },
+        {
+          "after": "\n\t}\n\tmutex_unlock(&net->packet.sklist_lock);\n\treturn NOTIFY_DONE;\n}\n",
+          "before": "\n\t}\n\trcu_read_unlock();\n\treturn NOTIFY_DONE;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/packet/af_packet.c\n+++ /linux/net/packet/af_packet.c\n@@ -4279 +4279 @@\n-\trcu_read_unlock();\n+\tmutex_unlock(&net->packet.sklist_lock);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "net/packet/af_packet.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 0,
+      "start_step": 39
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\trcu_read_lock();\nrestart:\n\tsk_for_each_rcu(sk, &net->packet.sklist) {\n\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\tswitch (msg) {\n\t\tcase NETDEV_UNREGISTER:\n\t\t\tif (po->mclist) {\n\t\t\t\tstruct packet_mclist *ml;\n\n\t\t\t\tfor (ml = po->mclist; ml; ml = ml->next) {\n\t\t\t\t\tif (ml->ifindex == dev->ifindex) {\n\t\t\t\t\t\tsock_hold(sk);\n\t\t\t\t\t\trcu_read_unlock();\n\n\t\t\t\t\t\tpacket_dev_mclist_delete(dev, &po->mclist);\n\n\t\t\t\t\t\tsock_put(sk);\n\t\t\t\t\t\trcu_read_lock();\n\t\t\t\t\t\tgoto restart;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\tfallthrough;\n\n\t\tcase NETDEV_DOWN:\n",
+          "before": "\n\tmutex_lock(&net->packet.sklist_lock);\n\tsk_for_each(sk, &net->packet.sklist) {\n\t\tstruct packet_sock *po = pkt_sk(sk);\n\n\t\tswitch (msg) {\n\t\tcase NETDEV_UNREGISTER:\n\t\t\tif (po->mclist)\n\t\t\t\tpacket_dev_mclist_delete(dev, &po->mclist);\n\t\t\tfallthrough;\n\n\t\tcase NETDEV_DOWN:\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/packet/af_packet.c\n+++ /linux/net/packet/af_packet.c\n@@ -4240,2 +4240,3 @@\n-\tmutex_lock(&net->packet.sklist_lock);\n-\tsk_for_each(sk, &net->packet.sklist) {\n+\trcu_read_lock();\n+restart:\n+\tsk_for_each_rcu(sk, &net->packet.sklist) {\n@@ -4246,2 +4247,16 @@\n-\t\t\tif (po->mclist)\n-\t\t\t\tpacket_dev_mclist_delete(dev, &po->mclist);\n+\t\t\tif (po->mclist) {\n+\t\t\t\tstruct packet_mclist *ml;\n+\n+\t\t\t\tfor (ml = po->mclist; ml; ml = ml->next) {\n+\t\t\t\t\tif (ml->ifindex == dev->ifindex) {\n+\t\t\t\t\t\tsock_hold(sk);\n+\t\t\t\t\t\trcu_read_unlock();\n+\n+\t\t\t\t\t\tpacket_dev_mclist_delete(dev, &po->mclist);\n+\n+\t\t\t\t\t\tsock_put(sk);\n+\t\t\t\t\t\trcu_read_lock();\n+\t\t\t\t\t\tgoto restart;\n+\t\t\t\t\t}\n+\t\t\t\t}\n+\t\t\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 87",
+          "filename": "net/packet/af_packet.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 87
+        },
+        {
+          "after": "\n\t}\n\trcu_read_unlock();\n\treturn NOTIFY_DONE;\n}\n",
+          "before": "\n\t}\n\tmutex_unlock(&net->packet.sklist_lock);\n\treturn NOTIFY_DONE;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/packet/af_packet.c\n+++ /linux/net/packet/af_packet.c\n@@ -4294 +4294 @@\n-\tmutex_unlock(&net->packet.sklist_lock);\n+\trcu_read_unlock();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 89",
+          "filename": "net/packet/af_packet.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 89
+        }
+      ],
+      "end_step": 89,
+      "revision_index": 1,
+      "start_step": 87
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 99 rm #1",
+          "filename": "root/report.txt",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 99
+        }
+      ],
+      "end_step": 99,
+      "revision_index": 2,
+      "start_step": 99
+    }
+  ],
+  "success_step": 99
+}

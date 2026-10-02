@@ -1,0 +1,32 @@
+diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c
+index 363eb0c6eb7c..831027609976 100644
+--- a/fs/bcachefs/sb-members.c
++++ b/fs/bcachefs/sb-members.c
+@@ -327,8 +327,11 @@ static void bch2_sb_members_v1_to_text(struct printbuf *out, struct bch_sb *sb,
+ 	struct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);
+ 	unsigned i;
+ 
+-	for (i = 0; i < sb->nr_devices; i++)
++	for (i = 0; i < sb->nr_devices; i++) {
++		if ((void *) members_v1_get_mut(mi, i + 1) > vstruct_end(&mi->field))
++			break;
+ 		member_to_text(out, members_v1_get(mi, i), gi, sb, i);
++	}
+ }
+ 
+ const struct bch_sb_field_ops bch_sb_field_ops_members_v1 = {
+@@ -343,8 +346,13 @@ static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,
+ 	struct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);
+ 	unsigned i;
+ 
+-	for (i = 0; i < sb->nr_devices; i++)
++	for (i = 0; i < sb->nr_devices; i++) {
++		size_t mi_bytes = (void *) __bch2_members_v2_get_mut(mi, i + 1) -
++			(void *) mi;
++		if (mi_bytes > vstruct_bytes(&mi->field))
++			break;
+ 		member_to_text(out, members_v2_get(mi, i), gi, sb, i);
++	}
+ }
+ 
+ static int bch2_sb_members_v2_validate(struct bch_sb *sb, struct bch_sb_field *f,

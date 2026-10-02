@@ -1,0 +1,66 @@
+diff --git a/drivers/nvme/host/tcp.c b/drivers/nvme/host/tcp.c
+index 9a96df1a511c..54a516f84b96 100644
+--- a/drivers/nvme/host/tcp.c
++++ b/drivers/nvme/host/tcp.c
+@@ -1794,6 +1794,7 @@ static int nvme_tcp_alloc_queue(struct nvme_ctrl *nctrl, int qid,
+ 	sock_file = sock_alloc_file(queue->sock, O_CLOEXEC, NULL);
+ 	if (IS_ERR(sock_file)) {
+ 		ret = PTR_ERR(sock_file);
++		sock_release(queue->sock);
+ 		goto err_destroy_mutex;
+ 	}
+ 
+diff --git a/drivers/nvme/target/tcp.c b/drivers/nvme/target/tcp.c
+index 470bf37e5a63..310115bcc8be 100644
+--- a/drivers/nvme/target/tcp.c
++++ b/drivers/nvme/target/tcp.c
+@@ -1964,7 +1964,7 @@ static void nvmet_tcp_alloc_queue(struct nvmet_tcp_port *port,
+ 	kfree(queue);
+ out_release:
+ 	pr_err("failed to allocate queue, error %d\n", ret);
+-	if (!sock_file)
++	if (!sock_file || IS_ERR(sock_file))
+ 		sock_release(newsock);
+ }
+ 
+diff --git a/fs/coredump.c b/fs/coredump.c
+index fe4099e0530b..aed7ed539e3e 100644
+--- a/fs/coredump.c
++++ b/fs/coredump.c
+@@ -689,8 +689,10 @@ static bool coredump_sock_connect(struct core_name *cn, struct coredump_params *
+ 		return false;
+ 
+ 	file = sock_alloc_file(socket, 0, NULL);
+-	if (IS_ERR(file))
++	if (IS_ERR(file)) {
++		sock_release(socket);
+ 		return false;
++	}
+ 
+ 	/*
+ 	 * Set the thread-group leader pid which is used for the peer
+diff --git a/net/socket.c b/net/socket.c
+index e1bf93508f05..452ce67c169e 100644
+--- a/net/socket.c
++++ b/net/socket.c
+@@ -468,7 +468,7 @@ static struct file_system_type sock_fs_type = {
+  *	Returns the &file bound with @sock, implicitly storing it
+  *	in sock->file. If dname is %NULL, sets to "".
+  *
+- *	On failure @sock is released, and an ERR pointer is returned.
++ *	On failure an ERR pointer is returned.
+  *
+  *	This function uses GFP_KERNEL internally.
+  */
+@@ -483,10 +483,8 @@ struct file *sock_alloc_file(struct socket *sock, int flags, const char *dname)
+ 	file = alloc_file_pseudo(SOCK_INODE(sock), sock_mnt, dname,
+ 				O_RDWR | (flags & O_NONBLOCK),
+ 				&socket_file_ops);
+-	if (IS_ERR(file)) {
+-		sock_release(sock);
++	if (IS_ERR(file))
+ 		return file;
+-	}
+ 
+ 	file->f_mode |= FMODE_NOWAIT;
+ 	sock->file = file;

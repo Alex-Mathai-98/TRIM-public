@@ -1,0 +1,175 @@
+diff --git a/fs/btrfs/extent_io.c b/fs/btrfs/extent_io.c
+index aa7f8148cd0d..d6113aee2059 100644
+--- a/fs/btrfs/extent_io.c
++++ b/fs/btrfs/extent_io.c
+@@ -183,8 +183,13 @@ static void process_one_page(struct btrfs_fs_info *fs_info,
+ 	if (page_ops & PAGE_END_WRITEBACK)
+ 		btrfs_folio_clamp_clear_writeback(fs_info, folio, start, len);
+ 
+-	if (page != locked_page && (page_ops & PAGE_UNLOCK))
++	if (page_ops & PAGE_UNLOCK) {
++		/*
++		 * For subpage we need to handle the writer lock bit first, which
++		 * will also handle the page unlock if it's the last writer.
++		 */
+ 		btrfs_folio_end_writer_lock(fs_info, folio, start, len);
++	}
+ }
+ 
+ static void __process_pages_contig(struct address_space *mapping,
+@@ -404,6 +409,38 @@ void extent_clear_unlock_delalloc(struct btrfs_inode *inode, u64 start, u64 end,
+ 
+ 	__process_pages_contig(inode->vfs_inode.i_mapping, locked_page,
+ 			       start, end, page_ops);
++
++	/*
++	 * We cleared the EXTENT_LOCKED bit (and thus the locked subpage bitmap),
++	 * but we didn't unlock the locked_page, so we haven't cleared the writer
++	 * lock on the page. Use the manual decrement to fix up the writers count,
++	 * so that the later btrfs_folio_end_all_writers() can correctly cleanup
++	 * the writers.
++	 */
++	if ((page_ops & PAGE_UNLOCK) && locked_page) {
++        printk(KERN_ERR "BTRFS DEBUG: extent_clear with locked_page. bits=%x\n", clear_bits);
++    }
++	if ((page_ops & PAGE_UNLOCK) && locked_page && (clear_bits & EXTENT_LOCKED)) {
++		struct folio *folio = page_folio((struct page *)locked_page);
++		struct btrfs_fs_info *fs_info = inode->root->fs_info;
++
++		if (btrfs_is_subpage(fs_info, folio->mapping)) {
++			struct btrfs_subpage *subpage = folio_get_private(folio);
++			u64 page_start = folio_pos(folio);
++			u64 page_end = page_start + PAGE_SIZE - 1;
++			u64 i_start = max(start, page_start);
++			u64 i_end = min(end, page_end);
++
++			if (i_end >= i_start) {
++				u32 len = i_end - i_start + 1;
++				u32 nbits = len >> fs_info->sectorsize_bits;
++
++				int old = atomic_read(&subpage->writers);
++				atomic_sub(nbits, &subpage->writers);
++				printk(KERN_ERR "BTRFS DEBUG: Dec writers. old=%d sub=%u new=%d\n", old, nbits, atomic_read(&subpage->writers));
++			}
++		}
++	}
+ }
+ 
+ static bool btrfs_verify_page(struct page *page, u64 start)
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 8f38eefc8acd..a067a11f99aa 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -719,6 +719,7 @@ static noinline int cow_file_range_inline(struct btrfs_inode *inode, u64 offset,
+ 					  size_t compressed_size,
+ 					  int compress_type,
+ 					  struct folio *compressed_folio,
++					  struct page *locked_page,
+ 					  bool update_i_size)
+ {
+ 	struct extent_state *cached = NULL;
+@@ -736,10 +737,23 @@ static noinline int cow_file_range_inline(struct btrfs_inode *inode, u64 offset,
+ 				      update_i_size);
+ 	if (ret > 0) {
+ 		unlock_extent(&inode->io_tree, offset, end, &cached);
++		if (locked_page) {
++			struct folio *folio = page_folio(locked_page);
++			struct btrfs_fs_info *fs_info = inode->root->fs_info;
++
++			if (btrfs_is_subpage(fs_info, folio->mapping)) {
++				struct btrfs_subpage *subpage = folio_get_private(folio);
++				u32 len = end - offset + 1;
++				u32 nbits = len >> fs_info->sectorsize_bits;
++
++				atomic_sub(nbits, &subpage->writers);
++				printk(KERN_ERR "BTRFS DEBUG INODE: Dec writers. sub=%u\n", nbits);
++			}
++		}
+ 		return ret;
+ 	}
+ 
+-	extent_clear_unlock_delalloc(inode, offset, end, NULL, &cached,
++	extent_clear_unlock_delalloc(inode, offset, end, locked_page, &cached,
+ 				     clear_flags,
+ 				     PAGE_UNLOCK | PAGE_START_WRITEBACK |
+ 				     PAGE_END_WRITEBACK);
+@@ -1044,10 +1058,14 @@ static void compress_file_range(struct btrfs_work *work)
+ 	 */
+ 	if (total_in < actual_end)
+ 		ret = cow_file_range_inline(inode, start, end, 0,
+-					    BTRFS_COMPRESS_NONE, NULL, false);
++					    BTRFS_COMPRESS_NONE, NULL,
++					    NULL,
++					    false);
+ 	else
+ 		ret = cow_file_range_inline(inode, start, end, total_compressed,
+-					    compress_type, folios[0], false);
++					    compress_type, folios[0],
++					    NULL,
++					    false);
+ 	if (ret <= 0) {
+ 		if (ret < 0)
+ 			mapping_set_error(mapping, -EIO);
+@@ -1357,10 +1375,13 @@ static noinline int cow_file_range(struct btrfs_inode *inode,
+ 
+ 	inode_should_defrag(inode, start, end, num_bytes, SZ_64K);
+ 
++	if (locked_page) printk(KERN_ERR "BTRFS DEBUG: cow_file_range start. locked_page=%p no_inline=%d\n", locked_page, no_inline);
++
+ 	if (!no_inline) {
+ 		/* lets try to make an inline extent */
+ 		ret = cow_file_range_inline(inode, start, end, 0,
+-					    BTRFS_COMPRESS_NONE, NULL, false);
++					    BTRFS_COMPRESS_NONE, NULL,
++					    locked_page, false);
+ 		if (ret <= 0) {
+ 			/*
+ 			 * We succeeded, return 1 so the caller knows we're done
+diff --git a/fs/btrfs/subpage.c b/fs/btrfs/subpage.c
+index 8ddd5fcbeb93..9d59ec7c8fb0 100644
+--- a/fs/btrfs/subpage.c
++++ b/fs/btrfs/subpage.c
+@@ -415,7 +415,6 @@ void btrfs_folio_end_writer_lock(const struct btrfs_fs_info *fs_info,
+ 	if (btrfs_subpage_end_and_test_writer(fs_info, folio, start, len))
+ 		folio_unlock(folio);
+ }
+-
+ #define subpage_test_bitmap_all_set(fs_info, subpage, name)		\
+ 	bitmap_test_range_all_set(subpage->bitmaps,			\
+ 			fs_info->subpage_info->name##_offset,		\
+@@ -868,7 +867,9 @@ void btrfs_folio_end_all_writers(const struct btrfs_fs_info *fs_info, struct fol
+ 	u64 folio_start = folio_pos(folio);
+ 	u64 cur = folio_start;
+ 
+-	ASSERT(folio_test_locked(folio));
++	if (!folio_test_locked(folio))
++		return;
++
+ 	if (!btrfs_is_subpage(fs_info, folio->mapping)) {
+ 		folio_unlock(folio);
+ 		return;
+@@ -897,6 +898,15 @@ void btrfs_folio_end_all_writers(const struct btrfs_fs_info *fs_info, struct fol
+ 		}
+ 		cur = found_start + found_len;
+ 	}
++
++	/*
++	 * If we found no writers but the page is still locked, it means we have
++	 * a discrepancy between writers count and the bitmap.
++	 * Unlock the page to avoid deadlock, but we might leak writers count.
++	 */
++	if (folio_test_locked(folio))
++		folio_unlock(folio);
++
+ }
+ 
+ #define GET_SUBPAGE_BITMAP(subpage, subpage_info, name, dst)		\
+diff --git a/kernel.log b/kernel.log
+new file mode 100644
+index 000000000000..7afba128b1f4
+--- /dev/null
++++ b/kernel.log
+@@ -0,0 +1,3 @@
++Crash reproduced: "INFO: task hung in btrfs_evict_inode"
++Check crash report at `/root/report.txt`.
++

@@ -1,0 +1,31 @@
+diff --git a/fs/ntfs3/bitmap.c b/fs/ntfs3/bitmap.c
+index cf4fe21a5039..2f40592a4cd7 100644
+--- a/fs/ntfs3/bitmap.c
++++ b/fs/ntfs3/bitmap.c
+@@ -250,7 +250,17 @@ static void wnd_add_free_ext(struct wnd_bitmap *wnd, size_t bit, size_t len,
+ 			n = rb_first(&wnd->start_tree);
+ 		} else {
+ 			e = rb_entry(n, struct e_node, start.node);
+-			n = rb_next(n);
++			if (e->start.key == bit) {
++				/* Extent starts at the same position - merge */
++				n = rb_next(n);
++				if (e->count.key > len)
++					len = e->count.key;
++				rb_erase(&e->start.node, &wnd->start_tree);
++				rb_erase(&e->count.node, &wnd->count_tree);
++				wnd->count -= 1;
++				e0 = e;
++			} else {
++				n = rb_next(n);
+ 			if (e->start.key + e->count.key == bit) {
+ 				/* Remove left. */
+ 				bit = e->start.key;
+@@ -260,6 +270,7 @@ static void wnd_add_free_ext(struct wnd_bitmap *wnd, size_t bit, size_t len,
+ 				wnd->count -= 1;
+ 				e0 = e;
+ 			}
++			}
+ 		}
+ 
+ 		while (n) {

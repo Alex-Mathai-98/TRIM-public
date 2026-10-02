@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <linux/mm.h>\n#include <linux/string.h>\n#include <linux/spinlock.h>\n\nstatic DEFINE_SPINLOCK(crypto_default_null_skcipher_lock);\nstatic struct crypto_sync_skcipher *crypto_default_null_skcipher;\nstatic int crypto_default_null_skcipher_refcnt;\n",
+          "before": "#include <linux/mm.h>\n#include <linux/string.h>\n\nstatic DEFINE_MUTEX(crypto_default_null_skcipher_lock);\nstatic struct crypto_sync_skcipher *crypto_default_null_skcipher;\nstatic int crypto_default_null_skcipher_refcnt;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/crypto/crypto_null.c b/crypto/crypto_null.c\nindex 5b84b0f7cc17..9ad8029d1687 100644\n--- a/crypto/crypto_null.c\n+++ b/crypto/crypto_null.c\n@@ -19,8 +19,9 @@\n #include <linux/module.h>\n #include <linux/mm.h>\n #include <linux/string.h>\n+#include <linux/spinlock.h>\n \n-static DEFINE_MUTEX(crypto_default_null_skcipher_lock);\n+static DEFINE_SPINLOCK(crypto_default_null_skcipher_lock);\n static struct crypto_sync_skcipher *crypto_default_null_skcipher;\n static int crypto_default_null_skcipher_refcnt;",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "crypto/crypto_null.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "struct crypto_sync_skcipher *crypto_get_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tspin_lock(&crypto_default_null_skcipher_lock);\n\ttfm = crypto_default_null_skcipher;\n\n\tif (tfm) {\n\t\tcrypto_default_null_skcipher_refcnt++;\n\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n\t\treturn tfm;\n\t}\n\tspin_unlock(&crypto_default_null_skcipher_lock);\n\n\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n\tif (IS_ERR(tfm))\n\t\treturn tfm;\n\n\tspin_lock(&crypto_default_null_skcipher_lock);\n\tif (crypto_default_null_skcipher) {\n\t\tstruct crypto_sync_skcipher *tmp = tfm;\n\n\t\ttfm = crypto_default_null_skcipher;\n\t\tcrypto_default_null_skcipher_refcnt++;\n\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n\t\tcrypto_free_sync_skcipher(tmp);\n\t\treturn tfm;\n\t}\n\n\tcrypto_default_null_skcipher = tfm;\n\tcrypto_default_null_skcipher_refcnt++;\n\tspin_unlock(&crypto_default_null_skcipher_lock);\n\n\treturn tfm;\n}\nEXPORT_SYMBOL_GPL(crypto_get_default_null_skcipher);\n\nvoid crypto_put_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tspin_lock(&crypto_default_null_skcipher_lock);\n\tif (!--crypto_default_null_skcipher_refcnt) {\n\t\ttfm = crypto_default_null_skcipher;\n\t\tcrypto_default_null_skcipher = NULL;\n\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n\t\tcrypto_free_sync_skcipher(tfm);\n\t\treturn;\n\t}\n\tspin_unlock(&crypto_default_null_skcipher_lock);\n}\n",
+          "before": "struct crypto_sync_skcipher *crypto_get_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tmutex_lock(&crypto_default_null_skcipher_lock);\n\ttfm = crypto_default_null_skcipher;\n\n\tif (!tfm) {\n\t\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n\t\tif (IS_ERR(tfm))\n\t\t\tgoto unlock;\n\n\t\tcrypto_default_null_skcipher = tfm;\n\t}\n\n\tcrypto_default_null_skcipher_refcnt++;\n\nunlock:\n\tmutex_unlock(&crypto_default_null_skcipher_lock);\n\n\treturn tfm;\n}\nEXPORT_SYMBOL_GPL(crypto_get_default_null_skcipher);\n\nvoid crypto_put_default_null_skcipher(void)\n{\n\tmutex_lock(&crypto_default_null_skcipher_lock);\n\tif (!--crypto_default_null_skcipher_refcnt) {\n\t\tcrypto_free_sync_skcipher(crypto_default_null_skcipher);\n\t\tcrypto_default_null_skcipher = NULL;\n\t}\n\tmutex_unlock(&crypto_default_null_skcipher_lock);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/crypto/crypto_null.c b/crypto/crypto_null.c\nindex 5b84b0f7cc17..a74e036f89f2 100644\n--- a/crypto/crypto_null.c\n+++ b/crypto/crypto_null.c\n@@ -19,8 +19,9 @@\n #include <linux/module.h>\n #include <linux/mm.h>\n #include <linux/string.h>\n+#include <linux/spinlock.h>\n \n-static DEFINE_MUTEX(crypto_default_null_skcipher_lock);\n+static DEFINE_SPINLOCK(crypto_default_null_skcipher_lock);\n static struct crypto_sync_skcipher *crypto_default_null_skcipher;\n static int crypto_default_null_skcipher_refcnt;\n \n@@ -154,21 +155,34 @@ struct crypto_sync_skcipher *crypto_get_default_null_skcipher(void)\n {\n \tstruct crypto_sync_skcipher *tfm;\n \n-\tmutex_lock(&crypto_default_null_skcipher_lock);\n+\tspin_lock(&crypto_default_null_skcipher_lock);\n \ttfm = crypto_default_null_skcipher;\n \n-\tif (!tfm) {\n-\t\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n-\t\tif (IS_ERR(tfm))\n-\t\t\tgoto unlock;\n+\tif (tfm) {\n+\t\tcrypto_default_null_skcipher_refcnt++;\n+\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n+\t\treturn tfm;\n+\t}\n+\tspin_unlock(&crypto_default_null_skcipher_lock);\n+\n+\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n+\tif (IS_ERR(tfm))\n+\t\treturn tfm;\n+\n+\tspin_lock(&crypto_default_null_skcipher_lock);\n+\tif (crypto_default_null_skcipher) {\n+\t\tstruct crypto_sync_skcipher *tmp = tfm;\n \n-\t\tcrypto_default_null_skcipher = tfm;\n+\t\ttfm = crypto_default_null_skcipher;\n+\t\tcrypto_default_null_skcipher_refcnt++;\n+\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n+\t\tcrypto_free_sync_skcipher(tmp);\n+\t\treturn tfm;\n \t}\n \n+\tcrypto_default_null_skcipher = tfm;\n \tcrypto_default_null_skcipher_refcnt++;\n-\n-unlock:\n-\tmutex_unlock(&crypto_default_null_skcipher_lock);\n+\tspin_unlock(&crypto_default_null_skcipher_lock);\n \n \treturn tfm;\n }\n@@ -176,12 +190,17 @@ EXPORT_SYMBOL_GPL(crypto_get_default_null_skcipher);\n \n void crypto_put_default_null_skcipher(void)\n {\n-\tmutex_lock(&crypto_default_null_skcipher_lock);\n+\tstruct crypto_sync_skcipher *tfm;\n+\n+\tspin_lock(&crypto_default_null_skcipher_lock);\n \tif (!--crypto_default_null_skcipher_refcnt) {\n-\t\tcrypto_free_sync_skcipher(crypto_default_null_skcipher);\n+\t\ttfm = crypto_default_null_skcipher;\n \t\tcrypto_default_null_skcipher = NULL;\n+\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n+\t\tcrypto_free_sync_skcipher(tfm);\n+\t\treturn;\n \t}\n-\tmutex_unlock(&crypto_default_null_skcipher_lock);\n+\tspin_unlock(&crypto_default_null_skcipher_lock);\n }\n EXPORT_SYMBOL_GPL(crypto_put_default_null_skcipher);",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "crypto/crypto_null.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 14
+    },
+    {
+      "edits": [
+        {
+          "after": "struct crypto_sync_skcipher *crypto_get_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tspin_lock_bh(&crypto_default_null_skcipher_lock);\n\ttfm = crypto_default_null_skcipher;\n\n\tif (tfm) {\n\t\tcrypto_default_null_skcipher_refcnt++;\n\t\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n\t\treturn tfm;\n\t}\n\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n\n\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n\tif (IS_ERR(tfm))\n\t\treturn tfm;\n\n\tspin_lock_bh(&crypto_default_null_skcipher_lock);\n\tif (crypto_default_null_skcipher) {\n\t\tstruct crypto_sync_skcipher *tmp = tfm;\n\n\t\ttfm = crypto_default_null_skcipher;\n\t\tcrypto_default_null_skcipher_refcnt++;\n\t\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n\t\tcrypto_free_sync_skcipher(tmp);\n\t\treturn tfm;\n\t}\n\n\tcrypto_default_null_skcipher = tfm;\n\tcrypto_default_null_skcipher_refcnt++;\n\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n\n\treturn tfm;\n}\nEXPORT_SYMBOL_GPL(crypto_get_default_null_skcipher);\n\nvoid crypto_put_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tspin_lock_bh(&crypto_default_null_skcipher_lock);\n\tif (!--crypto_default_null_skcipher_refcnt) {\n\t\ttfm = crypto_default_null_skcipher;\n\t\tcrypto_default_null_skcipher = NULL;\n\t\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n\t\tcrypto_free_sync_skcipher(tfm);\n\t\treturn;\n\t}\n\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n}\n",
+          "before": "struct crypto_sync_skcipher *crypto_get_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tspin_lock(&crypto_default_null_skcipher_lock);\n\ttfm = crypto_default_null_skcipher;\n\n\tif (tfm) {\n\t\tcrypto_default_null_skcipher_refcnt++;\n\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n\t\treturn tfm;\n\t}\n\tspin_unlock(&crypto_default_null_skcipher_lock);\n\n\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n\tif (IS_ERR(tfm))\n\t\treturn tfm;\n\n\tspin_lock(&crypto_default_null_skcipher_lock);\n\tif (crypto_default_null_skcipher) {\n\t\tstruct crypto_sync_skcipher *tmp = tfm;\n\n\t\ttfm = crypto_default_null_skcipher;\n\t\tcrypto_default_null_skcipher_refcnt++;\n\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n\t\tcrypto_free_sync_skcipher(tmp);\n\t\treturn tfm;\n\t}\n\n\tcrypto_default_null_skcipher = tfm;\n\tcrypto_default_null_skcipher_refcnt++;\n\tspin_unlock(&crypto_default_null_skcipher_lock);\n\n\treturn tfm;\n}\nEXPORT_SYMBOL_GPL(crypto_get_default_null_skcipher);\n\nvoid crypto_put_default_null_skcipher(void)\n{\n\tstruct crypto_sync_skcipher *tfm;\n\n\tspin_lock(&crypto_default_null_skcipher_lock);\n\tif (!--crypto_default_null_skcipher_refcnt) {\n\t\ttfm = crypto_default_null_skcipher;\n\t\tcrypto_default_null_skcipher = NULL;\n\t\tspin_unlock(&crypto_default_null_skcipher_lock);\n\t\tcrypto_free_sync_skcipher(tfm);\n\t\treturn;\n\t}\n\tspin_unlock(&crypto_default_null_skcipher_lock);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/crypto/crypto_null.c b/crypto/crypto_null.c\nindex 5b84b0f7cc17..64216551608c 100644\n--- a/crypto/crypto_null.c\n+++ b/crypto/crypto_null.c\n@@ -19,8 +19,9 @@\n #include <linux/module.h>\n #include <linux/mm.h>\n #include <linux/string.h>\n+#include <linux/spinlock.h>\n \n-static DEFINE_MUTEX(crypto_default_null_skcipher_lock);\n+static DEFINE_SPINLOCK(crypto_default_null_skcipher_lock);\n static struct crypto_sync_skcipher *crypto_default_null_skcipher;\n static int crypto_default_null_skcipher_refcnt;\n \n@@ -154,21 +155,34 @@ struct crypto_sync_skcipher *crypto_get_default_null_skcipher(void)\n {\n \tstruct crypto_sync_skcipher *tfm;\n \n-\tmutex_lock(&crypto_default_null_skcipher_lock);\n+\tspin_lock_bh(&crypto_default_null_skcipher_lock);\n \ttfm = crypto_default_null_skcipher;\n \n-\tif (!tfm) {\n-\t\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n-\t\tif (IS_ERR(tfm))\n-\t\t\tgoto unlock;\n+\tif (tfm) {\n+\t\tcrypto_default_null_skcipher_refcnt++;\n+\t\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n+\t\treturn tfm;\n+\t}\n+\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n+\n+\ttfm = crypto_alloc_sync_skcipher(\"ecb(cipher_null)\", 0, 0);\n+\tif (IS_ERR(tfm))\n+\t\treturn tfm;\n+\n+\tspin_lock_bh(&crypto_default_null_skcipher_lock);\n+\tif (crypto_default_null_skcipher) {\n+\t\tstruct crypto_sync_skcipher *tmp = tfm;\n \n-\t\tcrypto_default_null_skcipher = tfm;\n+\t\ttfm = crypto_default_null_skcipher;\n+\t\tcrypto_default_null_skcipher_refcnt++;\n+\t\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n+\t\tcrypto_free_sync_skcipher(tmp);\n+\t\treturn tfm;\n \t}\n \n+\tcrypto_default_null_skcipher = tfm;\n \tcrypto_default_null_skcipher_refcnt++;\n-\n-unlock:\n-\tmutex_unlock(&crypto_default_null_skcipher_lock);\n+\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n \n \treturn tfm;\n }\n@@ -176,12 +190,17 @@ EXPORT_SYMBOL_GPL(crypto_get_default_null_skcipher);\n \n void crypto_put_default_null_skcipher(void)\n {\n-\tmutex_lock(&crypto_default_null_skcipher_lock);\n+\tstruct crypto_sync_skcipher *tfm;\n+\n+\tspin_lock_bh(&crypto_default_null_skcipher_lock);\n \tif (!--crypto_default_null_skcipher_refcnt) {\n-\t\tcrypto_free_sync_skcipher(crypto_default_null_skcipher);\n+\t\ttfm = crypto_default_null_skcipher;\n \t\tcrypto_default_null_skcipher = NULL;\n+\t\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n+\t\tcrypto_free_sync_skcipher(tfm);\n+\t\treturn;\n \t}\n-\tmutex_unlock(&crypto_default_null_skcipher_lock);\n+\tspin_unlock_bh(&crypto_default_null_skcipher_lock);\n }\n EXPORT_SYMBOL_GPL(crypto_put_default_null_skcipher);",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "crypto/crypto_null.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 1,
+      "start_step": 20
+    }
+  ],
+  "success_step": 20
+}

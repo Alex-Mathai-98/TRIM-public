@@ -1,0 +1,61 @@
+diff --git a/fs/udf/inode.c b/fs/udf/inode.c
+index 30f925f891b6..353518da71c3 100644
+--- a/fs/udf/inode.c
++++ b/fs/udf/inode.c
+@@ -2241,11 +2241,33 @@ int udf_current_aext(struct inode *inode, struct extent_position *epos,
+ 	if (!epos->bh) {
+ 		if (!epos->offset)
+ 			epos->offset = udf_file_entry_alloc_offset(inode);
++		
++		if (epos->offset >= inode->i_sb->s_blocksize)
++			return -1;
++
+ 		ptr = iinfo->i_data + epos->offset -
+-			udf_file_entry_alloc_offset(inode) +
+-			iinfo->i_lenEAttr;
++			udf_file_entry_alloc_offset(inode);
++		if (!iinfo->i_use)
++			ptr += iinfo->i_lenEAttr;
++
++		if (ptr < iinfo->i_data ||
++		    ptr >= iinfo->i_data + inode->i_sb->s_blocksize)
++			return -1;
++
+ 		alen = udf_file_entry_alloc_offset(inode) +
+ 							iinfo->i_lenAlloc;
++		if (alen > inode->i_sb->s_blocksize)
++			alen = inode->i_sb->s_blocksize;
++		
++		/*
++		 * i_data is allocated based on s_blocksize - sizeof(Header).
++		 * Since we don't know the header size used for allocation (FE, EFE, USE),
++		 * we must assume the largest header (EFE) to be safe.
++		 */
++		if (alen - udf_file_entry_alloc_offset(inode) >
++		    inode->i_sb->s_blocksize - sizeof(struct extendedFileEntry))
++			alen = inode->i_sb->s_blocksize - sizeof(struct extendedFileEntry) +
++				udf_file_entry_alloc_offset(inode);
+ 	} else {
+ 		if (!epos->offset)
+ 			epos->offset = sizeof(struct allocExtDesc);
+@@ -2253,6 +2275,8 @@ int udf_current_aext(struct inode *inode, struct extent_position *epos,
+ 		alen = sizeof(struct allocExtDesc) +
+ 			le32_to_cpu(((struct allocExtDesc *)epos->bh->b_data)->
+ 							lengthAllocDescs);
++		if (alen > epos->bh->b_size)
++			alen = epos->bh->b_size;
+ 	}
+ 
+ 	switch (iinfo->i_alloc_type) {
+diff --git a/fs/udf/super.c b/fs/udf/super.c
+index 1c8a736b3309..f39514748a55 100644
+--- a/fs/udf/super.c
++++ b/fs/udf/super.c
+@@ -162,6 +162,7 @@ static struct inode *udf_alloc_inode(struct super_block *sb)
+ 	ei->i_strat4096 = 0;
+ 	ei->i_streamdir = 0;
+ 	ei->i_hidden = 0;
++	ei->i_data = NULL;
+ 	init_rwsem(&ei->i_data_sem);
+ 	ei->cached_extent.lstart = -1;
+ 	spin_lock_init(&ei->i_extent_cache_lock);

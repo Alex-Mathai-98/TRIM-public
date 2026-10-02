@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tflush_work(&net->xfrm.state_hash_work);\n\twhile (xfrm_state_flush(net, 0, false) == 0)\n\t\t;\n\tflush_work(&xfrm_state_gc_work);\n",
+          "before": "\tflush_work(&net->xfrm.state_hash_work);\n\txfrm_state_flush(net, 0, false);\n\tflush_work(&xfrm_state_gc_work);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c\nindex e4736d1ebb44..2a732fc885eb 100644\n--- a/net/xfrm/xfrm_state.c\n+++ b/net/xfrm/xfrm_state.c\n@@ -3304,7 +3304,8 @@ void xfrm_state_fini(struct net *net)\n \tunsigned int sz;\n \n \tflush_work(&net->xfrm.state_hash_work);\n-\txfrm_state_flush(net, 0, false);\n+\twhile (xfrm_state_flush(net, 0, false) == 0)\n+\t\t;\n \tflush_work(&xfrm_state_gc_work);\n \n \tWARN_ON(!list_empty(&net->xfrm.state_all));",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 17
+    },
+    {
+      "edits": [
+        {
+          "after": "static int __xfrm_state_flush(struct net *net, u8 proto, bool task_valid, bool force)\n{\n\tint i, err = 0, cnt = 0;\n\n\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\terr = xfrm_state_flush_secctx_check(net, proto, task_valid);\n\tif (err)\n\t\tgoto out;\n\n\terr = -ESRCH;\n\tfor (i = 0; i <= net->xfrm.state_hmask; i++) {\n\t\tstruct xfrm_state *x;\nrestart:\n\t\thlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {\n\t\t\tif ((force || !xfrm_state_kern(x)) &&\n\t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n\t\t\t\txfrm_state_hold(x);\n\t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\n\t\t\t\terr = xfrm_state_delete(x);\n\t\t\t\txfrm_audit_state_delete(x, err ? 0 : 1,\n\t\t\t\t\t\t\ttask_valid);\n\t\t\t\txfrm_state_put(x);\n\t\t\t\tif (!err)\n\t\t\t\t\tcnt++;\n\n\t\t\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\t\t\t\tgoto restart;\n\t\t\t}\n\t\t}\n\t}\nout:\n\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\tif (cnt)\n\t\terr = 0;\n\n\treturn err;\n}\n\nint xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n{\n\treturn __xfrm_state_flush(net, proto, task_valid, false);\n}\nEXPORT_SYMBOL(xfrm_state_flush);\n",
+          "before": "int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n{\n\tint i, err = 0, cnt = 0;\n\n\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\terr = xfrm_state_flush_secctx_check(net, proto, task_valid);\n\tif (err)\n\t\tgoto out;\n\n\terr = -ESRCH;\n\tfor (i = 0; i <= net->xfrm.state_hmask; i++) {\n\t\tstruct xfrm_state *x;\nrestart:\n\t\thlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {\n\t\t\tif (!xfrm_state_kern(x) &&\n\t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n\t\t\t\txfrm_state_hold(x);\n\t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\n\t\t\t\terr = xfrm_state_delete(x);\n\t\t\t\txfrm_audit_state_delete(x, err ? 0 : 1,\n\t\t\t\t\t\t\ttask_valid);\n\t\t\t\txfrm_state_put(x);\n\t\t\t\tif (!err)\n\t\t\t\t\tcnt++;\n\n\t\t\t\tspin_lock_bh(&net->xfrm.xfrm_state_lock);\n\t\t\t\tgoto restart;\n\t\t\t}\n\t\t}\n\t}\nout:\n\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n\tif (cnt)\n\t\terr = 0;\n\n\treturn err;\n}\nEXPORT_SYMBOL(xfrm_state_flush);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c\nindex e4736d1ebb44..46c10d6d4c01 100644\n--- a/net/xfrm/xfrm_state.c\n+++ b/net/xfrm/xfrm_state.c\n@@ -917,7 +917,7 @@ xfrm_dev_state_flush_secctx_check(struct net *net, struct net_device *dev, bool\n }\n #endif\n \n-int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n+static int __xfrm_state_flush(struct net *net, u8 proto, bool task_valid, bool force)\n {\n \tint i, err = 0, cnt = 0;\n \n@@ -931,7 +931,7 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n \t\tstruct xfrm_state *x;\n restart:\n \t\thlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {\n-\t\t\tif (!xfrm_state_kern(x) &&\n+\t\t\tif ((force || !xfrm_state_kern(x)) &&\n \t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n \t\t\t\txfrm_state_hold(x);\n \t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n@@ -955,6 +955,11 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n \n \treturn err;\n }\n+\n+int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n+{\n+\treturn __xfrm_state_flush(net, proto, task_valid, false);\n+}\n EXPORT_SYMBOL(xfrm_state_flush);\n \n int xfrm_dev_state_flush(struct net *net, struct net_device *dev, bool task_valid)\n@@ -3304,7 +3309,8 @@ void xfrm_state_fini(struct net *net)\n \tunsigned int sz;\n \n \tflush_work(&net->xfrm.state_hash_work);\n-\txfrm_state_flush(net, 0, false);\n+\twhile (xfrm_state_flush(net, 0, false) == 0)\n+\t\t;\n \tflush_work(&xfrm_state_gc_work);\n \n \tWARN_ON(!list_empty(&net->xfrm.state_all));",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "\tflush_work(&net->xfrm.state_hash_work);\n\twhile (__xfrm_state_flush(net, 0, false, true) == 0)\n\t\t;\n\tflush_work(&xfrm_state_gc_work);\n",
+          "before": "\tflush_work(&net->xfrm.state_hash_work);\n\twhile (xfrm_state_flush(net, 0, false) == 0)\n\t\t;\n\tflush_work(&xfrm_state_gc_work);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c\nindex e4736d1ebb44..133625c39579 100644\n--- a/net/xfrm/xfrm_state.c\n+++ b/net/xfrm/xfrm_state.c\n@@ -917,7 +917,7 @@ xfrm_dev_state_flush_secctx_check(struct net *net, struct net_device *dev, bool\n }\n #endif\n \n-int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n+static int __xfrm_state_flush(struct net *net, u8 proto, bool task_valid, bool force)\n {\n \tint i, err = 0, cnt = 0;\n \n@@ -931,7 +931,7 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n \t\tstruct xfrm_state *x;\n restart:\n \t\thlist_for_each_entry(x, net->xfrm.state_bydst+i, bydst) {\n-\t\t\tif (!xfrm_state_kern(x) &&\n+\t\t\tif ((force || !xfrm_state_kern(x)) &&\n \t\t\t    xfrm_id_proto_match(x->id.proto, proto)) {\n \t\t\t\txfrm_state_hold(x);\n \t\t\t\tspin_unlock_bh(&net->xfrm.xfrm_state_lock);\n@@ -955,6 +955,11 @@ int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n \n \treturn err;\n }\n+\n+int xfrm_state_flush(struct net *net, u8 proto, bool task_valid)\n+{\n+\treturn __xfrm_state_flush(net, proto, task_valid, false);\n+}\n EXPORT_SYMBOL(xfrm_state_flush);\n \n int xfrm_dev_state_flush(struct net *net, struct net_device *dev, bool task_valid)\n@@ -3304,7 +3309,8 @@ void xfrm_state_fini(struct net *net)\n \tunsigned int sz;\n \n \tflush_work(&net->xfrm.state_hash_work);\n-\txfrm_state_flush(net, 0, false);\n+\twhile (__xfrm_state_flush(net, 0, false, true) == 0)\n+\t\t;\n \tflush_work(&xfrm_state_gc_work);\n \n \tWARN_ON(!list_empty(&net->xfrm.state_all));",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "net/xfrm/xfrm_state.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 1,
+      "start_step": 26
+    }
+  ],
+  "success_step": 30
+}

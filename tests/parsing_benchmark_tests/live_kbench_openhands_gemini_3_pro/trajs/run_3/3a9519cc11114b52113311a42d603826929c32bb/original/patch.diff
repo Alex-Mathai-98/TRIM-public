@@ -1,0 +1,43 @@
+diff --git a/kernel/bpf/cpumap.c b/kernel/bpf/cpumap.c
+index fbdf5a1aabfe..df826e1e7bef 100644
+--- a/kernel/bpf/cpumap.c
++++ b/kernel/bpf/cpumap.c
+@@ -768,5 +768,6 @@ void __cpu_map_flush(struct list_head *flush_list)
+ 
+ 		/* If already running, costs spin_lock_irqsave + smb_mb */
+ 		wake_up_process(bq->obj->kthread);
++		__list_del_clearprev(&bq->flush_node);
+ 	}
+ }
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 6ea1d20676fb..751d9b70e6ad 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -5150,6 +5150,7 @@ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
+ 			bpf_net_ctx_clear(bpf_net_ctx);
+ 			return XDP_DROP;
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	return XDP_PASS;
+ out_redir:
+diff --git a/net/core/filter.c b/net/core/filter.c
+index f3c72cf86099..d590918fc8cf 100644
+--- a/net/core/filter.c
++++ b/net/core/filter.c
+@@ -4302,6 +4302,7 @@ void xdp_do_check_flushed(struct napi_struct *napi)
+ 	struct list_head *lh_map, *lh_dev, *lh_xsk;
+ 	bool missed = false;
+ 
++	rcu_read_lock();
+ 	bpf_net_ctx_get_all_used_flush_lists(&lh_map, &lh_dev, &lh_xsk);
+ 	if (lh_dev) {
+ 		__dev_flush(lh_dev);
+@@ -4315,6 +4316,7 @@ void xdp_do_check_flushed(struct napi_struct *napi)
+ 		__xsk_map_flush(lh_xsk);
+ 		missed = true;
+ 	}
++	rcu_read_unlock();
+ 
+ 	WARN_ONCE(missed, "Missing xdp_do_flush() invocation after NAPI by %ps\n",
+ 		  napi->poll);

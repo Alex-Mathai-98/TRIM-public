@@ -1,0 +1,34 @@
+diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c
+index 51a494b69be8..fb9a4159186d 100644
+--- a/net/vmw_vsock/virtio_transport_common.c
++++ b/net/vmw_vsock/virtio_transport_common.c
+@@ -1183,7 +1183,9 @@ static void virtio_transport_remove_sock(struct vsock_sock *vsk)
+ 	/* We don't need to take rx_lock, as the socket is closing and we are
+ 	 * removing it.
+ 	 */
+-	__skb_queue_purge(&vvs->rx_queue);
++	if (vvs)
++		__skb_queue_purge(&vvs->rx_queue);
++
+ 	vsock_remove_sock(vsk);
+ }
+ 
+@@ -1211,7 +1213,7 @@ static void virtio_transport_do_close(struct vsock_sock *vsk,
+ 
+ 	sock_set_flag(sk, SOCK_DONE);
+ 	vsk->peer_shutdown = SHUTDOWN_MASK;
+-	if (vsock_stream_has_data(vsk) <= 0)
++	if (!vsk->transport || vsock_stream_has_data(vsk) <= 0)
+ 		sk->sk_state = TCP_CLOSING;
+ 	sk->sk_state_change(sk);
+ 
+@@ -1236,7 +1238,8 @@ static void virtio_transport_close_timeout(struct work_struct *work)
+ 	lock_sock(sk);
+ 
+ 	if (!sock_flag(sk, SOCK_DONE)) {
+-		(void)virtio_transport_reset(vsk, NULL);
++		if (vsk->transport)
++			(void)virtio_transport_reset(vsk, NULL);
+ 
+ 		virtio_transport_do_close(vsk, false);
+ 	}

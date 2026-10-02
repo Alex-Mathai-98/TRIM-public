@@ -1,0 +1,26 @@
+diff --git a/kernel/bpf/stackmap.c b/kernel/bpf/stackmap.c
+index 3615c06b7dfa..6d4a244c1583 100644
+--- a/kernel/bpf/stackmap.c
++++ b/kernel/bpf/stackmap.c
+@@ -154,7 +154,7 @@ static void stack_map_get_build_id_offset(struct bpf_stack_build_id *id_offs,
+ 	 * build_id.
+ 	 */
+ 	if (!user || !current || !current->mm || irq_work_busy ||
+-	    !mmap_read_trylock(current->mm)) {
++	    !down_read_trylock(&current->mm->mmap_lock)) {
+ 		/* cannot access current->mm, fall back to ips */
+ 		for (i = 0; i < trace_nr; i++) {
+ 			id_offs[i].status = BPF_STACK_BUILD_ID_IP;
+@@ -184,7 +184,11 @@ static void stack_map_get_build_id_offset(struct bpf_stack_build_id *id_offs,
+ 		prev_vma = vma;
+ 		prev_build_id = id_offs[i].build_id;
+ 	}
+-	bpf_mmap_unlock_mm(work, current->mm);
++
++	if (!work)
++		up_read(&current->mm->mmap_lock);
++	else
++		bpf_mmap_unlock_mm(work, current->mm);
+ }
+ 
+ static struct perf_callchain_entry *

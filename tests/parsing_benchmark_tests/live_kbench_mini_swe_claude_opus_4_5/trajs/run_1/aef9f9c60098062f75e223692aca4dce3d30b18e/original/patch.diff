@@ -1,0 +1,31 @@
+diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c
+index eeae160c898d..b3c67430373f 100644
+--- a/drivers/atm/atmtcp.c
++++ b/drivers/atm/atmtcp.c
+@@ -294,6 +294,8 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)
+ 	dev = vcc->dev_data;
+ 	hdr = (struct atmtcp_hdr *) skb->data;
+ 	if (hdr->length == ATMTCP_HDR_MAGIC) {
++		if (skb->len < sizeof(struct atmtcp_control))
++			goto done;
+ 		result = atmtcp_recv_control(
+ 		    (struct atmtcp_control *) skb->data);
+ 		goto done;
+@@ -394,7 +396,7 @@ static int atmtcp_attach(struct atm_vcc *vcc,int itf)
+ 			atm_dev_put(dev);
+ 			return -EMEDIUMTYPE;
+ 		}
+-		if (PRIV(dev)->vcc) {
++		if (!PRIV(dev) || PRIV(dev)->vcc) {
+ 			atm_dev_put(dev);
+ 			return -EBUSY;
+ 		}
+@@ -440,7 +442,7 @@ static int atmtcp_remove_persistent(int itf)
+ 		return 0;
+ 	}
+ 	dev_data->persist = 0;
+-	if (PRIV(dev)->vcc) {
++	if (!PRIV(dev) || PRIV(dev)->vcc) {
+ 		atm_dev_put(dev);
+ 		return 0;
+ 	}

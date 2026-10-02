@@ -1,0 +1,39 @@
+diff --git a/net/mptcp/ctrl.c b/net/mptcp/ctrl.c
+index d9b57fab2a13..fcfc9419ac99 100644
+--- a/net/mptcp/ctrl.c
++++ b/net/mptcp/ctrl.c
+@@ -122,7 +122,7 @@ static int mptcp_set_scheduler(const struct net *net, const char *name)
+ static int proc_scheduler(const struct ctl_table *ctl, int write,
+ 			  void *buffer, size_t *lenp, loff_t *ppos)
+ {
+-	const struct net *net = current->nsproxy->net_ns;
++	const struct net *net;
+ 	char val[MPTCP_SCHED_NAME_MAX];
+ 	struct ctl_table tbl = {
+ 		.data = val,
+@@ -130,6 +130,10 @@ static int proc_scheduler(const struct ctl_table *ctl, int write,
+ 	};
+ 	int ret;
+ 
++	if (!current->nsproxy)
++		return -EINVAL;
++
++	net = current->nsproxy->net_ns;
+ 	strscpy(val, mptcp_get_scheduler(net), MPTCP_SCHED_NAME_MAX);
+ 
+ 	ret = proc_dostring(&tbl, write, buffer, lenp, ppos);
+@@ -161,9 +165,13 @@ static int proc_blackhole_detect_timeout(const struct ctl_table *table,
+ 					 int write, void *buffer, size_t *lenp,
+ 					 loff_t *ppos)
+ {
+-	struct mptcp_pernet *pernet = mptcp_get_pernet(current->nsproxy->net_ns);
++	struct mptcp_pernet *pernet;
+ 	int ret;
+ 
++	if (!current->nsproxy)
++		return -EINVAL;
++
++	pernet = mptcp_get_pernet(current->nsproxy->net_ns);
+ 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
+ 	if (write && ret == 0)
+ 		atomic_set(&pernet->active_disable_times, 0);

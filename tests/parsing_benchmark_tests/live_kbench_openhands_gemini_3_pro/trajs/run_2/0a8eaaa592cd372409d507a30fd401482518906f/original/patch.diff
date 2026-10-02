@@ -1,0 +1,41 @@
+diff --git a/net/bluetooth/hci_conn.c b/net/bluetooth/hci_conn.c
+index d097e308a755..5a962552d057 100644
+--- a/net/bluetooth/hci_conn.c
++++ b/net/bluetooth/hci_conn.c
+@@ -146,6 +146,8 @@ static void hci_conn_cleanup(struct hci_conn *conn)
+ 	if (test_and_clear_bit(HCI_CONN_FLUSH_KEY, &conn->flags))
+ 		hci_remove_link_key(hdev, &conn->dst);
+ 
++	hci_disconn_cfm(conn, HCI_ERROR_LOCAL_HOST_TERM);
++
+ 	hci_chan_list_flush(conn);
+ 
+ 	hci_conn_hash_del(hdev, conn);
+diff --git a/net/bluetooth/l2cap_core.c b/net/bluetooth/l2cap_core.c
+index adb8c33ac595..225e3f1f3191 100644
+--- a/net/bluetooth/l2cap_core.c
++++ b/net/bluetooth/l2cap_core.c
+@@ -1806,6 +1806,12 @@ static void l2cap_conn_del(struct hci_conn *hcon, int err)
+ 		cancel_delayed_work_sync(&conn->info_timer);
+ 
+ 	hcon->l2cap_data = NULL;
++
++	if (conn->hchan) {
++		hci_chan_del(conn->hchan);
++		conn->hchan = NULL;
++	}
++
+ 	l2cap_conn_put(conn);
+ }
+ 
+@@ -1813,7 +1819,9 @@ static void l2cap_conn_free(struct kref *ref)
+ {
+ 	struct l2cap_conn *conn = container_of(ref, struct l2cap_conn, ref);
+ 
+-	hci_chan_del(conn->hchan);
++	if (conn->hchan)
++		hci_chan_del(conn->hchan);
++
+ 	hci_conn_put(conn->hcon);
+ 	kfree(conn);
+ }

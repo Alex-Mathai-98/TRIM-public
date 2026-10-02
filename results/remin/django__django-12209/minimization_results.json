@@ -1,0 +1,277 @@
+{
+  "bug_id": "django__django-12209",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "        pk_val = self._get_pk_val(meta)\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED\n        ):\n            force_insert = True",
+        "after": "        pk_val = self._get_pk_val(meta)\n        pk_set_explicitly = pk_val is not None\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default,\n        # but only if the primary key wasn't explicitly set.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED and\n            not pk_set_explicitly\n        ):\n            force_insert = True",
+        "explanation": "classic_swe step 22 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "class ModelState:\n    \"\"\"Store model instance state.\"\"\"\n    db = None\n    # If true, uniqueness validation checks will consider this a new, unsaved\n    # object. Necessary for correct validation of new instances of objects with\n    # explicit (non-auto) PKs. This impacts validation only; it has no effect\n    # on the actual save.\n    adding = True\n    fields_cache = ModelStateFieldsCacheDescriptor()",
+        "after": "class ModelState:\n    \"\"\"Store model instance state.\"\"\"\n    db = None\n    # If true, uniqueness validation checks will consider this a new, unsaved\n    # object. Necessary for correct validation of new instances of objects with\n    # explicit (non-auto) PKs. This impacts validation only; it has no effect\n    # on the actual save.\n    adding = True\n    # If true, the primary key was explicitly set during initialization.\n    pk_set_explicitly = False\n    fields_cache = ModelStateFieldsCacheDescriptor()",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "                else:\n                    try:\n                        val = kwargs.pop(field.attname)\n                    except KeyError:\n                        # This is done with an exception rather than the\n                        # default argument on pop because we don't want\n                        # get_default() to be evaluated, and then not used.\n                        # Refs #12057.\n                        val = field.get_default()",
+        "after": "                else:\n                    try:\n                        val = kwargs.pop(field.attname)\n                        # Track if the primary key was explicitly set\n                        if field.primary_key:\n                            self._state.pk_set_explicitly = True\n                    except KeyError:\n                        # This is done with an exception rather than the\n                        # default argument on pop because we don't want\n                        # get_default() to be evaluated, and then not used.\n                        # Refs #12057.\n                        val = field.get_default()",
+        "explanation": "classic_swe step 38 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "        if not kwargs:\n            fields_iter = iter(opts.concrete_fields)\n            # The ordering of the zip calls matter - zip throws StopIteration\n            # when an iter throws it. So if the first iter throws it, the second\n            # is *not* consumed. We rely on this, so don't change the order\n            # without changing the logic.\n            for val, field in zip(args, fields_iter):\n                if val is _DEFERRED:\n                    continue\n                _setattr(self, field.attname, val)",
+        "after": "        if not kwargs:\n            fields_iter = iter(opts.concrete_fields)\n            # The ordering of the zip calls matter - zip throws StopIteration\n            # when an iter throws it. So if the first iter throws it, the second\n            # is *not* consumed. We rely on this, so don't change the order\n            # without changing the logic.\n            for val, field in zip(args, fields_iter):\n                if val is _DEFERRED:\n                    continue\n                _setattr(self, field.attname, val)\n                # Track if the primary key was explicitly set\n                if field.primary_key:\n                    self._state.pk_set_explicitly = True",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "                    # Any remaining kwargs must correspond to properties or\n                    # virtual fields.\n                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                        del kwargs[prop]",
+        "after": "                    # Any remaining kwargs must correspond to properties or\n                    # virtual fields.\n                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                            # Track if the primary key was explicitly set\n                            try:\n                                field = opts.get_field(prop)\n                                if field.primary_key:\n                                    self._state.pk_set_explicitly = True\n                            except (AttributeError, FieldDoesNotExist):\n                                pass\n                        del kwargs[prop]",
+        "explanation": "classic_swe step 45 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "        pk_val = self._get_pk_val(meta)\n        pk_set_explicitly = pk_val is not None\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default,\n        # but only if the primary key wasn't explicitly set.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED and\n            not pk_set_explicitly\n        ):\n            force_insert = True",
+        "after": "        pk_val = self._get_pk_val(meta)\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default,\n        # but only if the primary key wasn't explicitly set.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED and\n            not self._state.pk_set_explicitly\n        ):\n            force_insert = True",
+        "explanation": "classic_swe step 46 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/base.py",
+        "before": "                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                            # Track if the primary key was explicitly set\n                            try:\n                                field = opts.get_field(prop)\n                                if field.primary_key:\n                                    self._state.pk_set_explicitly = True\n                            except (AttributeError, FieldDoesNotExist):\n                                pass\n                        del kwargs[prop]",
+        "after": "                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                            # Track if the primary key was explicitly set\n                            if prop == 'pk':\n                                self._state.pk_set_explicitly = True\n                            else:\n                                try:\n                                    field = opts.get_field(prop)\n                                    if field.primary_key:\n                                        self._state.pk_set_explicitly = True\n                                except (AttributeError, FieldDoesNotExist):\n                                    pass\n                        del kwargs[prop]",
+        "explanation": "classic_swe step 57 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/base.py b/django/db/models/base.py\nindex e3b14a41a0..77cb95015e 100644\n--- a/django/db/models/base.py\n+++ b/django/db/models/base.py\n@@ -398,6 +398,8 @@ class ModelState:\n     # explicit (non-auto) PKs. This impacts validation only; it has no effect\n     # on the actual save.\n     adding = True\n+    # If true, the primary key was explicitly set during initialization.\n+    pk_set_explicitly = False\n     fields_cache = ModelStateFieldsCacheDescriptor()\n \n \n@@ -433,6 +435,9 @@ class Model(metaclass=ModelBase):\n                 if val is _DEFERRED:\n                     continue\n                 _setattr(self, field.attname, val)\n+                # Track if the primary key was explicitly set\n+                if field.primary_key:\n+                    self._state.pk_set_explicitly = True\n         else:\n             # Slower, kwargs-ready version.\n             fields_iter = iter(opts.fields)\n@@ -465,6 +470,9 @@ class Model(metaclass=ModelBase):\n                 else:\n                     try:\n                         val = kwargs.pop(field.attname)\n+                        # Track if the primary key was explicitly set\n+                        if field.primary_key:\n+                            self._state.pk_set_explicitly = True\n                     except KeyError:\n                         # This is done with an exception rather than the\n                         # default argument on pop because we don't want\n@@ -494,6 +502,16 @@ class Model(metaclass=ModelBase):\n                     if prop in property_names or opts.get_field(prop):\n                         if kwargs[prop] is not _DEFERRED:\n                             _setattr(self, prop, kwargs[prop])\n+                            # Track if the primary key was explicitly set\n+                            if prop == 'pk':\n+                                self._state.pk_set_explicitly = True\n+                            else:\n+                                try:\n+                                    field = opts.get_field(prop)\n+                                    if field.primary_key:\n+                                        self._state.pk_set_explicitly = True\n+                                except (AttributeError, FieldDoesNotExist):\n+                                    pass\n                         del kwargs[prop]\n                 except (AttributeError, FieldDoesNotExist):\n                     pass\n@@ -847,12 +865,14 @@ class Model(metaclass=ModelBase):\n         if not pk_set and (force_update or update_fields):\n             raise ValueError(\"Cannot force an update in save() with no primary key.\")\n         updated = False\n-        # Skip an UPDATE when adding an instance and primary key has a default.\n+        # Skip an UPDATE when adding an instance and primary key has a default,\n+        # but only if the primary key wasn't explicitly set.\n         if (\n             not force_insert and\n             self._state.adding and\n             self._meta.pk.default and\n-            self._meta.pk.default is not NOT_PROVIDED\n+            self._meta.pk.default is not NOT_PROVIDED and\n+            not self._state.pk_set_explicitly\n         ):\n             force_insert = True\n         # If possible, try an UPDATE. If that doesn't update anything, do an INSERT.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      12,
+      19
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 4,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      12
+    ],
+    "edit_list_after_file_min": [
+      1,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      12
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_still_crashes": 6,
+    "greedy_removal_edit_not_applicable": 4,
+    "greedy_removal_edit_no_crash": 1,
+    "edit_list_after_greedy": [
+      1,
+      3,
+      4,
+      5,
+      7,
+      8,
+      12
+    ],
+    "edit_list_after_refinement": [
+      1,
+      3,
+      4,
+      5,
+      7,
+      8,
+      12
+    ],
+    "edits_after_node_min": 8,
+    "edits_after_file_min": 8,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 9,
+  "minimized_edit_count": 7,
+  "reduction": "9_to_7",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/base.py",
+          "before": "        pk_val = self._get_pk_val(meta)\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED\n        ):\n            force_insert = True",
+          "after": "        pk_val = self._get_pk_val(meta)\n        pk_set_explicitly = pk_val is not None\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default,\n        # but only if the primary key wasn't explicitly set.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED and\n            not pk_set_explicitly\n        ):\n            force_insert = True",
+          "explanation": "classic_swe step 22 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/base.py",
+          "before": "class ModelState:\n    \"\"\"Store model instance state.\"\"\"\n    db = None\n    # If true, uniqueness validation checks will consider this a new, unsaved\n    # object. Necessary for correct validation of new instances of objects with\n    # explicit (non-auto) PKs. This impacts validation only; it has no effect\n    # on the actual save.\n    adding = True\n    fields_cache = ModelStateFieldsCacheDescriptor()",
+          "after": "class ModelState:\n    \"\"\"Store model instance state.\"\"\"\n    db = None\n    # If true, uniqueness validation checks will consider this a new, unsaved\n    # object. Necessary for correct validation of new instances of objects with\n    # explicit (non-auto) PKs. This impacts validation only; it has no effect\n    # on the actual save.\n    adding = True\n    # If true, the primary key was explicitly set during initialization.\n    pk_set_explicitly = False\n    fields_cache = ModelStateFieldsCacheDescriptor()",
+          "explanation": "classic_swe step 35 #1"
+        },
+        {
+          "filename": "django/db/models/base.py",
+          "before": "                else:\n                    try:\n                        val = kwargs.pop(field.attname)\n                    except KeyError:\n                        # This is done with an exception rather than the\n                        # default argument on pop because we don't want\n                        # get_default() to be evaluated, and then not used.\n                        # Refs #12057.\n                        val = field.get_default()",
+          "after": "                else:\n                    try:\n                        val = kwargs.pop(field.attname)\n                        # Track if the primary key was explicitly set\n                        if field.primary_key:\n                            self._state.pk_set_explicitly = True\n                    except KeyError:\n                        # This is done with an exception rather than the\n                        # default argument on pop because we don't want\n                        # get_default() to be evaluated, and then not used.\n                        # Refs #12057.\n                        val = field.get_default()",
+          "explanation": "classic_swe step 38 #1"
+        },
+        {
+          "filename": "django/db/models/base.py",
+          "before": "        if not kwargs:\n            fields_iter = iter(opts.concrete_fields)\n            # The ordering of the zip calls matter - zip throws StopIteration\n            # when an iter throws it. So if the first iter throws it, the second\n            # is *not* consumed. We rely on this, so don't change the order\n            # without changing the logic.\n            for val, field in zip(args, fields_iter):\n                if val is _DEFERRED:\n                    continue\n                _setattr(self, field.attname, val)",
+          "after": "        if not kwargs:\n            fields_iter = iter(opts.concrete_fields)\n            # The ordering of the zip calls matter - zip throws StopIteration\n            # when an iter throws it. So if the first iter throws it, the second\n            # is *not* consumed. We rely on this, so don't change the order\n            # without changing the logic.\n            for val, field in zip(args, fields_iter):\n                if val is _DEFERRED:\n                    continue\n                _setattr(self, field.attname, val)\n                # Track if the primary key was explicitly set\n                if field.primary_key:\n                    self._state.pk_set_explicitly = True",
+          "explanation": "classic_swe step 41 #1"
+        },
+        {
+          "filename": "django/db/models/base.py",
+          "before": "        else:\n            # Slower, kwargs-ready version.\n            fields_iter = iter(opts.fields)\n            for val, field in zip(args, fields_iter):\n                if val is _DEFERRED:\n                    continue\n                _setattr(self, field.attname, val)\n                kwargs.pop(field.name, None)",
+          "after": "        else:\n            # Slower, kwargs-ready version.\n            fields_iter = iter(opts.fields)\n            for val, field in zip(args, fields_iter):\n                if val is _DEFERRED:\n                    continue\n                _setattr(self, field.attname, val)\n                # Track if the primary key was explicitly set\n                if field.primary_key:\n                    self._state.pk_set_explicitly = True\n                kwargs.pop(field.name, None)",
+          "explanation": "classic_swe step 42 #1"
+        },
+        {
+          "filename": "django/db/models/base.py",
+          "before": "                    # Any remaining kwargs must correspond to properties or\n                    # virtual fields.\n                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                        del kwargs[prop]",
+          "after": "                    # Any remaining kwargs must correspond to properties or\n                    # virtual fields.\n                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                            # Track if the primary key was explicitly set\n                            try:\n                                field = opts.get_field(prop)\n                                if field.primary_key:\n                                    self._state.pk_set_explicitly = True\n                            except (AttributeError, FieldDoesNotExist):\n                                pass\n                        del kwargs[prop]",
+          "explanation": "classic_swe step 45 #1"
+        },
+        {
+          "filename": "django/db/models/base.py",
+          "before": "        pk_val = self._get_pk_val(meta)\n        pk_set_explicitly = pk_val is not None\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default,\n        # but only if the primary key wasn't explicitly set.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED and\n            not pk_set_explicitly\n        ):\n            force_insert = True",
+          "after": "        pk_val = self._get_pk_val(meta)\n        if pk_val is None:\n            pk_val = meta.pk.get_pk_value_on_save(self)\n            setattr(self, meta.pk.attname, pk_val)\n        pk_set = pk_val is not None\n        if not pk_set and (force_update or update_fields):\n            raise ValueError(\"Cannot force an update in save() with no primary key.\")\n        updated = False\n        # Skip an UPDATE when adding an instance and primary key has a default,\n        # but only if the primary key wasn't explicitly set.\n        if (\n            not force_insert and\n            self._state.adding and\n            self._meta.pk.default and\n            self._meta.pk.default is not NOT_PROVIDED and\n            not self._state.pk_set_explicitly\n        ):\n            force_insert = True",
+          "explanation": "classic_swe step 46 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/base.py",
+          "before": "                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                            # Track if the primary key was explicitly set\n                            try:\n                                field = opts.get_field(prop)\n                                if field.primary_key:\n                                    self._state.pk_set_explicitly = True\n                            except (AttributeError, FieldDoesNotExist):\n                                pass\n                        del kwargs[prop]",
+          "after": "                    if prop in property_names or opts.get_field(prop):\n                        if kwargs[prop] is not _DEFERRED:\n                            _setattr(self, prop, kwargs[prop])\n                            # Track if the primary key was explicitly set\n                            if prop == 'pk':\n                                self._state.pk_set_explicitly = True\n                            else:\n                                try:\n                                    field = opts.get_field(prop)\n                                    if field.primary_key:\n                                        self._state.pk_set_explicitly = True\n                                except (AttributeError, FieldDoesNotExist):\n                                    pass\n                        del kwargs[prop]",
+          "explanation": "classic_swe step 57 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/base.py",
+          "before": "        new = cls(*values)\n        new._state.adding = False\n        new._state.db = db\n        return new",
+          "after": "        new = cls(*values)\n        new._state.adding = False\n        new._state.db = db\n        new._state.pk_set_explicitly = False\n        return new",
+          "explanation": "classic_swe step 80 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 0,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 0,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/base.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/base.py"
+    ],
+    "gold_files": [
+      "django/db/models/base.py"
+    ],
+    "minimized_hunks": 5,
+    "gold_hunks": 1,
+    "minimized_added_lines": 22,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

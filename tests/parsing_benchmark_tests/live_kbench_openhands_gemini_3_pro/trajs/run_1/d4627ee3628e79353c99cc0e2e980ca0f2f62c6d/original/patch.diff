@@ -1,0 +1,23 @@
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index 58887456e3c5..97a2d742ac74 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -1787,8 +1787,16 @@ int ocfs2_remove_inode_range(struct inode *inode,
+ 		return 0;
+ 
+ 	if (OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) {
+-		ret = ocfs2_truncate_inline(inode, di_bh, byte_start,
+-					    byte_start + byte_len, 0);
++		unsigned int start = byte_start;
++		unsigned int end = byte_start + byte_len;
++
++		if (byte_start >= i_size_read(inode))
++			return 0;
++
++		if (byte_start + byte_len > i_size_read(inode))
++			end = i_size_read(inode);
++
++		ret = ocfs2_truncate_inline(inode, di_bh, start, end, 0);
+ 		if (ret) {
+ 			mlog_errno(ret);
+ 			goto out;

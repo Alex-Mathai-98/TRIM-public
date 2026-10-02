@@ -1,0 +1,71 @@
+diff --git a/fs/fat/file.c b/fs/fat/file.c
+index e887e9ab7472..934c7ceb2ae7 100644
+--- a/fs/fat/file.c
++++ b/fs/fat/file.c
+@@ -279,6 +279,20 @@ static long fat_fallocate(struct file *file, int mode,
+ 	inode_lock(inode);
+ 	if (mode & FALLOC_FL_KEEP_SIZE) {
+ 		ondisksize = inode->i_blocks << 9;
++		if ((offset + len) <= ondisksize)
++			goto error;
++
++		if (MSDOS_I(inode)->i_start != 0) {
++			int fclus, dclus;
++			if (fat_get_cluster(inode, FAT_ENT_EOF, &fclus, &dclus) == 0) {
++				int num_clus = fclus + 1;
++				if (num_clus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
++					inode->i_blocks = (loff_t)num_clus << (sbi->cluster_bits - 9);
++					ondisksize = inode->i_blocks << 9;
++				}
++			}
++		}
++
+ 		if ((offset + len) <= ondisksize)
+ 			goto error;
+ 
+@@ -288,10 +302,24 @@ static long fat_fallocate(struct file *file, int mode,
+ 			sbi->cluster_bits;
+ 
+ 		/* Start the allocation.We are not zeroing out the clusters */
+-		while (nr_cluster-- > 0) {
+-			err = fat_add_cluster(inode);
++		while (nr_cluster > 0) {
++			/*
++			 * allocation O(N) where N is the number of clusters.
++			 * So, batch the allocation to reduce the sync overhead.
++			 */
++			#define FAT_BATCH_SIZE (MAX_BUF_PER_PAGE / 2)
++			int cluster[FAT_BATCH_SIZE];
++			int nr = min_t(int, nr_cluster, FAT_BATCH_SIZE);
++
++			err = fat_alloc_clusters(inode, cluster, nr);
+ 			if (err)
+ 				goto error;
++			err = fat_chain_add(inode, cluster[0], nr);
++			if (err) {
++				fat_free_clusters(inode, cluster[0]);
++				goto error;
++			}
++			nr_cluster -= nr;
+ 		}
+ 	} else {
+ 		if ((offset + len) <= i_size_read(inode))
+diff --git a/fs/fat/misc.c b/fs/fat/misc.c
+index c7a2d27120ba..d3a5185a2dd4 100644
+--- a/fs/fat/misc.c
++++ b/fs/fat/misc.c
+@@ -158,10 +158,11 @@ int fat_chain_add(struct inode *inode, int new_dclus, int nr_cluster)
+ 			mark_inode_dirty(inode);
+ 	}
+ 	if (new_fclus != (inode->i_blocks >> (sbi->cluster_bits - 9))) {
+-		fat_fs_error(sb, "clusters badly computed (%d != %llu)",
+-			     new_fclus,
+-			     (llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
++		fat_msg(sb, KERN_WARNING, "clusters badly computed (%d != %llu)",
++			new_fclus,
++			(llu)(inode->i_blocks >> (sbi->cluster_bits - 9)));
+ 		fat_cache_inval_inode(inode);
++		inode->i_blocks = (loff_t)new_fclus << (sbi->cluster_bits - 9);
+ 	}
+ 	inode->i_blocks += nr_cluster << (sbi->cluster_bits - 9);
+ 

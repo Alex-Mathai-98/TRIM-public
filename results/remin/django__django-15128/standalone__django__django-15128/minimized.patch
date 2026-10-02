@@ -1,0 +1,43 @@
+diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
+index aaf35ee37c..6d23465ed4 100644
+--- a/django/db/models/sql/query.py
++++ b/django/db/models/sql/query.py
+@@ -612,6 +612,38 @@ class Query(BaseExpression):
+             # combined query must have two joins, too.
+             reuse.discard(new_alias)
+             if alias != new_alias:
++                # Check if adding this mapping would create a conflict in change_map.
++                # This prevents the assertion error in change_aliases that occurs when
++                # an alias appears as both a key and a value in the change_map.
++                if alias in change_map.values():
++                    # Don't add this mapping to avoid the conflict.
++                    # The alias will keep its original name from the join operation.
++                    continue
++                
++                if new_alias in change_map.values():
++                    # Generate a new alias that doesn't conflict
++                    counter = len(self.alias_map) + 1
++                    candidate_alias = '%s%d' % (self.alias_prefix, counter)
++                    while (candidate_alias in self.alias_map or 
++                           candidate_alias in change_map.values() or
++                           candidate_alias in change_map.keys()):
++                        counter += 1
++                        candidate_alias = '%s%d' % (self.alias_prefix, counter)
++                    # Update the join and alias_map
++                    old_new_alias = new_alias
++                    new_alias = candidate_alias
++                    join.table_alias = new_alias
++                    # Remove the old alias and add the new one
++                    del self.alias_map[old_new_alias]
++                    self.alias_map[new_alias] = join
++                    # Update alias_refcount
++                    self.alias_refcount[new_alias] = self.alias_refcount.pop(old_new_alias)
++                    # Update table_map
++                    for table_name, alias_list in self.table_map.items():
++                        for i, table_alias in enumerate(alias_list):
++                            if table_alias == old_new_alias:
++                                alias_list[i] = new_alias
++                                break
+                 change_map[alias] = new_alias
+             if not rhs.alias_refcount[alias]:
+                 # The alias was unused in the rhs query. Unref it so that it

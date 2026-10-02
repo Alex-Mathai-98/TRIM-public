@@ -1,0 +1,65 @@
+diff --git a/drivers/scsi/sg.c b/drivers/scsi/sg.c
+index 84334ab39c81..4061758c7084 100644
+--- a/drivers/scsi/sg.c
++++ b/drivers/scsi/sg.c
+@@ -386,6 +386,7 @@ sg_release(struct inode *inode, struct file *filp)
+ 	SCSI_LOG_TIMEOUT(3, sg_printk(KERN_INFO, sdp, "sg_release\n"));
+ 
+ 	mutex_lock(&sdp->open_rel_lock);
++	kref_get(&sdp->d_ref);
+ 	kref_put(&sfp->f_ref, sg_remove_sfp);
+ 	sdp->open_cnt--;
+ 
+@@ -398,6 +399,7 @@ sg_release(struct inode *inode, struct file *filp)
+ 		wake_up_interruptible(&sdp->open_wait);
+ 	}
+ 	mutex_unlock(&sdp->open_rel_lock);
++	kref_put(&sdp->d_ref, sg_device_destroy);
+ 	return 0;
+ }
+ 
+@@ -1441,6 +1443,12 @@ sg_alloc(struct scsi_device *scsidp)
+ 		return ERR_PTR(-ENOMEM);
+ 	}
+ 
++	if (scsi_device_get(scsidp)) {
++		kfree(sdp);
++		return ERR_PTR(-ENODEV);
++	}
++	sdp->device = scsidp;
++
+ 	idr_preload(GFP_KERNEL);
+ 	write_lock_irqsave(&sg_index_lock, iflags);
+ 
+@@ -1463,7 +1471,6 @@ sg_alloc(struct scsi_device *scsidp)
+ 	SCSI_LOG_TIMEOUT(3, sdev_printk(KERN_INFO, scsidp,
+ 					"sg_alloc: dev=%d \n", k));
+ 	sprintf(sdp->name, "sg%d", k);
+-	sdp->device = scsidp;
+ 	mutex_init(&sdp->open_rel_lock);
+ 	INIT_LIST_HEAD(&sdp->sfds);
+ 	init_waitqueue_head(&sdp->open_wait);
+@@ -1479,6 +1486,7 @@ sg_alloc(struct scsi_device *scsidp)
+ 	idr_preload_end();
+ 
+ 	if (error) {
++		scsi_device_put(scsidp);
+ 		kfree(sdp);
+ 		return ERR_PTR(error);
+ 	}
+@@ -1551,6 +1559,7 @@ sg_add_device(struct device *cl_dev)
+ 	write_lock_irqsave(&sg_index_lock, iflags);
+ 	idr_remove(&sg_index_idr, sdp->index);
+ 	write_unlock_irqrestore(&sg_index_lock, iflags);
++	scsi_device_put(sdp->device);
+ 	kfree(sdp);
+ 
+ out:
+@@ -1574,6 +1583,7 @@ sg_device_destroy(struct kref *kref)
+ 
+ 	blk_trace_remove(q);
+ 	blk_put_queue(q);
++	scsi_device_put(sdp->device);
+ 
+ 	write_lock_irqsave(&sg_index_lock, flags);
+ 	idr_remove(&sg_index_idr, sdp->index);

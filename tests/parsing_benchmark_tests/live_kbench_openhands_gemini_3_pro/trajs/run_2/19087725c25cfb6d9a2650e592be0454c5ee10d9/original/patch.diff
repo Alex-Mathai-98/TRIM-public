@@ -1,0 +1,86 @@
+diff --git a/net/wireless/scan.c b/net/wireless/scan.c
+index a8339ed52404..8481516dd28f 100644
+--- a/net/wireless/scan.c
++++ b/net/wireless/scan.c
+@@ -85,7 +85,7 @@ static void bss_free(struct cfg80211_internal_bss *bss)
+ 		return;
+ 
+ 	ies = (void *)rcu_access_pointer(bss->pub.beacon_ies);
+-	if (ies && !bss->pub.hidden_beacon_bss)
++	if (ies)
+ 		kfree_rcu(ies, rcu_head);
+ 	ies = (void *)rcu_access_pointer(bss->pub.proberesp_ies);
+ 	if (ies)
+@@ -1791,8 +1791,19 @@ static bool cfg80211_combine_bsses(struct cfg80211_registered_device *rdev,
+ 		list_add(&bss->hidden_list, &new->hidden_list);
+ 		bss->pub.hidden_beacon_bss = &new->pub;
+ 		new->refcount += bss->refcount;
+-		rcu_assign_pointer(bss->pub.beacon_ies,
+-				   new->pub.beacon_ies);
++		{
++			const struct cfg80211_bss_ies *n_ies;
++
++			n_ies = rcu_access_pointer(new->pub.beacon_ies);
++			if (n_ies) {
++				struct cfg80211_bss_ies *cpy;
++
++				cpy = kmemdup(n_ies, sizeof(*n_ies) + n_ies->len,
++					      GFP_ATOMIC);
++				if (cpy)
++					rcu_assign_pointer(bss->pub.beacon_ies, cpy);
++			}
++		}
+ 	}
+ 
+ 	WARN_ONCE(n_entries != rdev->bss_entries,
+@@ -1813,9 +1824,20 @@ static void cfg80211_update_hidden_bsses(struct cfg80211_internal_bss *known,
+ 		const struct cfg80211_bss_ies *ies;
+ 
+ 		ies = rcu_access_pointer(bss->pub.beacon_ies);
+-		WARN_ON(ies != old_ies);
+-
+-		rcu_assign_pointer(bss->pub.beacon_ies, new_ies);
++		
++		if (new_ies) {
++			struct cfg80211_bss_ies *cpy;
++
++			cpy = kmemdup(new_ies, sizeof(*new_ies) + new_ies->len,
++				      GFP_ATOMIC);
++			if (cpy) {
++				rcu_assign_pointer(bss->pub.beacon_ies, cpy);
++				if (rcu_access_pointer(bss->pub.ies) == ies)
++					rcu_assign_pointer(bss->pub.ies, cpy);
++				if (ies)
++					kfree_rcu(ies, rcu_head);
++			}
++		}
+ 	}
+ }
+ 
+@@ -2013,11 +2035,21 @@ __cfg80211_bss_update(struct cfg80211_registered_device *rdev,
+ 					 &hidden->hidden_list);
+ 				hidden->refcount++;
+ 
+-				ies = (void *)rcu_access_pointer(new->pub.beacon_ies);
+-				rcu_assign_pointer(new->pub.beacon_ies,
+-						   hidden->pub.beacon_ies);
+-				if (ies)
+-					kfree_rcu(ies, rcu_head);
++				const struct cfg80211_bss_ies *h_ies;
++
++				h_ies = rcu_access_pointer(hidden->pub.beacon_ies);
++				if (h_ies) {
++					struct cfg80211_bss_ies *cpy;
++
++					cpy = kmemdup(h_ies, sizeof(*h_ies) + h_ies->len,
++						      GFP_ATOMIC);
++					if (cpy) {
++						ies = (void *)rcu_access_pointer(new->pub.beacon_ies);
++						rcu_assign_pointer(new->pub.beacon_ies, cpy);
++						if (ies)
++							kfree_rcu(ies, rcu_head);
++					}
++				}
+ 			}
+ 		} else {
+ 			/*

@@ -1,0 +1,135 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ],
+    [
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tbkey_fsck_err_on(s->csum_type >= BCH_CSUM_NR,\n\t\t\t c, stripe_val_size_bad,\n\t\t\t \"invalid csum type (%u >= %u)\",\n\t\t\t s->csum_type, BCH_CSUM_NR);\n\n\tbkey_fsck_err_on(bkey_val_u64s(k.k) < stripe_val_u64s(s),\n",
+          "before": "\tbkey_fsck_err_on(bkey_val_u64s(k.k) < stripe_val_u64s(s),\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/ec.c b/fs/bcachefs/ec.c\nindex a396865e8b17..0307e7613718 100644\n--- a/fs/bcachefs/ec.c\n+++ b/fs/bcachefs/ec.c\n@@ -123,6 +123,11 @@ int bch2_stripe_validate(struct bch_fs *c, struct bkey_s_c k,\n \t\t\t c, stripe_pos_bad,\n \t\t\t \"stripe at bad pos\");\n \n+\tbkey_fsck_err_on(s->csum_type >= BCH_CSUM_NR,\n+\t\t\t c, stripe_val_size_bad,\n+\t\t\t \"invalid csum type (%u >= %u)\",\n+\t\t\t s->csum_type, BCH_CSUM_NR);\n+\n \tbkey_fsck_err_on(bkey_val_u64s(k.k) < stripe_val_u64s(s),\n \t\t\t c, stripe_val_size_bad,\n \t\t\t \"incorrect value size (%zu < %u)\",",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "fs/bcachefs/ec.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 0,
+      "start_step": 21
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (percpu_ref_init(&ca->io_ref[READ], bch2_dev_io_ref_read_complete,\n\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n\t\tgoto err;\n\n\tif (percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n\t\tgoto err_read;\n\n\tif (!(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n\t    bch2_dev_buckets_alloc(c, ca) ||\n\t    !(ca->io_done\t= alloc_percpu(*ca->io_done)))\n\t\tgoto err_write;\n\n\treturn ca;\nerr_write:\n\tpercpu_ref_put(&ca->io_ref[WRITE]);\nerr_read:\n\tpercpu_ref_put(&ca->io_ref[READ]);\nerr:",
+          "before": "\tif (percpu_ref_init(&ca->io_ref[READ], bch2_dev_io_ref_read_complete,\n\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n\t    percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n\t    !(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n\t    bch2_dev_buckets_alloc(c, ca) ||\n\t    !(ca->io_done\t= alloc_percpu(*ca->io_done)))\n\t\tgoto err;\n\n\treturn ca;\nerr:",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/ec.c b/fs/bcachefs/ec.c\nindex a396865e8b17..0307e7613718 100644\n--- a/fs/bcachefs/ec.c\n+++ b/fs/bcachefs/ec.c\n@@ -123,6 +123,11 @@ int bch2_stripe_validate(struct bch_fs *c, struct bkey_s_c k,\n \t\t\t c, stripe_pos_bad,\n \t\t\t \"stripe at bad pos\");\n \n+\tbkey_fsck_err_on(s->csum_type >= BCH_CSUM_NR,\n+\t\t\t c, stripe_val_size_bad,\n+\t\t\t \"invalid csum type (%u >= %u)\",\n+\t\t\t s->csum_type, BCH_CSUM_NR);\n+\n \tbkey_fsck_err_on(bkey_val_u64s(k.k) < stripe_val_u64s(s),\n \t\t\t c, stripe_val_size_bad,\n \t\t\t \"incorrect value size (%zu < %u)\",\ndiff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c\nindex adbf3bbed6bc..fe26d671c015 100644\n--- a/fs/bcachefs/super.c\n+++ b/fs/bcachefs/super.c\n@@ -1381,15 +1381,23 @@ static struct bch_dev *__bch2_dev_alloc(struct bch_fs *c,\n \tbch2_dev_allocator_background_init(ca);\n \n \tif (percpu_ref_init(&ca->io_ref[READ], bch2_dev_io_ref_read_complete,\n-\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n-\t    percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n-\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n-\t    !(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n+\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n+\t\tgoto err;\n+\n+\tif (percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n+\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n+\t\tgoto err_read;\n+\n+\tif (!(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n \t    bch2_dev_buckets_alloc(c, ca) ||\n \t    !(ca->io_done\t= alloc_percpu(*ca->io_done)))\n-\t\tgoto err;\n+\t\tgoto err_write;\n \n \treturn ca;\n+err_write:\n+\tpercpu_ref_put(&ca->io_ref[WRITE]);\n+err_read:\n+\tpercpu_ref_put(&ca->io_ref[READ]);\n err:\n \tbch2_dev_free(ca);\n \treturn NULL;",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "fs/bcachefs/super.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 1,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "err_write:\n\tprintk(KERN_ERR \"Putting WRITE ref\\n\");\n\tpercpu_ref_put(&ca->io_ref[WRITE]);\nerr_read:\n\tprintk(KERN_ERR \"Putting READ ref\\n\");\n\tpercpu_ref_put(&ca->io_ref[READ]);\nerr:",
+          "before": "err_write:\n\tpercpu_ref_put(&ca->io_ref[WRITE]);\nerr_read:\n\tpercpu_ref_put(&ca->io_ref[READ]);\nerr:",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/ec.c b/fs/bcachefs/ec.c\nindex a396865e8b17..0307e7613718 100644\n--- a/fs/bcachefs/ec.c\n+++ b/fs/bcachefs/ec.c\n@@ -123,6 +123,11 @@ int bch2_stripe_validate(struct bch_fs *c, struct bkey_s_c k,\n \t\t\t c, stripe_pos_bad,\n \t\t\t \"stripe at bad pos\");\n \n+\tbkey_fsck_err_on(s->csum_type >= BCH_CSUM_NR,\n+\t\t\t c, stripe_val_size_bad,\n+\t\t\t \"invalid csum type (%u >= %u)\",\n+\t\t\t s->csum_type, BCH_CSUM_NR);\n+\n \tbkey_fsck_err_on(bkey_val_u64s(k.k) < stripe_val_u64s(s),\n \t\t\t c, stripe_val_size_bad,\n \t\t\t \"incorrect value size (%zu < %u)\",\ndiff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c\nindex adbf3bbed6bc..93d101d7c03f 100644\n--- a/fs/bcachefs/super.c\n+++ b/fs/bcachefs/super.c\n@@ -1381,15 +1381,25 @@ static struct bch_dev *__bch2_dev_alloc(struct bch_fs *c,\n \tbch2_dev_allocator_background_init(ca);\n \n \tif (percpu_ref_init(&ca->io_ref[READ], bch2_dev_io_ref_read_complete,\n-\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n-\t    percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n-\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n-\t    !(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n+\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n+\t\tgoto err;\n+\n+\tif (percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n+\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n+\t\tgoto err_read;\n+\n+\tif (!(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n \t    bch2_dev_buckets_alloc(c, ca) ||\n \t    !(ca->io_done\t= alloc_percpu(*ca->io_done)))\n-\t\tgoto err;\n+\t\tgoto err_write;\n \n \treturn ca;\n+err_write:\n+\tprintk(KERN_ERR \"Putting WRITE ref\\n\");\n+\tpercpu_ref_put(&ca->io_ref[WRITE]);\n+err_read:\n+\tprintk(KERN_ERR \"Putting READ ref\\n\");\n+\tpercpu_ref_put(&ca->io_ref[READ]);\n err:\n \tbch2_dev_free(ca);\n \treturn NULL;",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "fs/bcachefs/super.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 2,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "err_write:\n\tpercpu_ref_put(&ca->io_ref[WRITE]);\nerr_read:\n\tpercpu_ref_put(&ca->io_ref[READ]);\nerr:",
+          "before": "err_write:\n\tprintk(KERN_ERR \"Putting WRITE ref\\n\");\n\tpercpu_ref_put(&ca->io_ref[WRITE]);\nerr_read:\n\tprintk(KERN_ERR \"Putting READ ref\\n\");\n\tpercpu_ref_put(&ca->io_ref[READ]);\nerr:",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/ec.c b/fs/bcachefs/ec.c\nindex a396865e8b17..0307e7613718 100644\n--- a/fs/bcachefs/ec.c\n+++ b/fs/bcachefs/ec.c\n@@ -123,6 +123,11 @@ int bch2_stripe_validate(struct bch_fs *c, struct bkey_s_c k,\n \t\t\t c, stripe_pos_bad,\n \t\t\t \"stripe at bad pos\");\n \n+\tbkey_fsck_err_on(s->csum_type >= BCH_CSUM_NR,\n+\t\t\t c, stripe_val_size_bad,\n+\t\t\t \"invalid csum type (%u >= %u)\",\n+\t\t\t s->csum_type, BCH_CSUM_NR);\n+\n \tbkey_fsck_err_on(bkey_val_u64s(k.k) < stripe_val_u64s(s),\n \t\t\t c, stripe_val_size_bad,\n \t\t\t \"incorrect value size (%zu < %u)\",\ndiff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c\nindex adbf3bbed6bc..fe26d671c015 100644\n--- a/fs/bcachefs/super.c\n+++ b/fs/bcachefs/super.c\n@@ -1381,15 +1381,23 @@ static struct bch_dev *__bch2_dev_alloc(struct bch_fs *c,\n \tbch2_dev_allocator_background_init(ca);\n \n \tif (percpu_ref_init(&ca->io_ref[READ], bch2_dev_io_ref_read_complete,\n-\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n-\t    percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n-\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL) ||\n-\t    !(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n+\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n+\t\tgoto err;\n+\n+\tif (percpu_ref_init(&ca->io_ref[WRITE], bch2_dev_io_ref_write_complete,\n+\t\t\t    PERCPU_REF_INIT_DEAD, GFP_KERNEL))\n+\t\tgoto err_read;\n+\n+\tif (!(ca->sb_read_scratch = kmalloc(BCH_SB_READ_SCRATCH_BUF_SIZE, GFP_KERNEL)) ||\n \t    bch2_dev_buckets_alloc(c, ca) ||\n \t    !(ca->io_done\t= alloc_percpu(*ca->io_done)))\n-\t\tgoto err;\n+\t\tgoto err_write;\n \n \treturn ca;\n+err_write:\n+\tpercpu_ref_put(&ca->io_ref[WRITE]);\n+err_read:\n+\tpercpu_ref_put(&ca->io_ref[READ]);\n err:\n \tbch2_dev_free(ca);\n \treturn NULL;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "fs/bcachefs/super.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 3,
+      "start_step": 35
+    }
+  ],
+  "success_step": 35
+}

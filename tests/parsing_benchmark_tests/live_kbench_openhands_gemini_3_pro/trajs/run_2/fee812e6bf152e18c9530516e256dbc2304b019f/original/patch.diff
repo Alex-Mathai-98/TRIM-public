@@ -1,0 +1,90 @@
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 8f38eefc8acd..2e1079287713 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -719,6 +719,7 @@ static noinline int cow_file_range_inline(struct btrfs_inode *inode, u64 offset,
+ 					  size_t compressed_size,
+ 					  int compress_type,
+ 					  struct folio *compressed_folio,
++					  struct page *locked_page,
+ 					  bool update_i_size)
+ {
+ 	struct extent_state *cached = NULL;
+@@ -739,7 +740,8 @@ static noinline int cow_file_range_inline(struct btrfs_inode *inode, u64 offset,
+ 		return ret;
+ 	}
+ 
+-	extent_clear_unlock_delalloc(inode, offset, end, NULL, &cached,
++	extent_clear_unlock_delalloc(inode, offset, end,
++				     (ret < 0 ? locked_page : NULL), &cached,
+ 				     clear_flags,
+ 				     PAGE_UNLOCK | PAGE_START_WRITEBACK |
+ 				     PAGE_END_WRITEBACK);
+@@ -1044,10 +1046,10 @@ static void compress_file_range(struct btrfs_work *work)
+ 	 */
+ 	if (total_in < actual_end)
+ 		ret = cow_file_range_inline(inode, start, end, 0,
+-					    BTRFS_COMPRESS_NONE, NULL, false);
++					    BTRFS_COMPRESS_NONE, NULL, NULL, false);
+ 	else
+ 		ret = cow_file_range_inline(inode, start, end, total_compressed,
+-					    compress_type, folios[0], false);
++					    compress_type, folios[0], NULL, false);
+ 	if (ret <= 0) {
+ 		if (ret < 0)
+ 			mapping_set_error(mapping, -EIO);
+@@ -1360,7 +1362,8 @@ static noinline int cow_file_range(struct btrfs_inode *inode,
+ 	if (!no_inline) {
+ 		/* lets try to make an inline extent */
+ 		ret = cow_file_range_inline(inode, start, end, 0,
+-					    BTRFS_COMPRESS_NONE, NULL, false);
++					    BTRFS_COMPRESS_NONE, NULL,
++					    locked_page, false);
+ 		if (ret <= 0) {
+ 			/*
+ 			 * We succeeded, return 1 so the caller knows we're done
+@@ -1538,6 +1541,8 @@ static noinline int cow_file_range(struct btrfs_inode *inode,
+ 	clear_bits = EXTENT_LOCKED | EXTENT_DELALLOC | EXTENT_DELALLOC_NEW |
+ 		EXTENT_DEFRAG | EXTENT_CLEAR_META_RESV;
+ 	page_ops = PAGE_UNLOCK | PAGE_START_WRITEBACK | PAGE_END_WRITEBACK;
++	if (keep_locked)
++		page_ops &= ~PAGE_UNLOCK;
+ 
+ 	/*
+ 	 * For the range (1). We have already instantiated the ordered extents
+@@ -1658,6 +1663,8 @@ static bool run_delalloc_compressed(struct btrfs_inode *inode,
+ 	unsigned nofs_flag;
+ 	const blk_opf_t write_flags = wbc_to_write_flags(wbc);
+ 
++
++
+ 	nofs_flag = memalloc_nofs_save();
+ 	ctx = kvmalloc(struct_size(ctx, chunks, num_chunks), GFP_KERNEL);
+ 	memalloc_nofs_restore(nofs_flag);
+@@ -1827,7 +1834,7 @@ static int fallback_to_cow(struct btrfs_inode *inode, struct page *locked_page,
+ 	 * is written out and unlocked directly and a normal NOCOW extent
+ 	 * doesn't work.
+ 	 */
+-	ret = cow_file_range(inode, locked_page, start, end, NULL, false, true);
++	ret = cow_file_range(inode, locked_page, start, end, NULL, true, true);
+ 	ASSERT(ret != 1);
+ 	return ret;
+ }
+@@ -2252,7 +2259,7 @@ static noinline int run_delalloc_nocow(struct btrfs_inode *inode,
+ 					     locked_page, &cached,
+ 					     EXTENT_LOCKED | EXTENT_DELALLOC |
+ 					     EXTENT_DEFRAG |
+-					     EXTENT_DO_ACCOUNTING, PAGE_UNLOCK |
++					     EXTENT_DO_ACCOUNTING,
+ 					     PAGE_START_WRITEBACK |
+ 					     PAGE_END_WRITEBACK);
+ 	}
+@@ -2303,7 +2310,7 @@ int btrfs_run_delalloc_range(struct btrfs_inode *inode, struct page *locked_page
+ 				       true);
+ 	else
+ 		ret = cow_file_range(inode, locked_page, start, end, NULL,
+-				     false, false);
++				     true, false);
+ 
+ out:
+ 	if (ret < 0)

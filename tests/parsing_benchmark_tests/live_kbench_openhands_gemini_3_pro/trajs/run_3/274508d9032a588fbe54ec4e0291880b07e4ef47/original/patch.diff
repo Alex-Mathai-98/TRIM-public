@@ -1,0 +1,18 @@
+diff --git a/net/ipv6/udp.c b/net/ipv6/udp.c
+index 6602a2e9cdb5..87c84170c032 100644
+--- a/net/ipv6/udp.c
++++ b/net/ipv6/udp.c
+@@ -1187,11 +1187,12 @@ static void udp6_hwcsum_outgoing(struct sock *sk, struct sk_buff *skb,
+ 	struct sk_buff *frags = skb_shinfo(skb)->frag_list;
+ 	__wsum csum = 0;
+ 
+-	if (!frags) {
++	if (!frags || skb_is_gso(skb)) {
+ 		/* Only one fragment on the socket.  */
+ 		skb->csum_start = skb_transport_header(skb) - skb->head;
+ 		skb->csum_offset = offsetof(struct udphdr, check);
+ 		uh->check = ~csum_ipv6_magic(saddr, daddr, len, IPPROTO_UDP, 0);
++		skb->ip_summed = CHECKSUM_PARTIAL;
+ 	} else {
+ 		/*
+ 		 * HW-checksum won't work as there are two or more

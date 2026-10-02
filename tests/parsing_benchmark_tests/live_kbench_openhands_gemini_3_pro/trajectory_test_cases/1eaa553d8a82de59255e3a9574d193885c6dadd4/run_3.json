@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstatic int tun_ptr_ring_resize_multiple(struct ptr_ring **rings,\n\t\t\t\t\tunsigned int nrings,\n\t\t\t\t\tint size,\n\t\t\t\t\tvoid (*destroy)(void *ptr))\n{\n\tvoid ***new_queues;\n\tvoid ***stash_queues = NULL;\n\tint i, j;\n\tint ret = 0;\n\n\tnew_queues = kmalloc_array(nrings, sizeof(*new_queues), GFP_KERNEL);\n\tif (!new_queues)\n\t\treturn -ENOMEM;\n\n\tstash_queues = kmalloc_array(nrings, sizeof(*stash_queues), GFP_KERNEL);\n\tif (!stash_queues) {\n\t\tkfree(new_queues);\n\t\treturn -ENOMEM;\n\t}\n\n\tfor (i = 0; i < nrings; i++) {\n\t\tnew_queues[i] = kvmalloc_array(size, sizeof(void *), GFP_KERNEL);\n\t\tif (!new_queues[i]) {\n\t\t\tret = -ENOMEM;\n\t\t\tgoto cleanup_init;\n\t\t}\n\t\tstash_queues[i] = kvmalloc_array(rings[i]->size, sizeof(void *), GFP_KERNEL);\n\t\tif (!stash_queues[i]) {\n\t\t\tkvfree(new_queues[i]);\n\t\t\tnew_queues[i] = NULL;\n\t\t\tret = -ENOMEM;\n\t\t\tgoto cleanup_init;\n\t\t}\n\t}\n\n\tfor (i = 0; i < nrings; i++) {\n\t\tstruct ptr_ring *r = rings[i];\n\t\tvoid **old_queue;\n\t\tvoid **new_q = new_queues[i];\n\t\tvoid **stash_q = stash_queues[i];\n\t\tint stash_count = 0;\n\t\tunsigned long flags;\n\t\tvoid *ptr;\n\n\t\tspin_lock_irqsave(&r->consumer_lock, flags);\n\t\tspin_lock(&r->producer_lock);\n\n\t\twhile ((ptr = __ptr_ring_consume(r)))\n\t\t\tstash_q[stash_count++] = ptr;\n\n\t\told_queue = r->queue;\n\t\tr->queue = new_q;\n\t\tr->size = size;\n\t\tr->batch = 0;\n\t\tr->producer = 0;\n\t\tr->consumer_head = 0;\n\t\tr->consumer_tail = 0;\n\n\t\tfor (j = 0; j < stash_count; j++) {\n\t\t\tif (r->producer < size) {\n\t\t\t\tr->queue[r->producer++] = stash_q[j];\n\t\t\t\tstash_q[j] = NULL;\n\t\t\t}\n\t\t}\n\n\t\tspin_unlock(&r->producer_lock);\n\t\tspin_unlock_irqrestore(&r->consumer_lock, flags);\n\n\t\tfor (j = 0; j < stash_count; j++) {\n\t\t\tif (stash_q[j])\n\t\t\t\tdestroy(stash_q[j]);\n\t\t}\n\n\t\tkvfree(old_queue);\n\t\tkvfree(stash_q);\n\t\tstash_queues[i] = NULL;\n\t\tnew_queues[i] = NULL;\n\t}\n\n\tkfree(new_queues);\n\tkfree(stash_queues);\n\treturn 0;\n\ncleanup_init:\n\tfor (j = 0; j < nrings; j++) {\n\t\tkvfree(new_queues[j]);\n\t\tkvfree(stash_queues[j]);\n\t}\n\tkfree(new_queues);\n\tkfree(stash_queues);\n\treturn ret;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3684,0 +3685,94 @@\n+\n+static int tun_ptr_ring_resize_multiple(struct ptr_ring **rings,\n+\t\t\t\t\tunsigned int nrings,\n+\t\t\t\t\tint size,\n+\t\t\t\t\tvoid (*destroy)(void *ptr))\n+{\n+\tvoid ***new_queues;\n+\tvoid ***stash_queues = NULL;\n+\tint i, j;\n+\tint ret = 0;\n+\n+\tnew_queues = kmalloc_array(nrings, sizeof(*new_queues), GFP_KERNEL);\n+\tif (!new_queues)\n+\t\treturn -ENOMEM;\n+\n+\tstash_queues = kmalloc_array(nrings, sizeof(*stash_queues), GFP_KERNEL);\n+\tif (!stash_queues) {\n+\t\tkfree(new_queues);\n+\t\treturn -ENOMEM;\n+\t}\n+\n+\tfor (i = 0; i < nrings; i++) {\n+\t\tnew_queues[i] = kvmalloc_array(size, sizeof(void *), GFP_KERNEL);\n+\t\tif (!new_queues[i]) {\n+\t\t\tret = -ENOMEM;\n+\t\t\tgoto cleanup_init;\n+\t\t}\n+\t\tstash_queues[i] = kvmalloc_array(rings[i]->size, sizeof(void *), GFP_KERNEL);\n+\t\tif (!stash_queues[i]) {\n+\t\t\tkvfree(new_queues[i]);\n+\t\t\tnew_queues[i] = NULL;\n+\t\t\tret = -ENOMEM;\n+\t\t\tgoto cleanup_init;\n+\t\t}\n+\t}\n+\n+\tfor (i = 0; i < nrings; i++) {\n+\t\tstruct ptr_ring *r = rings[i];\n+\t\tvoid **old_queue;\n+\t\tvoid **new_q = new_queues[i];\n+\t\tvoid **stash_q = stash_queues[i];\n+\t\tint stash_count = 0;\n+\t\tunsigned long flags;\n+\t\tvoid *ptr;\n+\n+\t\tspin_lock_irqsave(&r->consumer_lock, flags);\n+\t\tspin_lock(&r->producer_lock);\n+\n+\t\twhile ((ptr = __ptr_ring_consume(r)))\n+\t\t\tstash_q[stash_count++] = ptr;\n+\n+\t\told_queue = r->queue;\n+\t\tr->queue = new_q;\n+\t\tr->size = size;\n+\t\tr->batch = 0;\n+\t\tr->producer = 0;\n+\t\tr->consumer_head = 0;\n+\t\tr->consumer_tail = 0;\n+\n+\t\tfor (j = 0; j < stash_count; j++) {\n+\t\t\tif (r->producer < size) {\n+\t\t\t\tr->queue[r->producer++] = stash_q[j];\n+\t\t\t\tstash_q[j] = NULL;\n+\t\t\t}\n+\t\t}\n+\n+\t\tspin_unlock(&r->producer_lock);\n+\t\tspin_unlock_irqrestore(&r->consumer_lock, flags);\n+\n+\t\tfor (j = 0; j < stash_count; j++) {\n+\t\t\tif (stash_q[j])\n+\t\t\t\tdestroy(stash_q[j]);\n+\t\t}\n+\n+\t\tkvfree(old_queue);\n+\t\tkvfree(stash_q);\n+\t\tstash_queues[i] = NULL;\n+\t\tnew_queues[i] = NULL;\n+\t}\n+\n+\tkfree(new_queues);\n+\tkfree(stash_queues);\n+\treturn 0;\n+\n+cleanup_init:\n+\tfor (j = 0; j < nrings; j++) {\n+\t\tkvfree(new_queues[j]);\n+\t\tkvfree(stash_queues[j]);\n+\t}\n+\tkfree(new_queues);\n+\tkfree(stash_queues);\n+\treturn ret;\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 46",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 3685,
+          "step_index": 46
+        },
+        {
+          "after": "\tret = tun_ptr_ring_resize_multiple(rings, n,\n\t\t\t\t\t   dev->tx_queue_len,\n\t\t\t\t\t   tun_ptr_free);",
+          "before": "\tret = ptr_ring_resize_multiple(rings, n,\n\t\t\t\t       dev->tx_queue_len, GFP_KERNEL,\n\t\t\t\t       tun_ptr_free);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3798,3 +3798,3 @@\n-\tret = ptr_ring_resize_multiple(rings, n,\n-\t\t\t\t       dev->tx_queue_len, GFP_KERNEL,\n-\t\t\t\t       tun_ptr_free);\n+\tret = tun_ptr_ring_resize_multiple(rings, n,\n+\t\t\t\t\t   dev->tx_queue_len,\n+\t\t\t\t\t   tun_ptr_free);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 52",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        }
+      ],
+      "end_step": 52,
+      "revision_index": 0,
+      "start_step": 46
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tnew_queues = kmalloc_array(nrings, sizeof(*new_queues),\n\t\t\t\t   GFP_KERNEL | __GFP_ZERO);\n\tif (!new_queues)\n\t\treturn -ENOMEM;\n\n\tstash_queues = kmalloc_array(nrings, sizeof(*stash_queues),\n\t\t\t\t     GFP_KERNEL | __GFP_ZERO);\n\tif (!stash_queues) {\n\t\tkfree(new_queues);\n\t\treturn -ENOMEM;\n\t}\n",
+          "before": "\n\tnew_queues = kmalloc_array(nrings, sizeof(*new_queues), GFP_KERNEL);\n\tif (!new_queues)\n\t\treturn -ENOMEM;\n\n\tstash_queues = kmalloc_array(nrings, sizeof(*stash_queues), GFP_KERNEL);\n\tif (!stash_queues) {\n\t\tkfree(new_queues);\n\t\treturn -ENOMEM;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/tun.c\n+++ /linux/drivers/net/tun.c\n@@ -3696 +3696,2 @@\n-\tnew_queues = kmalloc_array(nrings, sizeof(*new_queues), GFP_KERNEL);\n+\tnew_queues = kmalloc_array(nrings, sizeof(*new_queues),\n+\t\t\t\t   GFP_KERNEL | __GFP_ZERO);\n@@ -3700 +3701,2 @@\n-\tstash_queues = kmalloc_array(nrings, sizeof(*stash_queues), GFP_KERNEL);\n+\tstash_queues = kmalloc_array(nrings, sizeof(*stash_queues),\n+\t\t\t\t     GFP_KERNEL | __GFP_ZERO);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 60",
+          "filename": "drivers/net/tun.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 60
+        }
+      ],
+      "end_step": 60,
+      "revision_index": 1,
+      "start_step": 60
+    }
+  ],
+  "success_step": 60
+}

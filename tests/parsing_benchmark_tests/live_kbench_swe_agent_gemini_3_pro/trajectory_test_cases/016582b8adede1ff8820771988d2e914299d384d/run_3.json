@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tu64 v = bch2_opt_from_sb(sb, id);\n\t\tstruct printbuf err = PRINTBUF;\n\n\t\tif (bch2_opt_validate(opt, v, &err)) {\n\t\t\tpr_err(\"Invalid option in superblock: %s\", err.buf);\n\t\t\tprintbuf_exit(&err);\n\t\t\tcontinue;\n\t\t}\n\t\tprintbuf_exit(&err);\n\n\t\tbch2_opt_set_by_id(opts, id, v);",
+          "before": "\t\tbch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c\nindex 6673cbd8bdb9..f89599b43731 100644\n--- a/fs/bcachefs/opts.c\n+++ b/fs/bcachefs/opts.c\n@@ -646,7 +646,17 @@ int bch2_opts_from_sb(struct bch_opts *opts, struct bch_sb *sb)\n \t\tif (opt->get_sb == BCH2_NO_SB_OPT)\n \t\t\tcontinue;\n \n-\t\tbch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));\n+\t\tu64 v = bch2_opt_from_sb(sb, id);\n+\t\tstruct printbuf err = PRINTBUF;\n+\n+\t\tif (bch2_opt_validate(opt, v, &err)) {\n+\t\t\tpr_err(\"Invalid option in superblock: %s\", err.buf);\n+\t\t\tprintbuf_exit(&err);\n+\t\t\tcontinue;\n+\t\t}\n+\t\tprintbuf_exit(&err);\n+\n+\t\tbch2_opt_set_by_id(opts, id, v);\n \t}\n \n \treturn 0;",
+          "explanation": "classic_swe step 58 #1",
+          "filename": "fs/bcachefs/opts.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 58
+        }
+      ],
+      "end_step": 58,
+      "revision_index": 0,
+      "start_step": 58
+    },
+    {
+      "edits": [
+        {
+          "after": "#define OPT_STR(_choices)\t.type = BCH_OPT_STR,\t\t\t\\\n\t\t\t\t.min = 0, .max = ARRAY_SIZE(_choices) - 1,\t\\\n\t\t\t\t.choices = _choices",
+          "before": "#define OPT_STR(_choices)\t.type = BCH_OPT_STR,\t\t\t\\\n\t\t\t\t.min = 0, .max = ARRAY_SIZE(_choices),\t\\\n\t\t\t\t.choices = _choices",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c\nindex 6673cbd8bdb9..f757b5ad3a94 100644\n--- a/fs/bcachefs/opts.c\n+++ b/fs/bcachefs/opts.c\n@@ -226,7 +226,7 @@ const struct bch_option bch2_opt_table[] = {\n #define OPT_UINT(_min, _max)\t.type = BCH_OPT_UINT,\t\t\t\\\n \t\t\t\t.min = _min, .max = _max\n #define OPT_STR(_choices)\t.type = BCH_OPT_STR,\t\t\t\\\n-\t\t\t\t.min = 0, .max = ARRAY_SIZE(_choices),\t\\\n+\t\t\t\t.min = 0, .max = ARRAY_SIZE(_choices) - 1,\t\\\n \t\t\t\t.choices = _choices\n #define OPT_STR_NOLIMIT(_choices)\t.type = BCH_OPT_STR,\t\t\\\n \t\t\t\t.min = 0, .max = U64_MAX,\t\t\\\n@@ -646,7 +646,17 @@ int bch2_opts_from_sb(struct bch_opts *opts, struct bch_sb *sb)\n \t\tif (opt->get_sb == BCH2_NO_SB_OPT)\n \t\t\tcontinue;\n \n-\t\tbch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));\n+\t\tu64 v = bch2_opt_from_sb(sb, id);\n+\t\tstruct printbuf err = PRINTBUF;\n+\n+\t\tif (bch2_opt_validate(opt, v, &err)) {\n+\t\t\tpr_err(\"Invalid option in superblock: %s\", err.buf);\n+\t\t\tprintbuf_exit(&err);\n+\t\t\tcontinue;\n+\t\t}\n+\t\tprintbuf_exit(&err);\n+\n+\t\tbch2_opt_set_by_id(opts, id, v);\n \t}\n \n \treturn 0;",
+          "explanation": "classic_swe step 64 #1",
+          "filename": "fs/bcachefs/opts.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 64
+        },
+        {
+          "after": "\tcase BCH_OPT_STR:\n\t\tif (v < opt->min || v >= opt->max)\n\t\t\tprt_printf(out, \"(invalid option %lli)\", v);\n\t\telse if (flags & OPT_SHOW_FULL_LIST)\n\t\t\tprt_string_option(out, opt->choices, v);\n\t\telse\n\t\t\tprt_str(out, opt->choices[v]);\n\t\tbreak;",
+          "before": "\tcase BCH_OPT_STR:\n\t\tif (v < opt->min || v >= opt->max - 1)\n\t\t\tprt_printf(out, \"(invalid option %lli)\", v);\n\t\telse if (flags & OPT_SHOW_FULL_LIST)\n\t\t\tprt_string_option(out, opt->choices, v);\n\t\telse\n\t\t\tprt_str(out, opt->choices[v]);\n\t\tbreak;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/opts.c b/fs/bcachefs/opts.c\nindex 6673cbd8bdb9..04b4190eaa11 100644\n--- a/fs/bcachefs/opts.c\n+++ b/fs/bcachefs/opts.c\n@@ -226,7 +226,7 @@ const struct bch_option bch2_opt_table[] = {\n #define OPT_UINT(_min, _max)\t.type = BCH_OPT_UINT,\t\t\t\\\n \t\t\t\t.min = _min, .max = _max\n #define OPT_STR(_choices)\t.type = BCH_OPT_STR,\t\t\t\\\n-\t\t\t\t.min = 0, .max = ARRAY_SIZE(_choices),\t\\\n+\t\t\t\t.min = 0, .max = ARRAY_SIZE(_choices) - 1,\t\\\n \t\t\t\t.choices = _choices\n #define OPT_STR_NOLIMIT(_choices)\t.type = BCH_OPT_STR,\t\t\\\n \t\t\t\t.min = 0, .max = U64_MAX,\t\t\\\n@@ -428,7 +428,7 @@ void bch2_opt_to_text(struct printbuf *out,\n \t\t\tprt_printf(out, \"%lli\", v);\n \t\tbreak;\n \tcase BCH_OPT_STR:\n-\t\tif (v < opt->min || v >= opt->max - 1)\n+\t\tif (v < opt->min || v >= opt->max)\n \t\t\tprt_printf(out, \"(invalid option %lli)\", v);\n \t\telse if (flags & OPT_SHOW_FULL_LIST)\n \t\t\tprt_string_option(out, opt->choices, v);\n@@ -646,7 +646,17 @@ int bch2_opts_from_sb(struct bch_opts *opts, struct bch_sb *sb)\n \t\tif (opt->get_sb == BCH2_NO_SB_OPT)\n \t\t\tcontinue;\n \n-\t\tbch2_opt_set_by_id(opts, id, bch2_opt_from_sb(sb, id));\n+\t\tu64 v = bch2_opt_from_sb(sb, id);\n+\t\tstruct printbuf err = PRINTBUF;\n+\n+\t\tif (bch2_opt_validate(opt, v, &err)) {\n+\t\t\tpr_err(\"Invalid option in superblock: %s\", err.buf);\n+\t\t\tprintbuf_exit(&err);\n+\t\t\tcontinue;\n+\t\t}\n+\t\tprintbuf_exit(&err);\n+\n+\t\tbch2_opt_set_by_id(opts, id, v);\n \t}\n \n \treturn 0;",
+          "explanation": "classic_swe step 65 #1",
+          "filename": "fs/bcachefs/opts.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 65
+        }
+      ],
+      "end_step": 65,
+      "revision_index": 1,
+      "start_step": 64
+    }
+  ],
+  "success_step": 65
+}

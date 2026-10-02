@@ -1,0 +1,232 @@
+{
+  "bug_id": "django__django-15503",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "def compile_json_path(key_transforms, include_root=True):\n    path = [\"$\"] if include_root else []\n    for key_transform in key_transforms:\n        try:\n            num = int(key_transform)\n        except ValueError:  # non-integer\n            path.append(\".\")\n            path.append(json.dumps(key_transform))\n        else:\n            path.append(\"[%s]\" % num)\n    return \"\".join(path)",
+        "after": "def compile_json_path(key_transforms, include_root=True):\n    path = [\"$\"] if include_root else []\n    for key_transform in key_transforms:\n        try:\n            num = int(key_transform)\n        except ValueError:  # non-integer\n            path.append(\".\")\n            path.append(json.dumps(key_transform))\n        else:\n            path.append(\"[%s]\" % num)\n    return \"\".join(path)\n\n\ndef compile_json_path_for_has_key(key_transforms, include_root=True):\n    \"\"\"\n    Compile a JSON path for has_key lookups, treating all keys as object keys.\n    This is different from compile_json_path which treats numeric strings as array indices.\n    \"\"\"\n    path = [\"$\"] if include_root else []\n    for key_transform in key_transforms:\n        path.append(\".\")\n        path.append(json.dumps(key_transform))\n    return \"\".join(path)",
+        "explanation": "classic_swe step 14 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            lhs_json_path = compile_json_path(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+        "after": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            lhs_json_path = compile_json_path_for_has_key(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            lhs_json_path = compile_json_path_for_has_key(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+        "after": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            # Use the original compile_json_path for the path to the object,\n            # as it may contain array indices\n            lhs_json_path = compile_json_path(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            # Use compile_json_path_for_has_key only for the final key being checked\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+        "explanation": "classic_swe step 36 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            # Use compile_json_path_for_has_key only for the final key being checked\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )",
+        "after": "        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n                # For KeyTransform, we need to split the path:\n                # - All but the last element use normal path compilation (may include array indices)\n                # - The last element is always an object key for has_key lookups\n                if len(rhs_key_transforms) > 1:\n                    path_to_object = compile_json_path(rhs_key_transforms[:-1], include_root=False)\n                    final_key = compile_json_path_for_has_key([rhs_key_transforms[-1]], include_root=False)\n                    rhs_path = path_to_object + final_key\n                else:\n                    # Single key, treat as object key\n                    rhs_path = compile_json_path_for_has_key(rhs_key_transforms, include_root=False)\n            else:\n                # Simple string key, always treat as object key\n                rhs_path = compile_json_path_for_has_key([key], include_root=False)\n            \n            rhs_params.append(\"%s%s\" % (lhs_json_path, rhs_path))",
+        "explanation": "classic_swe step 48 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "    def as_sqlite(self, compiler, connection):\n        template = \"JSON_TYPE(%s, %%s) IS NULL\"\n        if not self.rhs:\n            template = \"JSON_TYPE(%s, %%s) IS NOT NULL\"\n        return HasKey(self.lhs.lhs, self.lhs.key_name).as_sql(\n            compiler,\n            connection,\n            template=template,\n        )",
+        "after": "    def as_sqlite(self, compiler, connection):\n        template = \"JSON_TYPE(%s, %%s) IS NULL\"\n        if not self.rhs:\n            template = \"JSON_TYPE(%s, %%s) IS NOT NULL\"\n        \n        # For numeric keys, use the original path compilation to handle array indices correctly\n        try:\n            int(self.lhs.key_name)\n            # Numeric key - might be an array index, use original compile_json_path\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(compiler, connection)\n            json_path = compile_json_path(lhs_key_transforms)\n            sql = template % lhs\n            return sql, tuple(lhs_params) + (json_path,)\n        except ValueError:\n            # Non-numeric key - use HasKey which treats it as an object key\n            return HasKey(self.lhs.lhs, self.lhs.key_name).as_sql(\n                compiler,\n                connection,\n                template=template,\n            )",
+        "explanation": "classic_swe step 69 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/fields/json.py b/django/db/models/fields/json.py\nindex fdca700c9d..e41e98f451 100644\n--- a/django/db/models/fields/json.py\n+++ b/django/db/models/fields/json.py\n@@ -139,6 +139,18 @@ def compile_json_path(key_transforms, include_root=True):\n     return \"\".join(path)\n \n \n+def compile_json_path_for_has_key(key_transforms, include_root=True):\n+    \"\"\"\n+    Compile a JSON path for has_key lookups, treating all keys as object keys.\n+    This is different from compile_json_path which treats numeric strings as array indices.\n+    \"\"\"\n+    path = [\"$\"] if include_root else []\n+    for key_transform in key_transforms:\n+        path.append(\".\")\n+        path.append(json.dumps(key_transform))\n+    return \"\".join(path)\n+\n+\n class DataContains(PostgresOperatorLookup):\n     lookup_name = \"contains\"\n     postgres_operator = \"@>\"\n@@ -178,6 +190,8 @@ class HasKeyLookup(PostgresOperatorLookup):\n             lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                 compiler, connection\n             )\n+            # Use the original compile_json_path for the path to the object,\n+            # as it may contain array indices\n             lhs_json_path = compile_json_path(lhs_key_transforms)\n         else:\n             lhs, lhs_params = self.process_lhs(compiler, connection)\n@@ -191,15 +205,21 @@ class HasKeyLookup(PostgresOperatorLookup):\n         for key in rhs:\n             if isinstance(key, KeyTransform):\n                 *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n+                # For KeyTransform, we need to split the path:\n+                # - All but the last element use normal path compilation (may include array indices)\n+                # - The last element is always an object key for has_key lookups\n+                if len(rhs_key_transforms) > 1:\n+                    path_to_object = compile_json_path(rhs_key_transforms[:-1], include_root=False)\n+                    final_key = compile_json_path_for_has_key([rhs_key_transforms[-1]], include_root=False)\n+                    rhs_path = path_to_object + final_key\n+                else:\n+                    # Single key, treat as object key\n+                    rhs_path = compile_json_path_for_has_key(rhs_key_transforms, include_root=False)\n             else:\n-                rhs_key_transforms = [key]\n-            rhs_params.append(\n-                \"%s%s\"\n-                % (\n-                    lhs_json_path,\n-                    compile_json_path(rhs_key_transforms, include_root=False),\n-                )\n-            )\n+                # Simple string key, always treat as object key\n+                rhs_path = compile_json_path_for_has_key([key], include_root=False)\n+            \n+            rhs_params.append(\"%s%s\" % (lhs_json_path, rhs_path))\n         # Add condition for each key.\n         if self.logical_operator:\n             sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n@@ -401,11 +421,22 @@ class KeyTransformIsNull(lookups.IsNull):\n         template = \"JSON_TYPE(%s, %%s) IS NULL\"\n         if not self.rhs:\n             template = \"JSON_TYPE(%s, %%s) IS NOT NULL\"\n-        return HasKey(self.lhs.lhs, self.lhs.key_name).as_sql(\n-            compiler,\n-            connection,\n-            template=template,\n-        )\n+        \n+        # For numeric keys, use the original path compilation to handle array indices correctly\n+        try:\n+            int(self.lhs.key_name)\n+            # Numeric key - might be an array index, use original compile_json_path\n+            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(compiler, connection)\n+            json_path = compile_json_path(lhs_key_transforms)\n+            sql = template % lhs\n+            return sql, tuple(lhs_params) + (json_path,)\n+        except ValueError:\n+            # Non-numeric key - use HasKey which treats it as an object key\n+            return HasKey(self.lhs.lhs, self.lhs.key_name).as_sql(\n+                compiler,\n+                connection,\n+                template=template,\n+            )\n \n \n class KeyTransformIn(lookups.In):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      5,
+      10,
+      11,
+      12
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      5,
+      10,
+      11,
+      12
+    ],
+    "edit_list_after_file_min": [
+      1,
+      2,
+      5,
+      10,
+      11,
+      12
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "greedy_removal_edit_still_crashes": 2,
+    "greedy_removal_edit_not_applicable": 4,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      5,
+      10,
+      11
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2,
+      5,
+      10,
+      11
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 5,
+  "reduction": "6_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "def compile_json_path(key_transforms, include_root=True):\n    path = [\"$\"] if include_root else []\n    for key_transform in key_transforms:\n        try:\n            num = int(key_transform)\n        except ValueError:  # non-integer\n            path.append(\".\")\n            path.append(json.dumps(key_transform))\n        else:\n            path.append(\"[%s]\" % num)\n    return \"\".join(path)",
+          "after": "def compile_json_path(key_transforms, include_root=True):\n    path = [\"$\"] if include_root else []\n    for key_transform in key_transforms:\n        try:\n            num = int(key_transform)\n        except ValueError:  # non-integer\n            path.append(\".\")\n            path.append(json.dumps(key_transform))\n        else:\n            path.append(\"[%s]\" % num)\n    return \"\".join(path)\n\n\ndef compile_json_path_for_has_key(key_transforms, include_root=True):\n    \"\"\"\n    Compile a JSON path for has_key lookups, treating all keys as object keys.\n    This is different from compile_json_path which treats numeric strings as array indices.\n    \"\"\"\n    path = [\"$\"] if include_root else []\n    for key_transform in key_transforms:\n        path.append(\".\")\n        path.append(json.dumps(key_transform))\n    return \"\".join(path)",
+          "explanation": "classic_swe step 14 #1"
+        },
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            lhs_json_path = compile_json_path(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+          "after": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            lhs_json_path = compile_json_path_for_has_key(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+          "explanation": "classic_swe step 15 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            lhs_json_path = compile_json_path_for_has_key(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+          "after": "    def as_sql(self, compiler, connection, template=None):\n        # Process JSON path from the left-hand side.\n        if isinstance(self.lhs, KeyTransform):\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(\n                compiler, connection\n            )\n            # Use the original compile_json_path for the path to the object,\n            # as it may contain array indices\n            lhs_json_path = compile_json_path(lhs_key_transforms)\n        else:\n            lhs, lhs_params = self.process_lhs(compiler, connection)\n            lhs_json_path = \"$\"\n        sql = template % lhs\n        # Process JSON path from the right-hand side.\n        rhs = self.rhs\n        rhs_params = []\n        if not isinstance(rhs, (list, tuple)):\n            rhs = [rhs]\n        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            # Use compile_json_path_for_has_key only for the final key being checked\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )\n        # Add condition for each key.\n        if self.logical_operator:\n            sql = \"(%s)\" % self.logical_operator.join([sql] * len(rhs_params))\n        return sql, tuple(lhs_params) + tuple(rhs_params)",
+          "explanation": "classic_swe step 36 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n            else:\n                rhs_key_transforms = [key]\n            # Use compile_json_path_for_has_key only for the final key being checked\n            rhs_params.append(\n                \"%s%s\"\n                % (\n                    lhs_json_path,\n                    compile_json_path_for_has_key(rhs_key_transforms, include_root=False),\n                )\n            )",
+          "after": "        for key in rhs:\n            if isinstance(key, KeyTransform):\n                *_, rhs_key_transforms = key.preprocess_lhs(compiler, connection)\n                # For KeyTransform, we need to split the path:\n                # - All but the last element use normal path compilation (may include array indices)\n                # - The last element is always an object key for has_key lookups\n                if len(rhs_key_transforms) > 1:\n                    path_to_object = compile_json_path(rhs_key_transforms[:-1], include_root=False)\n                    final_key = compile_json_path_for_has_key([rhs_key_transforms[-1]], include_root=False)\n                    rhs_path = path_to_object + final_key\n                else:\n                    # Single key, treat as object key\n                    rhs_path = compile_json_path_for_has_key(rhs_key_transforms, include_root=False)\n            else:\n                # Simple string key, always treat as object key\n                rhs_path = compile_json_path_for_has_key([key], include_root=False)\n            \n            rhs_params.append(\"%s%s\" % (lhs_json_path, rhs_path))",
+          "explanation": "classic_swe step 48 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "    def as_sqlite(self, compiler, connection):\n        template = \"JSON_TYPE(%s, %%s) IS NULL\"\n        if not self.rhs:\n            template = \"JSON_TYPE(%s, %%s) IS NOT NULL\"\n        return HasKey(self.lhs.lhs, self.lhs.key_name).as_sql(\n            compiler,\n            connection,\n            template=template,\n        )",
+          "after": "    def as_sqlite(self, compiler, connection):\n        template = \"JSON_TYPE(%s, %%s) IS NULL\"\n        if not self.rhs:\n            template = \"JSON_TYPE(%s, %%s) IS NOT NULL\"\n        \n        # For numeric keys, use the original path compilation to handle array indices correctly\n        try:\n            int(self.lhs.key_name)\n            # Numeric key - might be an array index, use original compile_json_path\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(compiler, connection)\n            json_path = compile_json_path(lhs_key_transforms)\n            sql = template % lhs\n            return sql, tuple(lhs_params) + (json_path,)\n        except ValueError:\n            # Non-numeric key - use HasKey which treats it as an object key\n            return HasKey(self.lhs.lhs, self.lhs.key_name).as_sql(\n                compiler,\n                connection,\n                template=template,\n            )",
+          "explanation": "classic_swe step 69 #1"
+        },
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "    def as_oracle(self, compiler, connection):\n        sql, params = HasKey(\n            self.lhs.lhs,\n            self.lhs.key_name,\n        ).as_oracle(compiler, connection)\n        if not self.rhs:\n            return sql, params\n        # Column doesn't have a key or IS NULL.\n        lhs, lhs_params, _ = self.lhs.preprocess_lhs(compiler, connection)\n        return \"(NOT %s OR %s IS NULL)\" % (sql, lhs), tuple(params) + tuple(lhs_params)",
+          "after": "    def as_oracle(self, compiler, connection):\n        # For numeric keys, use the original path compilation to handle array indices correctly\n        try:\n            int(self.lhs.key_name)\n            # Numeric key - might be an array index, use original compile_json_path\n            lhs, lhs_params, lhs_key_transforms = self.lhs.preprocess_lhs(compiler, connection)\n            json_path = compile_json_path(lhs_key_transforms)\n            if not self.rhs:\n                sql = \"JSON_EXISTS(%s, '%s')\" % (lhs, json_path)\n                return sql, tuple(lhs_params)\n            else:\n                sql = \"(NOT JSON_EXISTS(%s, '%s') OR %s IS NULL)\" % (lhs, json_path, lhs)\n                return sql, tuple(lhs_params) * 2\n        except ValueError:\n            # Non-numeric key - use HasKey which treats it as an object key\n            sql, params = HasKey(\n                self.lhs.lhs,\n                self.lhs.key_name,\n            ).as_oracle(compiler, connection)\n            if not self.rhs:\n                return sql, params\n            # Column doesn't have a key or IS NULL.\n            lhs, lhs_params, _ = self.lhs.preprocess_lhs(compiler, connection)\n            return \"(NOT %s OR %s IS NULL)\" % (sql, lhs), tuple(params) + tuple(lhs_params)",
+          "explanation": "classic_swe step 70 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 78,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 78,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/fields/json.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/fields/json.py"
+    ],
+    "gold_files": [
+      "django/db/models/fields/json.py"
+    ],
+    "minimized_hunks": 4,
+    "gold_hunks": 6,
+    "minimized_added_lines": 44,
+    "minimized_deleted_lines": 13,
+    "gold_added_lines": 16,
+    "gold_deleted_lines": 10
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,118 @@
+diff --git a/fs/afs/cell.c b/fs/afs/cell.c
+index 0168bbf53fe0..4486a2167984 100644
+--- a/fs/afs/cell.c
++++ b/fs/afs/cell.c
+@@ -549,6 +549,21 @@ struct afs_cell *afs_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)
+ 	return cell;
+ }
+ 
++
++/*
++ * Get a reference on a cell record if it is not zero.
++ */
++struct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)
++{
++	if (refcount_inc_not_zero(&cell->ref)) {
++		trace_afs_cell(cell->debug_id, refcount_read(&cell->ref),
++			       atomic_read(&cell->active), reason);
++		return cell;
++	}
++	return NULL;
++}
++
++
+ /*
+  * Drop a reference on a cell record.
+  */
+diff --git a/fs/afs/dynroot.c b/fs/afs/dynroot.c
+index 691e0ae607a1..e3fc9bbf3ad7 100644
+--- a/fs/afs/dynroot.c
++++ b/fs/afs/dynroot.c
+@@ -282,23 +282,29 @@ static struct dentry *afs_lookup_atcell(struct inode *dir, struct dentry *dentry
+  */
+ static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)
+ {
+-	const struct afs_cell *cell;
++	struct afs_cell *cell;
+ 	loff_t newpos;
++	unsigned int ix;
+ 
+ 	_enter("%llu", ctx->pos);
+ 
+ 	for (;;) {
+-		unsigned int ix = ctx->pos >> 1;
+-
++		rcu_read_lock();
++		ix = ctx->pos >> 1;
+ 		cell = idr_get_next(&net->cells_dyn_ino, &ix);
+-		if (!cell)
++		if (!cell) {
++			rcu_read_unlock();
+ 			return 0;
++		}
++
+ 		if (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||
+-		    READ_ONCE(cell->state) == AFS_CELL_DEAD) {
+-			ctx->pos += 2;
+-			ctx->pos &= ~1;
++		    READ_ONCE(cell->state) == AFS_CELL_DEAD ||
++		    !afs_try_get_cell(cell, afs_cell_trace_get_atcell)) {
++			rcu_read_unlock();
++			ctx->pos = (ix + 1) << 1;
+ 			continue;
+ 		}
++		rcu_read_unlock();
+ 
+ 		newpos = ix << 1;
+ 		if (newpos > ctx->pos)
+@@ -308,16 +314,21 @@ static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ct
+ 
+ 		if ((ctx->pos & 1) == 0) {
+ 			if (!dir_emit(ctx, cell->name, cell->name_len,
+-				      cell->dynroot_ino, DT_DIR))
++				      cell->dynroot_ino, DT_DIR)) {
++				afs_put_cell(cell, afs_cell_trace_put_atcell);
+ 				return 0;
++			}
+ 			ctx->pos++;
+ 		}
+ 		if ((ctx->pos & 1) == 1) {
+ 			if (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,
+-				      cell->dynroot_ino + 1, DT_DIR))
++				      cell->dynroot_ino + 1, DT_DIR)) {
++				afs_put_cell(cell, afs_cell_trace_put_atcell);
+ 				return 0;
++			}
+ 			ctx->pos++;
+ 		}
++		afs_put_cell(cell, afs_cell_trace_put_atcell);
+ 	}
+ 	return 0;
+ }
+@@ -348,13 +359,12 @@ static int afs_dynroot_readdir(struct file *file, struct dir_context *ctx)
+ 	}
+ 
+ 	if ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {
+-		rcu_read_lock();
+ 		ret = afs_dynroot_readdir_cells(net, ctx);
+-		rcu_read_unlock();
+ 	}
+ 	return ret;
+ }
+ 
++
+ static const struct file_operations afs_dynroot_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= generic_read_dir,
+diff --git a/fs/afs/internal.h b/fs/afs/internal.h
+index 440b0e731093..3c56e8b5d3d0 100644
+--- a/fs/afs/internal.h
++++ b/fs/afs/internal.h
+@@ -1047,6 +1047,7 @@ struct afs_cell *afs_lookup_cell(struct afs_net *net,
+ extern struct afs_cell *afs_use_cell(struct afs_cell *, enum afs_cell_trace);
+ void afs_unuse_cell(struct afs_cell *cell, enum afs_cell_trace reason);
+ extern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);
++extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);
+ extern void afs_see_cell(struct afs_cell *, enum afs_cell_trace);
+ extern void afs_put_cell(struct afs_cell *, enum afs_cell_trace);
+ extern void afs_queue_cell(struct afs_cell *, enum afs_cell_trace);

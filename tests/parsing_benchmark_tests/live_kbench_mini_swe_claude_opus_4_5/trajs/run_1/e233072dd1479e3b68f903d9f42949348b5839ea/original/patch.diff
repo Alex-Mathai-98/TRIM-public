@@ -1,0 +1,54 @@
+diff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c
+index 6fdb2d96777a..7bba3f65fe8d 100644
+--- a/net/smc/smc_diag.c
++++ b/net/smc/smc_diag.c
+@@ -35,24 +35,30 @@ static struct smc_diag_dump_ctx *smc_dump_context(struct netlink_callback *cb)
+ static void smc_diag_msg_common_fill(struct smc_diag_msg *r, struct sock *sk)
+ {
+ 	struct smc_sock *smc = smc_sk(sk);
++	struct socket *clcsock;
++	struct sock *clcsk;
+ 
+ 	memset(r, 0, sizeof(*r));
+ 	r->diag_family = sk->sk_family;
+ 	sock_diag_save_cookie(sk, r->id.idiag_cookie);
+-	if (!smc->clcsock)
++	clcsock = READ_ONCE(smc->clcsock);
++	if (!clcsock)
+ 		return;
+-	r->id.idiag_sport = htons(smc->clcsock->sk->sk_num);
+-	r->id.idiag_dport = smc->clcsock->sk->sk_dport;
+-	r->id.idiag_if = smc->clcsock->sk->sk_bound_dev_if;
++	clcsk = READ_ONCE(clcsock->sk);
++	if (!clcsk)
++		return;
++	r->id.idiag_sport = htons(clcsk->sk_num);
++	r->id.idiag_dport = clcsk->sk_dport;
++	r->id.idiag_if = clcsk->sk_bound_dev_if;
+ 	if (sk->sk_protocol == SMCPROTO_SMC) {
+-		r->id.idiag_src[0] = smc->clcsock->sk->sk_rcv_saddr;
+-		r->id.idiag_dst[0] = smc->clcsock->sk->sk_daddr;
++		r->id.idiag_src[0] = clcsk->sk_rcv_saddr;
++		r->id.idiag_dst[0] = clcsk->sk_daddr;
+ #if IS_ENABLED(CONFIG_IPV6)
+ 	} else if (sk->sk_protocol == SMCPROTO_SMC6) {
+-		memcpy(&r->id.idiag_src, &smc->clcsock->sk->sk_v6_rcv_saddr,
+-		       sizeof(smc->clcsock->sk->sk_v6_rcv_saddr));
+-		memcpy(&r->id.idiag_dst, &smc->clcsock->sk->sk_v6_daddr,
+-		       sizeof(smc->clcsock->sk->sk_v6_daddr));
++		memcpy(&r->id.idiag_src, &clcsk->sk_v6_rcv_saddr,
++		       sizeof(clcsk->sk_v6_rcv_saddr));
++		memcpy(&r->id.idiag_dst, &clcsk->sk_v6_daddr,
++		       sizeof(clcsk->sk_v6_daddr));
+ #endif
+ 	}
+ }
+@@ -212,6 +218,8 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,
+ 	sk_for_each(sk, head) {
+ 		if (!net_eq(sock_net(sk), net))
+ 			continue;
++		if (sk->sk_prot != prot)
++			continue;
+ 		if (num < snum)
+ 			goto next;
+ 		rc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh), bc);

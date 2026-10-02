@@ -1,0 +1,37 @@
+diff --git a/fs/minix/namei.c b/fs/minix/namei.c
+index 8938536d8d3c..68d2dd75b97f 100644
+--- a/fs/minix/namei.c
++++ b/fs/minix/namei.c
+@@ -161,15 +161,24 @@ static int minix_unlink(struct inode * dir, struct dentry *dentry)
+ static int minix_rmdir(struct inode * dir, struct dentry *dentry)
+ {
+ 	struct inode * inode = d_inode(dentry);
+-	int err = -ENOTEMPTY;
+-
+-	if (minix_empty_dir(inode)) {
+-		err = minix_unlink(dir, dentry);
+-		if (!err) {
+-			inode_dec_link_count(dir);
+-			inode_dec_link_count(inode);
+-		}
++	int err = -EFSCORRUPTED;
++
++	if (dir->i_nlink <= 2) {
++		minix_error_inode(dir, "inode has corrupted nlink");
++		goto out;
++	}
++
++	err = -ENOTEMPTY;
++	if (!minix_empty_dir(inode))
++		goto out;
++
++	err = minix_unlink(dir, dentry);
++	if (!err) {
++		inode_dec_link_count(dir);
++		inode_dec_link_count(inode);
+ 	}
++
++out:
+ 	return err;
+ }
+ 

@@ -1,0 +1,44 @@
+diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c
+index c9e65e9088b3..670d884b2ce1 100644
+--- a/drivers/hid/hid-steam.c
++++ b/drivers/hid/hid-steam.c
+@@ -825,14 +825,15 @@ static int steam_input_register(struct steam_device *steam)
+ 	}
+ #endif
+ 
++	rcu_assign_pointer(steam->input, input);
+ 	ret = input_register_device(input);
+ 	if (ret)
+ 		goto input_register_fail;
+ 
+-	rcu_assign_pointer(steam->input, input);
+ 	return 0;
+ 
+ input_register_fail:
++	RCU_INIT_POINTER(steam->input, NULL);
+ 	input_free_device(input);
+ 	return ret;
+ }
+@@ -1327,10 +1328,6 @@ static void steam_remove(struct hid_device *hdev)
+ 		return;
+ 	}
+ 
+-	cancel_delayed_work_sync(&steam->mode_switch);
+-	cancel_work_sync(&steam->work_connect);
+-	cancel_work_sync(&steam->rumble_work);
+-	cancel_work_sync(&steam->unregister_work);
+ 	hid_destroy_device(steam->client_hdev);
+ 	steam->client_hdev = NULL;
+ 	steam->client_opened = 0;
+@@ -1339,6 +1336,11 @@ static void steam_remove(struct hid_device *hdev)
+ 	}
+ 	hid_hw_close(hdev);
+ 	hid_hw_stop(hdev);
++
++	cancel_delayed_work_sync(&steam->mode_switch);
++	cancel_work_sync(&steam->work_connect);
++	cancel_work_sync(&steam->rumble_work);
++	cancel_work_sync(&steam->unregister_work);
+ 	steam_unregister(steam);
+ }
+ 

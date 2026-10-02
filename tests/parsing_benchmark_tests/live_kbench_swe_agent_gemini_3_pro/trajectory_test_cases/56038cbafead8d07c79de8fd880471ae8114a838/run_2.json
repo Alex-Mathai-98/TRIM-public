@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int smack_watch_key(struct key *key)\n{\n\tstruct smk_audit_info ad;\n\tstruct smack_known *tkp = smk_of_current();\n\tstruct smack_known **blob;\n\tstruct smack_known *skp;\n\tint rc;\n\n\tif (key == NULL)\n\t\treturn -EINVAL;\n\t/*\n\t * If the key hasn't been initialized give it access so that\n\t * it may do so.\n\t */\n\tif (key->security == NULL)\n\t\treturn 0;\n\t/*\n\t * This should not occur\n\t */\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n\tblob = smack_key(key);\n\tskp = *blob;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, skp, MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, skp, MAY_READ, rc);\n\treturn rc;\n}",
+          "before": "static int smack_watch_key(struct key *key)\n{\n\tstruct smk_audit_info ad;\n\tstruct smack_known *tkp = smk_of_current();\n\tint rc;\n\n\tif (key == NULL)\n\t\treturn -EINVAL;\n\t/*\n\t * If the key hasn't been initialized give it access so that\n\t * it may do so.\n\t */\n\tif (key->security == NULL)\n\t\treturn 0;\n\t/*\n\t * This should not occur\n\t */\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, key->security, MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);\n\treturn rc;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/smack/smack_lsm.c b/security/smack/smack_lsm.c\nindex da0c2bffbd08..bb2df5a0dfa9 100644\n--- a/security/smack/smack_lsm.c\n+++ b/security/smack/smack_lsm.c\n@@ -4629,6 +4629,8 @@ static int smack_watch_key(struct key *key)\n {\n \tstruct smk_audit_info ad;\n \tstruct smack_known *tkp = smk_of_current();\n+\tstruct smack_known **blob;\n+\tstruct smack_known *skp;\n \tint rc;\n \n \tif (key == NULL)\n@@ -4648,13 +4650,16 @@ static int smack_watch_key(struct key *key)\n \tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n \t\treturn 0;\n \n+\tblob = smack_key(key);\n+\tskp = *blob;\n+\n #ifdef CONFIG_AUDIT\n \tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n \tad.a.u.key_struct.key = key->serial;\n \tad.a.u.key_struct.key_desc = key->description;\n #endif\n-\trc = smk_access(tkp, key->security, MAY_READ, &ad);\n-\trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);\n+\trc = smk_access(tkp, skp, MAY_READ, &ad);\n+\trc = smk_bu_note(\"key watch\", tkp, skp, MAY_READ, rc);\n \treturn rc;\n }\n #endif /* CONFIG_KEY_NOTIFICATIONS */",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 16
+}

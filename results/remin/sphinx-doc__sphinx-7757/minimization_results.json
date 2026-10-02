@@ -1,0 +1,114 @@
+{
+  "bug_id": "sphinx-doc__sphinx-7757",
+  "short_path": [
+    [
+      {
+        "filename": "sphinx/util/inspect.py",
+        "before": "    if hasattr(args, \"posonlyargs\"):\n        for arg in args.posonlyargs:  # type: ignore\n            annotation = ast_unparse(arg.annotation) or Parameter.empty\n            params.append(Parameter(arg.arg, Parameter.POSITIONAL_ONLY,\n                                    annotation=annotation))",
+        "after": "    if hasattr(args, \"posonlyargs\"):\n        # Calculate total positional arguments to determine which ones have defaults\n        total_positional = len(args.posonlyargs) + len(args.args)  # type: ignore\n        defaults_start_index = total_positional - len(args.defaults)\n        \n        for i, arg in enumerate(args.posonlyargs):  # type: ignore\n            annotation = ast_unparse(arg.annotation) or Parameter.empty\n            \n            # Check if this positional-only argument has a default value\n            if i >= defaults_start_index:\n                default_index = i - defaults_start_index\n                default = ast_unparse(args.defaults[default_index])\n            else:\n                default = Parameter.empty\n                \n            params.append(Parameter(arg.arg, Parameter.POSITIONAL_ONLY,\n                                    default=default, annotation=annotation))",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py\nindex 15f0d66e2..4180ab8a2 100644\n--- a/sphinx/util/inspect.py\n+++ b/sphinx/util/inspect.py\n@@ -521,10 +521,22 @@ def signature_from_str(signature: str) -> inspect.Signature:\n     params = []\n \n     if hasattr(args, \"posonlyargs\"):\n-        for arg in args.posonlyargs:  # type: ignore\n+        # Calculate total positional arguments to determine which ones have defaults\n+        total_positional = len(args.posonlyargs) + len(args.args)  # type: ignore\n+        defaults_start_index = total_positional - len(args.defaults)\n+        \n+        for i, arg in enumerate(args.posonlyargs):  # type: ignore\n             annotation = ast_unparse(arg.annotation) or Parameter.empty\n+            \n+            # Check if this positional-only argument has a default value\n+            if i >= defaults_start_index:\n+                default_index = i - defaults_start_index\n+                default = ast_unparse(args.defaults[default_index])\n+            else:\n+                default = Parameter.empty\n+                \n             params.append(Parameter(arg.arg, Parameter.POSITIONAL_ONLY,\n-                                    annotation=annotation))\n+                                    default=default, annotation=annotation))\n \n     for i, arg in enumerate(args.args):\n         if len(args.args) - i <= len(args.defaults):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      3,
+      4
+    ],
+    "edit_list_after_file_min": [
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash": 2,
+    "edit_list_after_greedy": [
+      3
+    ],
+    "edit_list_after_refinement": [
+      3
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 1,
+  "reduction": "2_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sphinx/util/inspect.py",
+          "before": "    if hasattr(args, \"posonlyargs\"):\n        for arg in args.posonlyargs:  # type: ignore\n            annotation = ast_unparse(arg.annotation) or Parameter.empty\n            params.append(Parameter(arg.arg, Parameter.POSITIONAL_ONLY,\n                                    annotation=annotation))",
+          "after": "    if hasattr(args, \"posonlyargs\"):\n        # Calculate total positional arguments to determine which ones have defaults\n        total_positional = len(args.posonlyargs) + len(args.args)  # type: ignore\n        defaults_start_index = total_positional - len(args.defaults)\n        \n        for i, arg in enumerate(args.posonlyargs):  # type: ignore\n            annotation = ast_unparse(arg.annotation) or Parameter.empty\n            \n            # Check if this positional-only argument has a default value\n            if i >= defaults_start_index:\n                default_index = i - defaults_start_index\n                default = ast_unparse(args.defaults[default_index])\n            else:\n                default = Parameter.empty\n                \n            params.append(Parameter(arg.arg, Parameter.POSITIONAL_ONLY,\n                                    default=default, annotation=annotation))",
+          "explanation": "classic_swe step 18 #1"
+        },
+        {
+          "filename": "sphinx/util/inspect.py",
+          "before": "    for i, arg in enumerate(args.args):\n        if len(args.args) - i <= len(args.defaults):\n            default = ast_unparse(args.defaults[-len(args.args) + i])\n        else:\n            default = Parameter.empty\n\n        annotation = ast_unparse(arg.annotation) or Parameter.empty\n        params.append(Parameter(arg.arg, Parameter.POSITIONAL_OR_KEYWORD,\n                                default=default, annotation=annotation))",
+          "after": "    for i, arg in enumerate(args.args):\n        # Calculate the absolute index of this argument among all positional arguments\n        if hasattr(args, \"posonlyargs\"):\n            absolute_index = len(args.posonlyargs) + i  # type: ignore\n            total_positional = len(args.posonlyargs) + len(args.args)  # type: ignore\n        else:\n            absolute_index = i\n            total_positional = len(args.args)\n            \n        defaults_start_index = total_positional - len(args.defaults)\n        \n        # Check if this argument has a default value\n        if absolute_index >= defaults_start_index:\n            default_index = absolute_index - defaults_start_index\n            default = ast_unparse(args.defaults[default_index])\n        else:\n            default = Parameter.empty\n\n        annotation = ast_unparse(arg.annotation) or Parameter.empty\n        params.append(Parameter(arg.arg, Parameter.POSITIONAL_OR_KEYWORD,\n                                default=default, annotation=annotation))",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 33,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 33,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sphinx/util/inspect.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sphinx/util/inspect.py"
+    ],
+    "gold_files": [
+      "sphinx/util/inspect.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 14,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 20,
+    "gold_deleted_lines": 5
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int atmtcp_recv_control(const struct atmtcp_control *msg,\n\t\t\t       struct atm_dev *dev)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\tstruct atm_vcc *walk_vcc;\n\tstruct hlist_head *head;\n\tstruct sock *s;\n\tint i;\n\tint matches = 0;\n\n\tread_lock(&vcc_sklist_lock);\n\tfor(i = 0; i < VCC_HTABLE_SIZE; ++i) {\n\t\thead = &vcc_hash[i];\n\t\tsk_for_each(s, head) {\n\t\t\twalk_vcc = atm_sk(s);\n\t\t\tif (walk_vcc->dev != dev)\n\t\t\t\tcontinue;\n\t\t\tif (walk_vcc == vcc) {\n\t\t\t\tsock_hold(s);\n\t\t\t\tmatches = 1;\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\t\tif (matches)\n\t\t\tbreak;\n\t}\n\tread_unlock(&vcc_sklist_lock);\n\tif (!matches)\n\t\treturn -EUNATCH;\n\n\tvcc->vpi = msg->addr.sap_addr.vpi;\n\tvcc->vci = msg->addr.sap_addr.vci;\n\tvcc->qos = msg->qos;\n\tsk_atm(vcc)->sk_err = -msg->result;\n\tswitch (msg->type) {\n\t    case ATMTCP_CTRL_OPEN:\n\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n\t\tbreak;\n\t    case ATMTCP_CTRL_CLOSE:\n\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n\t\tbreak;\n\t    default:\n\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n\t\t    msg->type);\n\t\tsock_put(sk_atm(vcc));\n\t\treturn -EINVAL;\n\t}\n\twake_up(sk_sleep(sk_atm(vcc)));\n\tsock_put(sk_atm(vcc));\n\treturn 0;\n}",
+          "before": "static int atmtcp_recv_control(const struct atmtcp_control *msg)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\n\tvcc->vpi = msg->addr.sap_addr.vpi;\n\tvcc->vci = msg->addr.sap_addr.vci;\n\tvcc->qos = msg->qos;\n\tsk_atm(vcc)->sk_err = -msg->result;\n\tswitch (msg->type) {\n\t    case ATMTCP_CTRL_OPEN:\n\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n\t\tbreak;\n\t    case ATMTCP_CTRL_CLOSE:\n\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n\t\tbreak;\n\t    default:\n\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n\t\t    msg->type);\n\t\treturn -EINVAL;\n\t}\n\twake_up(sk_sleep(sk_atm(vcc)));\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -89 +89,2 @@\n-static int atmtcp_recv_control(const struct atmtcp_control *msg)\n+static int atmtcp_recv_control(const struct atmtcp_control *msg,\n+\t\t\t       struct atm_dev *dev)\n@@ -91,0 +93,25 @@\n+\tstruct atm_vcc *walk_vcc;\n+\tstruct hlist_head *head;\n+\tstruct sock *s;\n+\tint i;\n+\tint matches = 0;\n+\n+\tread_lock(&vcc_sklist_lock);\n+\tfor(i = 0; i < VCC_HTABLE_SIZE; ++i) {\n+\t\thead = &vcc_hash[i];\n+\t\tsk_for_each(s, head) {\n+\t\t\twalk_vcc = atm_sk(s);\n+\t\t\tif (walk_vcc->dev != dev)\n+\t\t\t\tcontinue;\n+\t\t\tif (walk_vcc == vcc) {\n+\t\t\t\tsock_hold(s);\n+\t\t\t\tmatches = 1;\n+\t\t\t\tbreak;\n+\t\t\t}\n+\t\t}\n+\t\tif (matches)\n+\t\t\tbreak;\n+\t}\n+\tread_unlock(&vcc_sklist_lock);\n+\tif (!matches)\n+\t\treturn -EUNATCH;\n@@ -106,0 +133 @@\n+\t\tsock_put(sk_atm(vcc));\n@@ -109,0 +137 @@\n+\tsock_put(sk_atm(vcc));",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 23",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        },
+        {
+          "after": "\n\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data, dev);\n\t\tgoto done;\n\t}\n",
+          "before": "\n\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -326 +326 @@\n-\t\t    (struct atmtcp_control *) skb->data);\n+\t\t    (struct atmtcp_control *) skb->data, dev);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 25",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 25
+}

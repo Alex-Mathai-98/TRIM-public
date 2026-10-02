@@ -1,0 +1,60 @@
+diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c
+index e4fa00abde6a..a9aa1e70d7d7 100644
+--- a/net/netfilter/ipset/ip_set_bitmap_ip.c
++++ b/net/netfilter/ipset/ip_set_bitmap_ip.c
+@@ -52,7 +52,7 @@ struct bitmap_ip {
+ 
+ /* ADT structure for generic function args */
+ struct bitmap_ip_adt_elem {
+-	u16 id;
++	u32 id;
+ };
+ 
+ static u32
+@@ -71,7 +71,7 @@ bitmap_ip_do_test(const struct bitmap_ip_adt_elem *e,
+ }
+ 
+ static int
+-bitmap_ip_gc_test(u16 id, const struct bitmap_ip *map, size_t dsize)
++bitmap_ip_gc_test(u32 id, const struct bitmap_ip *map, size_t dsize)
+ {
+ 	return !!test_bit(id, map->members);
+ }
+@@ -80,6 +80,9 @@ static int
+ bitmap_ip_do_add(const struct bitmap_ip_adt_elem *e, struct bitmap_ip *map,
+ 		 u32 flags, size_t dsize)
+ {
++	if (e->id >= map->elements) {
++		pr_err("bitmap_ip_do_add: id %u out of bounds elements %u\n", e->id, map->elements);
++	}
+ 	return !!test_bit(e->id, map->members);
+ }
+ 
+@@ -156,6 +159,8 @@ bitmap_ip_uadt(struct ip_set *set, struct nlattr *tb[],
+ 
+ 	if (adt == IPSET_TEST) {
+ 		e.id = ip_to_id(map, ip);
++		if (e.id >= map->elements)
++			return -IPSET_ERR_BITMAP_RANGE;
+ 		return adtfn(set, &e, &ext, &ext, flags);
+ 	}
+ 
+@@ -183,6 +188,8 @@ bitmap_ip_uadt(struct ip_set *set, struct nlattr *tb[],
+ 
+ 	for (; !before(ip_to, ip); ip += map->hosts) {
+ 		e.id = ip_to_id(map, ip);
++		if (e.id >= map->elements)
++			return -IPSET_ERR_BITMAP_RANGE;
+ 		ret = adtfn(set, &e, &ext, &ext, flags);
+ 
+ 		if (ret && !ip_set_eexist(ret, flags))
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..e4dbdcf99e66
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "b3bf3714238896727b6268c2809710bedb7f21d3": 92790
++}
+\ No newline at end of file

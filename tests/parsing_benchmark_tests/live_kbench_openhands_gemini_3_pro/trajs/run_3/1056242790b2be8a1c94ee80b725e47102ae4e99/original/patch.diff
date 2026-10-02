@@ -1,0 +1,53 @@
+diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c
+index abf4aadca96c..97cc790c5820 100644
+--- a/drivers/iommu/iommufd/io_pagetable.c
++++ b/drivers/iommu/iommufd/io_pagetable.c
+@@ -117,6 +117,9 @@ static int iopt_alloc_iova(struct io_pagetable *iopt, unsigned long *iova,
+ 
+ 	lockdep_assert_held(&iopt->iova_rwsem);
+ 
++	if (page_offset & (iopt->iova_alignment - 1))
++		return -EINVAL;
++
+ 	/* Protect roundup_pow-of_two() from overflow */
+ 	if (length == 0 || length >= ULONG_MAX / 2)
+ 		return -EOVERFLOW;
+@@ -149,7 +152,7 @@ static int iopt_alloc_iova(struct io_pagetable *iopt, unsigned long *iova,
+ 			allowed_span.last_used = ULONG_MAX - PAGE_SIZE;
+ 			allowed_span.is_hole = false;
+ 		}
+-
++		
+ 		if (!__alloc_iova_check_used(&allowed_span, length,
+ 					     iova_alignment, page_offset))
+ 			continue;
+@@ -163,6 +166,19 @@ static int iopt_alloc_iova(struct io_pagetable *iopt, unsigned long *iova,
+ 				continue;
+ 
+ 			*iova = used_span.start_hole;
++			/*
++			 * The double span iterator is supposed to find a hole in
++			 * both trees, but in some corner cases it may return a
++			 * start_hole that still intersects with one or the
++			 * other. Double check that the IOVA is actually free.
++			 */
++			if (iopt_reserved_iter_first(iopt, *iova,
++						     *iova + length - 1))
++				continue;
++			if (iopt_area_iter_first(iopt, *iova,
++						 *iova + length - 1))
++				continue;
++
+ 			return 0;
+ 		}
+ 	}
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..c36dbbeb6ad2
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "1056242790b2be8a1c94ee80b725e47102ae4e99": 92481
++}
+\ No newline at end of file

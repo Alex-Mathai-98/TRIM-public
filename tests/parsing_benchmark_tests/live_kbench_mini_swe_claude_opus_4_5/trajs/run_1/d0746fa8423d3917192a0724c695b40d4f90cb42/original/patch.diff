@@ -1,0 +1,18 @@
+diff --git a/fs/namei.c b/fs/namei.c
+index 9d30c7aa9aa6..6316a0c2b26d 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -1903,7 +1903,12 @@ static const char *pick_link(struct nameidata *nd, struct path *link,
+ 	if (unlikely(error))
+ 		return ERR_PTR(error);
+ 
+-	res = READ_ONCE(inode->i_link);
++	/*
++	 * i_link is in a union with i_dir_seq, so only use it if the inode
++	 * is actually a symlink. Otherwise, call get_link.
++	 */
++	res = S_ISLNK(inode->i_mode) ? READ_ONCE(inode->i_link) : NULL;
++
+ 	if (!res) {
+ 		const char * (*get)(struct dentry *, struct inode *,
+ 				struct delayed_call *);

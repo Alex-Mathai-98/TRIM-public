@@ -1,0 +1,41 @@
+diff --git a/kernel/time/timer_list.c b/kernel/time/timer_list.c
+index 1c311c46da50..205e9c0feb0b 100644
+--- a/kernel/time/timer_list.c
++++ b/kernel/time/timer_list.c
+@@ -350,12 +350,24 @@ static const struct seq_operations timer_list_sops = {
+ 	.show = timer_list_show,
+ };
+ 
++static int timer_list_open(struct inode *inode, struct file *file)
++{
++	return seq_open_private(file, &timer_list_sops,
++			sizeof(struct timer_list_iter));
++}
++
++static const struct proc_ops timer_list_proc_ops = {
++	.proc_open	= timer_list_open,
++	.proc_read	= seq_read,
++	.proc_lseek	= seq_lseek,
++	.proc_release	= seq_release_private,
++};
++
+ static int __init init_timer_list_procfs(void)
+ {
+ 	struct proc_dir_entry *pe;
+ 
+-	pe = proc_create_seq_private("timer_list", 0400, NULL, &timer_list_sops,
+-			sizeof(struct timer_list_iter), NULL);
++	pe = proc_create("timer_list", 0400, NULL, &timer_list_proc_ops);
+ 	if (!pe)
+ 		return -ENOMEM;
+ 	return 0;
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..a4114c265241
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "fe8a5d3a8dbede7f2b6b69338f464a986610191b": 90645
++}
+\ No newline at end of file

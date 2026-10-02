@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (size <= old_size) {\n\t\tvoid *new_p = (void *)p;\n\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n\n\t\tif (vm->flags & VM_ALLOC)\n\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n\n\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n\n\t\t/* Zero out spare memory. */\n\t\tif (want_init_on_alloc(flags))\n\t\t\tmemset(new_p + size, 0, old_size - size);\n\n\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n\n\t\treturn new_p;\n\t}",
+          "before": "\tif (size <= old_size) {\n\t\t/* Zero out spare memory. */\n\t\tif (want_init_on_alloc(flags))\n\t\t\tmemset((void *)p + size, 0, old_size - size);\n\n\t\treturn (void *)p;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vmalloc.c b/mm/vmalloc.c\nindex 7ed39d104201..4c04820add98 100644\n--- a/mm/vmalloc.c\n+++ b/mm/vmalloc.c\n@@ -4090,11 +4090,22 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t * would be a good heuristic for when to shrink the vm_area?\n \t */\n \tif (size <= old_size) {\n+\t\tvoid *new_p = (void *)p;\n+\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n+\n+\t\tif (vm->flags & VM_ALLOC)\n+\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n+\n+\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n+\n \t\t/* Zero out spare memory. */\n \t\tif (want_init_on_alloc(flags))\n-\t\t\tmemset((void *)p + size, 0, old_size - size);\n+\t\t\tmemset(new_p + size, 0, old_size - size);\n+\n+\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n+\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n \n-\t\treturn (void *)p;\n+\t\treturn new_p;\n \t}\n \n \t/* TODO: Grow the vm_area, i.e. allocate and map additional pages. */",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "mm/vmalloc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 29
+    },
+    {
+      "edits": [
+        {
+          "after": "\tsize_t old_size = 0;\n\tstruct vm_struct *vm = NULL;\n\tvoid *n;",
+          "before": "\tsize_t old_size = 0;\n\tvoid *n;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vmalloc.c b/mm/vmalloc.c\nindex 7ed39d104201..c34300231788 100644\n--- a/mm/vmalloc.c\n+++ b/mm/vmalloc.c\n@@ -4066,6 +4066,7 @@ EXPORT_SYMBOL(vzalloc_node_noprof);\n void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n {\n \tsize_t old_size = 0;\n+\tstruct vm_struct *vm = NULL;\n \tvoid *n;\n \n \tif (!size) {\n@@ -4090,11 +4091,22 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t * would be a good heuristic for when to shrink the vm_area?\n \t */\n \tif (size <= old_size) {\n+\t\tvoid *new_p = (void *)p;\n+\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n+\n+\t\tif (vm->flags & VM_ALLOC)\n+\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n+\n+\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n+\n \t\t/* Zero out spare memory. */\n \t\tif (want_init_on_alloc(flags))\n-\t\t\tmemset((void *)p + size, 0, old_size - size);\n+\t\t\tmemset(new_p + size, 0, old_size - size);\n+\n+\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n+\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n \n-\t\treturn (void *)p;\n+\t\treturn new_p;\n \t}\n \n \t/* TODO: Grow the vm_area, i.e. allocate and map additional pages. */",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "mm/vmalloc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "\tif (p) {\n\t\tvm = find_vm_area(p);",
+          "before": "\tif (p) {\n\t\tstruct vm_struct *vm;\n\n\t\tvm = find_vm_area(p);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vmalloc.c b/mm/vmalloc.c\nindex 7ed39d104201..92466fcca2ce 100644\n--- a/mm/vmalloc.c\n+++ b/mm/vmalloc.c\n@@ -4066,6 +4066,7 @@ EXPORT_SYMBOL(vzalloc_node_noprof);\n void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n {\n \tsize_t old_size = 0;\n+\tstruct vm_struct *vm = NULL;\n \tvoid *n;\n \n \tif (!size) {\n@@ -4074,8 +4075,6 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t}\n \n \tif (p) {\n-\t\tstruct vm_struct *vm;\n-\n \t\tvm = find_vm_area(p);\n \t\tif (unlikely(!vm)) {\n \t\t\tWARN(1, \"Trying to vrealloc() nonexistent vm area (%p)\\n\", p);\n@@ -4090,11 +4089,22 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t * would be a good heuristic for when to shrink the vm_area?\n \t */\n \tif (size <= old_size) {\n+\t\tvoid *new_p = (void *)p;\n+\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n+\n+\t\tif (vm->flags & VM_ALLOC)\n+\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n+\n+\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n+\n \t\t/* Zero out spare memory. */\n \t\tif (want_init_on_alloc(flags))\n-\t\t\tmemset((void *)p + size, 0, old_size - size);\n+\t\t\tmemset(new_p + size, 0, old_size - size);\n+\n+\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n+\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n \n-\t\treturn (void *)p;\n+\t\treturn new_p;\n \t}\n \n \t/* TODO: Grow the vm_area, i.e. allocate and map additional pages. */",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "mm/vmalloc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "\tif (size <= old_size) {\n\t\tvoid *new_p = (void *)p;\n\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n\n\t\tif (vm->flags & VM_ALLOC)\n\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n\n\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n\n\t\t/* Zero out spare memory. */\n\t\tif (want_init_on_alloc(flags))\n\t\t\tmemset(new_p + size, 0, old_size - size);\n\n#ifdef CONFIG_KASAN\n\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n#endif\n\n\t\treturn new_p;\n\t}",
+          "before": "\tif (size <= old_size) {\n\t\tvoid *new_p = (void *)p;\n\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n\n\t\tif (vm->flags & VM_ALLOC)\n\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n\n\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n\n\t\t/* Zero out spare memory. */\n\t\tif (want_init_on_alloc(flags))\n\t\t\tmemset(new_p + size, 0, old_size - size);\n\n\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n\n\t\treturn new_p;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vmalloc.c b/mm/vmalloc.c\nindex 7ed39d104201..86ad6e433f77 100644\n--- a/mm/vmalloc.c\n+++ b/mm/vmalloc.c\n@@ -4066,6 +4066,7 @@ EXPORT_SYMBOL(vzalloc_node_noprof);\n void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n {\n \tsize_t old_size = 0;\n+\tstruct vm_struct *vm = NULL;\n \tvoid *n;\n \n \tif (!size) {\n@@ -4074,8 +4075,6 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t}\n \n \tif (p) {\n-\t\tstruct vm_struct *vm;\n-\n \t\tvm = find_vm_area(p);\n \t\tif (unlikely(!vm)) {\n \t\t\tWARN(1, \"Trying to vrealloc() nonexistent vm area (%p)\\n\", p);\n@@ -4090,11 +4089,24 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t * would be a good heuristic for when to shrink the vm_area?\n \t */\n \tif (size <= old_size) {\n+\t\tvoid *new_p = (void *)p;\n+\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n+\n+\t\tif (vm->flags & VM_ALLOC)\n+\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n+\n+\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n+\n \t\t/* Zero out spare memory. */\n \t\tif (want_init_on_alloc(flags))\n-\t\t\tmemset((void *)p + size, 0, old_size - size);\n+\t\t\tmemset(new_p + size, 0, old_size - size);\n+\n+#ifdef CONFIG_KASAN\n+\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n+\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n+#endif\n \n-\t\treturn (void *)p;\n+\t\treturn new_p;\n \t}\n \n \t/* TODO: Grow the vm_area, i.e. allocate and map additional pages. */",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "mm/vmalloc.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 1,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "#ifdef CONFIG_KASAN\n\t\tkasan_poison_vmalloc(new_p + ALIGN(size, 1UL << KASAN_SHADOW_SCALE_SHIFT),\n\t\t\t\t     old_size - ALIGN(size, 1UL << KASAN_SHADOW_SCALE_SHIFT));\n#endif",
+          "before": "#ifdef CONFIG_KASAN\n\t\tkasan_poison_vmalloc(new_p + ALIGN(size, KASAN_GRANULE_SIZE),\n\t\t\t\t     old_size - ALIGN(size, KASAN_GRANULE_SIZE));\n#endif",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vmalloc.c b/mm/vmalloc.c\nindex 7ed39d104201..aec84293c5de 100644\n--- a/mm/vmalloc.c\n+++ b/mm/vmalloc.c\n@@ -4066,6 +4066,7 @@ EXPORT_SYMBOL(vzalloc_node_noprof);\n void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n {\n \tsize_t old_size = 0;\n+\tstruct vm_struct *vm = NULL;\n \tvoid *n;\n \n \tif (!size) {\n@@ -4074,8 +4075,6 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t}\n \n \tif (p) {\n-\t\tstruct vm_struct *vm;\n-\n \t\tvm = find_vm_area(p);\n \t\tif (unlikely(!vm)) {\n \t\t\tWARN(1, \"Trying to vrealloc() nonexistent vm area (%p)\\n\", p);\n@@ -4090,11 +4089,24 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t * would be a good heuristic for when to shrink the vm_area?\n \t */\n \tif (size <= old_size) {\n+\t\tvoid *new_p = (void *)p;\n+\t\tkasan_vmalloc_flags_t kasan_flags = KASAN_VMALLOC_PROT_NORMAL;\n+\n+\t\tif (vm->flags & VM_ALLOC)\n+\t\t\tkasan_flags |= KASAN_VMALLOC_VM_ALLOC;\n+\n+\t\tnew_p = kasan_unpoison_vmalloc(new_p, old_size, kasan_flags);\n+\n \t\t/* Zero out spare memory. */\n \t\tif (want_init_on_alloc(flags))\n-\t\t\tmemset((void *)p + size, 0, old_size - size);\n+\t\t\tmemset(new_p + size, 0, old_size - size);\n+\n+#ifdef CONFIG_KASAN\n+\t\tkasan_poison_vmalloc(new_p + ALIGN(size, 1UL << KASAN_SHADOW_SCALE_SHIFT),\n+\t\t\t\t     old_size - ALIGN(size, 1UL << KASAN_SHADOW_SCALE_SHIFT));\n+#endif\n \n-\t\treturn (void *)p;\n+\t\treturn new_p;\n \t}\n \n \t/* TODO: Grow the vm_area, i.e. allocate and map additional pages. */",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "mm/vmalloc.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 2,
+      "start_step": 44
+    }
+  ],
+  "success_step": 44
+}

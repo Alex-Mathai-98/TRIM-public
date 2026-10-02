@@ -1,0 +1,213 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3,
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tu64 seq = le64_to_cpu(buf->data->seq);\n\n\tif (seq >= (1ULL << 56)) {\n\t\tbch_err(c, \"journal seq overflow: %llu\", seq);\n\t\treturn -EIO;\n\t}\n\n\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);",
+          "before": "\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..9edac510da38 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -484,7 +484,14 @@ static int bch2_journal_keys_to_write_buffer(struct bch_fs *c, struct journal_bu\n \tstruct journal_keys_to_wb dst;\n \tint ret = 0;\n \n-\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));\n+\tu64 seq = le64_to_cpu(buf->data->seq);\n+\n+\tif (seq >= (1ULL << 56)) {\n+\t\tbch_err(c, \"journal seq overflow: %llu\", seq);\n+\t\treturn -EIO;\n+\t}\n+\n+\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);\n \n \tfor_each_jset_entry_type(entry, buf->data, BCH_JSET_ENTRY_write_buffer_keys) {\n \t\tjset_entry_for_each_key(entry, k) {",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 29
+    },
+    {
+      "edits": [
+        {
+          "after": "\tEBUG_ON(!wb->journal_seq);\n\tEBUG_ON(!trans->c->btree_write_buffer.flushing.pin.seq);\n\tif (trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq) {\n\t\tprintk(KERN_ERR \"wb_flush_one BUG: pin seq %llu > key seq %llu (type %u)\\n\",\n\t\t       trans->c->btree_write_buffer.flushing.pin.seq,\n\t\t       wb->journal_seq, wb->k.k.type);\n\t}\n\tEBUG_ON(trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq);\n\n\tret = bch2_btree_iter_traverse(iter);",
+          "before": "\tEBUG_ON(!wb->journal_seq);\n\tEBUG_ON(!trans->c->btree_write_buffer.flushing.pin.seq);\n\tEBUG_ON(trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq);\n\n\tret = bch2_btree_iter_traverse(iter);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..ac27ca09ddfb 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -142,6 +142,11 @@ static inline int wb_flush_one(struct btree_trans *trans, struct btree_iter *ite\n \n \tEBUG_ON(!wb->journal_seq);\n \tEBUG_ON(!trans->c->btree_write_buffer.flushing.pin.seq);\n+\tif (trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq) {\n+\t\tprintk(KERN_ERR \"wb_flush_one BUG: pin seq %llu > key seq %llu (type %u)\\n\",\n+\t\t       trans->c->btree_write_buffer.flushing.pin.seq,\n+\t\t       wb->journal_seq, wb->k.k.type);\n+\t}\n \tEBUG_ON(trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq);\n \n \tret = bch2_btree_iter_traverse(iter);\n@@ -484,7 +489,14 @@ static int bch2_journal_keys_to_write_buffer(struct bch_fs *c, struct journal_bu\n \tstruct journal_keys_to_wb dst;\n \tint ret = 0;\n \n-\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));\n+\tu64 seq = le64_to_cpu(buf->data->seq);\n+\n+\tif (seq >= (1ULL << 56)) {\n+\t\tbch_err(c, \"journal seq overflow: %llu\", seq);\n+\t\treturn -EIO;\n+\t}\n+\n+\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);\n \n \tfor_each_jset_entry_type(entry, buf->data, BCH_JSET_ENTRY_write_buffer_keys) {\n \t\tjset_entry_for_each_key(entry, k) {",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 1,
+      "start_step": 36
+    },
+    {
+      "edits": [
+        {
+          "after": "\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));",
+          "before": "\tu64 seq = le64_to_cpu(buf->data->seq);\n\n\tif (seq >= (1ULL << 56)) {\n\t\tbch_err(c, \"journal seq overflow: %llu\", seq);\n\t\treturn -EIO;\n\t}\n\n\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..456d82598bbd 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -142,6 +142,11 @@ static inline int wb_flush_one(struct btree_trans *trans, struct btree_iter *ite\n \n \tEBUG_ON(!wb->journal_seq);\n \tEBUG_ON(!trans->c->btree_write_buffer.flushing.pin.seq);\n+\tif (trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq) {\n+\t\tprintk(KERN_ERR \"wb_flush_one BUG: pin seq %llu > key seq %llu (type %u)\\n\",\n+\t\t       trans->c->btree_write_buffer.flushing.pin.seq,\n+\t\t       wb->journal_seq, wb->k.k.type);\n+\t}\n \tEBUG_ON(trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq);\n \n \tret = bch2_btree_iter_traverse(iter);",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        },
+        {
+          "after": "\tEBUG_ON(trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq);\n\n\tret = bch2_btree_iter_traverse(iter);",
+          "before": "\tif (trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq) {\n\t\tprintk(KERN_ERR \"wb_flush_one BUG: pin seq %llu > key seq %llu (type %u)\\n\",\n\t\t       trans->c->btree_write_buffer.flushing.pin.seq,\n\t\t       wb->journal_seq, wb->k.k.type);\n\t}\n\tEBUG_ON(trans->c->btree_write_buffer.flushing.pin.seq > wb->journal_seq);\n\n\tret = bch2_btree_iter_traverse(iter);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 52 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        },
+        {
+          "after": "\tint ret = JOURNAL_ENTRY_ADD_OK;\n\n\tif (le64_to_cpu(j->seq) >= (1ULL << 56)) {\n\t\tbch_err(c, \"journal entry with huge seq: %llu\", le64_to_cpu(j->seq));\n\t\treturn JOURNAL_ENTRY_ADD_OUT_OF_RANGE;\n\t}\n\n\tif (!c->journal.oldest_seq_found_ondisk ||",
+          "before": "\tint ret = JOURNAL_ENTRY_ADD_OK;\n\n\tif (!c->journal.oldest_seq_found_ondisk ||",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..707be35790a9 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -147,6 +147,11 @@ static int journal_entry_add(struct bch_fs *c, struct bch_dev *ca,\n \tstruct printbuf buf = PRINTBUF;\n \tint ret = JOURNAL_ENTRY_ADD_OK;\n \n+\tif (le64_to_cpu(j->seq) >= (1ULL << 56)) {\n+\t\tbch_err(c, \"journal entry with huge seq: %llu\", le64_to_cpu(j->seq));\n+\t\treturn JOURNAL_ENTRY_ADD_OUT_OF_RANGE;\n+\t}\n+\n \tif (!c->journal.oldest_seq_found_ondisk ||\n \t    le64_to_cpu(j->seq) < c->journal.oldest_seq_found_ondisk)\n \t\tc->journal.oldest_seq_found_ondisk = le64_to_cpu(j->seq);",
+          "explanation": "classic_swe step 54 #1",
+          "filename": "fs/bcachefs/journal_io.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 54
+        }
+      ],
+      "end_step": 54,
+      "revision_index": 2,
+      "start_step": 51
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (le64_to_cpu(j->seq) >= (1ULL << 56) || !le64_to_cpu(j->seq)) {\n\t\tbch_err(c, \"journal entry with invalid seq: %llu\", le64_to_cpu(j->seq));\n\t\treturn JOURNAL_ENTRY_ADD_OUT_OF_RANGE;\n\t}",
+          "before": "\tif (le64_to_cpu(j->seq) >= (1ULL << 56)) {\n\t\tbch_err(c, \"journal entry with huge seq: %llu\", le64_to_cpu(j->seq));\n\t\treturn JOURNAL_ENTRY_ADD_OUT_OF_RANGE;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..b5843043f0db 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -147,6 +147,11 @@ static int journal_entry_add(struct bch_fs *c, struct bch_dev *ca,\n \tstruct printbuf buf = PRINTBUF;\n \tint ret = JOURNAL_ENTRY_ADD_OK;\n \n+\tif (le64_to_cpu(j->seq) >= (1ULL << 56) || !le64_to_cpu(j->seq)) {\n+\t\tbch_err(c, \"journal entry with invalid seq: %llu\", le64_to_cpu(j->seq));\n+\t\treturn JOURNAL_ENTRY_ADD_OUT_OF_RANGE;\n+\t}\n+\n \tif (!c->journal.oldest_seq_found_ondisk ||\n \t    le64_to_cpu(j->seq) < c->journal.oldest_seq_found_ondisk)\n \t\tc->journal.oldest_seq_found_ondisk = le64_to_cpu(j->seq);",
+          "explanation": "classic_swe step 57 #1",
+          "filename": "fs/bcachefs/journal_io.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 3,
+      "start_step": 57
+    },
+    {
+      "edits": [
+        {
+          "after": "\tu64 seq = le64_to_cpu(buf->data->seq);\n\n\tif (seq >= (1ULL << 56) || !seq) {\n\t\tbch_err(c, \"journal seq overflow/invalid: %llu\", seq);\n\t\treturn -EIO;\n\t}\n\n\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);",
+          "before": "\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_write_buffer.c b/fs/bcachefs/btree_write_buffer.c\nindex 49ce2d1e5c02..eebcbce86ba6 100644\n--- a/fs/bcachefs/btree_write_buffer.c\n+++ b/fs/bcachefs/btree_write_buffer.c\n@@ -484,7 +484,14 @@ static int bch2_journal_keys_to_write_buffer(struct bch_fs *c, struct journal_bu\n \tstruct journal_keys_to_wb dst;\n \tint ret = 0;\n \n-\tbch2_journal_keys_to_write_buffer_start(c, &dst, le64_to_cpu(buf->data->seq));\n+\tu64 seq = le64_to_cpu(buf->data->seq);\n+\n+\tif (seq >= (1ULL << 56) || !seq) {\n+\t\tbch_err(c, \"journal seq overflow/invalid: %llu\", seq);\n+\t\treturn -EIO;\n+\t}\n+\n+\tbch2_journal_keys_to_write_buffer_start(c, &dst, seq);\n \n \tfor_each_jset_entry_type(entry, buf->data, BCH_JSET_ENTRY_write_buffer_keys) {\n \t\tjset_entry_for_each_key(entry, k) {\ndiff --git a/fs/bcachefs/journal_io.c b/fs/bcachefs/journal_io.c\nindex 1627f3e16517..b5843043f0db 100644\n--- a/fs/bcachefs/journal_io.c\n+++ b/fs/bcachefs/journal_io.c\n@@ -147,6 +147,11 @@ static int journal_entry_add(struct bch_fs *c, struct bch_dev *ca,\n \tstruct printbuf buf = PRINTBUF;\n \tint ret = JOURNAL_ENTRY_ADD_OK;\n \n+\tif (le64_to_cpu(j->seq) >= (1ULL << 56) || !le64_to_cpu(j->seq)) {\n+\t\tbch_err(c, \"journal entry with invalid seq: %llu\", le64_to_cpu(j->seq));\n+\t\treturn JOURNAL_ENTRY_ADD_OUT_OF_RANGE;\n+\t}\n+\n \tif (!c->journal.oldest_seq_found_ondisk ||\n \t    le64_to_cpu(j->seq) < c->journal.oldest_seq_found_ondisk)\n \t\tc->journal.oldest_seq_found_ondisk = le64_to_cpu(j->seq);",
+          "explanation": "classic_swe step 59 #1",
+          "filename": "fs/bcachefs/btree_write_buffer.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 59
+        }
+      ],
+      "end_step": 59,
+      "revision_index": 4,
+      "start_step": 59
+    }
+  ],
+  "success_step": 59
+}

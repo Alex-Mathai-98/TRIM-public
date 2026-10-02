@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (ref_change > 0) {\n\t\tif (ref_count <= 0)\n\t\t\text4_warning_inode(ea_inode, \"ref_count=%lld\",\n\t\t\t\t\t   ref_count);\n\n\t\tif (ref_count == 1) {\n\t\t\tif (ea_inode->i_nlink)\n\t\t\t\text4_warning_inode(ea_inode, \"i_nlink=%u\",\n\t\t\t\t\t\t   ea_inode->i_nlink);\n\n\t\t\tset_nlink(ea_inode, 1);\n\t\t\text4_orphan_del(handle, ea_inode);\n\t\t}\n\t} else {\n\t\tif (ref_count < 0)\n\t\t\text4_warning_inode(ea_inode, \"ref_count=%lld\",\n\t\t\t\t\t   ref_count);\n\n\t\tif (ref_count == 0) {\n\t\t\tif (ea_inode->i_nlink != 1)\n\t\t\t\text4_warning_inode(ea_inode, \"i_nlink=%u\",\n\t\t\t\t\t\t   ea_inode->i_nlink);\n\n\t\t\tclear_nlink(ea_inode);\n\t\t\text4_orphan_add(handle, ea_inode);\n\t\t}\n\t}",
+          "before": "\tif (ref_change > 0) {\n\t\tWARN_ONCE(ref_count <= 0, \"EA inode %lu ref_count=%lld\",\n\t\t\t  ea_inode->i_ino, ref_count);\n\n\t\tif (ref_count == 1) {\n\t\t\tWARN_ONCE(ea_inode->i_nlink, \"EA inode %lu i_nlink=%u\",\n\t\t\t\t  ea_inode->i_ino, ea_inode->i_nlink);\n\n\t\t\tset_nlink(ea_inode, 1);\n\t\t\text4_orphan_del(handle, ea_inode);\n\t\t}\n\t} else {\n\t\tWARN_ONCE(ref_count < 0, \"EA inode %lu ref_count=%lld\",\n\t\t\t  ea_inode->i_ino, ref_count);\n\n\t\tif (ref_count == 0) {\n\t\t\tWARN_ONCE(ea_inode->i_nlink != 1,\n\t\t\t\t  \"EA inode %lu i_nlink=%u\",\n\t\t\t\t  ea_inode->i_ino, ea_inode->i_nlink);\n\n\t\t\tclear_nlink(ea_inode);\n\t\t\text4_orphan_add(handle, ea_inode);\n\t\t}\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 7743d81b2f21..938120c00462 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -1033,24 +1033,27 @@ static int ext4_xattr_inode_update_ref(handle_t *handle, struct inode *ea_inode,\n \text4_xattr_inode_set_ref(ea_inode, ref_count);\n \n \tif (ref_change > 0) {\n-\t\tWARN_ONCE(ref_count <= 0, \"EA inode %lu ref_count=%lld\",\n-\t\t\t  ea_inode->i_ino, ref_count);\n+\t\tif (ref_count <= 0)\n+\t\t\text4_warning_inode(ea_inode, \"ref_count=%lld\",\n+\t\t\t\t\t   ref_count);\n \n \t\tif (ref_count == 1) {\n-\t\t\tWARN_ONCE(ea_inode->i_nlink, \"EA inode %lu i_nlink=%u\",\n-\t\t\t\t  ea_inode->i_ino, ea_inode->i_nlink);\n+\t\t\tif (ea_inode->i_nlink)\n+\t\t\t\text4_warning_inode(ea_inode, \"i_nlink=%u\",\n+\t\t\t\t\t\t   ea_inode->i_nlink);\n \n \t\t\tset_nlink(ea_inode, 1);\n \t\t\text4_orphan_del(handle, ea_inode);\n \t\t}\n \t} else {\n-\t\tWARN_ONCE(ref_count < 0, \"EA inode %lu ref_count=%lld\",\n-\t\t\t  ea_inode->i_ino, ref_count);\n+\t\tif (ref_count < 0)\n+\t\t\text4_warning_inode(ea_inode, \"ref_count=%lld\",\n+\t\t\t\t\t   ref_count);\n \n \t\tif (ref_count == 0) {\n-\t\t\tWARN_ONCE(ea_inode->i_nlink != 1,\n-\t\t\t\t  \"EA inode %lu i_nlink=%u\",\n-\t\t\t\t  ea_inode->i_ino, ea_inode->i_nlink);\n+\t\t\tif (ea_inode->i_nlink != 1)\n+\t\t\t\text4_warning_inode(ea_inode, \"i_nlink=%u\",\n+\t\t\t\t\t\t   ea_inode->i_nlink);\n \n \t\t\tclear_nlink(ea_inode);\n \t\t\text4_orphan_add(handle, ea_inode);",
+          "explanation": "classic_swe step 12 #1",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 12
+        }
+      ],
+      "end_step": 12,
+      "revision_index": 0,
+      "start_step": 12
+    }
+  ],
+  "success_step": 12
+}

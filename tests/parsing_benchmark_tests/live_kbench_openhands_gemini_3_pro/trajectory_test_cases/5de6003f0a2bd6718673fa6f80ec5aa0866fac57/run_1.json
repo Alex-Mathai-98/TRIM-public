@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (stat_data_v1(ih)) {\n\t\tstruct stat_data_v1 *sd;\n\t\tunsigned long blocks;\n\n\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n\t\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n\t\t\t\t       \"bad stat data size %d for %K\",\n\t\t\t\t       ih_item_len(ih), &ih->ih_key);\n\t\t\treiserfs_make_bad_inode(inode);\n\t\t\treturn;\n\t\t}\n\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);",
+          "before": "\tif (stat_data_v1(ih)) {\n\t\tstruct stat_data_v1 *sd =\n\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n\t\tunsigned long blocks;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/reiserfs/inode.c\n+++ /linux/fs/reiserfs/inode.c\n@@ -1249,2 +1249 @@\n-\t\tstruct stat_data_v1 *sd =\n-\t\t    (struct stat_data_v1 *)ih_item_body(bh, ih);\n+\t\tstruct stat_data_v1 *sd;\n@@ -1251,0 +1251,9 @@\n+\n+\t\tif (ih_item_len(ih) < SD_V1_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n+\t\t\t\t       \"bad stat data size %d for %K\",\n+\t\t\t\t       ih_item_len(ih), &ih->ih_key);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\t\tsd = (struct stat_data_v1 *)ih_item_body(bh, ih);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 68",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 68
+        },
+        {
+          "after": "\n\t} else {\n\t\t/*\n\t\t * new stat data found, but object may have old items\n\t\t * (directories and symlinks)\n\t\t */\n\t\tstruct stat_data *sd;\n\n\t\tif (ih_item_len(ih) < SD_V2_SIZE) {\n\t\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n\t\t\t\t       \"bad stat data size %d for %K\",\n\t\t\t\t       ih_item_len(ih), &ih->ih_key);\n\t\t\treiserfs_make_bad_inode(inode);\n\t\t\treturn;\n\t\t}\n\t\tsd = (struct stat_data *)ih_item_body(bh, ih);\n\n\t\tinode->i_mode = sd_v2_mode(sd);\n",
+          "before": "\n\t} else {\n\t\t/*\n\t\t * new stat data found, but object may have old items\n\t\t * (directories and symlinks)\n\t\t */\n\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n\n\t\tinode->i_mode = sd_v2_mode(sd);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/reiserfs/inode.c\n+++ /linux/fs/reiserfs/inode.c\n@@ -1313 +1313,10 @@\n-\t\tstruct stat_data *sd = (struct stat_data *)ih_item_body(bh, ih);\n+\t\tstruct stat_data *sd;\n+\n+\t\tif (ih_item_len(ih) < SD_V2_SIZE) {\n+\t\t\treiserfs_error(inode->i_sb, \"vs-13076\",\n+\t\t\t\t       \"bad stat data size %d for %K\",\n+\t\t\t\t       ih_item_len(ih), &ih->ih_key);\n+\t\t\treiserfs_make_bad_inode(inode);\n+\t\t\treturn;\n+\t\t}\n+\t\tsd = (struct stat_data *)ih_item_body(bh, ih);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 70",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        }
+      ],
+      "end_step": 70,
+      "revision_index": 0,
+      "start_step": 68
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "\n/*\n * reiserfs_read_locked_inode is called to read the inode off disk, and it\n * does a make_bad_inode when things go wrong.  But, we need to make sure\n * and clear the key in the private portion of the inode, otherwise a\n * corresponding iput might try to delete whatever object the inode last\n * represented.\n */\nstatic void reiserfs_make_bad_inode(struct inode *inode)\n{\n\tmemset(INODE_PKEY(inode), 0, KEY_SIZE);\n\tmake_bad_inode(inode);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/reiserfs/inode.c\n+++ /linux/fs/reiserfs/inode.c\n@@ -1515,13 +1514,0 @@\n- * reiserfs_read_locked_inode is called to read the inode off disk, and it\n- * does a make_bad_inode when things go wrong.  But, we need to make sure\n- * and clear the key in the private portion of the inode, otherwise a\n- * corresponding iput might try to delete whatever object the inode last\n- * represented.\n- */\n-static void reiserfs_make_bad_inode(struct inode *inode)\n-{\n-\tmemset(INODE_PKEY(inode), 0, KEY_SIZE);\n-\tmake_bad_inode(inode);\n-}\n-\n-/*",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 84",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 84
+        },
+        {
+          "after": "\n/*\n * reiserfs_read_locked_inode is called to read the inode off disk, and it\n * does a make_bad_inode when things go wrong.  But, we need to make sure\n * and clear the key in the private portion of the inode, otherwise a\n * corresponding iput might try to delete whatever object the inode last\n * represented.\n */\nstatic void reiserfs_make_bad_inode(struct inode *inode)\n{\n\tmemset(INODE_PKEY(inode), 0, KEY_SIZE);\n\tmake_bad_inode(inode);\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/reiserfs/inode.c\n+++ /linux/fs/reiserfs/inode.c\n@@ -1228,0 +1229,14 @@\n+\n+/*\n+ * reiserfs_read_locked_inode is called to read the inode off disk, and it\n+ * does a make_bad_inode when things go wrong.  But, we need to make sure\n+ * and clear the key in the private portion of the inode, otherwise a\n+ * corresponding iput might try to delete whatever object the inode last\n+ * represented.\n+ */\n+static void reiserfs_make_bad_inode(struct inode *inode)\n+{\n+\tmemset(INODE_PKEY(inode), 0, KEY_SIZE);\n+\tmake_bad_inode(inode);\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 86",
+          "filename": "fs/reiserfs/inode.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1229,
+          "step_index": 86
+        }
+      ],
+      "end_step": 86,
+      "revision_index": 1,
+      "start_step": 84
+    }
+  ],
+  "success_step": 86
+}

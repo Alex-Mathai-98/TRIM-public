@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tsession = list_entry(pos, struct l2tp_session, list);\n\t\tl2tp_session_inc_refcount(session);\n\t\tlist_del_init(&session->list);\n\t\tspin_unlock_bh(&tunnel->list_lock);\n\t\tl2tp_session_delete(session);\n\t\tl2tp_session_dec_refcount(session);\n\t\tspin_lock_bh(&tunnel->list_lock);",
+          "before": "\t\tsession = list_entry(pos, struct l2tp_session, list);\n\t\tlist_del_init(&session->list);\n\t\tspin_unlock_bh(&tunnel->list_lock);\n\t\tl2tp_session_delete(session);\n\t\tspin_lock_bh(&tunnel->list_lock);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c\nindex a99032076e04..290f5ebff549 100644\n--- a/net/l2tp/l2tp_core.c\n+++ b/net/l2tp/l2tp_core.c\n@@ -1296,9 +1296,11 @@ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)\n \ttunnel->acpt_newsess = false;\n \tlist_for_each_safe(pos, tmp, &tunnel->session_list) {\n \t\tsession = list_entry(pos, struct l2tp_session, list);\n+\t\tl2tp_session_inc_refcount(session);\n \t\tlist_del_init(&session->list);\n \t\tspin_unlock_bh(&tunnel->list_lock);\n \t\tl2tp_session_delete(session);\n+\t\tl2tp_session_dec_refcount(session);\n \t\tspin_lock_bh(&tunnel->list_lock);\n \t}\n \tspin_unlock_bh(&tunnel->list_lock);",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "net/l2tp/l2tp_core.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        }
+      ],
+      "end_step": 24,
+      "revision_index": 0,
+      "start_step": 24
+    },
+    {
+      "edits": [
+        {
+          "after": "\tspin_lock_bh(&tunnel->list_lock);\n\ttunnel->acpt_newsess = false;\n\twhile (!list_empty(&tunnel->session_list)) {\n\t\tsession = list_first_entry(&tunnel->session_list, struct l2tp_session, list);\n\t\tl2tp_session_inc_refcount(session);\n\t\tlist_del_init(&session->list);\n\t\tspin_unlock_bh(&tunnel->list_lock);\n\t\tl2tp_session_delete(session);\n\t\tl2tp_session_dec_refcount(session);\n\t\tspin_lock_bh(&tunnel->list_lock);\n\t}\n\tspin_unlock_bh(&tunnel->list_lock);",
+          "before": "\tspin_lock_bh(&tunnel->list_lock);\n\ttunnel->acpt_newsess = false;\n\tlist_for_each_safe(pos, tmp, &tunnel->session_list) {\n\t\tsession = list_entry(pos, struct l2tp_session, list);\n\t\tl2tp_session_inc_refcount(session);\n\t\tlist_del_init(&session->list);\n\t\tspin_unlock_bh(&tunnel->list_lock);\n\t\tl2tp_session_delete(session);\n\t\tl2tp_session_dec_refcount(session);\n\t\tspin_lock_bh(&tunnel->list_lock);\n\t}\n\tspin_unlock_bh(&tunnel->list_lock);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c\nindex a99032076e04..76095e986833 100644\n--- a/net/l2tp/l2tp_core.c\n+++ b/net/l2tp/l2tp_core.c\n@@ -1294,11 +1294,13 @@ static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)\n \n \tspin_lock_bh(&tunnel->list_lock);\n \ttunnel->acpt_newsess = false;\n-\tlist_for_each_safe(pos, tmp, &tunnel->session_list) {\n-\t\tsession = list_entry(pos, struct l2tp_session, list);\n+\twhile (!list_empty(&tunnel->session_list)) {\n+\t\tsession = list_first_entry(&tunnel->session_list, struct l2tp_session, list);\n+\t\tl2tp_session_inc_refcount(session);\n \t\tlist_del_init(&session->list);\n \t\tspin_unlock_bh(&tunnel->list_lock);\n \t\tl2tp_session_delete(session);\n+\t\tl2tp_session_dec_refcount(session);\n \t\tspin_lock_bh(&tunnel->list_lock);\n \t}\n \tspin_unlock_bh(&tunnel->list_lock);",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "net/l2tp/l2tp_core.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        },
+        {
+          "after": "\tstruct l2tp_session *session;\n",
+          "before": "\tstruct l2tp_session *session;\n\tstruct list_head *pos;\n\tstruct list_head *tmp;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c\nindex a99032076e04..5c165754f57d 100644\n--- a/net/l2tp/l2tp_core.c\n+++ b/net/l2tp/l2tp_core.c\n@@ -1289,16 +1289,16 @@ static void l2tp_session_unhash(struct l2tp_session *session)\n static void l2tp_tunnel_closeall(struct l2tp_tunnel *tunnel)\n {\n \tstruct l2tp_session *session;\n-\tstruct list_head *pos;\n-\tstruct list_head *tmp;\n \n \tspin_lock_bh(&tunnel->list_lock);\n \ttunnel->acpt_newsess = false;\n-\tlist_for_each_safe(pos, tmp, &tunnel->session_list) {\n-\t\tsession = list_entry(pos, struct l2tp_session, list);\n+\twhile (!list_empty(&tunnel->session_list)) {\n+\t\tsession = list_first_entry(&tunnel->session_list, struct l2tp_session, list);\n+\t\tl2tp_session_inc_refcount(session);\n \t\tlist_del_init(&session->list);\n \t\tspin_unlock_bh(&tunnel->list_lock);\n \t\tl2tp_session_delete(session);\n+\t\tl2tp_session_dec_refcount(session);\n \t\tspin_lock_bh(&tunnel->list_lock);\n \t}\n \tspin_unlock_bh(&tunnel->list_lock);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "net/l2tp/l2tp_core.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 27
+    }
+  ],
+  "success_step": 28
+}

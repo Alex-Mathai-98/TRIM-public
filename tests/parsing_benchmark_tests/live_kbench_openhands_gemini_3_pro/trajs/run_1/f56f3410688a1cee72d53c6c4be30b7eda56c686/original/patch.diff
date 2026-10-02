@@ -1,0 +1,21 @@
+diff --git a/fs/nilfs2/btree.c b/fs/nilfs2/btree.c
+index 862bdf23120e..16c57dcb6cab 100644
+--- a/fs/nilfs2/btree.c
++++ b/fs/nilfs2/btree.c
+@@ -555,8 +555,15 @@ static int nilfs_btree_do_lookup(const struct nilfs_bmap *btree,
+ 
+ 	node = nilfs_btree_get_root(btree);
+ 	level = nilfs_btree_node_get_level(node);
+-	if (level < minlevel || nilfs_btree_node_get_nchildren(node) <= 0)
++	if (level < minlevel)
+ 		return -ENOENT;
++	if (nilfs_btree_node_get_nchildren(node) <= 0)
++		/*
++		 * If the root is not at the bottom (minlevel) and has no children,
++		 * the tree structure is inconsistent because we cannot traverse
++		 * down to the requested level.
++		 */
++		return (level > minlevel) ? -EINVAL : -ENOENT;
+ 
+ 	found = nilfs_btree_node_lookup(node, key, &index);
+ 	ptr = nilfs_btree_node_get_ptr(node, index,

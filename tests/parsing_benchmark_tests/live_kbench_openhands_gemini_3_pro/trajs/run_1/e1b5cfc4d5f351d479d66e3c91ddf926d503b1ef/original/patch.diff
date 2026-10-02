@@ -1,0 +1,82 @@
+diff --git a/io_uring/fdinfo.c b/io_uring/fdinfo.c
+index a3ce92183540..13b7a59dc1a2 100644
+--- a/io_uring/fdinfo.c
++++ b/io_uring/fdinfo.c
+@@ -6,6 +6,8 @@
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ #include <linux/io_uring.h>
++#include <linux/sched/signal.h>
++
+ 
+ #include <uapi/linux/io_uring.h>
+ 
+@@ -91,6 +93,9 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 	seq_printf(m, "SQEs:\t%u\n", sq_tail - sq_head);
+ 	while (sq_head < sq_tail) {
+ 		struct io_uring_sqe *sqe;
++
++		if (fatal_signal_pending(current))
++			break;
+ 		unsigned int sq_idx;
+ 		bool sqe128 = false;
+ 		u8 opcode;
+@@ -107,7 +112,7 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 		opcode = READ_ONCE(sqe->opcode);
+ 		if (sq_shift) {
+ 			sqe128 = true;
+-		} else if (io_issue_defs[opcode].is_128) {
++		} else if (opcode < IORING_OP_LAST && io_issue_defs[opcode].is_128) {
+ 			if (!(ctx->flags & IORING_SETUP_SQE_MIXED)) {
+ 				seq_printf(m,
+ 					"%5u: invalid sqe, 128B entry on non-mixed sq\n",
+@@ -148,6 +153,9 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 		struct io_uring_cqe *cqe;
+ 		bool cqe32 = false;
+ 
++		if (fatal_signal_pending(current))
++			break;
++
+ 		cqe = &r->cqes[(cq_head & cq_mask)];
+ 		if (cqe->flags & IORING_CQE_F_32 || ctx->flags & IORING_SETUP_CQE32)
+ 			cqe32 = true;
+@@ -196,6 +204,9 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 	for (i = 0; i < ctx->file_table.data.nr; i++) {
+ 		struct file *f = NULL;
+ 
++		if (fatal_signal_pending(current))
++			break;
++
+ 		if (ctx->file_table.data.nodes[i])
+ 			f = io_slot_file(ctx->file_table.data.nodes[i]);
+ 		if (f) {
+@@ -208,6 +219,9 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 	for (i = 0; i < ctx->buf_table.nr; i++) {
+ 		struct io_mapped_ubuf *buf = NULL;
+ 
++		if (fatal_signal_pending(current))
++			break;
++
+ 		if (ctx->buf_table.nodes[i])
+ 			buf = ctx->buf_table.nodes[i]->buf;
+ 		if (buf)
+@@ -221,6 +235,9 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 		struct io_hash_bucket *hb = &ctx->cancel_table.hbs[i];
+ 		struct io_kiocb *req;
+ 
++		if (fatal_signal_pending(current))
++			break;
++
+ 		hlist_for_each_entry(req, &hb->list, hash_node)
+ 			seq_printf(m, "  op=%d, task_works=%d\n", req->opcode,
+ 					task_work_pending(req->tctx->task));
+@@ -231,6 +248,9 @@ static void __io_uring_show_fdinfo(struct io_ring_ctx *ctx, struct seq_file *m)
+ 	list_for_each_entry(ocqe, &ctx->cq_overflow_list, list) {
+ 		struct io_uring_cqe *cqe = &ocqe->cqe;
+ 
++		if (fatal_signal_pending(current))
++			break;
++
+ 		seq_printf(m, "  user_data=%llu, res=%d, flags=%x\n",
+ 			   cqe->user_data, cqe->res, cqe->flags);
+ 

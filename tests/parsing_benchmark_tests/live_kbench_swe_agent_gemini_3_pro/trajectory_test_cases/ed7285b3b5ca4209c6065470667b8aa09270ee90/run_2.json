@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tif (error_recoverable_with_nospec(err) && state->speculative) {",
+          "before": "\t\tif (state->speculative && error_recoverable_with_nospec(err)) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/do_check.c b/do_check.c\nnew file mode 100644\nindex 000000000000..dcf6d37b5bf9\n--- /dev/null\n+++ b/do_check.c\n@@ -0,0 +1,152 @@\n+static int do_check(struct bpf_verifier_env *env)\n+{\n+\tbool pop_log = !(env->log.level & BPF_LOG_LEVEL2);\n+\tstruct bpf_verifier_state *state = env->cur_state;\n+\tstruct bpf_insn *insns = env->prog->insnsi;\n+\tint insn_cnt = env->prog->len;\n+\tbool do_print_state = false;\n+\tint prev_insn_idx = -1;\n+\n+\tfor (;;) {\n+\t\tstruct bpf_insn *insn;\n+\t\tint err;\n+\n+\t\t/* reset current history entry on each new instruction */\n+\t\tenv->cur_hist_ent = NULL;\n+\n+\t\tenv->prev_insn_idx = prev_insn_idx;\n+\t\tif (env->insn_idx >= insn_cnt) {\n+\t\t\tverbose(env, \"invalid insn idx %d insn_cnt %d\\n\",\n+\t\t\t\tenv->insn_idx, insn_cnt);\n+\t\t\treturn -EFAULT;\n+\t\t}\n+\n+\t\tinsn = &insns[env->insn_idx];\n+\n+\t\tif (++env->insn_processed > BPF_COMPLEXITY_LIMIT_INSNS) {\n+\t\t\tverbose(env,\n+\t\t\t\t\"BPF program is too large. Processed %d insn\\n\",\n+\t\t\t\tenv->insn_processed);\n+\t\t\treturn -E2BIG;\n+\t\t}\n+\n+\t\tstate->last_insn_idx = env->prev_insn_idx;\n+\t\tstate->insn_idx = env->insn_idx;\n+\n+\t\tif (is_prune_point(env, env->insn_idx)) {\n+\t\t\terr = is_state_visited(env, env->insn_idx);\n+\t\t\tif (err < 0)\n+\t\t\t\treturn err;\n+\t\t\tif (err == 1) {\n+\t\t\t\t/* found equivalent state, can prune the search */\n+\t\t\t\tif (env->log.level & BPF_LOG_LEVEL) {\n+\t\t\t\t\tif (do_print_state)\n+\t\t\t\t\t\tverbose(env, \"\\nfrom %d to %d%s: safe\\n\",\n+\t\t\t\t\t\t\tenv->prev_insn_idx, env->insn_idx,\n+\t\t\t\t\t\t\tenv->cur_state->speculative ?\n+\t\t\t\t\t\t\t\" (speculative execution)\" : \"\");\n+\t\t\t\t\telse\n+\t\t\t\t\t\tverbose(env, \"%d: safe\\n\", env->insn_idx);\n+\t\t\t\t}\n+\t\t\t\tgoto process_bpf_exit;\n+\t\t\t}\n+\t\t}\n+\n+\t\tif (is_jmp_point(env, env->insn_idx)) {\n+\t\t\terr = push_jmp_history(env, state, 0, 0);\n+\t\t\tif (err)\n+\t\t\t\treturn err;\n+\t\t}\n+\n+\t\tif (signal_pending(current))\n+\t\t\treturn -EAGAIN;\n+\n+\t\tif (need_resched())\n+\t\t\tcond_resched();\n+\n+\t\tif (env->log.level & BPF_LOG_LEVEL2 && do_print_state) {\n+\t\t\tverbose(env, \"\\nfrom %d to %d%s:\",\n+\t\t\t\tenv->prev_insn_idx, env->insn_idx,\n+\t\t\t\tenv->cur_state->speculative ?\n+\t\t\t\t\" (speculative execution)\" : \"\");\n+\t\t\tprint_verifier_state(env, state, state->curframe, true);\n+\t\t\tdo_print_state = false;\n+\t\t}\n+\n+\t\tif (env->log.level & BPF_LOG_LEVEL) {\n+\t\t\tif (verifier_state_scratched(env))\n+\t\t\t\tprint_insn_state(env, state, state->curframe);\n+\n+\t\t\tverbose_linfo(env, env->insn_idx, \"; \");\n+\t\t\tenv->prev_log_pos = env->log.end_pos;\n+\t\t\tverbose(env, \"%d: \", env->insn_idx);\n+\t\t\tverbose_insn(env, insn);\n+\t\t\tenv->prev_insn_print_pos = env->log.end_pos - env->prev_log_pos;\n+\t\t\tenv->prev_log_pos = env->log.end_pos;\n+\t\t}\n+\n+\t\tif (bpf_prog_is_offloaded(env->prog->aux)) {\n+\t\t\terr = bpf_prog_offload_verify_insn(env, env->insn_idx,\n+\t\t\t\t\t\t\t   env->prev_insn_idx);\n+\t\t\tif (err)\n+\t\t\t\treturn err;\n+\t\t}\n+\n+\t\tsanitize_mark_insn_seen(env);\n+\t\tprev_insn_idx = env->insn_idx;\n+\n+\t\t/* Reduce verification complexity by stopping speculative path\n+\t\t * verification when a nospec is encountered.\n+\t\t */\n+\t\tif (state->speculative && cur_aux(env)->nospec)\n+\t\t\tgoto process_bpf_exit;\n+\n+\t\terr = do_check_insn(env, &do_print_state);\n+\t\tif (state->speculative && error_recoverable_with_nospec(err)) {\n+\t\t\t/* Prevent this speculative path from ever reaching the\n+\t\t\t * insn that would have been unsafe to execute.\n+\t\t\t */\n+\t\t\tcur_aux(env)->nospec = true;\n+\t\t\t/* If it was an ADD/SUB insn, potentially remove any\n+\t\t\t * markings for alu sanitization.\n+\t\t\t */\n+\t\t\tcur_aux(env)->alu_state = 0;\n+\t\t\tgoto process_bpf_exit;\n+\t\t} else if (err < 0) {\n+\t\t\treturn err;\n+\t\t} else if (err == PROCESS_BPF_EXIT) {\n+\t\t\tgoto process_bpf_exit;\n+\t\t}\n+\t\tWARN_ON_ONCE(err);\n+\n+\t\tif (state->speculative && cur_aux(env)->nospec_result) {\n+\t\t\t/* If we are on a path that performed a jump-op, this\n+\t\t\t * may skip a nospec patched-in after the jump. This can\n+\t\t\t * currently never happen because nospec_result is only\n+\t\t\t * used for the write-ops\n+\t\t\t * `*(size*)(dst_reg+off)=src_reg|imm32` which must\n+\t\t\t * never skip the following insn. Still, add a warning\n+\t\t\t * to document this in case nospec_result is used\n+\t\t\t * elsewhere in the future.\n+\t\t\t */\n+\t\t\tWARN_ON_ONCE(env->insn_idx != prev_insn_idx + 1);\n+process_bpf_exit:\n+\t\t\tmark_verifier_state_scratched(env);\n+\t\t\terr = update_branch_counts(env, env->cur_state);\n+\t\t\tif (err)\n+\t\t\t\treturn err;\n+\t\t\terr = pop_stack(env, &prev_insn_idx, &env->insn_idx,\n+\t\t\t\t\tpop_log);\n+\t\t\tif (err < 0) {\n+\t\t\t\tif (err != -ENOENT)\n+\t\t\t\t\treturn err;\n+\t\t\t\tbreak;\n+\t\t\t} else {\n+\t\t\t\tdo_print_state = true;\n+\t\t\t\tcontinue;\n+\t\t\t}\n+\t\t}\n+\t}\n+\n+\treturn 0;\n+}\ndiff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex 1d3277bf935e..8da20db4ed68 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -19926,7 +19926,7 @@ static int do_check(struct bpf_verifier_env *env)\n \t\t\tgoto process_bpf_exit;\n \n \t\terr = do_check_insn(env, &do_print_state);\n-\t\tif (state->speculative && error_recoverable_with_nospec(err)) {\n+\t\tif (error_recoverable_with_nospec(err) && state->speculative) {\n \t\t\t/* Prevent this speculative path from ever reaching the\n \t\t\t * insn that would have been unsafe to execute.\n \t\t\t */",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        }
+      ],
+      "end_step": 39,
+      "revision_index": 0,
+      "start_step": 39
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex 1d3277bf935e..8da20db4ed68 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -19926,7 +19926,7 @@ static int do_check(struct bpf_verifier_env *env)\n \t\t\tgoto process_bpf_exit;\n \n \t\terr = do_check_insn(env, &do_print_state);\n-\t\tif (state->speculative && error_recoverable_with_nospec(err)) {\n+\t\tif (error_recoverable_with_nospec(err) && state->speculative) {\n \t\t\t/* Prevent this speculative path from ever reaching the\n \t\t\t * insn that would have been unsafe to execute.\n \t\t\t */",
+          "explanation": "classic_swe step 44 rm #1",
+          "filename": "do_check.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        }
+      ],
+      "end_step": 44,
+      "revision_index": 1,
+      "start_step": 44
+    }
+  ],
+  "success_step": 44
+}

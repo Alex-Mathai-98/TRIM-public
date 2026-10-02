@@ -1,0 +1,69 @@
+diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c
+index 7123019ab3bc..4f115e964151 100644
+--- a/fs/bcachefs/btree_cache.c
++++ b/fs/bcachefs/btree_cache.c
+@@ -1065,6 +1065,11 @@ static struct btree *__bch2_btree_node_get(struct btree_trans *trans, struct btr
+ 
+ 		if (IS_ERR(b))
+ 			return b;
++
++		if (unlikely(btree_node_read_error(b))) {
++			six_unlock_type(&b->c.lock, lock_type);
++			return ERR_PTR(-BCH_ERR_btree_node_read_error);
++		}
+ 	} else {
+ 		if (btree_node_read_locked(path, level + 1))
+ 			btree_node_unlock(trans, path, level + 1);
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6296a11ccb09..da4d34938707 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -816,13 +816,16 @@ static int validate_bset(struct bch_fs *c, struct bch_dev *ca,
+ 			compat_btree_node(b->c.level, b->c.btree_id, version,
+ 					  BSET_BIG_ENDIAN(i), write, bn);
+ 
+-		btree_err_on(bch2_bkey_format_invalid(c, &bn->format, write, &buf1),
+-			     -BCH_ERR_btree_node_read_err_bad_node,
++		if (bch2_bkey_format_invalid(c, &bn->format, write, &buf1)) {
++			btree_err(-BCH_ERR_btree_node_read_err_bad_node,
+ 			     c, ca, b, i, NULL,
+ 			     btree_node_bad_format,
+ 			     "invalid bkey format: %s\n  %s", buf1.buf,
+ 			     (printbuf_reset(&buf2),
+ 			      bch2_bkey_format_to_text(&buf2, &bn->format), buf2.buf));
++			ret = -BCH_ERR_btree_node_read_err_bad_node;
++			goto fsck_err;
++		}
+ 		printbuf_reset(&buf1);
+ 
+ 		compat_bformat(b->c.level, b->c.btree_id, version,
+@@ -1128,8 +1131,13 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		if (ret)
+ 			goto fsck_err;
+ 
+-		if (!b->written)
++		if (!b->written) {
+ 			btree_node_set_format(b, b->data->format);
++			if (b->format.nr_fields != BKEY_NR_FIELDS) {
++				ret = -BCH_ERR_btree_node_read_err_bad_node;
++				goto fsck_err;
++			}
++		}
+ 
+ 		ret = validate_bset_keys(c, b, i, READ, have_retry, saw_error);
+ 		if (ret)
+diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c
+index eef9b89c561d..8c23363ec837 100644
+--- a/fs/bcachefs/btree_iter.c
++++ b/fs/bcachefs/btree_iter.c
+@@ -758,6 +758,10 @@ static inline int btree_path_lock_root(struct btree_trans *trans,
+ 		if (likely(b == READ_ONCE(*rootp) &&
+ 			   b->c.level == path->level &&
+ 			   !race_fault())) {
++			if (unlikely(btree_node_read_error(b))) {
++				six_unlock_type(&b->c.lock, lock_type);
++				return -BCH_ERR_btree_node_read_error;
++			}
+ 			for (i = 0; i < path->level; i++)
+ 				path->l[i].b = ERR_PTR(-BCH_ERR_no_btree_node_lock_root);
+ 			path->l[path->level].b = b;

@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstatic void *range_alloc(struct bpf_mem_alloc *ma, size_t size)\n{\n\tvoid *p;\n\n\tmigrate_disable();\n\tp = bpf_mem_alloc(ma, size);\n\tmigrate_enable();\n\treturn p;\n}\n\nstatic void range_free(struct bpf_mem_alloc *ma, void *ptr)\n{\n\tmigrate_disable();\n\tbpf_mem_free(ma, ptr);\n\tmigrate_enable();\n}\n\n/* Find range that fits best to requested size */\nstatic inline struct range_node *__find_range(struct range_tree *rt, u32 len)\n",
+          "before": "\n/* Find range that fits best to requested size */\nstatic inline struct range_node *__find_range(struct range_tree *rt, u32 len)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -54,0 +55,17 @@\n+static void *range_alloc(struct bpf_mem_alloc *ma, size_t size)\n+{\n+\tvoid *p;\n+\n+\tmigrate_disable();\n+\tp = bpf_mem_alloc(ma, size);\n+\tmigrate_enable();\n+\treturn p;\n+}\n+\n+static void range_free(struct bpf_mem_alloc *ma, void *ptr)\n+{\n+\tmigrate_disable();\n+\tbpf_mem_free(ma, ptr);\n+\tmigrate_enable();\n+}\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        },
+        {
+          "after": "\n\t\t\t/* Add a range */\n\t\t\tnew_rn = range_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\t\tif (!new_rn)\n\t\t\t\treturn -ENOMEM;\n\t\t\tnew_rn->rn_start = last + 1;\n\t\t\tnew_rn->rn_last = old_last;\n\t\t\trange_it_insert(new_rn, rt);\n\t\t} else if (rn->rn_start < start) {\n\t\t\t/* Overlaps with the left side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_last = start - 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t} else if (rn->rn_last > last) {\n\t\t\t/* Overlaps with the right side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_start = last + 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t\tbreak;\n\t\t} else {\n\t\t\t/* in the middle of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trange_free(&bpf_global_ma, rn);\n\t\t}\n\t}\n\treturn 0;\n}",
+          "before": "\n\t\t\t/* Add a range */\n\t\t\tnew_rn = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\t\tif (!new_rn)\n\t\t\t\treturn -ENOMEM;\n\t\t\tnew_rn->rn_start = last + 1;\n\t\t\tnew_rn->rn_last = old_last;\n\t\t\trange_it_insert(new_rn, rt);\n\t\t} else if (rn->rn_start < start) {\n\t\t\t/* Overlaps with the left side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_last = start - 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t} else if (rn->rn_last > last) {\n\t\t\t/* Overlaps with the right side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_start = last + 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t\tbreak;\n\t\t} else {\n\t\t\t/* in the middle of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\tbpf_mem_free(&bpf_global_ma, rn);\n\t\t}\n\t}\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -170 +170 @@\n-\t\t\tnew_rn = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n+\t\t\tnew_rn = range_alloc(&bpf_global_ma, sizeof(struct range_node));\n@@ -190 +190 @@\n-\t\t\tbpf_mem_free(&bpf_global_ma, rn);\n+\t\t\trange_free(&bpf_global_ma, rn);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 43",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "\n\n\tif (left && right) {\n\t\t/* Combine left and right adjacent ranges */\n\t\trange_it_remove(left, rt);\n\t\trange_it_remove(right, rt);\n\t\tleft->rn_last = right->rn_last;\n\t\trange_it_insert(left, rt);\n\t\trange_free(&bpf_global_ma, right);\n\t} else if (left) {\n\t\t/* Combine with the left range */\n\t\trange_it_remove(left, rt);\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t} else if (right) {\n\t\t/* Combine with the right range */\n\t\trange_it_remove(right, rt);\n\t\tright->rn_start = start;\n\t\trange_it_insert(right, rt);\n\t} else {\n\t\tleft = range_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\tif (!left)\n\t\t\treturn -ENOMEM;\n\t\tleft->rn_start = start;\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t}\n\treturn 0;\n}\n",
+          "before": "\n\n\tif (left && right) {\n\t\t/* Combine left and right adjacent ranges */\n\t\trange_it_remove(left, rt);\n\t\trange_it_remove(right, rt);\n\t\tleft->rn_last = right->rn_last;\n\t\trange_it_insert(left, rt);\n\t\tbpf_mem_free(&bpf_global_ma, right);\n\t} else if (left) {\n\t\t/* Combine with the left range */\n\t\trange_it_remove(left, rt);\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t} else if (right) {\n\t\t/* Combine with the right range */\n\t\trange_it_remove(right, rt);\n\t\tright->rn_start = start;\n\t\trange_it_insert(right, rt);\n\t} else {\n\t\tleft = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\tif (!left)\n\t\t\treturn -ENOMEM;\n\t\tleft->rn_start = start;\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t}\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -243 +243 @@\n-\t\tbpf_mem_free(&bpf_global_ma, right);\n+\t\trange_free(&bpf_global_ma, right);\n@@ -255 +255 @@\n-\t\tleft = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n+\t\tleft = range_alloc(&bpf_global_ma, sizeof(struct range_node));",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 45",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        },
+        {
+          "after": "\n\nvoid range_tree_destroy(struct range_tree *rt)\n{\n\tstruct range_node *rn;\n\n\twhile ((rn = range_it_iter_first(rt, 0, -1U))) {\n\t\trange_it_remove(rn, rt);\n\t\trange_free(&bpf_global_ma, rn);\n\t}\n}\n\n",
+          "before": "\n\nvoid range_tree_destroy(struct range_tree *rt)\n{\n\tstruct range_node *rn;\n\n\twhile ((rn = range_it_iter_first(rt, 0, -1U))) {\n\t\trange_it_remove(rn, rt);\n\t\tbpf_mem_free(&bpf_global_ma, rn);\n\t}\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -271 +271 @@\n-\t\tbpf_mem_free(&bpf_global_ma, rn);\n+\t\trange_free(&bpf_global_ma, rn);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 47",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 0,
+      "start_step": 41
+    }
+  ],
+  "success_step": 47
+}

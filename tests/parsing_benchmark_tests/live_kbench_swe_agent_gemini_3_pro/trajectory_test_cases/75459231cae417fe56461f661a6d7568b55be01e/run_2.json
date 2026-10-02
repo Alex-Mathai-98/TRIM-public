@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct inode *inode = d_really_is_positive(new_dentry) ?\n\t\t\t\t      d_inode(new_dentry) : NULL;\n\n\tif (inode && inode->i_nlink) {\n\t\t(void) shmem_unlink(new_dir, new_dentry);\n\t\tif (they_are_dirs) {\n\t\t\tdrop_nlink(inode);\n\t\t\tdrop_nlink(old_dir);\n\t\t}\n\t} else if (they_are_dirs) {\n\t\tdrop_nlink(old_dir);\n\t\tinc_nlink(new_dir);\n\t}",
+          "before": "\tif (d_really_is_positive(new_dentry)) {\n\t\t(void) shmem_unlink(new_dir, new_dentry);\n\t\tif (they_are_dirs) {\n\t\t\tdrop_nlink(d_inode(new_dentry));\n\t\t\tdrop_nlink(old_dir);\n\t\t}\n\t} else if (they_are_dirs) {\n\t\tdrop_nlink(old_dir);\n\t\tinc_nlink(new_dir);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/shmem.c b/mm/shmem.c\nindex 5a3f0f754dc0..2eed4e43ee5f 100644\n--- a/mm/shmem.c\n+++ b/mm/shmem.c\n@@ -4061,10 +4061,13 @@ static int shmem_rename2(struct mnt_idmap *idmap,\n \tif (error)\n \t\treturn error;\n \n-\tif (d_really_is_positive(new_dentry)) {\n+\tstruct inode *inode = d_really_is_positive(new_dentry) ?\n+\t\t\t\t      d_inode(new_dentry) : NULL;\n+\n+\tif (inode && inode->i_nlink) {\n \t\t(void) shmem_unlink(new_dir, new_dentry);\n \t\tif (they_are_dirs) {\n-\t\t\tdrop_nlink(d_inode(new_dentry));\n+\t\t\tdrop_nlink(inode);\n \t\t\tdrop_nlink(old_dir);\n \t\t}\n \t} else if (they_are_dirs) {",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "mm/shmem.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "\t{\n\t\tstruct inode *target_inode = d_really_is_positive(new_dentry) ?\n\t\t\t\t\t     d_inode(new_dentry) : NULL;\n\n\t\tif (target_inode && target_inode->i_nlink) {\n\t\t\t(void) shmem_unlink(new_dir, new_dentry);\n\t\t\tif (they_are_dirs) {\n\t\t\t\tdrop_nlink(target_inode);\n\t\t\t\tdrop_nlink(old_dir);\n\t\t\t}\n\t\t} else if (they_are_dirs) {\n\t\t\tdrop_nlink(old_dir);\n\t\t\tinc_nlink(new_dir);\n\t\t}\n\t}",
+          "before": "\tstruct inode *inode = d_really_is_positive(new_dentry) ?\n\t\t\t\t      d_inode(new_dentry) : NULL;\n\n\tif (inode && inode->i_nlink) {\n\t\t(void) shmem_unlink(new_dir, new_dentry);\n\t\tif (they_are_dirs) {\n\t\t\tdrop_nlink(inode);\n\t\t\tdrop_nlink(old_dir);\n\t\t}\n\t} else if (they_are_dirs) {\n\t\tdrop_nlink(old_dir);\n\t\tinc_nlink(new_dir);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/shmem.c b/mm/shmem.c\nindex 5a3f0f754dc0..ebe60e935b37 100644\n--- a/mm/shmem.c\n+++ b/mm/shmem.c\n@@ -4061,15 +4061,20 @@ static int shmem_rename2(struct mnt_idmap *idmap,\n \tif (error)\n \t\treturn error;\n \n-\tif (d_really_is_positive(new_dentry)) {\n-\t\t(void) shmem_unlink(new_dir, new_dentry);\n-\t\tif (they_are_dirs) {\n-\t\t\tdrop_nlink(d_inode(new_dentry));\n+\t{\n+\t\tstruct inode *target_inode = d_really_is_positive(new_dentry) ?\n+\t\t\t\t\t     d_inode(new_dentry) : NULL;\n+\n+\t\tif (target_inode && target_inode->i_nlink) {\n+\t\t\t(void) shmem_unlink(new_dir, new_dentry);\n+\t\t\tif (they_are_dirs) {\n+\t\t\t\tdrop_nlink(target_inode);\n+\t\t\t\tdrop_nlink(old_dir);\n+\t\t\t}\n+\t\t} else if (they_are_dirs) {\n \t\t\tdrop_nlink(old_dir);\n+\t\t\tinc_nlink(new_dir);\n \t\t}\n-\t} else if (they_are_dirs) {\n-\t\tdrop_nlink(old_dir);\n-\t\tinc_nlink(new_dir);\n \t}\n \n \told_dir->i_size -= BOGO_DIRENT_SIZE;",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "mm/shmem.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        }
+      ],
+      "end_step": 20,
+      "revision_index": 1,
+      "start_step": 20
+    }
+  ],
+  "success_step": 20
+}

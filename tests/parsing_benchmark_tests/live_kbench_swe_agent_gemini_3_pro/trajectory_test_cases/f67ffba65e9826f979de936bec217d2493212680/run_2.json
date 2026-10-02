@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ],
+    [
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct btrfs_file_private {\n\tvoid *filldir_buf;\n\tu64 last_index;\n\tstruct extent_state *llseek_cached_state;\n\tbool fsync_skip_inode_lock;\n\t/*\n\t * Task that is skipping the inode lock. This is needed because\n\t * fsync_skip_inode_lock is set in the task's stack private_data, but\n\t * file->private_data is shared among all tasks using the file. We want\n\t * to make sure only the task setting fsync_skip_inode_lock is the one\n\t * skipping the lock.\n\t */\n\tvoid *fsync_skip_inode_lock_task;\n};",
+          "before": "struct btrfs_file_private {\n\tvoid *filldir_buf;\n\tu64 last_index;\n\tstruct extent_state *llseek_cached_state;\n\tbool fsync_skip_inode_lock;\n};",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h\nindex 75fa563e4cac..19a61c769d9f 100644\n--- a/fs/btrfs/ctree.h\n+++ b/fs/btrfs/ctree.h\n@@ -460,6 +460,14 @@ struct btrfs_file_private {\n \tu64 last_index;\n \tstruct extent_state *llseek_cached_state;\n \tbool fsync_skip_inode_lock;\n+\t/*\n+\t * Task that is skipping the inode lock. This is needed because\n+\t * fsync_skip_inode_lock is set in the task's stack private_data, but\n+\t * file->private_data is shared among all tasks using the file. We want\n+\t * to make sure only the task setting fsync_skip_inode_lock is the one\n+\t * skipping the lock.\n+\t */\n+\tvoid *fsync_skip_inode_lock_task;\n };\n \n static inline u32 BTRFS_LEAF_DATA_SIZE(const struct btrfs_fs_info *info)",
+          "explanation": "classic_swe step 34 #1",
+          "filename": "fs/btrfs/ctree.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 34
+        },
+        {
+          "after": "\t\tprivate = file->private_data;\n\t\tprivate->fsync_skip_inode_lock = true;\n\t\tprivate->fsync_skip_inode_lock_task = current;\n\t\tret = iomap_dio_complete(dio);\n\t\tprivate->fsync_skip_inode_lock = false;\n",
+          "before": "\t\tprivate = file->private_data;\n\t\tprivate->fsync_skip_inode_lock = true;\n\t\tret = iomap_dio_complete(dio);\n\t\tprivate->fsync_skip_inode_lock = false;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h\nindex 75fa563e4cac..19a61c769d9f 100644\n--- a/fs/btrfs/ctree.h\n+++ b/fs/btrfs/ctree.h\n@@ -460,6 +460,14 @@ struct btrfs_file_private {\n \tu64 last_index;\n \tstruct extent_state *llseek_cached_state;\n \tbool fsync_skip_inode_lock;\n+\t/*\n+\t * Task that is skipping the inode lock. This is needed because\n+\t * fsync_skip_inode_lock is set in the task's stack private_data, but\n+\t * file->private_data is shared among all tasks using the file. We want\n+\t * to make sure only the task setting fsync_skip_inode_lock is the one\n+\t * skipping the lock.\n+\t */\n+\tvoid *fsync_skip_inode_lock_task;\n };\n \n static inline u32 BTRFS_LEAF_DATA_SIZE(const struct btrfs_fs_info *info)\ndiff --git a/fs/btrfs/direct-io.c b/fs/btrfs/direct-io.c\nindex 67adbe9d294a..3e732b2ba61e 100644\n--- a/fs/btrfs/direct-io.c\n+++ b/fs/btrfs/direct-io.c\n@@ -881,6 +881,7 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)\n \t\t */\n \t\tprivate = file->private_data;\n \t\tprivate->fsync_skip_inode_lock = true;\n+\t\tprivate->fsync_skip_inode_lock_task = current;\n \t\tret = iomap_dio_complete(dio);\n \t\tprivate->fsync_skip_inode_lock = false;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "fs/btrfs/direct-io.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "\tconst bool skip_ilock = (private ?\n\t\t\t\t (private->fsync_skip_inode_lock &&\n\t\t\t\t  private->fsync_skip_inode_lock_task == current) :\n\t\t\t\t false);",
+          "before": "\tconst bool skip_ilock = (private ? private->fsync_skip_inode_lock : false);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h\nindex 75fa563e4cac..19a61c769d9f 100644\n--- a/fs/btrfs/ctree.h\n+++ b/fs/btrfs/ctree.h\n@@ -460,6 +460,14 @@ struct btrfs_file_private {\n \tu64 last_index;\n \tstruct extent_state *llseek_cached_state;\n \tbool fsync_skip_inode_lock;\n+\t/*\n+\t * Task that is skipping the inode lock. This is needed because\n+\t * fsync_skip_inode_lock is set in the task's stack private_data, but\n+\t * file->private_data is shared among all tasks using the file. We want\n+\t * to make sure only the task setting fsync_skip_inode_lock is the one\n+\t * skipping the lock.\n+\t */\n+\tvoid *fsync_skip_inode_lock_task;\n };\n \n static inline u32 BTRFS_LEAF_DATA_SIZE(const struct btrfs_fs_info *info)\ndiff --git a/fs/btrfs/direct-io.c b/fs/btrfs/direct-io.c\nindex 67adbe9d294a..3e732b2ba61e 100644\n--- a/fs/btrfs/direct-io.c\n+++ b/fs/btrfs/direct-io.c\n@@ -881,6 +881,7 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)\n \t\t */\n \t\tprivate = file->private_data;\n \t\tprivate->fsync_skip_inode_lock = true;\n+\t\tprivate->fsync_skip_inode_lock_task = current;\n \t\tret = iomap_dio_complete(dio);\n \t\tprivate->fsync_skip_inode_lock = false;\n \ndiff --git a/fs/btrfs/file.c b/fs/btrfs/file.c\nindex 9914419f3b7d..c68df0858610 100644\n--- a/fs/btrfs/file.c\n+++ b/fs/btrfs/file.c\n@@ -1613,7 +1613,10 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)\n \tint ret = 0, err;\n \tu64 len;\n \tbool full_sync;\n-\tconst bool skip_ilock = (private ? private->fsync_skip_inode_lock : false);\n+\tconst bool skip_ilock = (private ?\n+\t\t\t\t (private->fsync_skip_inode_lock &&\n+\t\t\t\t  private->fsync_skip_inode_lock_task == current) :\n+\t\t\t\t false);\n \n \ttrace_btrfs_sync_file(file, datasync);",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "fs/btrfs/file.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "\tif (iocb->ki_pos + iov_iter_count(from) <= i_size_read(inode) &&\n\t    IS_NOSEC(inode) && !(iocb->ki_flags & IOCB_DSYNC))\n\t\tilock_flags |= BTRFS_ILOCK_SHARED;",
+          "before": "\tif (iocb->ki_pos + iov_iter_count(from) <= i_size_read(inode) && IS_NOSEC(inode))\n\t\tilock_flags |= BTRFS_ILOCK_SHARED;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h\nindex 75fa563e4cac..19a61c769d9f 100644\n--- a/fs/btrfs/ctree.h\n+++ b/fs/btrfs/ctree.h\n@@ -460,6 +460,14 @@ struct btrfs_file_private {\n \tu64 last_index;\n \tstruct extent_state *llseek_cached_state;\n \tbool fsync_skip_inode_lock;\n+\t/*\n+\t * Task that is skipping the inode lock. This is needed because\n+\t * fsync_skip_inode_lock is set in the task's stack private_data, but\n+\t * file->private_data is shared among all tasks using the file. We want\n+\t * to make sure only the task setting fsync_skip_inode_lock is the one\n+\t * skipping the lock.\n+\t */\n+\tvoid *fsync_skip_inode_lock_task;\n };\n \n static inline u32 BTRFS_LEAF_DATA_SIZE(const struct btrfs_fs_info *info)\ndiff --git a/fs/btrfs/direct-io.c b/fs/btrfs/direct-io.c\nindex 67adbe9d294a..243bd480fe02 100644\n--- a/fs/btrfs/direct-io.c\n+++ b/fs/btrfs/direct-io.c\n@@ -794,7 +794,8 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)\n \t * from btrfs_write_check(). Either will need to be rechecked after the\n \t * lock was acquired.\n \t */\n-\tif (iocb->ki_pos + iov_iter_count(from) <= i_size_read(inode) && IS_NOSEC(inode))\n+\tif (iocb->ki_pos + iov_iter_count(from) <= i_size_read(inode) &&\n+\t    IS_NOSEC(inode) && !(iocb->ki_flags & IOCB_DSYNC))\n \t\tilock_flags |= BTRFS_ILOCK_SHARED;\n \n relock:\n@@ -881,6 +882,7 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)\n \t\t */\n \t\tprivate = file->private_data;\n \t\tprivate->fsync_skip_inode_lock = true;\n+\t\tprivate->fsync_skip_inode_lock_task = current;\n \t\tret = iomap_dio_complete(dio);\n \t\tprivate->fsync_skip_inode_lock = false;\n \ndiff --git a/fs/btrfs/file.c b/fs/btrfs/file.c\nindex 9914419f3b7d..c68df0858610 100644\n--- a/fs/btrfs/file.c\n+++ b/fs/btrfs/file.c\n@@ -1613,7 +1613,10 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)\n \tint ret = 0, err;\n \tu64 len;\n \tbool full_sync;\n-\tconst bool skip_ilock = (private ? private->fsync_skip_inode_lock : false);\n+\tconst bool skip_ilock = (private ?\n+\t\t\t\t (private->fsync_skip_inode_lock &&\n+\t\t\t\t  private->fsync_skip_inode_lock_task == current) :\n+\t\t\t\t false);\n \n \ttrace_btrfs_sync_file(file, datasync);",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "fs/btrfs/direct-io.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        }
+      ],
+      "end_step": 37,
+      "revision_index": 0,
+      "start_step": 34
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h\nindex 75fa563e4cac..19a61c769d9f 100644\n--- a/fs/btrfs/ctree.h\n+++ b/fs/btrfs/ctree.h\n@@ -460,6 +460,14 @@ struct btrfs_file_private {\n \tu64 last_index;\n \tstruct extent_state *llseek_cached_state;\n \tbool fsync_skip_inode_lock;\n+\t/*\n+\t * Task that is skipping the inode lock. This is needed because\n+\t * fsync_skip_inode_lock is set in the task's stack private_data, but\n+\t * file->private_data is shared among all tasks using the file. We want\n+\t * to make sure only the task setting fsync_skip_inode_lock is the one\n+\t * skipping the lock.\n+\t */\n+\tvoid *fsync_skip_inode_lock_task;\n };\n \n static inline u32 BTRFS_LEAF_DATA_SIZE(const struct btrfs_fs_info *info)\ndiff --git a/fs/btrfs/direct-io.c b/fs/btrfs/direct-io.c\nindex 67adbe9d294a..243bd480fe02 100644\n--- a/fs/btrfs/direct-io.c\n+++ b/fs/btrfs/direct-io.c\n@@ -794,7 +794,8 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)\n \t * from btrfs_write_check(). Either will need to be rechecked after the\n \t * lock was acquired.\n \t */\n-\tif (iocb->ki_pos + iov_iter_count(from) <= i_size_read(inode) && IS_NOSEC(inode))\n+\tif (iocb->ki_pos + iov_iter_count(from) <= i_size_read(inode) &&\n+\t    IS_NOSEC(inode) && !(iocb->ki_flags & IOCB_DSYNC))\n \t\tilock_flags |= BTRFS_ILOCK_SHARED;\n \n relock:\n@@ -881,6 +882,7 @@ ssize_t btrfs_direct_write(struct kiocb *iocb, struct iov_iter *from)\n \t\t */\n \t\tprivate = file->private_data;\n \t\tprivate->fsync_skip_inode_lock = true;\n+\t\tprivate->fsync_skip_inode_lock_task = current;\n \t\tret = iomap_dio_complete(dio);\n \t\tprivate->fsync_skip_inode_lock = false;\n \ndiff --git a/fs/btrfs/file.c b/fs/btrfs/file.c\nindex 9914419f3b7d..c68df0858610 100644\n--- a/fs/btrfs/file.c\n+++ b/fs/btrfs/file.c\n@@ -1613,7 +1613,10 @@ int btrfs_sync_file(struct file *file, loff_t start, loff_t end, int datasync)\n \tint ret = 0, err;\n \tu64 len;\n \tbool full_sync;\n-\tconst bool skip_ilock = (private ? private->fsync_skip_inode_lock : false);\n+\tconst bool skip_ilock = (private ?\n+\t\t\t\t (private->fsync_skip_inode_lock &&\n+\t\t\t\t  private->fsync_skip_inode_lock_task == current) :\n+\t\t\t\t false);\n \n \ttrace_btrfs_sync_file(file, datasync);",
+          "explanation": "classic_swe step 41 rm #1",
+          "filename": "receipt.json",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 1,
+      "start_step": 41
+    }
+  ],
+  "success_step": 41
+}

@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tinode_lock(tl_inode);\n\n\tinode_lock(gb_inode);\n\n\tret = ocfs2_inode_lock(gb_inode, &gb_bh, 1);\n\tif (ret) {\n\t\tmlog_errno(ret);\n\t\tgoto out_unlock_gb_mutex;\n\t}\n\n\thandle = ocfs2_start_trans(osb, credits);\n\tif (IS_ERR(handle)) {\n\t\tret = PTR_ERR(handle);\n\t\tmlog_errno(ret);\n\t\tgoto out_unlock_gb_rw_lock;\n\t}\n",
+          "before": "\tinode_lock(gb_inode);\n\n\tret = ocfs2_inode_lock(gb_inode, &gb_bh, 1);\n\tif (ret) {\n\t\tmlog_errno(ret);\n\t\tgoto out_unlock_gb_mutex;\n\t}\n\n\tinode_lock(tl_inode);\n\n\thandle = ocfs2_start_trans(osb, credits);\n\tif (IS_ERR(handle)) {\n\t\tret = PTR_ERR(handle);\n\t\tmlog_errno(ret);\n\t\tgoto out_unlock_tl_inode;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/move_extents.c b/fs/ocfs2/move_extents.c\nindex 369c7d27befd..f441215f2f77 100644\n--- a/fs/ocfs2/move_extents.c\n+++ b/fs/ocfs2/move_extents.c\n@@ -629,6 +629,8 @@ static int ocfs2_move_extent(struct ocfs2_move_extents_context *context,\n \t\tgoto out;\n \t}\n \n+\tinode_lock(tl_inode);\n+\n \tinode_lock(gb_inode);\n \n \tret = ocfs2_inode_lock(gb_inode, &gb_bh, 1);\n@@ -637,13 +639,11 @@ static int ocfs2_move_extent(struct ocfs2_move_extents_context *context,\n \t\tgoto out_unlock_gb_mutex;\n \t}\n \n-\tinode_lock(tl_inode);\n-\n \thandle = ocfs2_start_trans(osb, credits);\n \tif (IS_ERR(handle)) {\n \t\tret = PTR_ERR(handle);\n \t\tmlog_errno(ret);\n-\t\tgoto out_unlock_tl_inode;\n+\t\tgoto out_unlock_gb_rw_lock;\n \t}\n \n \tnew_phys_blkno = ocfs2_clusters_to_blocks(inode->i_sb, *new_phys_cpos);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "fs/ocfs2/move_extents.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        },
+        {
+          "after": "out_commit:\n\tocfs2_commit_trans(osb, handle);\n\tbrelse(gd_bh);\n\nout_unlock_gb_rw_lock:\n\tocfs2_inode_unlock(gb_inode, 1);\nout_unlock_gb_mutex:\n\tinode_unlock(gb_inode);\nout_unlock_tl_inode:\n\tinode_unlock(tl_inode);\n\tbrelse(gb_bh);\n\tiput(gb_inode);\n",
+          "before": "out_commit:\n\tocfs2_commit_trans(osb, handle);\n\tbrelse(gd_bh);\n\nout_unlock_tl_inode:\n\tinode_unlock(tl_inode);\n\n\tocfs2_inode_unlock(gb_inode, 1);\nout_unlock_gb_mutex:\n\tinode_unlock(gb_inode);\n\tbrelse(gb_bh);\n\tiput(gb_inode);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ocfs2/move_extents.c b/fs/ocfs2/move_extents.c\nindex 369c7d27befd..dd532a82a195 100644\n--- a/fs/ocfs2/move_extents.c\n+++ b/fs/ocfs2/move_extents.c\n@@ -629,6 +629,8 @@ static int ocfs2_move_extent(struct ocfs2_move_extents_context *context,\n \t\tgoto out;\n \t}\n \n+\tinode_lock(tl_inode);\n+\n \tinode_lock(gb_inode);\n \n \tret = ocfs2_inode_lock(gb_inode, &gb_bh, 1);\n@@ -637,13 +639,11 @@ static int ocfs2_move_extent(struct ocfs2_move_extents_context *context,\n \t\tgoto out_unlock_gb_mutex;\n \t}\n \n-\tinode_lock(tl_inode);\n-\n \thandle = ocfs2_start_trans(osb, credits);\n \tif (IS_ERR(handle)) {\n \t\tret = PTR_ERR(handle);\n \t\tmlog_errno(ret);\n-\t\tgoto out_unlock_tl_inode;\n+\t\tgoto out_unlock_gb_rw_lock;\n \t}\n \n \tnew_phys_blkno = ocfs2_clusters_to_blocks(inode->i_sb, *new_phys_cpos);\n@@ -704,12 +704,12 @@ static int ocfs2_move_extent(struct ocfs2_move_extents_context *context,\n \tocfs2_commit_trans(osb, handle);\n \tbrelse(gd_bh);\n \n-out_unlock_tl_inode:\n-\tinode_unlock(tl_inode);\n-\n+out_unlock_gb_rw_lock:\n \tocfs2_inode_unlock(gb_inode, 1);\n out_unlock_gb_mutex:\n \tinode_unlock(gb_inode);\n+out_unlock_tl_inode:\n+\tinode_unlock(tl_inode);\n \tbrelse(gb_bh);\n \tiput(gb_inode);",
+          "explanation": "classic_swe step 29 #1",
+          "filename": "fs/ocfs2/move_extents.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 29
+        }
+      ],
+      "end_step": 29,
+      "revision_index": 0,
+      "start_step": 28
+    }
+  ],
+  "success_step": 29
+}

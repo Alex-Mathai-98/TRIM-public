@@ -1,0 +1,104 @@
+{
+  "bug_id": "pylint-dev__pylint-6903",
+  "short_path": [
+    [
+      {
+        "filename": "pylint/lint/run.py",
+        "before": "    if (\n        cpu_quota\n        and cpu_quota != -1\n        and Path(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\").is_file()\n    ):\n        with open(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\", encoding=\"utf-8\") as file:\n            cpu_period = int(file.read().rstrip())\n        # Divide quota by period and you should get num of allotted CPU to the container, rounded down if fractional.\n        avail_cpu = int(cpu_quota / cpu_period)\n    elif Path(\"/sys/fs/cgroup/cpu/cpu.shares\").is_file():\n        with open(\"/sys/fs/cgroup/cpu/cpu.shares\", encoding=\"utf-8\") as file:\n            cpu_shares = int(file.read().rstrip())\n        # For AWS, gives correct value * 1024.\n        avail_cpu = int(cpu_shares / 1024)",
+        "after": "    if (\n        cpu_quota\n        and cpu_quota != -1\n        and Path(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\").is_file()\n    ):\n        with open(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\", encoding=\"utf-8\") as file:\n            cpu_period = int(file.read().rstrip())\n        # Divide quota by period and you should get num of allotted CPU to the container, rounded down if fractional.\n        avail_cpu = int(cpu_quota / cpu_period) or 1\n    elif Path(\"/sys/fs/cgroup/cpu/cpu.shares\").is_file():\n        with open(\"/sys/fs/cgroup/cpu/cpu.shares\", encoding=\"utf-8\") as file:\n            cpu_shares = int(file.read().rstrip())\n        # For AWS, gives correct value * 1024.\n        avail_cpu = int(cpu_shares / 1024) or 1",
+        "explanation": "classic_swe step 9 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/pylint/lint/run.py b/pylint/lint/run.py\nindex a7e5d5574..6c697f765 100644\n--- a/pylint/lint/run.py\n+++ b/pylint/lint/run.py\n@@ -52,12 +52,12 @@ def _query_cpu() -> int | None:\n         with open(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\", encoding=\"utf-8\") as file:\n             cpu_period = int(file.read().rstrip())\n         # Divide quota by period and you should get num of allotted CPU to the container, rounded down if fractional.\n-        avail_cpu = int(cpu_quota / cpu_period)\n+        avail_cpu = int(cpu_quota / cpu_period) or 1\n     elif Path(\"/sys/fs/cgroup/cpu/cpu.shares\").is_file():\n         with open(\"/sys/fs/cgroup/cpu/cpu.shares\", encoding=\"utf-8\") as file:\n             cpu_shares = int(file.read().rstrip())\n         # For AWS, gives correct value * 1024.\n-        avail_cpu = int(cpu_shares / 1024)\n+        avail_cpu = int(cpu_shares / 1024) or 1\n     return avail_cpu\n \n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      3
+    ],
+    "edit_list_after_file_min": [
+      3
+    ],
+    "edit_list_after_greedy": [
+      3
+    ],
+    "edit_list_after_refinement": [
+      3
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "pylint/lint/run.py",
+          "before": "    if (\n        cpu_quota\n        and cpu_quota != -1\n        and Path(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\").is_file()\n    ):\n        with open(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\", encoding=\"utf-8\") as file:\n            cpu_period = int(file.read().rstrip())\n        # Divide quota by period and you should get num of allotted CPU to the container, rounded down if fractional.\n        avail_cpu = int(cpu_quota / cpu_period)\n    elif Path(\"/sys/fs/cgroup/cpu/cpu.shares\").is_file():\n        with open(\"/sys/fs/cgroup/cpu/cpu.shares\", encoding=\"utf-8\") as file:\n            cpu_shares = int(file.read().rstrip())\n        # For AWS, gives correct value * 1024.\n        avail_cpu = int(cpu_shares / 1024)",
+          "after": "    if (\n        cpu_quota\n        and cpu_quota != -1\n        and Path(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\").is_file()\n    ):\n        with open(\"/sys/fs/cgroup/cpu/cpu.cfs_period_us\", encoding=\"utf-8\") as file:\n            cpu_period = int(file.read().rstrip())\n        # Divide quota by period and you should get num of allotted CPU to the container, rounded down if fractional.\n        avail_cpu = int(cpu_quota / cpu_period) or 1\n    elif Path(\"/sys/fs/cgroup/cpu/cpu.shares\").is_file():\n        with open(\"/sys/fs/cgroup/cpu/cpu.shares\", encoding=\"utf-8\") as file:\n            cpu_shares = int(file.read().rstrip())\n        # For AWS, gives correct value * 1024.\n        avail_cpu = int(cpu_shares / 1024) or 1",
+          "explanation": "classic_swe step 9 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 8,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 8,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "pylint/lint/run.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "pylint/lint/run.py"
+    ],
+    "gold_files": [
+      "pylint/lint/run.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 2,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 7,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

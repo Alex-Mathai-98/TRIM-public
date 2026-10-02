@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tmutex_lock_nested(&ndev->lock, SINGLE_DEPTH_NESTING);\n\tnetif_napi_add_weight_locked(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);\n\tmutex_unlock(&ndev->lock);",
+          "before": "\tnetif_napi_add_weight(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/wan/lapbether.c b/drivers/net/wan/lapbether.c\nindex 56326f38fe8a..83b024f26ce2 100644\n--- a/drivers/net/wan/lapbether.c\n+++ b/drivers/net/wan/lapbether.c\n@@ -412,7 +412,9 @@ static int lapbeth_new_device(struct net_device *dev)\n \tspin_lock_init(&lapbeth->up_lock);\n \n \tskb_queue_head_init(&lapbeth->rx_queue);\n-\tnetif_napi_add_weight(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);\n+\tmutex_lock_nested(&ndev->lock, SINGLE_DEPTH_NESTING);\n+\tnetif_napi_add_weight_locked(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);\n+\tmutex_unlock(&ndev->lock);\n \n \trc = -EIO;\n \tif (register_netdevice(ndev))",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "drivers/net/wan/lapbether.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "\tnetif_napi_add_weight(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);",
+          "before": "\tmutex_lock_nested(&ndev->lock, SINGLE_DEPTH_NESTING);\n\tnetif_napi_add_weight_locked(ndev, &lapbeth->napi, lapbeth_napi_poll, 16);\n\tmutex_unlock(&ndev->lock);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "drivers/net/wan/lapbether.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "#include <linux/workqueue.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/wan/lapbether.c b/drivers/net/wan/lapbether.c\nindex 56326f38fe8a..684e09a73582 100644\n--- a/drivers/net/wan/lapbether.c\n+++ b/drivers/net/wan/lapbether.c\n@@ -38,6 +38,7 @@\n #include <linux/module.h>\n #include <linux/lapb.h>\n #include <linux/init.h>\n+#include <linux/workqueue.h>\n \n #include <net/x25device.h>",
+          "explanation": "classic_swe step 24 insert #1",
+          "filename": "drivers/net/wan/lapbether.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 41,
+          "step_index": 24
+        },
+        {
+          "after": "struct lapbeth_work {\n\tstruct work_struct work;\n\tstruct net_device *dev;\n};\n\nstatic void lapbeth_new_device_work(struct work_struct *work)\n{\n\tstruct lapbeth_work *lw = container_of(work, struct lapbeth_work, work);\n\tstruct net_device *dev = lw->dev;\n\n\trtnl_lock();\n\tif (dev->flags & IFF_UP)\n\t\tif (!lapbeth_get_x25_dev(dev))\n\t\t\tlapbeth_new_device(dev);\n\trtnl_unlock();\n\n\tdev_put(dev);\n\tkfree(lw);\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/net/wan/lapbether.c b/drivers/net/wan/lapbether.c\nindex 56326f38fe8a..a79b18680997 100644\n--- a/drivers/net/wan/lapbether.c\n+++ b/drivers/net/wan/lapbether.c\n@@ -38,6 +38,7 @@\n #include <linux/module.h>\n #include <linux/lapb.h>\n #include <linux/init.h>\n+#include <linux/workqueue.h>\n \n #include <net/x25device.h>\n \n@@ -427,6 +428,26 @@ static int lapbeth_new_device(struct net_device *dev)\n \tfree_netdev(ndev);\n \tgoto out;\n }\n+struct lapbeth_work {\n+\tstruct work_struct work;\n+\tstruct net_device *dev;\n+};\n+\n+static void lapbeth_new_device_work(struct work_struct *work)\n+{\n+\tstruct lapbeth_work *lw = container_of(work, struct lapbeth_work, work);\n+\tstruct net_device *dev = lw->dev;\n+\n+\trtnl_lock();\n+\tif (dev->flags & IFF_UP)\n+\t\tif (!lapbeth_get_x25_dev(dev))\n+\t\t\tlapbeth_new_device(dev);\n+\trtnl_unlock();\n+\n+\tdev_put(dev);\n+\tkfree(lw);\n+}\n+\n \n /*\tFree a lapb network device.\n  */",
+          "explanation": "classic_swe step 26 insert #1",
+          "filename": "drivers/net/wan/lapbether.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 431,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 1,
+      "start_step": 22
+    }
+  ],
+  "success_step": 26
+}

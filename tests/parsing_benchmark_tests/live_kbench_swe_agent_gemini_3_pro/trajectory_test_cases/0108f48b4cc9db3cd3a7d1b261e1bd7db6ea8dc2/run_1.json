@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif ((char *)de == dir_end) {\n\t\t\t\t/* We hit i_size */\n\t\t\t\tname_len = 0;\n\t\t\t\trec_len = chunk_size -\n\t\t\t\t\t(offset_in_folio(folio, de) & (chunk_size - 1));\n\t\t\t\tif (rec_len < reclen) {\n\t\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t\t    \"directory has no space for new entry\");\n\t\t\t\t\terr = -EIO;\n\t\t\t\t\tgoto out_unlock;\n\t\t\t\t}\n\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(rec_len);\n\t\t\t\tde->inode = 0;\n\t\t\t\tgoto got_it;\n\t\t\t}\n",
+          "before": "\t\t\tif ((char *)de == dir_end) {\n\t\t\t\t/* We hit i_size */\n\t\t\t\tname_len = 0;\n\t\t\t\trec_len = chunk_size;\n\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(chunk_size);\n\t\t\t\tde->inode = 0;\n\t\t\t\tgoto got_it;\n\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c\nindex a8602729586a..f3179daf0a93 100644\n--- a/fs/nilfs2/dir.c\n+++ b/fs/nilfs2/dir.c\n@@ -454,8 +454,15 @@ int nilfs_add_link(struct dentry *dentry, struct inode *inode)\n \t\t\tif ((char *)de == dir_end) {\n \t\t\t\t/* We hit i_size */\n \t\t\t\tname_len = 0;\n-\t\t\t\trec_len = chunk_size;\n-\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(chunk_size);\n+\t\t\t\trec_len = chunk_size -\n+\t\t\t\t\t(offset_in_folio(folio, de) & (chunk_size - 1));\n+\t\t\t\tif (rec_len < reclen) {\n+\t\t\t\t\tnilfs_error(dir->i_sb,\n+\t\t\t\t\t\t    \"directory has no space for new entry\");\n+\t\t\t\t\terr = -EIO;\n+\t\t\t\t\tgoto out_unlock;\n+\t\t\t\t}\n+\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(rec_len);\n \t\t\t\tde->inode = 0;\n \t\t\t\tgoto got_it;\n \t\t\t}",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        }
+      ],
+      "end_step": 10,
+      "revision_index": 0,
+      "start_step": 10
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif ((char *)de == dir_end) {\n\t\t\t\t/* We hit i_size */\n\t\t\t\tname_len = 0;\n\t\t\t\trec_len = chunk_size;\n\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(chunk_size);\n\t\t\t\tde->inode = 0;\n\t\t\t\tgoto got_it;\n\t\t\t}\n",
+          "before": "\t\t\tif ((char *)de == dir_end) {\n\t\t\t\t/* We hit i_size */\n\t\t\t\tname_len = 0;\n\t\t\t\trec_len = chunk_size -\n\t\t\t\t\t(offset_in_folio(folio, de) & (chunk_size - 1));\n\t\t\t\tif (rec_len < reclen) {\n\t\t\t\t\tnilfs_error(dir->i_sb,\n\t\t\t\t\t\t    \"directory has no space for new entry\");\n\t\t\t\t\terr = -EIO;\n\t\t\t\t\tgoto out_unlock;\n\t\t\t\t}\n\t\t\t\tde->rec_len = nilfs_rec_len_to_disk(rec_len);\n\t\t\t\tde->inode = 0;\n\t\t\t\tgoto got_it;\n\t\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        },
+        {
+          "after": "got_it:\n\tfrom = offset_in_folio(folio, de);\n\tto = from + rec_len;\n\tif (to > folio_size(folio) || rec_len < reclen) {\n\t\tnilfs_error(dir->i_sb,\n\t\t\t    \"no space for directory entry\");\n\t\terr = -EIO;\n\t\tgoto out_unlock;\n\t}\n\terr = nilfs_prepare_chunk(folio, from, to);\n",
+          "before": "got_it:\n\tfrom = offset_in_folio(folio, de);\n\tto = from + rec_len;\n\terr = nilfs_prepare_chunk(folio, from, to);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c\nindex a8602729586a..aee358ea0a54 100644\n--- a/fs/nilfs2/dir.c\n+++ b/fs/nilfs2/dir.c\n@@ -485,6 +485,12 @@ int nilfs_add_link(struct dentry *dentry, struct inode *inode)\n got_it:\n \tfrom = offset_in_folio(folio, de);\n \tto = from + rec_len;\n+\tif (to > folio_size(folio) || rec_len < reclen) {\n+\t\tnilfs_error(dir->i_sb,\n+\t\t\t    \"no space for directory entry\");\n+\t\terr = -EIO;\n+\t\tgoto out_unlock;\n+\t}\n \terr = nilfs_prepare_chunk(folio, from, to);\n \tif (err)\n \t\tgoto out_unlock;",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/nilfs2/dir.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 1,
+      "start_step": 15
+    }
+  ],
+  "success_step": 17
+}

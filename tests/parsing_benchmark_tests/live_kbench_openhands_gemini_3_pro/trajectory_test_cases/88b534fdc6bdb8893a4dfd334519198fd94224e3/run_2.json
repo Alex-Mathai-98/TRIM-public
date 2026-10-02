@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (ops->hw_info) {\n\t\tdata = ops->hw_info(idev->dev, &data_len, &cmd->out_data_type);\n\t\tif (IS_ERR(data)) {\n\t\t\trc = PTR_ERR(data);\n\t\t\tgoto out_put;\n\t\t}\n\n\t\t/*\n\t\t * drivers that have hw_info callback should have a unique\n\t\t * iommu_hw_info_type.\n\t\t */\n\t\tif (WARN_ON_ONCE(cmd->out_data_type ==\n\t\t\t\t IOMMU_HW_INFO_TYPE_NONE)) {\n\t\t\trc = -ENODEV;\n\t\t\tgoto out_free;\n\t\t}\n\t} else {\n\t\tcmd->out_data_type = IOMMU_HW_INFO_TYPE_NONE;\n\t\tdata_len = 0;\n\t\tdata = NULL;\n\t}\n\n\tcmd->out_capabilities = 0;\n\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\n\tcopy_len = min(cmd->data_len, data_len);\n",
+          "before": "\n\tif (ops->hw_info) {\n\t\tdata = ops->hw_info(idev->dev, &data_len, &cmd->out_data_type);\n\t\tif (IS_ERR(data)) {\n\t\t\trc = PTR_ERR(data);\n\t\t\tgoto out_put;\n\t\t}\n\n\t\t/*\n\t\t * drivers that have hw_info callback should have a unique\n\t\t * iommu_hw_info_type.\n\t\t */\n\t\tif (WARN_ON_ONCE(cmd->out_data_type ==\n\t\t\t\t IOMMU_HW_INFO_TYPE_NONE)) {\n\t\t\trc = -ENODEV;\n\t\t\tgoto out_free;\n\t\t}\n\t} else {\n\t\tcmd->out_data_type = IOMMU_HW_INFO_TYPE_NONE;\n\t\tdata_len = 0;\n\t\tdata = NULL;\n\t}\n\n\tcopy_len = min(cmd->data_len, data_len);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/iommu/iommufd/device.c\n+++ /linux/drivers/iommu/iommufd/device.c\n@@ -1215,0 +1216,6 @@\n+\tcmd->out_capabilities = 0;\n+\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n+\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n+\n+\tiommufd_put_object(ucmd->ictx, &idev->obj);\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 177",
+          "filename": "drivers/iommu/iommufd/device.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 177
+        },
+        {
+          "after": "\n\trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\n\tkfree(data);\n\treturn rc;\n\nout_free:\n\tkfree(data);\nout_put:\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\treturn rc;\n",
+          "before": "\n\tcmd->out_capabilities = 0;\n\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n\n\trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\nout_free:\n\tkfree(data);\nout_put:\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\treturn rc;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/iommu/iommufd/device.c\n+++ /linux/drivers/iommu/iommufd/device.c\n@@ -1245,4 +1244,0 @@\n-\tcmd->out_capabilities = 0;\n-\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n-\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n-\n@@ -1249,0 +1246,3 @@\n+\tkfree(data);\n+\treturn rc;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 183",
+          "filename": "drivers/iommu/iommufd/device.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 183
+        },
+        {
+          "after": "\n\n\tcopy_len = min(cmd->data_len, data_len);\n\tif (copy_to_user(user_ptr, data, copy_len)) {\n\t\tkfree(data);\n\t\treturn -EFAULT;\n\t}\n\n\t/*\n\t * Zero the trailing bytes if the user buffer is bigger than the\n\t * data size kernel actually has.\n\t */\n\tif (copy_len < cmd->data_len) {\n\t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n\t\t\tkfree(data);\n\t\t\treturn -EFAULT;\n\t\t}\n\t}\n\n",
+          "before": "\n\n\tcopy_len = min(cmd->data_len, data_len);\n\tif (copy_to_user(user_ptr, data, copy_len)) {\n\t\trc = -EFAULT;\n\t\tgoto out_free;\n\t}\n\n\t/*\n\t * Zero the trailing bytes if the user buffer is bigger than the\n\t * data size kernel actually has.\n\t */\n\tif (copy_len < cmd->data_len) {\n\t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n\t\t\trc = -EFAULT;\n\t\t\tgoto out_free;\n\t\t}\n\t}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/iommu/iommufd/device.c\n+++ /linux/drivers/iommu/iommufd/device.c\n@@ -1224,2 +1224,2 @@\n-\t\trc = -EFAULT;\n-\t\tgoto out_free;\n+\t\tkfree(data);\n+\t\treturn -EFAULT;\n@@ -1234,2 +1234,2 @@\n-\t\t\trc = -EFAULT;\n-\t\t\tgoto out_free;\n+\t\t\tkfree(data);\n+\t\t\treturn -EFAULT;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 185",
+          "filename": "drivers/iommu/iommufd/device.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 185
+        }
+      ],
+      "end_step": 185,
+      "revision_index": 0,
+      "start_step": 177
+    }
+  ],
+  "success_step": 185
+}

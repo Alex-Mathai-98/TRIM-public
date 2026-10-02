@@ -1,0 +1,140 @@
+{
+  "bug_id": "mwaskom__seaborn-3069",
+  "short_path": [
+    [
+      {
+        "filename": "seaborn/_core/plot.py",
+        "before": "                with pd.option_context(\"mode.use_inf_as_null\", True):",
+        "after": "                with pd.option_context(\"mode.use_inf_as_na\", True):",
+        "explanation": "classic_swe step 23 #1"
+      }
+    ],
+    [
+      {
+        "filename": "seaborn/_core/plot.py",
+        "before": "    def _finalize_figure(self, p: Plot) -> None:\n\n        for sub in self._subplots:\n            ax = sub[\"ax\"]\n            for axis in \"xy\":\n                axis_key = sub[axis]\n\n                # Axis limits\n                if axis_key in p._limits:\n                    convert_units = getattr(ax, f\"{axis}axis\").convert_units\n                    a, b = p._limits[axis_key]\n                    lo = a if a is None else convert_units(a)\n                    hi = b if b is None else convert_units(b)\n                    if isinstance(a, str):\n                        lo = cast(float, lo) - 0.5\n                    if isinstance(b, str):\n                        hi = cast(float, hi) + 0.5\n                    ax.set(**{f\"{axis}lim\": (lo, hi)})\n\n        engine_default = None if p._target is not None else \"tight\"\n        layout_engine = p._layout_spec.get(\"engine\", engine_default)\n        set_layout_engine(self._figure, layout_engine)",
+        "after": "    def _finalize_figure(self, p: Plot) -> None:\n        from seaborn._core.scales import Nominal\n\n        for sub in self._subplots:\n            ax = sub[\"ax\"]\n            for axis in \"xy\":\n                axis_key = sub[axis]\n\n                # Check if this axis uses a Nominal scale\n                scale = self._scales.get(axis_key)\n                is_nominal = isinstance(scale, Nominal)\n\n                # Apply categorical axis behaviors for Nominal scales\n                if is_nominal:\n                    # 1. Set axis limits to +/- 0.5 from first and last tick\n                    axis_obj = getattr(ax, f\"{axis}axis\")\n                    ticks = axis_obj.get_ticklocs()\n                    if len(ticks) > 0:\n                        lo, hi = ticks[0] - 0.5, ticks[-1] + 0.5\n                        ax.set(**{f\"{axis}lim\": (lo, hi)})\n                    \n                    # 2. Disable grid for this axis\n                    axis_obj.grid(False)\n                    \n                    # 3. Invert y-axis if this is the y-axis\n                    if axis == \"y\":\n                        ax.invert_yaxis()\n\n                # Axis limits (existing logic for explicit limits)\n                if axis_key in p._limits:\n                    convert_units = getattr(ax, f\"{axis}axis\").convert_units\n                    a, b = p._limits[axis_key]\n                    lo = a if a is None else convert_units(a)\n                    hi = b if b is None else convert_units(b)\n                    if isinstance(a, str):\n                        lo = cast(float, lo) - 0.5\n                    if isinstance(b, str):\n                        hi = cast(float, hi) + 0.5\n                    ax.set(**{f\"{axis}lim\": (lo, hi)})\n\n        engine_default = None if p._target is not None else \"tight\"\n        layout_engine = p._layout_spec.get(\"engine\", engine_default)\n        set_layout_engine(self._figure, layout_engine)",
+        "explanation": "classic_swe step 31 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/seaborn/_core/plot.py b/seaborn/_core/plot.py\nindex 4f0290a4..402ba140 100644\n--- a/seaborn/_core/plot.py\n+++ b/seaborn/_core/plot.py\n@@ -1475,7 +1475,7 @@ class Plotter:\n \n                 axes_df = self._filter_subplot_data(df, view)\n \n-                with pd.option_context(\"mode.use_inf_as_null\", True):\n+                with pd.option_context(\"mode.use_inf_as_na\", True):\n                     if keep_na:\n                         # The simpler thing to do would be x.dropna().reindex(x.index).\n                         # But that doesn't work with the way that the subset iteration\n@@ -1626,13 +1626,34 @@ class Plotter:\n                 self._figure.legends.append(legend)\n \n     def _finalize_figure(self, p: Plot) -> None:\n+        from seaborn._core.scales import Nominal\n \n         for sub in self._subplots:\n             ax = sub[\"ax\"]\n             for axis in \"xy\":\n                 axis_key = sub[axis]\n \n-                # Axis limits\n+                # Check if this axis uses a Nominal scale\n+                scale = self._scales.get(axis_key)\n+                is_nominal = isinstance(scale, Nominal)\n+\n+                # Apply categorical axis behaviors for Nominal scales\n+                if is_nominal:\n+                    # 1. Set axis limits to +/- 0.5 from first and last tick\n+                    axis_obj = getattr(ax, f\"{axis}axis\")\n+                    ticks = axis_obj.get_ticklocs()\n+                    if len(ticks) > 0:\n+                        lo, hi = ticks[0] - 0.5, ticks[-1] + 0.5\n+                        ax.set(**{f\"{axis}lim\": (lo, hi)})\n+                    \n+                    # 2. Disable grid for this axis\n+                    axis_obj.grid(False)\n+                    \n+                    # 3. Invert y-axis if this is the y-axis\n+                    if axis == \"y\":\n+                        ax.invert_yaxis()\n+\n+                # Axis limits (existing logic for explicit limits)\n                 if axis_key in p._limits:\n                     convert_units = getattr(ax, f\"{axis}axis\").convert_units\n                     a, b = p._limits[axis_key]\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      5
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      4,
+      5
+    ],
+    "edit_list_after_file_min": [
+      4,
+      5
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      4,
+      5
+    ],
+    "edit_list_after_refinement": [
+      4,
+      5
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "seaborn/_core/plot.py",
+          "before": "                with pd.option_context(\"mode.use_inf_as_null\", True):",
+          "after": "                with pd.option_context(\"mode.use_inf_as_na\", True):",
+          "explanation": "classic_swe step 23 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "seaborn/_core/plot.py",
+          "before": "    def _finalize_figure(self, p: Plot) -> None:\n\n        for sub in self._subplots:\n            ax = sub[\"ax\"]\n            for axis in \"xy\":\n                axis_key = sub[axis]\n\n                # Axis limits\n                if axis_key in p._limits:\n                    convert_units = getattr(ax, f\"{axis}axis\").convert_units\n                    a, b = p._limits[axis_key]\n                    lo = a if a is None else convert_units(a)\n                    hi = b if b is None else convert_units(b)\n                    if isinstance(a, str):\n                        lo = cast(float, lo) - 0.5\n                    if isinstance(b, str):\n                        hi = cast(float, hi) + 0.5\n                    ax.set(**{f\"{axis}lim\": (lo, hi)})\n\n        engine_default = None if p._target is not None else \"tight\"\n        layout_engine = p._layout_spec.get(\"engine\", engine_default)\n        set_layout_engine(self._figure, layout_engine)",
+          "after": "    def _finalize_figure(self, p: Plot) -> None:\n        from seaborn._core.scales import Nominal\n\n        for sub in self._subplots:\n            ax = sub[\"ax\"]\n            for axis in \"xy\":\n                axis_key = sub[axis]\n\n                # Check if this axis uses a Nominal scale\n                scale = self._scales.get(axis_key)\n                is_nominal = isinstance(scale, Nominal)\n\n                # Apply categorical axis behaviors for Nominal scales\n                if is_nominal:\n                    # 1. Set axis limits to +/- 0.5 from first and last tick\n                    axis_obj = getattr(ax, f\"{axis}axis\")\n                    ticks = axis_obj.get_ticklocs()\n                    if len(ticks) > 0:\n                        lo, hi = ticks[0] - 0.5, ticks[-1] + 0.5\n                        ax.set(**{f\"{axis}lim\": (lo, hi)})\n                    \n                    # 2. Disable grid for this axis\n                    axis_obj.grid(False)\n                    \n                    # 3. Invert y-axis if this is the y-axis\n                    if axis == \"y\":\n                        ax.invert_yaxis()\n\n                # Axis limits (existing logic for explicit limits)\n                if axis_key in p._limits:\n                    convert_units = getattr(ax, f\"{axis}axis\").convert_units\n                    a, b = p._limits[axis_key]\n                    lo = a if a is None else convert_units(a)\n                    hi = b if b is None else convert_units(b)\n                    if isinstance(a, str):\n                        lo = cast(float, lo) - 0.5\n                    if isinstance(b, str):\n                        hi = cast(float, hi) + 0.5\n                    ax.set(**{f\"{axis}lim\": (lo, hi)})\n\n        engine_default = None if p._target is not None else \"tight\"\n        layout_engine = p._layout_spec.get(\"engine\", engine_default)\n        set_layout_engine(self._figure, layout_engine)",
+          "explanation": "classic_swe step 31 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 94,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 94,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "seaborn/_core/plot.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "seaborn/_core/plot.py"
+    ],
+    "gold_files": [
+      "seaborn/_core/plot.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 4,
+    "minimized_added_lines": 23,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 13,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

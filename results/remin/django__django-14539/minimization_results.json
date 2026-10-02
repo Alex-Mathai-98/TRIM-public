@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-14539",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/html.py",
+        "before": "            # Trim trailing punctuation (after trimming wrapping punctuation,\n            # as encoded entities contain ';'). Unescape entities to avoid\n            # breaking them by removing ';'.\n            middle_unescaped = html.unescape(middle)\n            stripped = middle_unescaped.rstrip(TRAILING_PUNCTUATION_CHARS)\n            if middle_unescaped != stripped:\n                trail = middle[len(stripped):] + trail\n                middle = middle[:len(stripped) - len(middle_unescaped)]\n                trimmed_something = True",
+        "after": "            # Trim trailing punctuation (after trimming wrapping punctuation,\n            # as encoded entities contain ';'). Unescape entities to avoid\n            # breaking them by removing ';'.\n            middle_unescaped = html.unescape(middle)\n            stripped = middle_unescaped.rstrip(TRAILING_PUNCTUATION_CHARS)\n            if middle_unescaped != stripped:\n                # Calculate how many characters were removed from the unescaped string\n                chars_removed = len(middle_unescaped) - len(stripped)\n                # Remove characters from the end of the original string until\n                # the unescaped version matches the stripped version\n                temp_middle = middle\n                temp_trail = \"\"\n                for _ in range(chars_removed):\n                    if temp_middle:\n                        char_to_remove = temp_middle[-1]\n                        temp_middle = temp_middle[:-1]\n                        temp_trail = char_to_remove + temp_trail\n                        # Check if we've removed enough unescaped characters\n                        if len(html.unescape(temp_middle)) == len(stripped):\n                            break\n                trail = temp_trail + trail\n                middle = temp_middle\n                trimmed_something = True",
+        "explanation": "classic_swe step 11 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/utils/html.py b/django/utils/html.py\nindex 3bc02b8dd3..f462da4d0a 100644\n--- a/django/utils/html.py\n+++ b/django/utils/html.py\n@@ -283,8 +283,22 @@ def urlize(text, trim_url_limit=None, nofollow=False, autoescape=False):\n             middle_unescaped = html.unescape(middle)\n             stripped = middle_unescaped.rstrip(TRAILING_PUNCTUATION_CHARS)\n             if middle_unescaped != stripped:\n-                trail = middle[len(stripped):] + trail\n-                middle = middle[:len(stripped) - len(middle_unescaped)]\n+                # Calculate how many characters were removed from the unescaped string\n+                chars_removed = len(middle_unescaped) - len(stripped)\n+                # Remove characters from the end of the original string until\n+                # the unescaped version matches the stripped version\n+                temp_middle = middle\n+                temp_trail = \"\"\n+                for _ in range(chars_removed):\n+                    if temp_middle:\n+                        char_to_remove = temp_middle[-1]\n+                        temp_middle = temp_middle[:-1]\n+                        temp_trail = char_to_remove + temp_trail\n+                        # Check if we've removed enough unescaped characters\n+                        if len(html.unescape(temp_middle)) == len(stripped):\n+                            break\n+                trail = temp_trail + trail\n+                middle = temp_middle\n                 trimmed_something = True\n         return lead, middle, trail\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/html.py",
+          "before": "            # Trim trailing punctuation (after trimming wrapping punctuation,\n            # as encoded entities contain ';'). Unescape entities to avoid\n            # breaking them by removing ';'.\n            middle_unescaped = html.unescape(middle)\n            stripped = middle_unescaped.rstrip(TRAILING_PUNCTUATION_CHARS)\n            if middle_unescaped != stripped:\n                trail = middle[len(stripped):] + trail\n                middle = middle[:len(stripped) - len(middle_unescaped)]\n                trimmed_something = True",
+          "after": "            # Trim trailing punctuation (after trimming wrapping punctuation,\n            # as encoded entities contain ';'). Unescape entities to avoid\n            # breaking them by removing ';'.\n            middle_unescaped = html.unescape(middle)\n            stripped = middle_unescaped.rstrip(TRAILING_PUNCTUATION_CHARS)\n            if middle_unescaped != stripped:\n                # Calculate how many characters were removed from the unescaped string\n                chars_removed = len(middle_unescaped) - len(stripped)\n                # Remove characters from the end of the original string until\n                # the unescaped version matches the stripped version\n                temp_middle = middle\n                temp_trail = \"\"\n                for _ in range(chars_removed):\n                    if temp_middle:\n                        char_to_remove = temp_middle[-1]\n                        temp_middle = temp_middle[:-1]\n                        temp_trail = char_to_remove + temp_trail\n                        # Check if we've removed enough unescaped characters\n                        if len(html.unescape(temp_middle)) == len(stripped):\n                            break\n                trail = temp_trail + trail\n                middle = temp_middle\n                trimmed_something = True",
+          "explanation": "classic_swe step 11 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 14,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 14,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/utils/html.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/utils/html.py"
+    ],
+    "gold_files": [
+      "django/utils/html.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 16,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 3,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

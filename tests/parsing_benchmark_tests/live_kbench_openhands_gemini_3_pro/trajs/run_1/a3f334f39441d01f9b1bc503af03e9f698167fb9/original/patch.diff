@@ -1,0 +1,70 @@
+diff --git a/fs/ocfs2/dlmglue.c b/fs/ocfs2/dlmglue.c
+index 92a6149da9c1..cbf5f081b8a6 100644
+--- a/fs/ocfs2/dlmglue.c
++++ b/fs/ocfs2/dlmglue.c
+@@ -3371,6 +3371,8 @@ int ocfs2_dlm_init(struct ocfs2_super *osb)
+ 	ocfs2_orphan_scan_lock_res_init(&osb->osb_orphan_scan.os_lockres, osb);
+ 
+ 	osb->cconn = conn;
++
++	osb->osb_flags |= OCFS2_OSB_DLM_INIT;
+ bail:
+ 	if (status < 0) {
+ 		ocfs2_dlm_shutdown_debug(osb);
+@@ -3384,7 +3386,10 @@ int ocfs2_dlm_init(struct ocfs2_super *osb)
+ void ocfs2_dlm_shutdown(struct ocfs2_super *osb,
+ 			int hangup_pending)
+ {
+-	ocfs2_drop_osb_locks(osb);
++
++	if (osb->osb_flags & OCFS2_OSB_DLM_INIT)
++		ocfs2_drop_osb_locks(osb);
++
+ 
+ 	/*
+ 	 * Now that we have dropped all locks and ocfs2_dismount_volume()
+@@ -3397,10 +3402,12 @@ void ocfs2_dlm_shutdown(struct ocfs2_super *osb,
+ 		osb->dc_task = NULL;
+ 	}
+ 
+-	ocfs2_lock_res_free(&osb->osb_super_lockres);
+-	ocfs2_lock_res_free(&osb->osb_rename_lockres);
+-	ocfs2_lock_res_free(&osb->osb_nfs_sync_lockres);
+-	ocfs2_lock_res_free(&osb->osb_orphan_scan.os_lockres);
++	if (osb->osb_flags & OCFS2_OSB_DLM_INIT) {
++		ocfs2_lock_res_free(&osb->osb_super_lockres);
++		ocfs2_lock_res_free(&osb->osb_rename_lockres);
++		ocfs2_lock_res_free(&osb->osb_nfs_sync_lockres);
++		ocfs2_lock_res_free(&osb->osb_orphan_scan.os_lockres);
++	}
+ 
+ 	if (osb->cconn) {
+ 		ocfs2_cluster_disconnect(osb->cconn, hangup_pending);
+diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
+index 14bf440ea4df..792af69d8db1 100644
+--- a/fs/ocfs2/inode.c
++++ b/fs/ocfs2/inode.c
+@@ -1281,8 +1281,9 @@ static void ocfs2_clear_inode(struct inode *inode)
+ 	 * the journal is flushed before journal shutdown. Thus it is safe to
+ 	 * have inodes get cleaned up after journal shutdown.
+ 	 */
+-	jbd2_journal_release_jbd_inode(osb->journal->j_journal,
+-				       &oi->ip_jinode);
++	if (osb->journal)
++		jbd2_journal_release_jbd_inode(osb->journal->j_journal,
++					       &oi->ip_jinode);
+ }
+ 
+ void ocfs2_evict_inode(struct inode *inode)
+diff --git a/fs/ocfs2/ocfs2.h b/fs/ocfs2/ocfs2.h
+index 6aaa94c554c1..a854fa136696 100644
+--- a/fs/ocfs2/ocfs2.h
++++ b/fs/ocfs2/ocfs2.h
+@@ -282,6 +282,7 @@ enum ocfs2_mount_options
+ #define OCFS2_OSB_SOFT_RO	0x0001
+ #define OCFS2_OSB_HARD_RO	0x0002
+ #define OCFS2_OSB_ERROR_FS	0x0004
++#define OCFS2_OSB_DLM_INIT	0x0008
+ #define OCFS2_DEFAULT_ATIME_QUANTUM	60
+ 
+ struct ocfs2_triggers {

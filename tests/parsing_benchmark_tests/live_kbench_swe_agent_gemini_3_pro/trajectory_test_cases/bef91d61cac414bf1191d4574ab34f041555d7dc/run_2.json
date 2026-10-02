@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\trcu_read_lock();\n\tdev = rt->dst.dev;\n\n\tif (IPCB(skb)->flags & IPSKB_FORWARDED)\n\t\tgoto mc_output;\n\tif (!(IPCB(skb)->flags & IPSKB_MCROUTE))\n\t\tgoto mc_output;\n\n\tskb->dev = dev;\n\n\tmrt = ipmr_rt_fib_lookup(net, skb);\n\tif (IS_ERR(mrt))\n\t\tgoto mc_output;\n\n\t/* already under rcu_read_lock() */\n\tcache = ipmr_cache_find(mrt, ip_hdr(skb)->saddr, ip_hdr(skb)->daddr);\n\tif (!cache) {\n\t\tvif = ipmr_find_vif(mrt, dev);\n\t\tif (vif >= 0)\n\t\t\tcache = ipmr_cache_find_any(mrt, ip_hdr(skb)->daddr,\n\t\t\t\t\t\t    vif);\n\t}\n\n\t/* No usable cache entry */\n\tif (!cache) {\n\t\tvif = ipmr_find_vif(mrt, dev);\n\t\tif (vif >= 0) {\n\t\t\tint err = ipmr_cache_unresolved(mrt, vif, skb, dev);\n\n\t\t\trcu_read_unlock();\n\t\t\treturn err;\n\t\t}\n\t\tgoto mc_output;\n\t}\n\n\tvif = cache->_c.mfc_parent;\n\tif (rcu_access_pointer(mrt->vif_table[vif].dev) != dev)\n\t\tgoto mc_output;\n\n\tip_mr_output_finish(net, mrt, dev, skb, cache);\n\trcu_read_unlock();\n\treturn 0;\n\nmc_output:\n\trcu_read_unlock();\n\treturn ip_mc_output(net, sk, skb);",
+          "before": "\tWARN_ON_ONCE(!rcu_read_lock_held());\n\tdev = rt->dst.dev;\n\n\tif (IPCB(skb)->flags & IPSKB_FORWARDED)\n\t\tgoto mc_output;\n\tif (!(IPCB(skb)->flags & IPSKB_MCROUTE))\n\t\tgoto mc_output;\n\n\tskb->dev = dev;\n\n\tmrt = ipmr_rt_fib_lookup(net, skb);\n\tif (IS_ERR(mrt))\n\t\tgoto mc_output;\n\n\t/* already under rcu_read_lock() */\n\tcache = ipmr_cache_find(mrt, ip_hdr(skb)->saddr, ip_hdr(skb)->daddr);\n\tif (!cache) {\n\t\tvif = ipmr_find_vif(mrt, dev);\n\t\tif (vif >= 0)\n\t\t\tcache = ipmr_cache_find_any(mrt, ip_hdr(skb)->daddr,\n\t\t\t\t\t\t    vif);\n\t}\n\n\t/* No usable cache entry */\n\tif (!cache) {\n\t\tvif = ipmr_find_vif(mrt, dev);\n\t\tif (vif >= 0)\n\t\t\treturn ipmr_cache_unresolved(mrt, vif, skb, dev);\n\t\tgoto mc_output;\n\t}\n\n\tvif = cache->_c.mfc_parent;\n\tif (rcu_access_pointer(mrt->vif_table[vif].dev) != dev)\n\t\tgoto mc_output;\n\n\tip_mr_output_finish(net, mrt, dev, skb, cache);\n\treturn 0;\n\nmc_output:\n\treturn ip_mc_output(net, sk, skb);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/ipv4/ipmr.c b/net/ipv4/ipmr.c\nindex f78c4e53dc8c..0303871d553f 100644\n--- a/net/ipv4/ipmr.c\n+++ b/net/ipv4/ipmr.c\n@@ -2299,7 +2299,7 @@ int ip_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)\n \tstruct mr_table *mrt;\n \tint vif;\n \n-\tWARN_ON_ONCE(!rcu_read_lock_held());\n+\trcu_read_lock();\n \tdev = rt->dst.dev;\n \n \tif (IPCB(skb)->flags & IPSKB_FORWARDED)\n@@ -2325,8 +2325,12 @@ int ip_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)\n \t/* No usable cache entry */\n \tif (!cache) {\n \t\tvif = ipmr_find_vif(mrt, dev);\n-\t\tif (vif >= 0)\n-\t\t\treturn ipmr_cache_unresolved(mrt, vif, skb, dev);\n+\t\tif (vif >= 0) {\n+\t\t\tint err = ipmr_cache_unresolved(mrt, vif, skb, dev);\n+\n+\t\t\trcu_read_unlock();\n+\t\t\treturn err;\n+\t\t}\n \t\tgoto mc_output;\n \t}\n \n@@ -2335,9 +2339,11 @@ int ip_mr_output(struct net *net, struct sock *sk, struct sk_buff *skb)\n \t\tgoto mc_output;\n \n \tip_mr_output_finish(net, mrt, dev, skb, cache);\n+\trcu_read_unlock();\n \treturn 0;\n \n mc_output:\n+\trcu_read_unlock();\n \treturn ip_mc_output(net, sk, skb);\n }",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "net/ipv4/ipmr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 22
+    }
+  ],
+  "success_step": 22
+}

@@ -1,0 +1,38 @@
+diff --git a/kernel/bpf/syscall.c b/kernel/bpf/syscall.c
+index a8f1808a1ca5..3e8c98ee738c 100644
+--- a/kernel/bpf/syscall.c
++++ b/kernel/bpf/syscall.c
+@@ -2980,6 +2980,8 @@ static void bpf_link_defer_dealloc_rcu_gp(struct rcu_head *rcu)
+ {
+ 	struct bpf_link *link = container_of(rcu, struct bpf_link, rcu);
+ 
++	if (link->prog)
++		bpf_prog_put(link->prog);
+ 	/* free bpf_link and its containing memory */
+ 	link->ops->dealloc_deferred(link);
+ }
+@@ -3003,19 +3005,21 @@ static void bpf_link_free(struct bpf_link *link)
+ 		sleepable = link->prog->sleepable;
+ 		/* detach BPF program, clean up used resources */
+ 		ops->release(link);
+-		bpf_prog_put(link->prog);
+ 	}
+ 	if (ops->dealloc_deferred) {
+ 		/* schedule BPF link deallocation; if underlying BPF program
+ 		 * is sleepable, we need to first wait for RCU tasks trace
+ 		 * sync, then go through "classic" RCU grace period
+ 		 */
+-		if (sleepable)
++		if (sleepable || link->type == BPF_LINK_TYPE_RAW_TRACEPOINT)
+ 			call_rcu_tasks_trace(&link->rcu, bpf_link_defer_dealloc_mult_rcu_gp);
+ 		else
+ 			call_rcu(&link->rcu, bpf_link_defer_dealloc_rcu_gp);
+-	} else if (ops->dealloc)
++	} else if (ops->dealloc) {
++		if (link->prog)
++			bpf_prog_put(link->prog);
+ 		ops->dealloc(link);
++	}
+ }
+ 
+ static void bpf_link_put_deferred(struct work_struct *work)

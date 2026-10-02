@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int atmtcp_recv_control(const struct atmtcp_control *msg,\n\t\t\t       struct atm_dev *dev)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\tstruct atm_vcc *check_vcc;\n\tstruct hlist_head *head;\n\tstruct sock *s;\n\tint i, found = 0;\n\n\tread_lock(&vcc_sklist_lock);\n\tfor (i = 0; i < VCC_HTABLE_SIZE; ++i) {\n\t\thead = &vcc_hash[i];\n\n\t\tsk_for_each(s, head) {\n\t\t\tcheck_vcc = atm_sk(s);\n\t\t\tif (check_vcc == vcc && check_vcc->dev == dev) {\n\t\t\t\tfound = 1;\n\t\t\t\tbreak;\n\t\t\t}\n\t\t}\n\t\tif (found) break;\n\t}\n\tread_unlock(&vcc_sklist_lock);\n\n\tif (!found)\n\t\treturn -EINVAL;\n\n\tvcc->vpi = msg->addr.sap_addr.vpi;",
+          "before": "static int atmtcp_recv_control(const struct atmtcp_control *msg)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\n\tvcc->vpi = msg->addr.sap_addr.vpi;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..6a1753cdb4dd 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -86,9 +86,32 @@ static int atmtcp_send_control(struct atm_vcc *vcc,int type,\n }\n \n \n-static int atmtcp_recv_control(const struct atmtcp_control *msg)\n+static int atmtcp_recv_control(const struct atmtcp_control *msg,\n+\t\t\t       struct atm_dev *dev)\n {\n \tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n+\tstruct atm_vcc *check_vcc;\n+\tstruct hlist_head *head;\n+\tstruct sock *s;\n+\tint i, found = 0;\n+\n+\tread_lock(&vcc_sklist_lock);\n+\tfor (i = 0; i < VCC_HTABLE_SIZE; ++i) {\n+\t\thead = &vcc_hash[i];\n+\n+\t\tsk_for_each(s, head) {\n+\t\t\tcheck_vcc = atm_sk(s);\n+\t\t\tif (check_vcc == vcc && check_vcc->dev == dev) {\n+\t\t\t\tfound = 1;\n+\t\t\t\tbreak;\n+\t\t\t}\n+\t\t}\n+\t\tif (found) break;\n+\t}\n+\tread_unlock(&vcc_sklist_lock);\n+\n+\tif (!found)\n+\t\treturn -EINVAL;\n \n \tvcc->vpi = msg->addr.sap_addr.vpi;\n \tvcc->vci = msg->addr.sap_addr.vci;",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data, dev);\n\t\tgoto done;\n\t}",
+          "before": "\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..f63e87bea27e 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -86,9 +86,32 @@ static int atmtcp_send_control(struct atm_vcc *vcc,int type,\n }\n \n \n-static int atmtcp_recv_control(const struct atmtcp_control *msg)\n+static int atmtcp_recv_control(const struct atmtcp_control *msg,\n+\t\t\t       struct atm_dev *dev)\n {\n \tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n+\tstruct atm_vcc *check_vcc;\n+\tstruct hlist_head *head;\n+\tstruct sock *s;\n+\tint i, found = 0;\n+\n+\tread_lock(&vcc_sklist_lock);\n+\tfor (i = 0; i < VCC_HTABLE_SIZE; ++i) {\n+\t\thead = &vcc_hash[i];\n+\n+\t\tsk_for_each(s, head) {\n+\t\t\tcheck_vcc = atm_sk(s);\n+\t\t\tif (check_vcc == vcc && check_vcc->dev == dev) {\n+\t\t\t\tfound = 1;\n+\t\t\t\tbreak;\n+\t\t\t}\n+\t\t}\n+\t\tif (found) break;\n+\t}\n+\tread_unlock(&vcc_sklist_lock);\n+\n+\tif (!found)\n+\t\treturn -EINVAL;\n \n \tvcc->vpi = msg->addr.sap_addr.vpi;\n \tvcc->vci = msg->addr.sap_addr.vci;\n@@ -295,7 +318,7 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n \t\tresult = atmtcp_recv_control(\n-\t\t    (struct atmtcp_control *) skb->data);\n+\t\t    (struct atmtcp_control *) skb->data, dev);\n \t\tgoto done;\n \t}\n \tread_lock(&vcc_sklist_lock);",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 14
+    }
+  ],
+  "success_step": 15
+}

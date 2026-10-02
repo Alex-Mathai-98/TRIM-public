@@ -1,0 +1,163 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    [
+      5
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct rcu_head\t\trcu;",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/net/bluetooth/l2cap.h\n+++ /linux/include/net/bluetooth/l2cap.h\n@@ -673,0 +674 @@\n+\tstruct rcu_head\t\trcu;",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 62",
+          "filename": "include/net/bluetooth/l2cap.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 674,
+          "step_index": 62
+        },
+        {
+          "after": "\tkfree_rcu(conn, rcu);\n}",
+          "before": "\tkfree(conn);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/bluetooth/l2cap_core.c\n+++ /linux/net/bluetooth/l2cap_core.c\n@@ -1810 +1810 @@\n-\tkfree(conn);\n+\tkfree_rcu(conn, rcu);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 64",
+          "filename": "net/bluetooth/l2cap_core.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 64
+        },
+        {
+          "after": "void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)\n{\n\tstruct l2cap_conn *conn;\n\tint len;\n\n\trcu_read_lock();\n\tconn = hcon->l2cap_data;\n\tif (conn && !kref_get_unless_zero(&conn->ref))\n\t\tconn = NULL;\n\trcu_read_unlock();\n\n\tif (!conn)\n\t\tconn = l2cap_conn_add(hcon);",
+          "before": "void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)\n{\n\tstruct l2cap_conn *conn = hcon->l2cap_data;\n\tint len;\n\n\tif (!conn)\n\t\tconn = l2cap_conn_add(hcon);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/bluetooth/l2cap_core.c\n+++ /linux/net/bluetooth/l2cap_core.c\n@@ -7480 +7480 @@\n-\tstruct l2cap_conn *conn = hcon->l2cap_data;\n+\tstruct l2cap_conn *conn;\n@@ -7481,0 +7482,6 @@\n+\n+\trcu_read_lock();\n+\tconn = hcon->l2cap_data;\n+\tif (conn && !kref_get_unless_zero(&conn->ref))\n+\t\tconn = NULL;\n+\trcu_read_unlock();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 78",
+          "filename": "net/bluetooth/l2cap_core.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 78
+        },
+        {
+          "after": "\n\t\tif (len == skb->len) {\n\t\t\t/* Complete frame received */\n\t\t\tl2cap_recv_frame(conn, skb);\n\t\t\tgoto done;\n\t\t}\n",
+          "before": "\n\t\tif (len == skb->len) {\n\t\t\t/* Complete frame received */\n\t\t\tl2cap_recv_frame(conn, skb);\n\t\t\treturn;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/bluetooth/l2cap_core.c\n+++ /linux/net/bluetooth/l2cap_core.c\n@@ -7521 +7521 @@\n-\t\t\treturn;\n+\t\t\tgoto done;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 80",
+          "filename": "net/bluetooth/l2cap_core.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 80
+        },
+        {
+          "after": "\ndrop:\n\tkfree_skb(skb);\ndone:\n\tif (conn)\n\t\tl2cap_conn_put(conn);\n}\n\nstatic struct hci_cb l2cap_cb = {\n",
+          "before": "\ndrop:\n\tkfree_skb(skb);\n}\n\nstatic struct hci_cb l2cap_cb = {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/bluetooth/l2cap_core.c\n+++ /linux/net/bluetooth/l2cap_core.c\n@@ -7584,0 +7585,3 @@\n+done:\n+\tif (conn)\n+\t\tl2cap_conn_put(conn);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 90",
+          "filename": "net/bluetooth/l2cap_core.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 90
+        }
+      ],
+      "end_step": 90,
+      "revision_index": 0,
+      "start_step": 58
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\tbt_cb(skb)->force_active = BT_POWER_FORCE_ACTIVE_ON;\n\tskb->priority = HCI_PRIO_MAX;\n\n\tif (conn->hchan)\n\t\thci_send_acl(conn->hchan, skb, flags);\n\telse\n\t\tkfree_skb(skb);\n}\n",
+          "before": "\n\tbt_cb(skb)->force_active = BT_POWER_FORCE_ACTIVE_ON;\n\tskb->priority = HCI_PRIO_MAX;\n\n\thci_send_acl(conn->hchan, skb, flags);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/bluetooth/l2cap_core.c\n+++ /linux/net/bluetooth/l2cap_core.c\n@@ -973 +973,4 @@\n-\thci_send_acl(conn->hchan, skb, flags);\n+\tif (conn->hchan)\n+\t\thci_send_acl(conn->hchan, skb, flags);\n+\telse\n+\t\tkfree_skb(skb);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 113",
+          "filename": "net/bluetooth/l2cap_core.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 113
+        }
+      ],
+      "end_step": 113,
+      "revision_index": 1,
+      "start_step": 113
+    }
+  ],
+  "success_step": 113
+}

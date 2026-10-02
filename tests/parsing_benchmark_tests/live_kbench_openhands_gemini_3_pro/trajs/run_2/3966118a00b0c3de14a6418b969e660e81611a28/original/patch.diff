@@ -1,0 +1,51 @@
+diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c
+index 89f9665ce70d..d481595974fe 100644
+--- a/fs/bcachefs/btree_iter.c
++++ b/fs/bcachefs/btree_iter.c
+@@ -225,6 +225,7 @@ static void bch2_btree_path_verify(struct btree_trans *trans,
+ 	for (unsigned i = 0; i < (!path->cached ? BTREE_MAX_DEPTH : 1); i++) {
+ 		if (!path->l[i].b) {
+ 			BUG_ON(!path->cached &&
++			       bch2_btree_id_root(c, path->btree_id)->b &&
+ 			       bch2_btree_id_root(c, path->btree_id)->b->c.level > i);
+ 			break;
+ 		}
+@@ -731,6 +732,14 @@ static inline int btree_path_lock_root(struct btree_trans *trans,
+ 
+ 	while (1) {
+ 		b = READ_ONCE(*rootp);
++
++		if (unlikely(!b)) {
++			path->level = depth_want;
++			for (i = path->level; i < BTREE_MAX_DEPTH; i++)
++				path->l[i].b = NULL;
++			return 1;
++		}
++
+ 		path->level = READ_ONCE(b->c.level);
+ 
+ 		if (unlikely(path->level < depth_want)) {
+diff --git a/fs/bcachefs/btree_locking.h b/fs/bcachefs/btree_locking.h
+index ca4aeefd631e..55dc149a9306 100644
+--- a/fs/bcachefs/btree_locking.h
++++ b/fs/bcachefs/btree_locking.h
+@@ -404,6 +404,9 @@ static inline int bch2_btree_path_upgrade(struct btree_trans *trans,
+ 
+ static inline void btree_path_set_should_be_locked(struct btree_trans *trans, struct btree_path *path)
+ {
++	if (!path->l[path->level].b)
++		return;
++
+ 	EBUG_ON(!btree_node_locked(path, path->level));
+ 	EBUG_ON(path->uptodate);
+ 
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..0e70dd49627d
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "3966118a00b0c3de14a6418b969e660e81611a28": 91331
++}
+\ No newline at end of file

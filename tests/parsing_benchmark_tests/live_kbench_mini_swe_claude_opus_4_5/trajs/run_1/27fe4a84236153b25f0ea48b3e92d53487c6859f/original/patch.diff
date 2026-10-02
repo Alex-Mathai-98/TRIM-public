@@ -1,0 +1,20 @@
+diff --git a/fs/overlayfs/file.c b/fs/overlayfs/file.c
+index 969b458100fe..5455251609c4 100644
+--- a/fs/overlayfs/file.c
++++ b/fs/overlayfs/file.c
+@@ -273,6 +273,15 @@ static loff_t ovl_llseek(struct file *file, loff_t offset, int whence)
+ 	ovl_inode_lock(inode);
+ 	realfile->f_pos = file->f_pos;
+ 
++	/*
++	 * Convert SEEK_CUR to SEEK_SET because the realfile f_pos_lock is
++	 * not held and file_seek_cur_needs_f_lock() would warn.
++	 */
++	if (whence == SEEK_CUR) {
++		offset += file->f_pos;
++		whence = SEEK_SET;
++	}
++
+ 	old_cred = ovl_override_creds(inode->i_sb);
+ 	ret = vfs_llseek(realfile, offset, whence);
+ 	ovl_revert_creds(old_cred);

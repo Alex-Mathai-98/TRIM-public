@@ -1,0 +1,21 @@
+diff --git a/security/tomoyo/common.c b/security/tomoyo/common.c
+index 5c7b059a332a..5d573ce72959 100644
+--- a/security/tomoyo/common.c
++++ b/security/tomoyo/common.c
+@@ -2664,8 +2664,14 @@ ssize_t tomoyo_write_control(struct tomoyo_io_buffer *head,
+ 		char c;
+ 
+ 		if (head->w.avail >= head->writebuf_size - 1) {
+-			const int len = head->writebuf_size * 2;
+-			char *cp = kzalloc(len, GFP_NOFS);
++			const size_t len = head->writebuf_size * 2;
++			char *cp;
++
++			if (len > KMALLOC_MAX_SIZE) {
++				error = -ENOMEM;
++				break;
++			}
++			cp = kzalloc(len, GFP_NOFS);
+ 
+ 			if (!cp) {
+ 				error = -ENOMEM;

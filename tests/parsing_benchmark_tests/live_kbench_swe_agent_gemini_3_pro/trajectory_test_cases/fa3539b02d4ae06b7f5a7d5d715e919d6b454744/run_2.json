@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (size <= old_size) {\n\t\t/* Zero out spare memory. */\n\t\tif (want_init_on_alloc(flags)) {\n\t\t\tkasan_unpoison_vmalloc((void *)p + size,\n\t\t\t\t\t       old_size - size,\n\t\t\t\t\t       KASAN_VMALLOC_PROT_NORMAL);\n\t\t\tmemset((void *)p + size, 0, old_size - size);\n\t\t}\n\n\t\tkasan_poison_vmalloc((void *)p + size, old_size - size);\n\t\treturn kasan_unpoison_vmalloc(p, size,\n\t\t\t\t\t      KASAN_VMALLOC_PROT_NORMAL);\n\t}\n",
+          "before": "\tif (size <= old_size) {\n\t\t/* Zero out spare memory. */\n\t\tif (want_init_on_alloc(flags))\n\t\t\tmemset((void *)p + size, 0, old_size - size);\n\n\t\treturn (void *)p;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/vmalloc.c b/mm/vmalloc.c\nindex 7ed39d104201..7d978c04f788 100644\n--- a/mm/vmalloc.c\n+++ b/mm/vmalloc.c\n@@ -4091,10 +4091,16 @@ void *vrealloc_noprof(const void *p, size_t size, gfp_t flags)\n \t */\n \tif (size <= old_size) {\n \t\t/* Zero out spare memory. */\n-\t\tif (want_init_on_alloc(flags))\n+\t\tif (want_init_on_alloc(flags)) {\n+\t\t\tkasan_unpoison_vmalloc((void *)p + size,\n+\t\t\t\t\t       old_size - size,\n+\t\t\t\t\t       KASAN_VMALLOC_PROT_NORMAL);\n \t\t\tmemset((void *)p + size, 0, old_size - size);\n+\t\t}\n \n-\t\treturn (void *)p;\n+\t\tkasan_poison_vmalloc((void *)p + size, old_size - size);\n+\t\treturn kasan_unpoison_vmalloc(p, size,\n+\t\t\t\t\t      KASAN_VMALLOC_PROT_NORMAL);\n \t}\n \n \t/* TODO: Grow the vm_area, i.e. allocate and map additional pages. */",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "mm/vmalloc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    }
+  ],
+  "success_step": 11
+}

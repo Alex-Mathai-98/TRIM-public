@@ -1,0 +1,57 @@
+diff --git a/drivers/net/bonding/bond_main.c b/drivers/net/bonding/bond_main.c
+index 8ea183da8d53..6e99c6258219 100644
+--- a/drivers/net/bonding/bond_main.c
++++ b/drivers/net/bonding/bond_main.c
+@@ -847,7 +847,8 @@ const char *bond_slave_link_status(s8 link)
+  * netif_carrier, but there really isn't.
+  */
+ static int bond_check_dev_link(struct bonding *bond,
+-			       struct net_device *slave_dev, int reporting)
++			       struct net_device *slave_dev, int reporting,
++			       bool rtnl_held)
+ {
+ 	const struct net_device_ops *slave_ops = slave_dev->netdev_ops;
+ 	struct mii_ioctl_data *mii;
+@@ -860,6 +861,15 @@ static int bond_check_dev_link(struct bonding *bond,
+ 	if (bond->params.use_carrier)
+ 		return netif_carrier_ok(slave_dev) ? BMSR_LSTATUS : 0;
+ 
++	/* If we are running in RCU context (which calls this),
++	 * we cannot use legacy ops that require RTNL if we don't hold it.
++	 * netdev_need_ops_lock() tells us if we can lock the device (modern)
++	 * or rely on RTNL (legacy).
++	 * If we are legacy and don't hold RTNL, we can't inspect.
++	 */
++	if (!rtnl_held && !netdev_need_ops_lock(slave_dev))
++		return reporting ? -1 : BMSR_LSTATUS;
++
+ 	/* Try to get link status using Ethtool first. */
+ 	if (slave_dev->ethtool_ops->get_link) {
+ 		netdev_lock_ops(slave_dev);
+@@ -2173,7 +2183,7 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
+ 	new_slave->last_tx = new_slave->last_rx;
+ 
+ 	if (bond->params.miimon && !bond->params.use_carrier) {
+-		link_reporting = bond_check_dev_link(bond, slave_dev, 1);
++		link_reporting = bond_check_dev_link(bond, slave_dev, 1, true);
+ 
+ 		if ((link_reporting == -1) && !bond->params.arp_interval) {
+ 			/* miimon is set but a bonded network driver
+@@ -2194,7 +2204,7 @@ int bond_enslave(struct net_device *bond_dev, struct net_device *slave_dev,
+ 	/* check for initial state */
+ 	new_slave->link = BOND_LINK_NOCHANGE;
+ 	if (bond->params.miimon) {
+-		if (bond_check_dev_link(bond, slave_dev, 0) == BMSR_LSTATUS) {
++		if (bond_check_dev_link(bond, slave_dev, 0, true) == BMSR_LSTATUS) {
+ 			if (bond->params.updelay) {
+ 				bond_set_slave_link_state(new_slave,
+ 							  BOND_LINK_BACK,
+@@ -2736,7 +2746,7 @@ static int bond_miimon_inspect(struct bonding *bond)
+ 	bond_for_each_slave_rcu(bond, slave, iter) {
+ 		bond_propose_link_state(slave, BOND_LINK_NOCHANGE);
+ 
+-		link_state = bond_check_dev_link(bond, slave->dev, 0);
++		link_state = bond_check_dev_link(bond, slave->dev, 0, false);
+ 
+ 		switch (slave->link) {
+ 		case BOND_LINK_UP:

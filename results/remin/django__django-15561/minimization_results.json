@@ -1,0 +1,148 @@
+{
+  "bug_id": "django__django-15561",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/base/schema.py",
+        "before": "        non_database_attrs = [\n            \"blank\",\n            \"db_column\",\n            \"editable\",\n            \"error_messages\",\n            \"help_text\",\n            \"limit_choices_to\",\n            # Database-level options are not supported, see #21961.\n            \"on_delete\",\n            \"related_name\",\n            \"related_query_name\",\n            \"validators\",\n            \"verbose_name\",\n        ]",
+        "after": "        non_database_attrs = [\n            \"blank\",\n            \"choices\",\n            \"db_column\",\n            \"editable\",\n            \"error_messages\",\n            \"help_text\",\n            \"limit_choices_to\",\n            # Database-level options are not supported, see #21961.\n            \"on_delete\",\n            \"related_name\",\n            \"related_query_name\",\n            \"validators\",\n            \"verbose_name\",\n        ]",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/schema/tests.py",
+        "before": "        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, old_field, new_field, strict=True)\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, new_field, old_field, strict=True)\n\n    def test_add_textfield_unhashable_default(self):",
+        "after": "        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, old_field, new_field, strict=True)\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, new_field, old_field, strict=True)\n\n    def test_alter_field_choices_noop(self):\n        \"\"\"\n        No queries are performed when changing only field choices.\n        \"\"\"\n        with connection.schema_editor() as editor:\n            editor.create_model(Author)\n        old_field = Author._meta.get_field(\"name\")\n        new_field = CharField(max_length=255, choices=[('A', 'Active'), ('I', 'Inactive')])\n        new_field.set_attributes_from_name(\"name\")\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Author, old_field, new_field, strict=True)\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Author, new_field, old_field, strict=True)\n\n    def test_add_textfield_unhashable_default(self):",
+        "explanation": "classic_swe step 58 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/base/schema.py b/django/db/backends/base/schema.py\nindex 9d6952df21..85d53e3b1a 100644\n--- a/django/db/backends/base/schema.py\n+++ b/django/db/backends/base/schema.py\n@@ -1378,6 +1378,7 @@ class BaseDatabaseSchemaEditor:\n         # - adding only a db_column and the column name is not changed\n         non_database_attrs = [\n             \"blank\",\n+            \"choices\",\n             \"db_column\",\n             \"editable\",\n             \"error_messages\",\ndiff --git a/tests/schema/tests.py b/tests/schema/tests.py\nindex d9e59d32dc..a2e5a86247 100644\n--- a/tests/schema/tests.py\n+++ b/tests/schema/tests.py\n@@ -3961,6 +3961,20 @@ class SchemaTests(TransactionTestCase):\n         with connection.schema_editor() as editor, self.assertNumQueries(0):\n             editor.alter_field(Book, new_field, old_field, strict=True)\n \n+    def test_alter_field_choices_noop(self):\n+        \"\"\"\n+        No queries are performed when changing only field choices.\n+        \"\"\"\n+        with connection.schema_editor() as editor:\n+            editor.create_model(Author)\n+        old_field = Author._meta.get_field(\"name\")\n+        new_field = CharField(max_length=255, choices=[('A', 'Active'), ('I', 'Inactive')])\n+        new_field.set_attributes_from_name(\"name\")\n+        with connection.schema_editor() as editor, self.assertNumQueries(0):\n+            editor.alter_field(Author, old_field, new_field, strict=True)\n+        with connection.schema_editor() as editor, self.assertNumQueries(0):\n+            editor.alter_field(Author, new_field, old_field, strict=True)\n+\n     def test_add_textfield_unhashable_default(self):\n         # Create the table\n         with connection.schema_editor() as editor:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      9
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      2,
+      9
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      2,
+      9
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      2,
+      9
+    ],
+    "edit_list_after_refinement": [
+      2,
+      9
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/base/schema.py",
+          "before": "        non_database_attrs = [\n            \"blank\",\n            \"db_column\",\n            \"editable\",\n            \"error_messages\",\n            \"help_text\",\n            \"limit_choices_to\",\n            # Database-level options are not supported, see #21961.\n            \"on_delete\",\n            \"related_name\",\n            \"related_query_name\",\n            \"validators\",\n            \"verbose_name\",\n        ]",
+          "after": "        non_database_attrs = [\n            \"blank\",\n            \"choices\",\n            \"db_column\",\n            \"editable\",\n            \"error_messages\",\n            \"help_text\",\n            \"limit_choices_to\",\n            # Database-level options are not supported, see #21961.\n            \"on_delete\",\n            \"related_name\",\n            \"related_query_name\",\n            \"validators\",\n            \"verbose_name\",\n        ]",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/schema/tests.py",
+          "before": "        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, old_field, new_field, strict=True)\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, new_field, old_field, strict=True)\n\n    def test_add_textfield_unhashable_default(self):",
+          "after": "        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, old_field, new_field, strict=True)\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Book, new_field, old_field, strict=True)\n\n    def test_alter_field_choices_noop(self):\n        \"\"\"\n        No queries are performed when changing only field choices.\n        \"\"\"\n        with connection.schema_editor() as editor:\n            editor.create_model(Author)\n        old_field = Author._meta.get_field(\"name\")\n        new_field = CharField(max_length=255, choices=[('A', 'Active'), ('I', 'Inactive')])\n        new_field.set_attributes_from_name(\"name\")\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Author, old_field, new_field, strict=True)\n        with connection.schema_editor() as editor, self.assertNumQueries(0):\n            editor.alter_field(Author, new_field, old_field, strict=True)\n\n    def test_add_textfield_unhashable_default(self):",
+          "explanation": "classic_swe step 58 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 141,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 141,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/backends/base/schema.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/schema/tests.py"
+    ],
+    "missing_files_vs_gold": [
+      "django/db/models/fields/__init__.py"
+    ],
+    "minimized_files": [
+      "django/db/backends/base/schema.py",
+      "tests/schema/tests.py"
+    ],
+    "gold_files": [
+      "django/db/backends/base/schema.py",
+      "django/db/models/fields/__init__.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 15,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 20,
+    "gold_deleted_lines": 15
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

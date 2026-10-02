@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tif (!user || !current || !current->mm || irq_work_busy ||\n\t    !down_read_trylock(&current->mm->mmap_lock)) {\n\t\t/* cannot access current->mm, fall back to ips */\n\t\tfor (i = 0; i < trace_nr; i++) {\n\t\t\tid_offs[i].status = BPF_STACK_BUILD_ID_IP;\n\t\t\tmemset(id_offs[i].build_id, 0, BUILD_ID_SIZE_MAX);\n\t\t}\n\t\treturn;\n\t}\n\n\tfor (i = 0; i < trace_nr; i++) {\n\t\tu64 ip = READ_ONCE(id_offs[i].ip);\n\n\t\tif (range_in_vma(prev_vma, ip, ip)) {\n\t\t\tvma = prev_vma;\n\t\t\tmemcpy(id_offs[i].build_id, prev_build_id, BUILD_ID_SIZE_MAX);\n\t\t\tgoto build_id_valid;\n\t\t}\n\t\tvma = find_vma(current->mm, ip);\n\t\tif (!vma || fetch_build_id(vma, id_offs[i].build_id, may_fault)) {\n\t\t\t/* per entry fall back to ips */\n\t\t\tid_offs[i].status = BPF_STACK_BUILD_ID_IP;\n\t\t\tmemset(id_offs[i].build_id, 0, BUILD_ID_SIZE_MAX);\n\t\t\tcontinue;\n\t\t}\nbuild_id_valid:\n\t\tid_offs[i].offset = (vma->vm_pgoff << PAGE_SHIFT) + ip - vma->vm_start;\n\t\tid_offs[i].status = BPF_STACK_BUILD_ID_VALID;\n\t\tprev_vma = vma;\n\t\tprev_build_id = id_offs[i].build_id;\n\t}\n\n\tif (!work)\n\t\tup_read(&current->mm->mmap_lock);\n\telse\n\t\tbpf_mmap_unlock_mm(work, current->mm);\n",
+          "before": "\n\tif (!user || !current || !current->mm || irq_work_busy ||\n\t    !mmap_read_trylock(current->mm)) {\n\t\t/* cannot access current->mm, fall back to ips */\n\t\tfor (i = 0; i < trace_nr; i++) {\n\t\t\tid_offs[i].status = BPF_STACK_BUILD_ID_IP;\n\t\t\tmemset(id_offs[i].build_id, 0, BUILD_ID_SIZE_MAX);\n\t\t}\n\t\treturn;\n\t}\n\n\tfor (i = 0; i < trace_nr; i++) {\n\t\tu64 ip = READ_ONCE(id_offs[i].ip);\n\n\t\tif (range_in_vma(prev_vma, ip, ip)) {\n\t\t\tvma = prev_vma;\n\t\t\tmemcpy(id_offs[i].build_id, prev_build_id, BUILD_ID_SIZE_MAX);\n\t\t\tgoto build_id_valid;\n\t\t}\n\t\tvma = find_vma(current->mm, ip);\n\t\tif (!vma || fetch_build_id(vma, id_offs[i].build_id, may_fault)) {\n\t\t\t/* per entry fall back to ips */\n\t\t\tid_offs[i].status = BPF_STACK_BUILD_ID_IP;\n\t\t\tmemset(id_offs[i].build_id, 0, BUILD_ID_SIZE_MAX);\n\t\t\tcontinue;\n\t\t}\nbuild_id_valid:\n\t\tid_offs[i].offset = (vma->vm_pgoff << PAGE_SHIFT) + ip - vma->vm_start;\n\t\tid_offs[i].status = BPF_STACK_BUILD_ID_VALID;\n\t\tprev_vma = vma;\n\t\tprev_build_id = id_offs[i].build_id;\n\t}\n\tbpf_mmap_unlock_mm(work, current->mm);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/stackmap.c\n+++ /linux/kernel/bpf/stackmap.c\n@@ -157 +157 @@\n-\t    !mmap_read_trylock(current->mm)) {\n+\t    !down_read_trylock(&current->mm->mmap_lock)) {\n@@ -187 +187,5 @@\n-\tbpf_mmap_unlock_mm(work, current->mm);\n+\n+\tif (!work)\n+\t\tup_read(&current->mm->mmap_lock);\n+\telse\n+\t\tbpf_mmap_unlock_mm(work, current->mm);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 46",
+          "filename": "kernel/bpf/stackmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        }
+      ],
+      "end_step": 46,
+      "revision_index": 0,
+      "start_step": 46
+    }
+  ],
+  "success_step": 46
+}

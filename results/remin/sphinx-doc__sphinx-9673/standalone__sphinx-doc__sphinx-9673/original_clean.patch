@@ -1,0 +1,46 @@
+diff --git a/sphinx/ext/autodoc/typehints.py b/sphinx/ext/autodoc/typehints.py
+index af4b47bb0..9e17cb978 100644
+--- a/sphinx/ext/autodoc/typehints.py
++++ b/sphinx/ext/autodoc/typehints.py
+@@ -101,8 +101,12 @@ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str]) -> No
+             name = ' '.join(parts[1:])
+             arg = arguments.setdefault(name, {})
+             arg['type'] = True
++        elif parts[0] == 'return':
++            arguments.setdefault('return', {})['param'] = True
++        elif parts[0] == 'returns':
++            arguments.setdefault('return', {})['param'] = True
+         elif parts[0] == 'rtype':
+-            arguments['return'] = {'type': True}
++            arguments.setdefault('return', {})['type'] = True
+ 
+     for name, annotation in annotations.items():
+         if name == 'return':
+@@ -120,11 +124,13 @@ def modify_field_list(node: nodes.field_list, annotations: Dict[str, str]) -> No
+             field += nodes.field_body('', nodes.paragraph('', ''))
+             node += field
+ 
+-    if 'return' in annotations and 'return' not in arguments:
+-        field = nodes.field()
+-        field += nodes.field_name('', 'rtype')
+-        field += nodes.field_body('', nodes.paragraph('', annotation))
+-        node += field
++    if 'return' in annotations:
++        return_arg = arguments.get('return', {})
++        if not return_arg.get('type'):
++            field = nodes.field()
++            field += nodes.field_name('', 'rtype')
++            field += nodes.field_body('', nodes.paragraph('', annotations['return']))
++            node += field
+ 
+ 
+ def augment_descriptions_with_types(
+@@ -151,6 +157,8 @@ def augment_descriptions_with_types(
+             has_type.add(name)
+         elif parts[0] == 'return':
+             has_description.add('return')
++        elif parts[0] == 'returns':
++            has_description.add('return')
+         elif parts[0] == 'rtype':
+             has_type.add('return')
+ 

@@ -1,0 +1,250 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    [
+      7,
+      8
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\thid_destroy_device(steam->client_hdev);\n\tsteam->client_hdev = NULL;\n\tsteam->client_opened = 0;\n\tif (steam->quirks & STEAM_QUIRK_WIRELESS) {\n\t\thid_info(hdev, \"Steam wireless receiver disconnected\");\n\t}\n\thid_hw_close(hdev);\n\thid_hw_stop(hdev);\n\tsteam_unregister(steam);\n\n\tcancel_delayed_work_sync(&steam->mode_switch);\n\tcancel_work_sync(&steam->work_connect);\n\tcancel_work_sync(&steam->rumble_work);\n\tcancel_work_sync(&steam->unregister_work);\n}",
+          "before": "\tcancel_delayed_work_sync(&steam->mode_switch);\n\tcancel_work_sync(&steam->work_connect);\n\tcancel_work_sync(&steam->rumble_work);\n\tcancel_work_sync(&steam->unregister_work);\n\thid_destroy_device(steam->client_hdev);\n\tsteam->client_hdev = NULL;\n\tsteam->client_opened = 0;\n\tif (steam->quirks & STEAM_QUIRK_WIRELESS) {\n\t\thid_info(hdev, \"Steam wireless receiver disconnected\");\n\t}\n\thid_hw_close(hdev);\n\thid_hw_stop(hdev);\n\tsteam_unregister(steam);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..937f88eadb7f 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -1327,10 +1327,6 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1336,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        }
+      ],
+      "end_step": 22,
+      "revision_index": 0,
+      "start_step": 22
+    },
+    {
+      "edits": [
+        {
+          "after": "\trcu_assign_pointer(steam->input, input);\n\tret = input_register_device(input);\n\tif (ret) {\n\t\tRCU_INIT_POINTER(steam->input, NULL);\n\t\tgoto input_register_fail;\n\t}\n\n\treturn 0;",
+          "before": "\tret = input_register_device(input);\n\tif (ret)\n\t\tgoto input_register_fail;\n\n\trcu_assign_pointer(steam->input, input);\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..09fe939400a3 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -825,11 +825,13 @@ static int steam_input_register(struct steam_device *steam)\n \t}\n #endif\n \n+\trcu_assign_pointer(steam->input, input);\n \tret = input_register_device(input);\n-\tif (ret)\n+\tif (ret) {\n+\t\tRCU_INIT_POINTER(steam->input, NULL);\n \t\tgoto input_register_fail;\n+\t}\n \n-\trcu_assign_pointer(steam->input, input);\n \treturn 0;\n \n input_register_fail:\n@@ -1327,10 +1329,6 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1338,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 1,
+      "start_step": 26
+    },
+    {
+      "edits": [
+        {
+          "after": "\tbool quiescing;",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..9377bb2f6f11 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -825,11 +826,13 @@ static int steam_input_register(struct steam_device *steam)\n \t}\n #endif\n \n+\trcu_assign_pointer(steam->input, input);\n \tret = input_register_device(input);\n-\tif (ret)\n+\tif (ret) {\n+\t\tRCU_INIT_POINTER(steam->input, NULL);\n \t\tgoto input_register_fail;\n+\t}\n \n-\trcu_assign_pointer(steam->input, input);\n \treturn 0;\n \n input_register_fail:\n@@ -1327,10 +1330,6 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1339,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 32 insert #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 317,
+          "step_index": 32
+        },
+        {
+          "after": "\tspin_lock_irq(&steam->lock);\n\tsteam->quiescing = true;\n\tspin_unlock_irq(&steam->lock);\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..b62f0edbcda2 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -825,11 +826,13 @@ static int steam_input_register(struct steam_device *steam)\n \t}\n #endif\n \n+\trcu_assign_pointer(steam->input, input);\n \tret = input_register_device(input);\n-\tif (ret)\n+\tif (ret) {\n+\t\tRCU_INIT_POINTER(steam->input, NULL);\n \t\tgoto input_register_fail;\n+\t}\n \n-\trcu_assign_pointer(steam->input, input);\n \treturn 0;\n \n input_register_fail:\n@@ -1324,13 +1327,13 @@ static void steam_remove(struct hid_device *hdev)\n \n \tif (!steam || hdev->group == HID_GROUP_STEAM) {\n \t\thid_hw_stop(hdev);\n+\tspin_lock_irq(&steam->lock);\n+\tsteam->quiescing = true;\n+\tspin_unlock_irq(&steam->lock);\n+\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1343,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 33 insert #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1330,
+          "step_index": 33
+        },
+        {
+          "after": "\tif (!steam || hdev->group == HID_GROUP_STEAM) {\n\t\thid_hw_stop(hdev);\n\t\treturn;\n\t}\n\n\tspin_lock_irq(&steam->lock);\n\tsteam->quiescing = true;\n\tspin_unlock_irq(&steam->lock);\n\n\thid_destroy_device(steam->client_hdev);",
+          "before": "\tif (!steam || hdev->group == HID_GROUP_STEAM) {\n\t\thid_hw_stop(hdev);\n\tspin_lock_irq(&steam->lock);\n\tsteam->quiescing = true;\n\tspin_unlock_irq(&steam->lock);\n\n\t\treturn;\n\t}\n\n\thid_destroy_device(steam->client_hdev);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..5d6803f55923 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -825,11 +826,13 @@ static int steam_input_register(struct steam_device *steam)\n \t}\n #endif\n \n+\trcu_assign_pointer(steam->input, input);\n \tret = input_register_device(input);\n-\tif (ret)\n+\tif (ret) {\n+\t\tRCU_INIT_POINTER(steam->input, NULL);\n \t\tgoto input_register_fail;\n+\t}\n \n-\trcu_assign_pointer(steam->input, input);\n \treturn 0;\n \n input_register_fail:\n@@ -1327,10 +1330,10 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n+\tspin_lock_irq(&steam->lock);\n+\tsteam->quiescing = true;\n+\tspin_unlock_irq(&steam->lock);\n+\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1343,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        },
+        {
+          "after": "\tspin_lock_irqsave(&steam->lock, flags);\n\tif (steam->quiescing) {\n\t\tspin_unlock_irqrestore(&steam->lock, flags);\n\t\treturn;\n\t}\n\topened = steam->client_opened;",
+          "before": "\tspin_lock_irqsave(&steam->lock, flags);\n\topened = steam->client_opened;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..f2942e442490 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -825,11 +826,13 @@ static int steam_input_register(struct steam_device *steam)\n \t}\n #endif\n \n+\trcu_assign_pointer(steam->input, input);\n \tret = input_register_device(input);\n-\tif (ret)\n+\tif (ret) {\n+\t\tRCU_INIT_POINTER(steam->input, NULL);\n \t\tgoto input_register_fail;\n+\t}\n \n-\trcu_assign_pointer(steam->input, input);\n \treturn 0;\n \n input_register_fail:\n@@ -1082,6 +1085,10 @@ static void steam_work_unregister_cb(struct work_struct *work)\n \tbool opened;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \topened = steam->client_opened;\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n@@ -1327,10 +1334,10 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n+\tspin_lock_irq(&steam->lock);\n+\tsteam->quiescing = true;\n+\tspin_unlock_irq(&steam->lock);\n+\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1347,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 37 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 37
+        },
+        {
+          "after": "\tspin_lock_irqsave(&steam->lock, flags);\n\tif (steam->quiescing) {\n\t\tspin_unlock_irqrestore(&steam->lock, flags);\n\t\treturn;\n\t}\n\tconnected = steam->connected;",
+          "before": "\tspin_lock_irqsave(&steam->lock, flags);\n\tconnected = steam->connected;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..b52c7a049a19 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -825,11 +826,13 @@ static int steam_input_register(struct steam_device *steam)\n \t}\n #endif\n \n+\trcu_assign_pointer(steam->input, input);\n \tret = input_register_device(input);\n-\tif (ret)\n+\tif (ret) {\n+\t\tRCU_INIT_POINTER(steam->input, NULL);\n \t\tgoto input_register_fail;\n+\t}\n \n-\trcu_assign_pointer(steam->input, input);\n \treturn 0;\n \n input_register_fail:\n@@ -1030,6 +1033,10 @@ static void steam_work_connect_cb(struct work_struct *work)\n \tint ret;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n \n@@ -1082,6 +1089,10 @@ static void steam_work_unregister_cb(struct work_struct *work)\n \tbool opened;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \topened = steam->client_opened;\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n@@ -1327,10 +1338,10 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n+\tspin_lock_irq(&steam->lock);\n+\tsteam->quiescing = true;\n+\tspin_unlock_irq(&steam->lock);\n+\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1351,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 41 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 2,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\tret = input_register_device(input);\n\tif (ret)\n\t\tgoto input_register_fail;\n\n\trcu_assign_pointer(steam->input, input);\n\treturn 0;",
+          "before": "\trcu_assign_pointer(steam->input, input);\n\tret = input_register_device(input);\n\tif (ret) {\n\t\tRCU_INIT_POINTER(steam->input, NULL);\n\t\tgoto input_register_fail;\n\t}\n\n\treturn 0;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..05fb2f8e3c93 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -1030,6 +1031,10 @@ static void steam_work_connect_cb(struct work_struct *work)\n \tint ret;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n \n@@ -1082,6 +1087,10 @@ static void steam_work_unregister_cb(struct work_struct *work)\n \tbool opened;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \topened = steam->client_opened;\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n@@ -1327,10 +1336,10 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n+\tspin_lock_irq(&steam->lock);\n+\tsteam->quiescing = true;\n+\tspin_unlock_irq(&steam->lock);\n+\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1340,6 +1349,11 @@ static void steam_remove(struct hid_device *hdev)\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n \tsteam_unregister(steam);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n }\n \n static void steam_do_connect_event(struct steam_device *steam, bool connected)",
+          "explanation": "classic_swe step 44 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 44
+        },
+        {
+          "after": "\thid_hw_close(hdev);\n\thid_hw_stop(hdev);\n\n\tcancel_delayed_work_sync(&steam->mode_switch);\n\tcancel_work_sync(&steam->work_connect);\n\tcancel_work_sync(&steam->rumble_work);\n\tcancel_work_sync(&steam->unregister_work);\n\tsteam_unregister(steam);",
+          "before": "\thid_hw_close(hdev);\n\thid_hw_stop(hdev);\n\tsteam_unregister(steam);\n\n\tcancel_delayed_work_sync(&steam->mode_switch);\n\tcancel_work_sync(&steam->work_connect);\n\tcancel_work_sync(&steam->rumble_work);\n\tcancel_work_sync(&steam->unregister_work);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/hid/hid-steam.c b/drivers/hid/hid-steam.c\nindex c9e65e9088b3..7e74ad1d3bde 100644\n--- a/drivers/hid/hid-steam.c\n+++ b/drivers/hid/hid-steam.c\n@@ -314,6 +314,7 @@ struct steam_device {\n \tu16 rumble_right;\n \tunsigned int sensor_timestamp_us;\n \tstruct work_struct unregister_work;\n+\tbool quiescing;\n };\n \n static int steam_recv_report(struct steam_device *steam,\n@@ -1030,6 +1031,10 @@ static void steam_work_connect_cb(struct work_struct *work)\n \tint ret;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n \n@@ -1082,6 +1087,10 @@ static void steam_work_unregister_cb(struct work_struct *work)\n \tbool opened;\n \n \tspin_lock_irqsave(&steam->lock, flags);\n+\tif (steam->quiescing) {\n+\t\tspin_unlock_irqrestore(&steam->lock, flags);\n+\t\treturn;\n+\t}\n \topened = steam->client_opened;\n \tconnected = steam->connected;\n \tspin_unlock_irqrestore(&steam->lock, flags);\n@@ -1327,10 +1336,10 @@ static void steam_remove(struct hid_device *hdev)\n \t\treturn;\n \t}\n \n-\tcancel_delayed_work_sync(&steam->mode_switch);\n-\tcancel_work_sync(&steam->work_connect);\n-\tcancel_work_sync(&steam->rumble_work);\n-\tcancel_work_sync(&steam->unregister_work);\n+\tspin_lock_irq(&steam->lock);\n+\tsteam->quiescing = true;\n+\tspin_unlock_irq(&steam->lock);\n+\n \thid_destroy_device(steam->client_hdev);\n \tsteam->client_hdev = NULL;\n \tsteam->client_opened = 0;\n@@ -1339,6 +1348,11 @@ static void steam_remove(struct hid_device *hdev)\n \t}\n \thid_hw_close(hdev);\n \thid_hw_stop(hdev);\n+\n+\tcancel_delayed_work_sync(&steam->mode_switch);\n+\tcancel_work_sync(&steam->work_connect);\n+\tcancel_work_sync(&steam->rumble_work);\n+\tcancel_work_sync(&steam->unregister_work);\n \tsteam_unregister(steam);\n }",
+          "explanation": "classic_swe step 45 #1",
+          "filename": "drivers/hid/hid-steam.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 45
+        }
+      ],
+      "end_step": 45,
+      "revision_index": 3,
+      "start_step": 44
+    }
+  ],
+  "success_step": 45
+}

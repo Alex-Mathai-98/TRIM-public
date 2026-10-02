@@ -1,0 +1,72 @@
+diff --git a/include/net/pkt_cls.h b/include/net/pkt_cls.h
+index c64fd896b1f9..e3aea836af41 100644
+--- a/include/net/pkt_cls.h
++++ b/include/net/pkt_cls.h
+@@ -536,6 +536,8 @@ static inline unsigned char * tcf_get_base_ptr(struct sk_buff *skb, int layer)
+ 		case TCF_LAYER_NETWORK:
+ 			return skb_network_header(skb);
+ 		case TCF_LAYER_TRANSPORT:
++			if (!skb_transport_header_was_set(skb))
++				return NULL;
+ 			return skb_transport_header(skb);
+ 	}
+ 
+diff --git a/net/sched/em_cmp.c b/net/sched/em_cmp.c
+index 64b637f18bc7..c811d0cdc917 100644
+--- a/net/sched/em_cmp.c
++++ b/net/sched/em_cmp.c
+@@ -22,9 +22,14 @@ static int em_cmp_match(struct sk_buff *skb, struct tcf_ematch *em,
+ 			struct tcf_pkt_info *info)
+ {
+ 	struct tcf_em_cmp *cmp = (struct tcf_em_cmp *) em->data;
+-	unsigned char *ptr = tcf_get_base_ptr(skb, cmp->layer) + cmp->off;
++	unsigned char *ptr = tcf_get_base_ptr(skb, cmp->layer);
+ 	u32 val = 0;
+ 
++	if (!ptr)
++		return 0;
++
++	ptr += cmp->off;
++
+ 	if (!tcf_valid_offset(skb, ptr, cmp->align))
+ 		return 0;
+ 
+diff --git a/net/sched/em_nbyte.c b/net/sched/em_nbyte.c
+index 4f9f21a05d5e..2d7b4e28e94b 100644
+--- a/net/sched/em_nbyte.c
++++ b/net/sched/em_nbyte.c
+@@ -42,6 +42,9 @@ static int em_nbyte_match(struct sk_buff *skb, struct tcf_ematch *em,
+ 	struct nbyte_data *nbyte = (struct nbyte_data *) em->data;
+ 	unsigned char *ptr = tcf_get_base_ptr(skb, nbyte->hdr.layer);
+ 
++	if (!ptr)
++		return 0;
++
+ 	ptr += nbyte->hdr.off;
+ 
+ 	if (!tcf_valid_offset(skb, ptr, nbyte->hdr.len))
+diff --git a/net/sched/em_text.c b/net/sched/em_text.c
+index 6b3d0af72c39..7d3da1231c55 100644
+--- a/net/sched/em_text.c
++++ b/net/sched/em_text.c
+@@ -30,11 +30,18 @@ static int em_text_match(struct sk_buff *skb, struct tcf_ematch *m,
+ {
+ 	struct text_match *tm = EM_TEXT_PRIV(m);
+ 	int from, to;
++	unsigned char *ptr;
+ 
+-	from = tcf_get_base_ptr(skb, tm->from_layer) - skb->data;
++	ptr = tcf_get_base_ptr(skb, tm->from_layer);
++	if (!ptr)
++		return 0;
++	from = ptr - skb->data;
+ 	from += tm->from_offset;
+ 
+-	to = tcf_get_base_ptr(skb, tm->to_layer) - skb->data;
++	ptr = tcf_get_base_ptr(skb, tm->to_layer);
++	if (!ptr)
++		return 0;
++	to = ptr - skb->data;
+ 	to += tm->to_offset;
+ 
+ 	return skb_find_text(skb, from, to, tm->config) != UINT_MAX;

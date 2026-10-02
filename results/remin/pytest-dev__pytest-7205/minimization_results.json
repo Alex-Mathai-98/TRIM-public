@@ -1,0 +1,312 @@
+{
+  "bug_id": "pytest-dev__pytest-7205",
+  "short_path": [
+    [
+      {
+        "filename": "src/_pytest/setuponly.py",
+        "before": "import pytest",
+        "after": "import pytest\nfrom _pytest._io.saferepr import saferepr",
+        "explanation": "classic_swe step 7 #1"
+      }
+    ],
+    [
+      {
+        "filename": "src/_pytest/setuponly.py",
+        "before": "    if hasattr(fixturedef, \"cached_param\"):\n        tw.write(\"[{}]\".format(fixturedef.cached_param))",
+        "after": "    if hasattr(fixturedef, \"cached_param\"):\n        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param)))",
+        "explanation": "classic_swe step 8 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_setuponly.py",
+        "before": "    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same?foo?\",\n            \"TEARDOWN S arg_same?foo?\",\n            \"SETUP    S arg_same?bar?\",\n            \"TEARDOWN S arg_same?bar?\",\n        ]\n    )",
+        "after": "    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same['foo']\",\n            \"TEARDOWN S arg_same['foo']\",\n            \"SETUP    S arg_same['bar']\",\n            \"TEARDOWN S arg_same['bar']\",\n        ]\n    )",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_setuponly.py",
+        "before": "    result.stdout.fnmatch_lines(\n        [\"SETUP    S arg_same?spam?\", \"SETUP    S arg_same?ham?\"]\n    )",
+        "after": "    result.stdout.fnmatch_lines(\n        [\"SETUP    S arg_same['spam']\", \"SETUP    S arg_same['ham']\"]\n    )",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_setuponly.py",
+        "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar?FOO?\", \"*SETUP    F foobar?BAR?\"])",
+        "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']\", \"*SETUP    F foobar['BAR']\"])",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_setuponly.py",
+        "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']\", \"*SETUP    F foobar['BAR']\"])",
+        "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']*\", \"*SETUP    F foobar['BAR']*\"])",
+        "explanation": "classic_swe step 24 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_setuponly.py",
+        "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']*\", \"*SETUP    F foobar['BAR']*\"])",
+        "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar[[]'FOO'[]*\", \"*SETUP    F foobar[[]'BAR'[]*\"])",
+        "explanation": "classic_swe step 26 #1"
+      }
+    ],
+    [
+      {
+        "filename": "testing/test_setuponly.py",
+        "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar[[]'FOO'[]*\", \"*SETUP    F foobar[[]'BAR'[]*\"])",
+        "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar*FOO*\", \"*SETUP    F foobar*BAR*\"])",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/src/_pytest/setuponly.py b/src/_pytest/setuponly.py\nindex c9cc589ff..9fc218a3e 100644\n--- a/src/_pytest/setuponly.py\n+++ b/src/_pytest/setuponly.py\n@@ -1,4 +1,5 @@\n import pytest\n+from _pytest._io.saferepr import saferepr\n \n \n def pytest_addoption(parser):\n@@ -66,7 +67,7 @@ def _show_fixture_action(fixturedef, msg):\n             tw.write(\" (fixtures used: {})\".format(\", \".join(deps)))\n \n     if hasattr(fixturedef, \"cached_param\"):\n-        tw.write(\"[{}]\".format(fixturedef.cached_param))\n+        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param)))\n \n     tw.flush()\n \ndiff --git a/testing/test_setuponly.py b/testing/test_setuponly.py\nindex e26a33dee..1e0dcf3c6 100644\n--- a/testing/test_setuponly.py\n+++ b/testing/test_setuponly.py\n@@ -146,10 +146,10 @@ def test_show_fixtures_with_parameters(testdir, mode):\n \n     result.stdout.fnmatch_lines(\n         [\n-            \"SETUP    S arg_same?foo?\",\n-            \"TEARDOWN S arg_same?foo?\",\n-            \"SETUP    S arg_same?bar?\",\n-            \"TEARDOWN S arg_same?bar?\",\n+            \"SETUP    S arg_same['foo']\",\n+            \"TEARDOWN S arg_same['foo']\",\n+            \"SETUP    S arg_same['bar']\",\n+            \"TEARDOWN S arg_same['bar']\",\n         ]\n     )\n \n@@ -179,7 +179,7 @@ def test_show_fixtures_with_parameter_ids(testdir, mode):\n     assert result.ret == 0\n \n     result.stdout.fnmatch_lines(\n-        [\"SETUP    S arg_same?spam?\", \"SETUP    S arg_same?ham?\"]\n+        [\"SETUP    S arg_same['spam']\", \"SETUP    S arg_same['ham']\"]\n     )\n \n \n@@ -198,7 +198,7 @@ def test_show_fixtures_with_parameter_ids_function(testdir, mode):\n     result = testdir.runpytest(mode, p)\n     assert result.ret == 0\n \n-    result.stdout.fnmatch_lines([\"*SETUP    F foobar?FOO?\", \"*SETUP    F foobar?BAR?\"])\n+    result.stdout.fnmatch_lines([\"*SETUP    F foobar*FOO*\", \"*SETUP    F foobar*BAR*\"])\n \n \n def test_dynamic_fixture_request(testdir):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "nodes_original_count": 5,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 3,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 3,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 3,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "edit_list_after_file_min": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 5,
+    "greedy_removal_edit_no_crash": 2,
+    "greedy_removal_edit_not_applicable": 6,
+    "greedy_removal_edit_still_crashes": 5,
+    "edit_list_after_greedy": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      11
+    ],
+    "edit_list_after_refinement": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      11
+    ],
+    "edits_after_node_min": 10,
+    "edits_after_file_min": 10,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 10,
+  "minimized_edit_count": 8,
+  "reduction": "10_to_8",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "src/_pytest/setuponly.py",
+          "before": "import pytest",
+          "after": "import pytest\nfrom _pytest._io.saferepr import saferepr",
+          "explanation": "classic_swe step 7 #1"
+        },
+        {
+          "filename": "src/_pytest/setuponly.py",
+          "before": "    if hasattr(fixturedef, \"cached_param\"):\n        tw.write(\"[{}]\".format(fixturedef.cached_param))",
+          "after": "    if hasattr(fixturedef, \"cached_param\"):\n        tw.write(\"[{}]\".format(saferepr(fixturedef.cached_param)))",
+          "explanation": "classic_swe step 8 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same?foo?\",\n            \"TEARDOWN S arg_same?foo?\",\n            \"SETUP    S arg_same?bar?\",\n            \"TEARDOWN S arg_same?bar?\",\n        ]\n    )",
+          "after": "    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same['foo']\",\n            \"TEARDOWN S arg_same['foo']\",\n            \"SETUP    S arg_same['bar']\",\n            \"TEARDOWN S arg_same['bar']\",\n        ]\n    )",
+          "explanation": "classic_swe step 16 #1"
+        },
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines(\n        [\"SETUP    S arg_same?spam?\", \"SETUP    S arg_same?ham?\"]\n    )",
+          "after": "    result.stdout.fnmatch_lines(\n        [\"SETUP    S arg_same['spam']\", \"SETUP    S arg_same['ham']\"]\n    )",
+          "explanation": "classic_swe step 18 #1"
+        },
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar?FOO?\", \"*SETUP    F foobar?BAR?\"])",
+          "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']\", \"*SETUP    F foobar['BAR']\"])",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']\", \"*SETUP    F foobar['BAR']\"])",
+          "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']*\", \"*SETUP    F foobar['BAR']*\"])",
+          "explanation": "classic_swe step 24 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar['FOO']*\", \"*SETUP    F foobar['BAR']*\"])",
+          "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar[[]'FOO'[]*\", \"*SETUP    F foobar[[]'BAR'[]*\"])",
+          "explanation": "classic_swe step 26 #1"
+        },
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same['foo']\",\n            \"TEARDOWN S arg_same['foo']\",\n            \"SETUP    S arg_same['bar']\",\n            \"TEARDOWN S arg_same['bar']\",\n        ]\n    )",
+          "after": "    result.stdout.fnmatch_lines(\n        [\n            \"SETUP    S arg_same[[]'foo'[]]\",\n            \"TEARDOWN S arg_same[[]'foo'[]]\",\n            \"SETUP    S arg_same[[]'bar'[]]\",\n            \"TEARDOWN S arg_same[[]'bar'[]]\",\n        ]\n    )",
+          "explanation": "classic_swe step 27 #1"
+        },
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines(\n        [\"SETUP    S arg_same['spam']\", \"SETUP    S arg_same['ham']\"]\n    )",
+          "after": "    result.stdout.fnmatch_lines(\n        [\"SETUP    S arg_same[[]'spam'[]]\", \"SETUP    S arg_same[[]'ham'[]]\"]\n    )",
+          "explanation": "classic_swe step 28 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "testing/test_setuponly.py",
+          "before": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar[[]'FOO'[]*\", \"*SETUP    F foobar[[]'BAR'[]*\"])",
+          "after": "    result.stdout.fnmatch_lines([\"*SETUP    F foobar*FOO*\", \"*SETUP    F foobar*BAR*\"])",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 10,
+    "f2p_fail": 0,
+    "p2p_pass": 16,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 10,
+    "f2p_fail": 0,
+    "p2p_pass": 16,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "src/_pytest/setuponly.py"
+    ],
+    "extra_files_in_minimized": [
+      "testing/test_setuponly.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "src/_pytest/setuponly.py",
+      "testing/test_setuponly.py"
+    ],
+    "gold_files": [
+      "src/_pytest/setuponly.py"
+    ],
+    "minimized_hunks": 5,
+    "gold_hunks": 2,
+    "minimized_added_lines": 8,
+    "minimized_deleted_lines": 7,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

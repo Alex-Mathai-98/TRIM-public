@@ -1,0 +1,129 @@
+{
+  "bug_id": "astropy__astropy-14096",
+  "short_path": [
+    [
+      {
+        "filename": "astropy/coordinates/sky_coordinate.py",
+        "before": "    def __getattr__(self, attr):\n        \"\"\"\n        Overrides getattr to return coordinates that this can be transformed\n        to, based on the alias attr in the primary transform graph.\n        \"\"\"\n        if \"_sky_coord_frame\" in self.__dict__:",
+        "after": "    def __getattr__(self, attr):\n        \"\"\"\n        Overrides getattr to return coordinates that this can be transformed\n        to, based on the alias attr in the primary transform graph.\n        \"\"\"\n        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n        # If it is, it means the descriptor exists but raised AttributeError internally.\n        # In this case, we should not handle it here but let the original error propagate.\n        for cls in type(self).__mro__:\n            if attr in cls.__dict__:\n                class_attr = cls.__dict__[attr]\n                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n                    # This is a descriptor that exists but raised AttributeError.\n                    # We should not claim the attribute doesn't exist.\n                    # Instead, re-raise AttributeError without our custom message.\n                    raise AttributeError(f\"'{self.__class__.__name__}' object attribute '{attr}' raised an AttributeError\")\n        \n        if \"_sky_coord_frame\" in self.__dict__:",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ],
+    [
+      {
+        "filename": "astropy/coordinates/sky_coordinate.py",
+        "before": "        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n        # If it is, it means the descriptor exists but raised AttributeError internally.\n        # In this case, we should not handle it here but let the original error propagate.\n        for cls in type(self).__mro__:\n            if attr in cls.__dict__:\n                class_attr = cls.__dict__[attr]\n                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n                    # This is a descriptor that exists but raised AttributeError.\n                    # We should not claim the attribute doesn't exist.\n                    # Instead, re-raise AttributeError without our custom message.\n                    raise AttributeError(f\"'{self.__class__.__name__}' object attribute '{attr}' raised an AttributeError\")",
+        "after": "        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n        # If it is, it means the descriptor exists but raised AttributeError internally.\n        # In this case, we should not handle it here but let the original error propagate.\n        for cls in type(self).__mro__:\n            if attr in cls.__dict__:\n                class_attr = cls.__dict__[attr]\n                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n                    # This is a descriptor that exists but raised AttributeError.\n                    # Try to call it again to get the original error message.\n                    try:\n                        class_attr.__get__(self, type(self))\n                    except AttributeError as original_error:\n                        # Re-raise the original error\n                        raise original_error\n                    except Exception:\n                        # If it raises a different exception, fall through to normal handling\n                        pass",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/astropy/coordinates/sky_coordinate.py b/astropy/coordinates/sky_coordinate.py\nindex ab475f7d0d..56a67b31ec 100644\n--- a/astropy/coordinates/sky_coordinate.py\n+++ b/astropy/coordinates/sky_coordinate.py\n@@ -871,6 +871,25 @@ class SkyCoord(ShapedLikeNDArray):\n         Overrides getattr to return coordinates that this can be transformed\n         to, based on the alias attr in the primary transform graph.\n         \"\"\"\n+        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n+        # If it is, it means the descriptor exists but raised AttributeError internally.\n+        # In this case, we should not handle it here but let the original error propagate.\n+        for cls in type(self).__mro__:\n+            if attr in cls.__dict__:\n+                class_attr = cls.__dict__[attr]\n+                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n+                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n+                    # This is a descriptor that exists but raised AttributeError.\n+                    # Try to call it again to get the original error message.\n+                    try:\n+                        class_attr.__get__(self, type(self))\n+                    except AttributeError as original_error:\n+                        # Re-raise the original error\n+                        raise original_error\n+                    except Exception:\n+                        # If it raises a different exception, fall through to normal handling\n+                        pass\n+        \n         if \"_sky_coord_frame\" in self.__dict__:\n             if self._is_name(attr):\n                 return self  # Should this be a deepcopy of self?\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      6,
+      7
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      6,
+      7
+    ],
+    "edit_list_after_file_min": [
+      6,
+      7
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 1,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      6,
+      7
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 1,
+    "edit_list_after_refinement": [
+      6,
+      7
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "astropy/coordinates/sky_coordinate.py",
+          "before": "    def __getattr__(self, attr):\n        \"\"\"\n        Overrides getattr to return coordinates that this can be transformed\n        to, based on the alias attr in the primary transform graph.\n        \"\"\"\n        if \"_sky_coord_frame\" in self.__dict__:",
+          "after": "    def __getattr__(self, attr):\n        \"\"\"\n        Overrides getattr to return coordinates that this can be transformed\n        to, based on the alias attr in the primary transform graph.\n        \"\"\"\n        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n        # If it is, it means the descriptor exists but raised AttributeError internally.\n        # In this case, we should not handle it here but let the original error propagate.\n        for cls in type(self).__mro__:\n            if attr in cls.__dict__:\n                class_attr = cls.__dict__[attr]\n                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n                    # This is a descriptor that exists but raised AttributeError.\n                    # We should not claim the attribute doesn't exist.\n                    # Instead, re-raise AttributeError without our custom message.\n                    raise AttributeError(f\"'{self.__class__.__name__}' object attribute '{attr}' raised an AttributeError\")\n        \n        if \"_sky_coord_frame\" in self.__dict__:",
+          "explanation": "classic_swe step 20 #1"
+        },
+        {
+          "filename": "astropy/coordinates/sky_coordinate.py",
+          "before": "        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n        # If it is, it means the descriptor exists but raised AttributeError internally.\n        # In this case, we should not handle it here but let the original error propagate.\n        for cls in type(self).__mro__:\n            if attr in cls.__dict__:\n                class_attr = cls.__dict__[attr]\n                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n                    # This is a descriptor that exists but raised AttributeError.\n                    # We should not claim the attribute doesn't exist.\n                    # Instead, re-raise AttributeError without our custom message.\n                    raise AttributeError(f\"'{self.__class__.__name__}' object attribute '{attr}' raised an AttributeError\")",
+          "after": "        # Check if the attribute is a descriptor (property, method, etc.) in the class hierarchy.\n        # If it is, it means the descriptor exists but raised AttributeError internally.\n        # In this case, we should not handle it here but let the original error propagate.\n        for cls in type(self).__mro__:\n            if attr in cls.__dict__:\n                class_attr = cls.__dict__[attr]\n                # Check if it's a descriptor (has __get__, __set__, or __delete__)\n                if hasattr(class_attr, '__get__') or hasattr(class_attr, '__set__') or hasattr(class_attr, '__delete__'):\n                    # This is a descriptor that exists but raised AttributeError.\n                    # Try to call it again to get the original error message.\n                    try:\n                        class_attr.__get__(self, type(self))\n                    except AttributeError as original_error:\n                        # Re-raise the original error\n                        raise original_error\n                    except Exception:\n                        # If it raises a different exception, fall through to normal handling\n                        pass",
+          "explanation": "classic_swe step 21 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 426,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 426,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "astropy/coordinates/sky_coordinate.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "astropy/coordinates/sky_coordinate.py"
+    ],
+    "gold_files": [
+      "astropy/coordinates/sky_coordinate.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 19,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 4
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

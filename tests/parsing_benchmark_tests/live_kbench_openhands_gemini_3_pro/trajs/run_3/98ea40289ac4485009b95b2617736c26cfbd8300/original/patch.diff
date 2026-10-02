@@ -1,0 +1,71 @@
+diff --git a/fs/ocfs2/quota_local.c b/fs/ocfs2/quota_local.c
+index 8ce462c64c51..0c5a96233631 100644
+--- a/fs/ocfs2/quota_local.c
++++ b/fs/ocfs2/quota_local.c
+@@ -716,7 +716,7 @@ static int ocfs2_local_read_info(struct super_block *sb, int type)
+ 	status = ocfs2_inode_lock(lqinode, &oinfo->dqi_lqi_bh, 1);
+ 	if (status < 0) {
+ 		mlog_errno(status);
+-		goto out_err;
++		goto out_err_wq;
+ 	}
+ 	locked = 1;
+ 
+@@ -726,7 +726,7 @@ static int ocfs2_local_read_info(struct super_block *sb, int type)
+ 		mlog_errno(status);
+ 		mlog(ML_ERROR, "failed to read quota file info header "
+ 			"(type=%d)\n", type);
+-		goto out_err;
++		goto out_err_wq;
+ 	}
+ 	ldinfo = (struct ocfs2_local_disk_dqinfo *)(bh->b_data +
+ 						OCFS2_LOCAL_INFO_OFF);
+@@ -743,7 +743,7 @@ static int ocfs2_local_read_info(struct super_block *sb, int type)
+ 			if (!rec) {
+ 				status = -ENOMEM;
+ 				mlog_errno(status);
+-				goto out_err;
++				goto out_err_wq;
+ 			}
+ 			OCFS2_SB(sb)->quota_rec = rec;
+ 		}
+@@ -752,7 +752,7 @@ static int ocfs2_local_read_info(struct super_block *sb, int type)
+                                                    &rec->r_list[type]);
+ 		if (status < 0) {
+ 			mlog_errno(status);
+-			goto out_err;
++			goto out_err_wq;
+ 		}
+ 	}
+ 
+@@ -761,7 +761,7 @@ static int ocfs2_local_read_info(struct super_block *sb, int type)
+ 						&oinfo->dqi_chunk);
+ 	if (status < 0) {
+ 		mlog_errno(status);
+-		goto out_err;
++		goto out_err_wq;
+ 	}
+ 
+ 	/* Now mark quota file as used */
+@@ -769,10 +769,12 @@ static int ocfs2_local_read_info(struct super_block *sb, int type)
+ 	status = ocfs2_modify_bh(lqinode, bh, olq_update_info, info);
+ 	if (status < 0) {
+ 		mlog_errno(status);
+-		goto out_err;
++		goto out_err_wq;
+ 	}
+ 
+ 	return 0;
++out_err_wq:
++	cancel_delayed_work_sync(&oinfo->dqi_sync_work);
+ out_err:
+ 	if (oinfo) {
+ 		iput(oinfo->dqi_gqinode);
+@@ -862,6 +864,7 @@ static int ocfs2_local_free_info(struct super_block *sb, int type)
+ 	ocfs2_inode_unlock(sb_dqopt(sb)->files[type], 1);
+ 	brelse(oinfo->dqi_libh);
+ 	brelse(oinfo->dqi_lqi_bh);
++	cancel_delayed_work_sync(&oinfo->dqi_sync_work);
+ 	kfree(oinfo);
+ 	return status;
+ }

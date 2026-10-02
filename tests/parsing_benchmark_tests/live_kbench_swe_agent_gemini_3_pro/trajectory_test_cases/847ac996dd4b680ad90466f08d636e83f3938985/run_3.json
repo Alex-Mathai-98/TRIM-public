@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void bch2_sb_errors_from_cpu(struct bch_fs *c)\n{\n\tbch_sb_errors_cpu *src = &c->fsck_error_counts;\n\tstruct bch_sb_field_errors *dst;\n\tunsigned i;\n\n\tmutex_lock(&c->fsck_error_counts_lock);\n\tdst = bch2_sb_field_resize(&c->disk_sb, errors,\n\t\t\t\t     bch2_sb_field_errors_u64s(src->nr));\n\n\tif (!dst)\n\t\tgoto err;\n\n\tfor (i = 0; i < src->nr; i++) {\n\t\tSET_BCH_SB_ERROR_ENTRY_ID(&dst->entries[i], src->data[i].id);\n\t\tSET_BCH_SB_ERROR_ENTRY_NR(&dst->entries[i], src->data[i].nr);\n\t\tdst->entries[i].last_error_time = cpu_to_le64(src->data[i].last_error_time);\n\t}\nerr:\n\tmutex_unlock(&c->fsck_error_counts_lock);\n}",
+          "before": "void bch2_sb_errors_from_cpu(struct bch_fs *c)\n{\n\tbch_sb_errors_cpu *src = &c->fsck_error_counts;\n\tstruct bch_sb_field_errors *dst =\n\t\tbch2_sb_field_resize(&c->disk_sb, errors,\n\t\t\t\t     bch2_sb_field_errors_u64s(src->nr));\n\tunsigned i;\n\n\tif (!dst)\n\t\treturn;\n\n\tfor (i = 0; i < src->nr; i++) {\n\t\tSET_BCH_SB_ERROR_ENTRY_ID(&dst->entries[i], src->data[i].id);\n\t\tSET_BCH_SB_ERROR_ENTRY_NR(&dst->entries[i], src->data[i].nr);\n\t\tdst->entries[i].last_error_time = cpu_to_le64(src->data[i].last_error_time);\n\t}\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/sb-errors.c b/fs/bcachefs/sb-errors.c\nindex bda33e59e226..04ba44e7c57f 100644\n--- a/fs/bcachefs/sb-errors.c\n+++ b/fs/bcachefs/sb-errors.c\n@@ -110,19 +110,23 @@ void bch2_sb_error_count(struct bch_fs *c, enum bch_sb_error_id err)\n void bch2_sb_errors_from_cpu(struct bch_fs *c)\n {\n \tbch_sb_errors_cpu *src = &c->fsck_error_counts;\n-\tstruct bch_sb_field_errors *dst =\n-\t\tbch2_sb_field_resize(&c->disk_sb, errors,\n-\t\t\t\t     bch2_sb_field_errors_u64s(src->nr));\n+\tstruct bch_sb_field_errors *dst;\n \tunsigned i;\n \n+\tmutex_lock(&c->fsck_error_counts_lock);\n+\tdst = bch2_sb_field_resize(&c->disk_sb, errors,\n+\t\t\t\t     bch2_sb_field_errors_u64s(src->nr));\n+\n \tif (!dst)\n-\t\treturn;\n+\t\tgoto err;\n \n \tfor (i = 0; i < src->nr; i++) {\n \t\tSET_BCH_SB_ERROR_ENTRY_ID(&dst->entries[i], src->data[i].id);\n \t\tSET_BCH_SB_ERROR_ENTRY_NR(&dst->entries[i], src->data[i].nr);\n \t\tdst->entries[i].last_error_time = cpu_to_le64(src->data[i].last_error_time);\n \t}\n+err:\n+\tmutex_unlock(&c->fsck_error_counts_lock);\n }\n \n static int bch2_sb_errors_to_cpu(struct bch_fs *c)",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "fs/bcachefs/sb-errors.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 14
+    }
+  ],
+  "success_step": 14
+}

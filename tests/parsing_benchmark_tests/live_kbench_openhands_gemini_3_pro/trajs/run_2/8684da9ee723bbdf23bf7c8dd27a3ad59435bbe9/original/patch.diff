@@ -1,0 +1,41 @@
+diff --git a/net/netfilter/xt_cluster.c b/net/netfilter/xt_cluster.c
+index a047a545371e..7f20efb955e2 100644
+--- a/net/netfilter/xt_cluster.c
++++ b/net/netfilter/xt_cluster.c
+@@ -9,6 +9,8 @@
+ #include <linux/ip.h>
+ #include <net/ipv6.h>
+ 
++#include <linux/if_ether.h>
++
+ #include <linux/netfilter/x_tables.h>
+ #include <net/netfilter/nf_conntrack.h>
+ #include <linux/netfilter/xt_cluster.h>
+@@ -68,6 +70,27 @@ xt_cluster_is_multicast_addr(const struct sk_buff *skb, u_int8_t family)
+ 	case NFPROTO_IPV6:
+ 		is_multicast = ipv6_addr_is_multicast(&ipv6_hdr(skb)->daddr);
+ 		break;
++	case NFPROTO_BRIDGE:
++		{
++			int type = ntohs(skb->protocol);
++
++			if (type == ETH_P_IP) {
++				const struct iphdr *iph;
++				struct iphdr _iph;
++
++				iph = skb_header_pointer(skb, 0, sizeof(_iph), &_iph);
++				if (iph)
++					is_multicast = ipv4_is_multicast(iph->daddr);
++			} else if (type == ETH_P_IPV6) {
++				const struct ipv6hdr *iph;
++				struct ipv6hdr _iph;
++
++				iph = skb_header_pointer(skb, 0, sizeof(_iph), &_iph);
++				if (iph)
++					is_multicast = ipv6_addr_is_multicast(&iph->daddr);
++			}
++			break;
++		}
+ 	default:
+ 		WARN_ON(1);
+ 		break;

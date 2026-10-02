@@ -1,0 +1,235 @@
+{
+  "bug_id": "django__django-13933",
+  "short_path": [
+    [
+      {
+        "filename": "django/forms/models.py",
+        "before": "    default_error_messages = {\n        'invalid_choice': _('Select a valid choice. That choice is not one of'\n                            ' the available choices.'),\n    }",
+        "after": "    default_error_messages = {\n        'invalid_choice': _('Select a valid choice. %(value)s is not one of'\n                            ' the available choices.'),\n    }",
+        "explanation": "classic_swe step 14 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/forms/models.py",
+        "before": "    def to_python(self, value):\n        if value in self.empty_values:\n            return None\n        try:\n            key = self.to_field_name or 'pk'\n            if isinstance(value, self.queryset.model):\n                value = getattr(value, key)\n            value = self.queryset.get(**{key: value})\n        except (ValueError, TypeError, self.queryset.model.DoesNotExist):\n            raise ValidationError(self.error_messages['invalid_choice'], code='invalid_choice')\n        return value",
+        "after": "    def to_python(self, value):\n        if value in self.empty_values:\n            return None\n        try:\n            key = self.to_field_name or 'pk'\n            original_value = value\n            if isinstance(value, self.queryset.model):\n                value = getattr(value, key)\n            value = self.queryset.get(**{key: value})\n        except (ValueError, TypeError, self.queryset.model.DoesNotExist):\n            raise ValidationError(\n                self.error_messages['invalid_choice'],\n                code='invalid_choice',\n                params={'value': original_value},\n            )\n        return value",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/model_forms/test_modelchoicefield.py",
+        "before": "        msg = \"['Select a valid choice. That choice is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(c4.id)",
+        "after": "        msg = \"['Select a valid choice. 4 is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(c4.id)",
+        "explanation": "classic_swe step 28 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/model_forms/test_modelchoicefield.py",
+        "before": "        # An instance of incorrect model.\n        msg = \"['Select a valid choice. That choice is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(Book.objects.create())",
+        "after": "        # An instance of incorrect model.\n        msg = \"['Select a valid choice. Book object (1) is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(Book.objects.create())",
+        "explanation": "classic_swe step 29 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/model_forms/test_modelchoicefield.py",
+        "before": "        self.assertEqual(\n            form.errors['author'],\n            ['Select a valid choice. That choice is not one of the available choices.']\n        )",
+        "after": "        self.assertEqual(\n            form.errors['author'],\n            ['Select a valid choice. 1 is not one of the available choices.']\n        )",
+        "explanation": "classic_swe step 30 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/model_forms/tests.py",
+        "before": "        self.assertEqual(\n            form.errors,\n            {'writer': ['Select a valid choice. That choice is not one of the available choices.']},\n        )",
+        "after": "        self.assertEqual(\n            form.errors,\n            {'writer': ['Select a valid choice. 1 is not one of the available choices.']},\n        )",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/forms/models.py b/django/forms/models.py\nindex 422bc5d178..e9ffe60c0d 100644\n--- a/django/forms/models.py\n+++ b/django/forms/models.py\n@@ -1188,7 +1188,7 @@ class ModelChoiceField(ChoiceField):\n     # This class is a subclass of ChoiceField for purity, but it doesn't\n     # actually use any of ChoiceField's implementation.\n     default_error_messages = {\n-        'invalid_choice': _('Select a valid choice. That choice is not one of'\n+        'invalid_choice': _('Select a valid choice. %(value)s is not one of'\n                             ' the available choices.'),\n     }\n     iterator = ModelChoiceIterator\n@@ -1280,11 +1280,16 @@ class ModelChoiceField(ChoiceField):\n             return None\n         try:\n             key = self.to_field_name or 'pk'\n+            original_value = value\n             if isinstance(value, self.queryset.model):\n                 value = getattr(value, key)\n             value = self.queryset.get(**{key: value})\n         except (ValueError, TypeError, self.queryset.model.DoesNotExist):\n-            raise ValidationError(self.error_messages['invalid_choice'], code='invalid_choice')\n+            raise ValidationError(\n+                self.error_messages['invalid_choice'],\n+                code='invalid_choice',\n+                params={'value': original_value},\n+            )\n         return value\n \n     def validate(self, value):\ndiff --git a/tests/model_forms/test_modelchoicefield.py b/tests/model_forms/test_modelchoicefield.py\nindex 8f41ce9c40..7693f19b1b 100644\n--- a/tests/model_forms/test_modelchoicefield.py\n+++ b/tests/model_forms/test_modelchoicefield.py\n@@ -51,7 +51,7 @@ class ModelChoiceFieldTests(TestCase):\n         # instantiated. This proves clean() checks the database during clean()\n         # rather than caching it at instantiation time.\n         Category.objects.get(url='4th').delete()\n-        msg = \"['Select a valid choice. That choice is not one of the available choices.']\"\n+        msg = \"['Select a valid choice. 4 is not one of the available choices.']\"\n         with self.assertRaisesMessage(ValidationError, msg):\n             f.clean(c4.id)\n \n@@ -59,7 +59,7 @@ class ModelChoiceFieldTests(TestCase):\n         f = forms.ModelChoiceField(Category.objects.all())\n         self.assertEqual(f.clean(self.c1), self.c1)\n         # An instance of incorrect model.\n-        msg = \"['Select a valid choice. That choice is not one of the available choices.']\"\n+        msg = \"['Select a valid choice. Book object (1) is not one of the available choices.']\"\n         with self.assertRaisesMessage(ValidationError, msg):\n             f.clean(Book.objects.create())\n \n@@ -216,7 +216,7 @@ class ModelChoiceFieldTests(TestCase):\n         form = ModelChoiceForm({}, instance=book)\n         self.assertEqual(\n             form.errors['author'],\n-            ['Select a valid choice. That choice is not one of the available choices.']\n+            ['Select a valid choice. 1 is not one of the available choices.']\n         )\n \n     def test_disabled_modelchoicefield_has_changed(self):\ndiff --git a/tests/model_forms/tests.py b/tests/model_forms/tests.py\nindex 9931fa50e3..9fe1dd9a1c 100644\n--- a/tests/model_forms/tests.py\n+++ b/tests/model_forms/tests.py\n@@ -1675,7 +1675,7 @@ class ModelFormBasicTests(TestCase):\n         self.assertIs(form.is_valid(), False)\n         self.assertEqual(\n             form.errors,\n-            {'writer': ['Select a valid choice. That choice is not one of the available choices.']},\n+            {'writer': ['Select a valid choice. 1 is not one of the available choices.']},\n         )\n \n     def test_validate_foreign_key_to_model_with_overridden_manager(self):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2
+    ],
+    "edit_list_after_node_min": [
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 3,
+    "edit_list_after_file_min": [
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 7,
+    "greedy_removal_edit_still_crashes": 5,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "edit_list_after_refinement": [
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 6,
+  "reduction": "6_to_6",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/forms/models.py",
+          "before": "    default_error_messages = {\n        'invalid_choice': _('Select a valid choice. That choice is not one of'\n                            ' the available choices.'),\n    }",
+          "after": "    default_error_messages = {\n        'invalid_choice': _('Select a valid choice. %(value)s is not one of'\n                            ' the available choices.'),\n    }",
+          "explanation": "classic_swe step 14 #1"
+        },
+        {
+          "filename": "django/forms/models.py",
+          "before": "    def to_python(self, value):\n        if value in self.empty_values:\n            return None\n        try:\n            key = self.to_field_name or 'pk'\n            if isinstance(value, self.queryset.model):\n                value = getattr(value, key)\n            value = self.queryset.get(**{key: value})\n        except (ValueError, TypeError, self.queryset.model.DoesNotExist):\n            raise ValidationError(self.error_messages['invalid_choice'], code='invalid_choice')\n        return value",
+          "after": "    def to_python(self, value):\n        if value in self.empty_values:\n            return None\n        try:\n            key = self.to_field_name or 'pk'\n            original_value = value\n            if isinstance(value, self.queryset.model):\n                value = getattr(value, key)\n            value = self.queryset.get(**{key: value})\n        except (ValueError, TypeError, self.queryset.model.DoesNotExist):\n            raise ValidationError(\n                self.error_messages['invalid_choice'],\n                code='invalid_choice',\n                params={'value': original_value},\n            )\n        return value",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/model_forms/test_modelchoicefield.py",
+          "before": "        msg = \"['Select a valid choice. That choice is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(c4.id)",
+          "after": "        msg = \"['Select a valid choice. 4 is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(c4.id)",
+          "explanation": "classic_swe step 28 #1"
+        },
+        {
+          "filename": "tests/model_forms/test_modelchoicefield.py",
+          "before": "        # An instance of incorrect model.\n        msg = \"['Select a valid choice. That choice is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(Book.objects.create())",
+          "after": "        # An instance of incorrect model.\n        msg = \"['Select a valid choice. Book object (1) is not one of the available choices.']\"\n        with self.assertRaisesMessage(ValidationError, msg):\n            f.clean(Book.objects.create())",
+          "explanation": "classic_swe step 29 #1"
+        },
+        {
+          "filename": "tests/model_forms/test_modelchoicefield.py",
+          "before": "        self.assertEqual(\n            form.errors['author'],\n            ['Select a valid choice. That choice is not one of the available choices.']\n        )",
+          "after": "        self.assertEqual(\n            form.errors['author'],\n            ['Select a valid choice. 1 is not one of the available choices.']\n        )",
+          "explanation": "classic_swe step 30 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/model_forms/tests.py",
+          "before": "        self.assertEqual(\n            form.errors,\n            {'writer': ['Select a valid choice. That choice is not one of the available choices.']},\n        )",
+          "after": "        self.assertEqual(\n            form.errors,\n            {'writer': ['Select a valid choice. 1 is not one of the available choices.']},\n        )",
+          "explanation": "classic_swe step 35 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 19,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 19,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/forms/models.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/model_forms/test_modelchoicefield.py",
+      "tests/model_forms/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/forms/models.py",
+      "tests/model_forms/test_modelchoicefield.py",
+      "tests/model_forms/tests.py"
+    ],
+    "gold_files": [
+      "django/forms/models.py"
+    ],
+    "minimized_hunks": 6,
+    "gold_hunks": 1,
+    "minimized_added_lines": 11,
+    "minimized_deleted_lines": 6,
+    "gold_added_lines": 5,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

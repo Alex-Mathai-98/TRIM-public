@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n{\n\tbch2_btree_id_to_text(out, b->c.btree_id);\n\tprt_printf(out, \" level %u/%u\\n  \",\n\t\t   b->c.level,\n\t\t   (b->c.btree_id < BTREE_ID_NR ||\n\t\t    b->c.btree_id - BTREE_ID_NR < c->btree_roots_extra.nr)\n\t\t   ? bch2_btree_id_root(c, b->c.btree_id)->level\n\t\t   : 0);\n\tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n}\n",
+          "before": "void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)\n{\n\tbch2_btree_id_to_text(out, b->c.btree_id);\n\tprt_printf(out, \" level %u/%u\\n  \",\n\t\t   b->c.level,\n\t\t   bch2_btree_id_root(c, b->c.btree_id)->level);\n\tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 36dfa6a48aa6..780bc86e1527 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -1408,7 +1408,10 @@ void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct\n \tbch2_btree_id_to_text(out, b->c.btree_id);\n \tprt_printf(out, \" level %u/%u\\n  \",\n \t\t   b->c.level,\n-\t\t   bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t\t   (b->c.btree_id < BTREE_ID_NR ||\n+\t\t    b->c.btree_id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\t   ? bch2_btree_id_root(c, b->c.btree_id)->level\n+\t\t   : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 32
+    },
+    {
+      "edits": [
+        {
+          "after": "\tbool is_root = false;\n\n\tif (b->c.btree_id < BTREE_ID_NR ||\n\t    b->c.btree_id - BTREE_ID_NR < trans->c->btree_roots_extra.nr)\n\t\tis_root = b == btree_node_root(trans->c, b);\n\n\tif (!is_root)\n\t\tbch2_btree_node_evict(trans, &tmp.k);\n",
+          "before": "\tif (b != btree_node_root(trans->c, b))\n\t\tbch2_btree_node_evict(trans, &tmp.k);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 36dfa6a48aa6..780bc86e1527 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -1408,7 +1408,10 @@ void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct\n \tbch2_btree_id_to_text(out, b->c.btree_id);\n \tprt_printf(out, \" level %u/%u\\n  \",\n \t\t   b->c.level,\n-\t\t   bch2_btree_id_root(c, b->c.btree_id)->level);\n+\t\t   (b->c.btree_id < BTREE_ID_NR ||\n+\t\t    b->c.btree_id - BTREE_ID_NR < c->btree_roots_extra.nr)\n+\t\t   ? bch2_btree_id_root(c, b->c.btree_id)->level\n+\t\t   : 0);\n \tbch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));\n }\n \ndiff --git a/fs/bcachefs/btree_node_scan.c b/fs/bcachefs/btree_node_scan.c\nindex 4b4df31d4b95..23e89a4e4dad 100644\n--- a/fs/bcachefs/btree_node_scan.c\n+++ b/fs/bcachefs/btree_node_scan.c\n@@ -103,7 +103,13 @@ static bool found_btree_node_is_readable(struct btree_trans *trans,\n \t * to be re-read so the read path can trim keys that are no longer in\n \t * this node\n \t */\n-\tif (b != btree_node_root(trans->c, b))\n+\tbool is_root = false;\n+\n+\tif (b->c.btree_id < BTREE_ID_NR ||\n+\t    b->c.btree_id - BTREE_ID_NR < trans->c->btree_roots_extra.nr)\n+\t\tis_root = b == btree_node_root(trans->c, b);\n+\n+\tif (!is_root)\n \t\tbch2_btree_node_evict(trans, &tmp.k);\n \treturn ret;\n }",
+          "explanation": "classic_swe step 40 #1",
+          "filename": "fs/bcachefs/btree_node_scan.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 1,
+      "start_step": 40
+    }
+  ],
+  "success_step": 40
+}

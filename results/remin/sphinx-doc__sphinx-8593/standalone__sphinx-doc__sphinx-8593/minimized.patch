@@ -1,0 +1,32 @@
+diff --git a/sphinx/ext/autodoc/__init__.py b/sphinx/ext/autodoc/__init__.py
+index 76265f5be..f014f4ee6 100644
+--- a/sphinx/ext/autodoc/__init__.py
++++ b/sphinx/ext/autodoc/__init__.py
+@@ -757,6 +757,17 @@ class Documenter:
+                 else:
+                     keep = False
+             elif (namespace, membername) in attr_docs:
++                # Extract metadata from the attribute's docstring
++                attr_doc = '\n'.join(attr_docs[(namespace, membername)])
++                attr_metadata = extract_metadata(attr_doc)
++                if 'private' in attr_metadata:
++                    # consider a member private if docstring has "private" metadata
++                    isprivate = True
++                elif 'public' in attr_metadata:
++                    # consider a member public if docstring has "public" metadata
++                    isprivate = False
++                # Note: if no metadata, isprivate keeps its original value based on name
++                
+                 if want_all and isprivate:
+                     if self.options.private_members is None:
+                         keep = False
+@@ -780,6 +791,9 @@ class Documenter:
+                 if (self.options.members is ALL and
+                         is_filtered_inherited_member(membername, obj)):
+                     keep = False
++                elif isprivate and not special_member_re.match(membername):
++                    # member marked as private via metadata (but not special methods)
++                    keep = False
+                 else:
+                     # ignore undocumented members if :undoc-members: is not given
+                     keep = has_doc or self.options.undoc_members

@@ -1,0 +1,25 @@
+diff --git a/fs/erofs/zmap.c b/fs/erofs/zmap.c
+index 14ea47f954f5..ea1ccdef6e7d 100644
+--- a/fs/erofs/zmap.c
++++ b/fs/erofs/zmap.c
+@@ -409,6 +409,7 @@ static int z_erofs_map_blocks_fo(struct inode *inode,
+ 	unsigned long long ofs, end;
+ 
+ 	ofs = flags & EROFS_GET_BLOCKS_FINDTAIL ? inode->i_size - 1 : map->m_la;
++	pr_err("DEBUG: ofs=%llu, m_la_in=%llu, flags=%x, i_size=%llu\n", ofs, map->m_la, flags, inode->i_size);
+ 	if (fragment && !(flags & EROFS_GET_BLOCKS_FINDTAIL) &&
+ 	    !vi->z_tailextent_headlcn) {
+ 		map->m_la = 0;
+@@ -611,6 +612,12 @@ static int z_erofs_map_blocks_ext(struct inode *inode,
+ 	}
+ 
+ 	if (lstart < lend) {
++		if (lstart > map->m_la) {
++			map->m_llen = lstart - map->m_la;
++			map->m_flags = 0;
++			return 0;
++		}
++
+ 		map->m_la = lstart;
+ 		if (last && (vi->z_advise & Z_EROFS_ADVISE_FRAGMENT_PCLUSTER)) {
+ 			map->m_flags |= EROFS_MAP_MAPPED | EROFS_MAP_FRAGMENT;

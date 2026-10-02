@@ -1,0 +1,37 @@
+diff --git a/include/linux/filter.h b/include/linux/filter.h
+index b6672ff61407..69d10904b9bf 100644
+--- a/include/linux/filter.h
++++ b/include/linux/filter.h
+@@ -834,14 +834,19 @@ static inline void bpf_net_ctx_get_all_used_flush_lists(struct list_head **lh_ma
+ 							struct list_head **lh_xsk)
+ {
+ 	struct bpf_net_context *bpf_net_ctx = bpf_net_ctx_get();
+-	u32 kern_flags = bpf_net_ctx->ri.kern_flags;
+ 	struct list_head *lh;
++	u32 kern_flags;
+ 
+ 	*lh_map = *lh_dev = *lh_xsk = NULL;
+ 
+ 	if (!IS_ENABLED(CONFIG_BPF_SYSCALL))
+ 		return;
+ 
++	if (!bpf_net_ctx)
++		return;
++
++	kern_flags = bpf_net_ctx->ri.kern_flags;
++
+ 	lh = &bpf_net_ctx->dev_map_flush_list;
+ 	if (kern_flags & BPF_RI_F_DEV_MAP_INIT && !list_empty(lh))
+ 		*lh_dev = lh;
+diff --git a/net/core/dev.c b/net/core/dev.c
+index 6ea1d20676fb..751d9b70e6ad 100644
+--- a/net/core/dev.c
++++ b/net/core/dev.c
+@@ -5150,6 +5150,7 @@ int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)
+ 			bpf_net_ctx_clear(bpf_net_ctx);
+ 			return XDP_DROP;
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	return XDP_PASS;
+ out_redir:

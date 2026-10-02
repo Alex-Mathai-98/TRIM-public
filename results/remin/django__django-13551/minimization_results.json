@@ -1,0 +1,123 @@
+{
+  "bug_id": "django__django-13551",
+  "short_path": [
+    [
+      {
+        "filename": "django/contrib/auth/tokens.py",
+        "before": "    def _make_hash_value(self, user, timestamp):\n        \"\"\"\n        Hash the user's primary key and some user state that's sure to change\n        after a password reset to produce a token that invalidated when it's\n        used:\n        1. The password field will change upon a password reset (even if the\n           same password is chosen, due to password salting).\n        2. The last_login field will usually be updated very shortly after\n           a password reset.\n        Failing those things, settings.PASSWORD_RESET_TIMEOUT eventually\n        invalidates the token.\n\n        Running this data through salted_hmac() prevents password cracking\n        attempts using the reset token, provided the secret isn't compromised.\n        \"\"\"\n        # Truncate microseconds so that tokens are consistent even if the\n        # database doesn't support microseconds.\n        login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)\n        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp)",
+        "after": "    def _make_hash_value(self, user, timestamp):\n        \"\"\"\n        Hash the user's primary key, email, and some user state that's sure to change\n        after a password reset to produce a token that invalidated when it's\n        used:\n        1. The password field will change upon a password reset (even if the\n           same password is chosen, due to password salting).\n        2. The last_login field will usually be updated very shortly after\n           a password reset.\n        3. The email field will change when the user's email is updated.\n        Failing those things, settings.PASSWORD_RESET_TIMEOUT eventually\n        invalidates the token.\n\n        Running this data through salted_hmac() prevents password cracking\n        attempts using the reset token, provided the secret isn't compromised.\n        \"\"\"\n        # Truncate microseconds so that tokens are consistent even if the\n        # database doesn't support microseconds.\n        login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)\n        email_field = user.get_email_field_name()\n        email = getattr(user, email_field, '') or ''\n        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp) + email",
+        "explanation": "classic_swe step 13 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/contrib/auth/tokens.py b/django/contrib/auth/tokens.py\nindex 93e2d71af2..53dcf4ae7f 100644\n--- a/django/contrib/auth/tokens.py\n+++ b/django/contrib/auth/tokens.py\n@@ -78,13 +78,14 @@ class PasswordResetTokenGenerator:\n \n     def _make_hash_value(self, user, timestamp):\n         \"\"\"\n-        Hash the user's primary key and some user state that's sure to change\n+        Hash the user's primary key, email, and some user state that's sure to change\n         after a password reset to produce a token that invalidated when it's\n         used:\n         1. The password field will change upon a password reset (even if the\n            same password is chosen, due to password salting).\n         2. The last_login field will usually be updated very shortly after\n            a password reset.\n+        3. The email field will change when the user's email is updated.\n         Failing those things, settings.PASSWORD_RESET_TIMEOUT eventually\n         invalidates the token.\n \n@@ -94,7 +95,9 @@ class PasswordResetTokenGenerator:\n         # Truncate microseconds so that tokens are consistent even if the\n         # database doesn't support microseconds.\n         login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)\n-        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp)\n+        email_field = user.get_email_field_name()\n+        email = getattr(user, email_field, '') or ''\n+        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp) + email\n \n     def _num_seconds(self, dt):\n         return int((dt - datetime(2001, 1, 1)).total_seconds())\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 1,
+  "reduction": "2_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/contrib/auth/tokens.py",
+          "before": "    def _make_hash_value(self, user, timestamp):\n        \"\"\"\n        Hash the user's primary key and some user state that's sure to change\n        after a password reset to produce a token that invalidated when it's\n        used:\n        1. The password field will change upon a password reset (even if the\n           same password is chosen, due to password salting).\n        2. The last_login field will usually be updated very shortly after\n           a password reset.\n        Failing those things, settings.PASSWORD_RESET_TIMEOUT eventually\n        invalidates the token.\n\n        Running this data through salted_hmac() prevents password cracking\n        attempts using the reset token, provided the secret isn't compromised.\n        \"\"\"\n        # Truncate microseconds so that tokens are consistent even if the\n        # database doesn't support microseconds.\n        login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)\n        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp)",
+          "after": "    def _make_hash_value(self, user, timestamp):\n        \"\"\"\n        Hash the user's primary key, email, and some user state that's sure to change\n        after a password reset to produce a token that invalidated when it's\n        used:\n        1. The password field will change upon a password reset (even if the\n           same password is chosen, due to password salting).\n        2. The last_login field will usually be updated very shortly after\n           a password reset.\n        3. The email field will change when the user's email is updated.\n        Failing those things, settings.PASSWORD_RESET_TIMEOUT eventually\n        invalidates the token.\n\n        Running this data through salted_hmac() prevents password cracking\n        attempts using the reset token, provided the secret isn't compromised.\n        \"\"\"\n        # Truncate microseconds so that tokens are consistent even if the\n        # database doesn't support microseconds.\n        login_timestamp = '' if user.last_login is None else user.last_login.replace(microsecond=0, tzinfo=None)\n        email_field = user.get_email_field_name()\n        email = getattr(user, email_field, '') or ''\n        return str(user.pk) + user.password + str(login_timestamp) + str(timestamp) + email",
+          "explanation": "classic_swe step 13 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/auth_tests/test_tokens.py",
+          "before": "        legacy_token = p_old_generator.make_token(user)\n        self.assertIs(p_old_generator.check_token(user, legacy_token), True)\n        self.assertIs(p_new_generator.check_token(user, legacy_token), True)",
+          "after": "        legacy_token = p_old_generator.make_token(user)\n        self.assertIs(p_old_generator.check_token(user, legacy_token), True)\n        self.assertIs(p_new_generator.check_token(user, legacy_token), True)\n\n    def test_token_invalidated_by_email_change(self):\n        \"\"\"\n        Changing a user's email address should invalidate password reset tokens.\n        \"\"\"\n        user = User.objects.create_user('tokentestuser', 'test@example.com', 'testpw')\n        p0 = PasswordResetTokenGenerator()\n        tk1 = p0.make_token(user)\n        self.assertIs(p0.check_token(user, tk1), True)\n        \n        # Change email address\n        user.email = 'changed@example.com'\n        user.save()\n        \n        # Token should now be invalid\n        self.assertIs(p0.check_token(user, tk1), False)\n\n    def test_token_with_empty_email(self):\n        \"\"\"\n        Test that tokens work correctly with empty email addresses.\n        \"\"\"\n        user = User.objects.create_user('tokentestuser', '', 'testpw')\n        p0 = PasswordResetTokenGenerator()\n        tk1 = p0.make_token(user)\n        self.assertIs(p0.check_token(user, tk1), True)\n        \n        # Set email address\n        user.email = 'test@example.com'\n        user.save()\n        \n        # Token should now be invalid\n        self.assertIs(p0.check_token(user, tk1), False)",
+          "explanation": "classic_swe step 30 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 56,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 56,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/contrib/auth/tokens.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/contrib/auth/tokens.py"
+    ],
+    "gold_files": [
+      "django/contrib/auth/tokens.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 5,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 4
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

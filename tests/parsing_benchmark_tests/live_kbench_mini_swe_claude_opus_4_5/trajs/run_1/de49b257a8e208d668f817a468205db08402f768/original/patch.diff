@@ -1,0 +1,29 @@
+diff --git a/security/selinux/ss/hashtab.c b/security/selinux/ss/hashtab.c
+index 383fd2d70878..c8cc42c0f4b0 100644
+--- a/security/selinux/ss/hashtab.c
++++ b/security/selinux/ss/hashtab.c
+@@ -34,6 +34,9 @@ int hashtab_init(struct hashtab *h, u32 nel_hint)
+ {
+ 	u32 size = hashtab_compute_size(nel_hint);
+ 
++	if (size > HASHTAB_MAX_SIZE)
++		return -EINVAL;
++
+ 	/* should already be zeroed, but better be safe */
+ 	h->nel = 0;
+ 	h->size = 0;
+diff --git a/security/selinux/ss/hashtab.h b/security/selinux/ss/hashtab.h
+index deba82d78c3a..5dbf8eb876ae 100644
+--- a/security/selinux/ss/hashtab.h
++++ b/security/selinux/ss/hashtab.h
+@@ -18,6 +18,10 @@
+ 
+ #define HASHTAB_MAX_NODES U32_MAX
+ 
++
++/* limit bucket size to avoid the warning in __alloc_pages_noprof() */
++#define HASHTAB_MAX_SIZE (1 << 16)
++
+ struct hashtab_key_params {
+ 	u32 (*hash)(const void *key); /* hash func */
+ 	int (*cmp)(const void *key1, const void *key2); /* comparison func */

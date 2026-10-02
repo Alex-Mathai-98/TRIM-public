@@ -1,0 +1,63 @@
+diff --git a/net/sched/sch_skbprio.c b/net/sched/sch_skbprio.c
+index 20ff7386b74b..0de30659999e 100644
+--- a/net/sched/sch_skbprio.c
++++ b/net/sched/sch_skbprio.c
+@@ -86,9 +86,11 @@ static int skbprio_enqueue(struct sk_buff *skb, struct Qdisc *sch,
+ 		qdisc_qstats_backlog_inc(sch, skb);
+ 		q->qstats[prio].backlog += qdisc_pkt_len(skb);
+ 
+-		/* Check to update highest and lowest priorities. */
++
+ 		if (prio > q->highest_prio)
+-			q->highest_prio = prio;
++		q->highest_prio = prio;
++
++	/* Check to update highest and lowest priorities. */
+ 
+ 		if (prio < q->lowest_prio)
+ 			q->lowest_prio = prio;
+@@ -98,6 +100,14 @@ static int skbprio_enqueue(struct sk_buff *skb, struct Qdisc *sch,
+ 	}
+ 
+ 	/* If this packet has the lowest priority, drop it. */
++	/* If the queue is empty (which can happen if sch->limit is 0),
++	 * drop the incoming packet.
++	 */
++	if (unlikely(sch->q.qlen == 0)) {
++		q->qstats[prio].drops++;
++		q->qstats[prio].overlimits++;
++		return qdisc_drop(skb, sch, to_free);
++	}
+ 	lp = q->lowest_prio;
+ 	if (prio <= lp) {
+ 		q->qstats[prio].drops++;
+@@ -120,6 +130,10 @@ static int skbprio_enqueue(struct sk_buff *skb, struct Qdisc *sch,
+ 	q->qstats[lp].drops++;
+ 	q->qstats[lp].overlimits++;
+ 
++
++	if (prio > q->highest_prio)
++		q->highest_prio = prio;
++
+ 	/* Check to update highest and lowest priorities. */
+ 	if (skb_queue_empty(lp_qdisc)) {
+ 		if (q->lowest_prio == q->highest_prio) {
+@@ -132,8 +146,6 @@ static int skbprio_enqueue(struct sk_buff *skb, struct Qdisc *sch,
+ 		}
+ 	}
+ 
+-	if (prio > q->highest_prio)
+-		q->highest_prio = prio;
+ 
+ 	return NET_XMIT_CN;
+ }
+@@ -171,7 +183,8 @@ static int skbprio_change(struct Qdisc *sch, struct nlattr *opt,
+ {
+ 	struct tc_skbprio_qopt *ctl = nla_data(opt);
+ 
+-	if (opt->nla_len != nla_attr_size(sizeof(*ctl)))
++	if (opt->nla_len != nla_attr_size(sizeof(*ctl)) ||
++	    !ctl->limit)
+ 		return -EINVAL;
+ 
+ 	WRITE_ONCE(sch->limit, ctl->limit);

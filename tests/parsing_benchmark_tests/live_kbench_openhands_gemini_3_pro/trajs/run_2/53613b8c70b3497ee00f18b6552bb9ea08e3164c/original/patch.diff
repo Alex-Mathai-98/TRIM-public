@@ -1,0 +1,72 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 1d06c560c5e6..6df59340f0b7 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -1749,6 +1749,7 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 			    int noblock, bool more)
+ {
+ 	struct tun_pi pi = { 0, cpu_to_be16(ETH_P_IP) };
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 	struct sk_buff *skb;
+ 	size_t total_len = iov_iter_count(from);
+ 	size_t len = total_len, align = tun->align, linear;
+@@ -1923,15 +1924,18 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 
+ 		local_bh_disable();
+ 		rcu_read_lock();
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+ 		if (xdp_prog) {
+ 			ret = do_xdp_generic(xdp_prog, &skb);
+ 			if (ret != XDP_PASS) {
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 				rcu_read_unlock();
+ 				local_bh_enable();
+ 				goto unlock_frags;
+ 			}
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 		rcu_read_unlock();
+ 		local_bh_enable();
+ 	}
+diff --git a/kernel/bpf/devmap.c b/kernel/bpf/devmap.c
+index 9e0e3b0a18e4..e8395200829a 100644
+--- a/kernel/bpf/devmap.c
++++ b/kernel/bpf/devmap.c
+@@ -453,7 +453,10 @@ static void *__dev_map_lookup_elem(struct bpf_map *map, u32 key)
+ static void bq_enqueue(struct net_device *dev, struct xdp_frame *xdpf,
+ 		       struct net_device *dev_rx, struct bpf_prog *xdp_prog)
+ {
+-	struct xdp_dev_bulk_queue *bq = this_cpu_ptr(dev->xdp_bulkq);
++	struct xdp_dev_bulk_queue *bq;
++
++	local_bh_disable();
++	bq = this_cpu_ptr(dev->xdp_bulkq);
+ 
+ 	if (unlikely(bq->count == DEV_MAP_BULK_SIZE))
+ 		bq_xmit_all(bq, 0);
+@@ -468,12 +471,23 @@ static void bq_enqueue(struct net_device *dev, struct xdp_frame *xdpf,
+ 	if (!bq->dev_rx) {
+ 		struct list_head *flush_list = bpf_net_ctx_get_dev_flush_list();
+ 
++		bq->dev_rx = dev_rx;
++		bq->xdp_prog = xdp_prog;
++		list_add(&bq->flush_node, flush_list);
++	} else if (unlikely(bq->dev_rx != dev_rx || bq->xdp_prog != xdp_prog)) {
++		struct list_head *flush_list;
++
++		bq_xmit_all(bq, 0);
++		flush_list = bpf_net_ctx_get_dev_flush_list();
+ 		bq->dev_rx = dev_rx;
+ 		bq->xdp_prog = xdp_prog;
+ 		list_add(&bq->flush_node, flush_list);
+ 	}
+ 
+-	bq->q[bq->count++] = xdpf;
++	if (likely(bq->count < DEV_MAP_BULK_SIZE))
++		bq->q[bq->count++] = xdpf;
++
++	local_bh_enable();
+ }
+ 
+ static inline int __xdp_enqueue(struct net_device *dev, struct xdp_frame *xdpf,

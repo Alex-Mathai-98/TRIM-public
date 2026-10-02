@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tconst struct cred *old_cred;\n\tint ret;\n\tstruct file *user_file = vma->vm_file;\n\n\tif (WARN_ON_ONCE(!(file->f_mode & FMODE_BACKING)))\n\t\treturn -EIO;\n\n\tif (!file->f_op->mmap)\n\t\treturn -ENODEV;\n\n\tvma_set_file(vma, file);\n\n\told_cred = override_creds_light(ctx->cred);\n\tret = call_mmap(vma->vm_file, vma);\n\trevert_creds_light(old_cred);\n\n\tif (ctx->accessed)\n\t\tctx->accessed(user_file);\n\n\treturn ret;",
+          "before": "\tconst struct cred *old_cred;\n\tint ret;\n\n\tif (WARN_ON_ONCE(!(file->f_mode & FMODE_BACKING)))\n\t\treturn -EIO;\n\n\tif (!file->f_op->mmap)\n\t\treturn -ENODEV;\n\n\tvma_set_file(vma, file);\n\n\told_cred = override_creds_light(ctx->cred);\n\tret = call_mmap(vma->vm_file, vma);\n\trevert_creds_light(old_cred);\n\n\tif (ctx->accessed)\n\t\tctx->accessed(vma->vm_file);\n\n\treturn ret;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/backing-file.c b/fs/backing-file.c\nindex 526ddb4d6f76..660215d74e60 100644\n--- a/fs/backing-file.c\n+++ b/fs/backing-file.c\n@@ -328,6 +328,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,\n {\n \tconst struct cred *old_cred;\n \tint ret;\n+\tstruct file *user_file = vma->vm_file;\n \n \tif (WARN_ON_ONCE(!(file->f_mode & FMODE_BACKING)))\n \t\treturn -EIO;\n@@ -342,7 +343,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,\n \trevert_creds_light(old_cred);\n \n \tif (ctx->accessed)\n-\t\tctx->accessed(vma->vm_file);\n+\t\tctx->accessed(user_file);\n \n \treturn ret;\n }",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/backing-file.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 17
+}

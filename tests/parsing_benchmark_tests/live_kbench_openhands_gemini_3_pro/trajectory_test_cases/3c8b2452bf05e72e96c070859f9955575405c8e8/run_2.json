@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <linux/preempt.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -7,0 +8 @@\n+#include <linux/preempt.h>",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 89",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 8,
+          "step_index": 89
+        },
+        {
+          "after": "\nint range_tree_clear(struct range_tree *rt, u32 start, u32 len)\n{\n\tu32 last = start + len - 1;\n\tstruct range_node *new_rn;\n\tstruct range_node *rn;\n\tint err = 0;\n\n\tmigrate_disable();\n\twhile ((rn = range_it_iter_first(rt, start, last))) {\n\t\tif (rn->rn_start < start && rn->rn_last > last) {\n\t\t\tu32 old_last = rn->rn_last;\n\n\t\t\t/* Overlaps with the entire clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_last = start - 1;\n\t\t\trange_it_insert(rn, rt);\n\n\t\t\t/* Add a range */\n\t\t\tnew_rn = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\t\tif (!new_rn) {\n\t\t\t\terr = -ENOMEM;\n\t\t\t\tgoto out;\n\t\t\t}\n\t\t\tnew_rn->rn_start = last + 1;\n\t\t\tnew_rn->rn_last = old_last;\n\t\t\trange_it_insert(new_rn, rt);\n\t\t} else if (rn->rn_start < start) {\n\t\t\t/* Overlaps with the left side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_last = start - 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t} else if (rn->rn_last > last) {\n\t\t\t/* Overlaps with the right side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_start = last + 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t\tbreak;\n\t\t} else {\n\t\t\t/* in the middle of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\tbpf_mem_free(&bpf_global_ma, rn);\n\t\t}\n\t}\nout:\n\tmigrate_enable();\n\treturn err;\n}\n",
+          "before": "\nint range_tree_clear(struct range_tree *rt, u32 start, u32 len)\n{\n\tu32 last = start + len - 1;\n\tstruct range_node *new_rn;\n\tstruct range_node *rn;\n\n\twhile ((rn = range_it_iter_first(rt, start, last))) {\n\t\tif (rn->rn_start < start && rn->rn_last > last) {\n\t\t\tu32 old_last = rn->rn_last;\n\n\t\t\t/* Overlaps with the entire clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_last = start - 1;\n\t\t\trange_it_insert(rn, rt);\n\n\t\t\t/* Add a range */\n\t\t\tnew_rn = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\t\tif (!new_rn)\n\t\t\t\treturn -ENOMEM;\n\t\t\tnew_rn->rn_start = last + 1;\n\t\t\tnew_rn->rn_last = old_last;\n\t\t\trange_it_insert(new_rn, rt);\n\t\t} else if (rn->rn_start < start) {\n\t\t\t/* Overlaps with the left side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_last = start - 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t} else if (rn->rn_last > last) {\n\t\t\t/* Overlaps with the right side of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\trn->rn_start = last + 1;\n\t\t\trange_it_insert(rn, rt);\n\t\t\tbreak;\n\t\t} else {\n\t\t\t/* in the middle of the clearing range */\n\t\t\trange_it_remove(rn, rt);\n\t\t\tbpf_mem_free(&bpf_global_ma, rn);\n\t\t}\n\t}\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -143 +143,3 @@\n-\n+\tint err = 0;\n+\n+\tmigrate_disable();\n@@ -155,2 +157,4 @@\n-\t\t\tif (!new_rn)\n-\t\t\t\treturn -ENOMEM;\n+\t\t\tif (!new_rn) {\n+\t\t\t\terr = -ENOMEM;\n+\t\t\t\tgoto out;\n+\t\t\t}\n@@ -177 +181,3 @@\n-\treturn 0;\n+out:\n+\tmigrate_enable();\n+\treturn err;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 93",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 93
+        },
+        {
+          "after": "\nint range_tree_set(struct range_tree *rt, u32 start, u32 len)\n{\n\tu32 last = start + len - 1;\n\tstruct range_node *right;\n\tstruct range_node *left;\n\tint err = 0;\n\n\tmigrate_disable();\n\t/* Is this whole range already set ? */\n\tleft = range_it_iter_first(rt, start, last);\n\tif (left && left->rn_start <= start && left->rn_last >= last)\n\t\tgoto out;\n\n\t/* Clear out everything in the range we want to set. */\n\terr = range_tree_clear(rt, start, len);\n\tif (err)\n\t\tgoto out;\n\n\t/* Do we have a left-adjacent range ? */\n\tleft = range_it_iter_first(rt, start - 1, start - 1);\n\tif (left && left->rn_last + 1 != start) {\n\t\terr = -EFAULT;\n\t\tgoto out;\n\t}\n\n\t/* Do we have a right-adjacent range ? */\n\tright = range_it_iter_first(rt, last + 1, last + 1);\n\tif (right && right->rn_start != last + 1) {\n\t\terr = -EFAULT;\n\t\tgoto out;\n\t}\n\n\tif (left && right) {\n\t\t/* Combine left and right adjacent ranges */\n\t\trange_it_remove(left, rt);\n\t\trange_it_remove(right, rt);\n\t\tleft->rn_last = right->rn_last;\n\t\trange_it_insert(left, rt);\n\t\tbpf_mem_free(&bpf_global_ma, right);\n\t} else if (left) {\n\t\t/* Combine with the left range */\n\t\trange_it_remove(left, rt);\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t} else if (right) {\n\t\t/* Combine with the right range */\n\t\trange_it_remove(right, rt);\n\t\tright->rn_start = start;\n\t\trange_it_insert(right, rt);\n\t} else {\n\t\tleft = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\tif (!left) {\n\t\t\terr = -ENOMEM;\n\t\t\tgoto out;\n\t\t}\n\t\tleft->rn_start = start;\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t}\n\nout:\n\tmigrate_enable();\n\treturn err;\n}\n",
+          "before": "\nint range_tree_set(struct range_tree *rt, u32 start, u32 len)\n{\n\tu32 last = start + len - 1;\n\tstruct range_node *right;\n\tstruct range_node *left;\n\tint err;\n\n\t/* Is this whole range already set ? */\n\tleft = range_it_iter_first(rt, start, last);\n\tif (left && left->rn_start <= start && left->rn_last >= last)\n\t\treturn 0;\n\n\t/* Clear out everything in the range we want to set. */\n\terr = range_tree_clear(rt, start, len);\n\tif (err)\n\t\treturn err;\n\n\t/* Do we have a left-adjacent range ? */\n\tleft = range_it_iter_first(rt, start - 1, start - 1);\n\tif (left && left->rn_last + 1 != start)\n\t\treturn -EFAULT;\n\n\t/* Do we have a right-adjacent range ? */\n\tright = range_it_iter_first(rt, last + 1, last + 1);\n\tif (right && right->rn_start != last + 1)\n\t\treturn -EFAULT;\n\n\tif (left && right) {\n\t\t/* Combine left and right adjacent ranges */\n\t\trange_it_remove(left, rt);\n\t\trange_it_remove(right, rt);\n\t\tleft->rn_last = right->rn_last;\n\t\trange_it_insert(left, rt);\n\t\tbpf_mem_free(&bpf_global_ma, right);\n\t} else if (left) {\n\t\t/* Combine with the left range */\n\t\trange_it_remove(left, rt);\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t} else if (right) {\n\t\t/* Combine with the right range */\n\t\trange_it_remove(right, rt);\n\t\tright->rn_start = start;\n\t\trange_it_insert(right, rt);\n\t} else {\n\t\tleft = bpf_mem_alloc(&bpf_global_ma, sizeof(struct range_node));\n\t\tif (!left)\n\t\t\treturn -ENOMEM;\n\t\tleft->rn_start = start;\n\t\tleft->rn_last = last;\n\t\trange_it_insert(left, rt);\n\t}\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -205,2 +205,3 @@\n-\tint err;\n-\n+\tint err = 0;\n+\n+\tmigrate_disable();\n@@ -210 +211 @@\n-\t\treturn 0;\n+\t\tgoto out;\n@@ -215 +216 @@\n-\t\treturn err;\n+\t\tgoto out;\n@@ -219,2 +220,4 @@\n-\tif (left && left->rn_last + 1 != start)\n-\t\treturn -EFAULT;\n+\tif (left && left->rn_last + 1 != start) {\n+\t\terr = -EFAULT;\n+\t\tgoto out;\n+\t}\n@@ -224,2 +227,4 @@\n-\tif (right && right->rn_start != last + 1)\n-\t\treturn -EFAULT;\n+\tif (right && right->rn_start != last + 1) {\n+\t\terr = -EFAULT;\n+\t\tgoto out;\n+\t}\n@@ -246,2 +251,4 @@\n-\t\tif (!left)\n-\t\t\treturn -ENOMEM;\n+\t\tif (!left) {\n+\t\t\terr = -ENOMEM;\n+\t\t\tgoto out;\n+\t\t}\n@@ -252 +259,4 @@\n-\treturn 0;\n+\n+out:\n+\tmigrate_enable();\n+\treturn err;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 102",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 102
+        },
+        {
+          "after": "\nvoid range_tree_destroy(struct range_tree *rt)\n{\n\tstruct range_node *rn;\n\n\tmigrate_disable();\n\twhile ((rn = range_it_iter_first(rt, 0, -1U))) {\n\t\trange_it_remove(rn, rt);\n\t\tbpf_mem_free(&bpf_global_ma, rn);\n\t}\n\tmigrate_enable();\n}\n",
+          "before": "\nvoid range_tree_destroy(struct range_tree *rt)\n{\n\tstruct range_node *rn;\n\n\twhile ((rn = range_it_iter_first(rt, 0, -1U))) {\n\t\trange_it_remove(rn, rt);\n\t\tbpf_mem_free(&bpf_global_ma, rn);\n\t}\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/range_tree.c\n+++ /linux/kernel/bpf/range_tree.c\n@@ -268,0 +269 @@\n+\tmigrate_disable();\n@@ -272,0 +274 @@\n+\tmigrate_enable();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 110",
+          "filename": "kernel/bpf/range_tree.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 110
+        }
+      ],
+      "end_step": 110,
+      "revision_index": 0,
+      "start_step": 89
+    }
+  ],
+  "success_step": 110
+}

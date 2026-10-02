@@ -1,0 +1,47 @@
+diff --git a/sphinx/util/inspect.py b/sphinx/util/inspect.py
+index 15f0d66e2..1a4a0a737 100644
+--- a/sphinx/util/inspect.py
++++ b/sphinx/util/inspect.py
+@@ -521,14 +521,38 @@ def signature_from_str(signature: str) -> inspect.Signature:
+     params = []
+ 
+     if hasattr(args, "posonlyargs"):
+-        for arg in args.posonlyargs:  # type: ignore
++        # Calculate total positional arguments to determine which ones have defaults
++        total_positional = len(args.posonlyargs) + len(args.args)  # type: ignore
++        defaults_start_index = total_positional - len(args.defaults)
++        
++        for i, arg in enumerate(args.posonlyargs):  # type: ignore
+             annotation = ast_unparse(arg.annotation) or Parameter.empty
++            
++            # Check if this positional-only argument has a default value
++            if i >= defaults_start_index:
++                default_index = i - defaults_start_index
++                default = ast_unparse(args.defaults[default_index])
++            else:
++                default = Parameter.empty
++                
+             params.append(Parameter(arg.arg, Parameter.POSITIONAL_ONLY,
+-                                    annotation=annotation))
++                                    default=default, annotation=annotation))
+ 
+     for i, arg in enumerate(args.args):
+-        if len(args.args) - i <= len(args.defaults):
+-            default = ast_unparse(args.defaults[-len(args.args) + i])
++        # Calculate the absolute index of this argument among all positional arguments
++        if hasattr(args, "posonlyargs"):
++            absolute_index = len(args.posonlyargs) + i  # type: ignore
++            total_positional = len(args.posonlyargs) + len(args.args)  # type: ignore
++        else:
++            absolute_index = i
++            total_positional = len(args.args)
++            
++        defaults_start_index = total_positional - len(args.defaults)
++        
++        # Check if this argument has a default value
++        if absolute_index >= defaults_start_index:
++            default_index = absolute_index - defaults_start_index
++            default = ast_unparse(args.defaults[default_index])
+         else:
+             default = Parameter.empty
+ 

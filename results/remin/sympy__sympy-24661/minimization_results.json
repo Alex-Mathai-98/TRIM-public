@@ -1,0 +1,128 @@
+{
+  "bug_id": "sympy__sympy-24661",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/parsing/sympy_parser.py",
+        "before": "class EvaluateFalseTransformer(ast.NodeTransformer):\n    operators = {\n        ast.Add: 'Add',\n        ast.Mult: 'Mul',\n        ast.Pow: 'Pow',\n        ast.Sub: 'Add',\n        ast.Div: 'Mul',\n        ast.BitOr: 'Or',\n        ast.BitAnd: 'And',\n        ast.BitXor: 'Not',\n    }\n    functions = (\n        'Abs', 'im', 're', 'sign', 'arg', 'conjugate',\n        'acos', 'acot', 'acsc', 'asec', 'asin', 'atan',\n        'acosh', 'acoth', 'acsch', 'asech', 'asinh', 'atanh',\n        'cos', 'cot', 'csc', 'sec', 'sin', 'tan',\n        'cosh', 'coth', 'csch', 'sech', 'sinh', 'tanh',\n        'exp', 'ln', 'log', 'sqrt', 'cbrt',\n    )",
+        "after": "class EvaluateFalseTransformer(ast.NodeTransformer):\n    operators = {\n        ast.Add: 'Add',\n        ast.Mult: 'Mul',\n        ast.Pow: 'Pow',\n        ast.Sub: 'Add',\n        ast.Div: 'Mul',\n        ast.BitOr: 'Or',\n        ast.BitAnd: 'And',\n        ast.BitXor: 'Not',\n    }\n    relational_operators = {\n        ast.Lt: 'Lt',\n        ast.Gt: 'Gt',\n        ast.LtE: 'Le',\n        ast.GtE: 'Ge',\n        ast.Eq: 'Eq',\n        ast.NotEq: 'Ne',\n    }\n    functions = (\n        'Abs', 'im', 're', 'sign', 'arg', 'conjugate',\n        'acos', 'acot', 'acsc', 'asec', 'asin', 'atan',\n        'acosh', 'acoth', 'acsch', 'asech', 'asinh', 'atanh',\n        'cos', 'cot', 'csc', 'sec', 'sin', 'tan',\n        'cosh', 'coth', 'csch', 'sech', 'sinh', 'tanh',\n        'exp', 'ln', 'log', 'sqrt', 'cbrt',\n    )",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/parsing/sympy_parser.py",
+        "before": "    def visit_Call(self, node):\n        new_node = self.generic_visit(node)\n        if isinstance(node.func, ast.Name) and node.func.id in self.functions:\n            new_node.keywords.append(ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load())))\n        return new_node",
+        "after": "    def visit_Call(self, node):\n        new_node = self.generic_visit(node)\n        if isinstance(node.func, ast.Name) and node.func.id in self.functions:\n            new_node.keywords.append(ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load())))\n        return new_node\n\n    def visit_Compare(self, node):\n        # Handle comparison operators like <, >, <=, >=, ==, !=\n        # Note: Python allows chained comparisons like a < b < c, but for simplicity\n        # we'll handle the most common case of single comparisons\n        if len(node.ops) == 1 and len(node.comparators) == 1:\n            op = node.ops[0]\n            if op.__class__ in self.relational_operators:\n                sympy_class = self.relational_operators[op.__class__]\n                left = self.visit(node.left)\n                right = self.visit(node.comparators[0])\n                \n                new_node = ast.Call(\n                    func=ast.Name(id=sympy_class, ctx=ast.Load()),\n                    args=[left, right],\n                    keywords=[ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load()))],\n                    starargs=None,\n                    kwargs=None\n                )\n                return new_node\n        \n        # For chained comparisons or unsupported operators, fall back to default behavior\n        return self.generic_visit(node)",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/parsing/sympy_parser.py b/sympy/parsing/sympy_parser.py\nindex 52711d1324..a46d82ef76 100644\n--- a/sympy/parsing/sympy_parser.py\n+++ b/sympy/parsing/sympy_parser.py\n@@ -1110,6 +1110,14 @@ class EvaluateFalseTransformer(ast.NodeTransformer):\n         ast.BitAnd: 'And',\n         ast.BitXor: 'Not',\n     }\n+    relational_operators = {\n+        ast.Lt: 'Lt',\n+        ast.Gt: 'Gt',\n+        ast.LtE: 'Le',\n+        ast.GtE: 'Ge',\n+        ast.Eq: 'Eq',\n+        ast.NotEq: 'Ne',\n+    }\n     functions = (\n         'Abs', 'im', 're', 'sign', 'arg', 'conjugate',\n         'acos', 'acot', 'acsc', 'asec', 'asin', 'atan',\n@@ -1192,6 +1200,29 @@ def visit_Call(self, node):\n             new_node.keywords.append(ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load())))\n         return new_node\n \n+    def visit_Compare(self, node):\n+        # Handle comparison operators like <, >, <=, >=, ==, !=\n+        # Note: Python allows chained comparisons like a < b < c, but for simplicity\n+        # we'll handle the most common case of single comparisons\n+        if len(node.ops) == 1 and len(node.comparators) == 1:\n+            op = node.ops[0]\n+            if op.__class__ in self.relational_operators:\n+                sympy_class = self.relational_operators[op.__class__]\n+                left = self.visit(node.left)\n+                right = self.visit(node.comparators[0])\n+                \n+                new_node = ast.Call(\n+                    func=ast.Name(id=sympy_class, ctx=ast.Load()),\n+                    args=[left, right],\n+                    keywords=[ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load()))],\n+                    starargs=None,\n+                    kwargs=None\n+                )\n+                return new_node\n+        \n+        # For chained comparisons or unsupported operators, fall back to default behavior\n+        return self.generic_visit(node)\n+\n \n _transformation = {  # items can be added but never re-ordered\n 0: lambda_notation,\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      3,
+      4
+    ],
+    "edit_list_after_file_min": [
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 2,
+    "edit_list_after_greedy": [
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "edit_list_after_refinement": [
+      3,
+      4
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/parsing/sympy_parser.py",
+          "before": "class EvaluateFalseTransformer(ast.NodeTransformer):\n    operators = {\n        ast.Add: 'Add',\n        ast.Mult: 'Mul',\n        ast.Pow: 'Pow',\n        ast.Sub: 'Add',\n        ast.Div: 'Mul',\n        ast.BitOr: 'Or',\n        ast.BitAnd: 'And',\n        ast.BitXor: 'Not',\n    }\n    functions = (\n        'Abs', 'im', 're', 'sign', 'arg', 'conjugate',\n        'acos', 'acot', 'acsc', 'asec', 'asin', 'atan',\n        'acosh', 'acoth', 'acsch', 'asech', 'asinh', 'atanh',\n        'cos', 'cot', 'csc', 'sec', 'sin', 'tan',\n        'cosh', 'coth', 'csch', 'sech', 'sinh', 'tanh',\n        'exp', 'ln', 'log', 'sqrt', 'cbrt',\n    )",
+          "after": "class EvaluateFalseTransformer(ast.NodeTransformer):\n    operators = {\n        ast.Add: 'Add',\n        ast.Mult: 'Mul',\n        ast.Pow: 'Pow',\n        ast.Sub: 'Add',\n        ast.Div: 'Mul',\n        ast.BitOr: 'Or',\n        ast.BitAnd: 'And',\n        ast.BitXor: 'Not',\n    }\n    relational_operators = {\n        ast.Lt: 'Lt',\n        ast.Gt: 'Gt',\n        ast.LtE: 'Le',\n        ast.GtE: 'Ge',\n        ast.Eq: 'Eq',\n        ast.NotEq: 'Ne',\n    }\n    functions = (\n        'Abs', 'im', 're', 'sign', 'arg', 'conjugate',\n        'acos', 'acot', 'acsc', 'asec', 'asin', 'atan',\n        'acosh', 'acoth', 'acsch', 'asech', 'asinh', 'atanh',\n        'cos', 'cot', 'csc', 'sec', 'sin', 'tan',\n        'cosh', 'coth', 'csch', 'sech', 'sinh', 'tanh',\n        'exp', 'ln', 'log', 'sqrt', 'cbrt',\n    )",
+          "explanation": "classic_swe step 16 #1"
+        },
+        {
+          "filename": "sympy/parsing/sympy_parser.py",
+          "before": "    def visit_Call(self, node):\n        new_node = self.generic_visit(node)\n        if isinstance(node.func, ast.Name) and node.func.id in self.functions:\n            new_node.keywords.append(ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load())))\n        return new_node",
+          "after": "    def visit_Call(self, node):\n        new_node = self.generic_visit(node)\n        if isinstance(node.func, ast.Name) and node.func.id in self.functions:\n            new_node.keywords.append(ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load())))\n        return new_node\n\n    def visit_Compare(self, node):\n        # Handle comparison operators like <, >, <=, >=, ==, !=\n        # Note: Python allows chained comparisons like a < b < c, but for simplicity\n        # we'll handle the most common case of single comparisons\n        if len(node.ops) == 1 and len(node.comparators) == 1:\n            op = node.ops[0]\n            if op.__class__ in self.relational_operators:\n                sympy_class = self.relational_operators[op.__class__]\n                left = self.visit(node.left)\n                right = self.visit(node.comparators[0])\n                \n                new_node = ast.Call(\n                    func=ast.Name(id=sympy_class, ctx=ast.Load()),\n                    args=[left, right],\n                    keywords=[ast.keyword(arg='evaluate', value=ast.NameConstant(value=False, ctx=ast.Load()))],\n                    starargs=None,\n                    kwargs=None\n                )\n                return new_node\n        \n        # For chained comparisons or unsupported operators, fall back to default behavior\n        return self.generic_visit(node)",
+          "explanation": "classic_swe step 18 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 27,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 27,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/parsing/sympy_parser.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/parsing/sympy_parser.py"
+    ],
+    "gold_files": [
+      "sympy/parsing/sympy_parser.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 31,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 23,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

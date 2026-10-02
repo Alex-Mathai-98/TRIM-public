@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n{\n\tint nest_level;\n\n\tpreempt_disable();\n\tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n\tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n\t\tthis_cpu_dec(bpf_bprintf_nest_level);\n\t\tpreempt_enable();\n\t\treturn -EBUSY;\n\t}\n\t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n\n\treturn 0;\n}\n\nvoid bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0)) {\n\t\tpreempt_enable();\n\t\treturn;\n\t}\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n\tpreempt_enable();\n}",
+          "before": "int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n{\n\tint nest_level;\n\n\tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n\tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n\t\tthis_cpu_dec(bpf_bprintf_nest_level);\n\t\treturn -EBUSY;\n\t}\n\t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n\n\treturn 0;\n}\n\nvoid bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n\t\treturn;\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c\nindex 865b0dae38d1..99780b654e8c 100644\n--- a/kernel/bpf/helpers.c\n+++ b/kernel/bpf/helpers.c\n@@ -774,9 +774,11 @@ int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n {\n \tint nest_level;\n \n+\tpreempt_disable();\n \tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n \tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n \t\tthis_cpu_dec(bpf_bprintf_nest_level);\n+\t\tpreempt_enable();\n \t\treturn -EBUSY;\n \t}\n \t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n@@ -786,9 +788,12 @@ int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n \n void bpf_put_buffers(void)\n {\n-\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n+\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0)) {\n+\t\tpreempt_enable();\n \t\treturn;\n+\t}\n \tthis_cpu_dec(bpf_bprintf_nest_level);\n+\tpreempt_enable();\n }\n \n void bpf_bprintf_cleanup(struct bpf_bprintf_data *data)",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "kernel/bpf/helpers.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "void bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n\t\treturn;\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n\tpreempt_enable();\n}",
+          "before": "void bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0)) {\n\t\tpreempt_enable();\n\t\treturn;\n\t}\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n\tpreempt_enable();\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/helpers.c b/kernel/bpf/helpers.c\nindex 865b0dae38d1..81ad01eadcf8 100644\n--- a/kernel/bpf/helpers.c\n+++ b/kernel/bpf/helpers.c\n@@ -774,9 +774,11 @@ int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n {\n \tint nest_level;\n \n+\tpreempt_disable();\n \tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n \tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n \t\tthis_cpu_dec(bpf_bprintf_nest_level);\n+\t\tpreempt_enable();\n \t\treturn -EBUSY;\n \t}\n \t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n@@ -789,6 +791,7 @@ void bpf_put_buffers(void)\n \tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n \t\treturn;\n \tthis_cpu_dec(bpf_bprintf_nest_level);\n+\tpreempt_enable();\n }\n \n void bpf_bprintf_cleanup(struct bpf_bprintf_data *data)",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "kernel/bpf/helpers.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 1,
+      "start_step": 18
+    }
+  ],
+  "success_step": 18
+}

@@ -1,0 +1,88 @@
+diff --git a/drivers/android/binder.c b/drivers/android/binder.c
+index f26286e3713e..07f5324a13f4 100644
+--- a/drivers/android/binder.c
++++ b/drivers/android/binder.c
+@@ -1044,13 +1044,13 @@ static struct binder_ref *binder_get_ref_olocked(struct binder_proc *proc,
+ }
+ 
+ /* Find the smallest unused descriptor the "slow way" */
+-static u32 slow_desc_lookup_olocked(struct binder_proc *proc)
++static u32 slow_desc_lookup_olocked(struct binder_proc *proc, u32 offset)
+ {
+ 	struct binder_ref *ref;
+ 	struct rb_node *n;
+ 	u32 desc;
+ 
+-	desc = 1;
++	desc = offset;
+ 	for (n = rb_first(&proc->refs_by_desc); n; n = rb_next(n)) {
+ 		ref = rb_entry(n, struct binder_ref, rb_node_desc);
+ 		if (ref->data.desc > desc)
+@@ -1073,19 +1073,30 @@ static int get_ref_desc_olocked(struct binder_proc *proc,
+ 	struct dbitmap *dmap = &proc->dmap;
+ 	unsigned long *new, bit;
+ 	unsigned int nbits;
++	unsigned long offset;
+ 
+-	/* 0 is reserved for the context manager */
++	/*
++	 * Descriptor 0 is reserved for the context manager. Check if
++	 * the node is the context manager and if so, try to use 0.
++	 * If descriptor 0 is already in use (by a reference to a
++	 * previous context manager), find the next available one.
++	 */
+ 	if (node == proc->context->binder_context_mgr_node) {
+-		*desc = 0;
+-		return 0;
++		if (!binder_get_ref_olocked(proc, 0, false)) {
++			*desc = 0;
++			return 0;
++		}
+ 	}
+ 
++	/* default to start from 1 for non-context manager nodes */
++	offset = 1;
++
+ 	if (!dbitmap_enabled(dmap)) {
+-		*desc = slow_desc_lookup_olocked(proc);
++		*desc = slow_desc_lookup_olocked(proc, offset);
+ 		return 0;
+ 	}
+ 
+-	if (dbitmap_acquire_first_zero_bit(dmap, &bit) == 0) {
++	if (dbitmap_acquire_next_zero_bit(dmap, offset, &bit) == 0) {
+ 		*desc = bit;
+ 		return 0;
+ 	}
+@@ -1103,6 +1114,7 @@ static int get_ref_desc_olocked(struct binder_proc *proc,
+ 	return -EAGAIN;
+ }
+ 
++
+ /**
+  * binder_get_ref_for_node_olocked() - get the ref associated with given node
+  * @proc:	binder_proc that owns the ref
+diff --git a/drivers/android/dbitmap.h b/drivers/android/dbitmap.h
+index b8ac7b4764fd..ac685f869ed6 100644
+--- a/drivers/android/dbitmap.h
++++ b/drivers/android/dbitmap.h
+@@ -132,16 +132,16 @@ dbitmap_grow(struct dbitmap *dmap, unsigned long *new, unsigned int nbits)
+ }
+ 
+ /*
+- * Finds and sets the first zero bit in the bitmap. Upon success @bit
++ * Finds and sets the next zero bit in the bitmap starting from offset. Upon success @bit
+  * is populated with the index and 0 is returned. Otherwise, -ENOSPC
+  * is returned to indicate that a dbitmap_grow() is needed.
+  */
+ static inline int
+-dbitmap_acquire_first_zero_bit(struct dbitmap *dmap, unsigned long *bit)
++dbitmap_acquire_next_zero_bit(struct dbitmap *dmap, unsigned long offset, unsigned long *bit)
+ {
+ 	unsigned long n;
+ 
+-	n = find_first_zero_bit(dmap->map, dmap->nbits);
++	n = find_next_zero_bit(dmap->map, dmap->nbits, offset);
+ 	if (n == dmap->nbits)
+ 		return -ENOSPC;
+ 

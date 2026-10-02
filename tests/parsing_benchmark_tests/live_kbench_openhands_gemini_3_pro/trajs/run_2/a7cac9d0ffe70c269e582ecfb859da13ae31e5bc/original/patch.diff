@@ -1,0 +1,21 @@
+diff --git a/fs/jfs/jfs_imap.c b/fs/jfs/jfs_imap.c
+index ecb8e05b8b84..bbb113668817 100644
+--- a/fs/jfs/jfs_imap.c
++++ b/fs/jfs/jfs_imap.c
+@@ -956,6 +956,16 @@ int diFree(struct inode *ip)
+ 				/* read the iag that currently is the head
+ 				 * of the list.
+ 				 */
++
++				/* Prevent self-deadlock if fwd points to the IAG we are holding */
++				if (fwd == iagno) {
++					jfs_error(ip->i_sb, "fwd == iagno (self-deadlock avoidance)\n");
++					IREAD_UNLOCK(ipimap);
++					AG_UNLOCK(imap, agno);
++					release_metapage(mp);
++					return -EIO;
++				}
++
+ 				if ((rc = diIAGRead(imap, fwd, &amp))) {
+ 					IREAD_UNLOCK(ipimap);
+ 					AG_UNLOCK(imap, agno);

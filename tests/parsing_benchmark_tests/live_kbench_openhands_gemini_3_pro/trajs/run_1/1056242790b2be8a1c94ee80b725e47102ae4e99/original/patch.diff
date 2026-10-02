@@ -1,0 +1,32 @@
+diff --git a/drivers/iommu/iommufd/io_pagetable.c b/drivers/iommu/iommufd/io_pagetable.c
+index abf4aadca96c..dcd9f272f2e9 100644
+--- a/drivers/iommu/iommufd/io_pagetable.c
++++ b/drivers/iommu/iommufd/io_pagetable.c
+@@ -78,9 +78,12 @@ static bool __alloc_iova_check_hole(struct interval_tree_double_span_iter *span,
+ 	if (span->is_used || span->last_hole - span->start_hole < length - 1)
+ 		return false;
+ 
++	unsigned long old_start_hole = span->start_hole;
++
+ 	span->start_hole = ALIGN(span->start_hole, iova_alignment) |
+ 			   page_offset;
+-	if (span->start_hole > span->last_hole ||
++	if (span->start_hole < old_start_hole ||
++	    span->start_hole > span->last_hole ||
+ 	    span->last_hole - span->start_hole < length - 1)
+ 		return false;
+ 	return true;
+@@ -94,9 +97,12 @@ static bool __alloc_iova_check_used(struct interval_tree_span_iter *span,
+ 	if (span->is_hole || span->last_used - span->start_used < length - 1)
+ 		return false;
+ 
++	unsigned long old_start_used = span->start_used;
++
+ 	span->start_used = ALIGN(span->start_used, iova_alignment) |
+ 			   page_offset;
+-	if (span->start_used > span->last_used ||
++	if (span->start_used < old_start_used ||
++	    span->start_used > span->last_used ||
+ 	    span->last_used - span->start_used < length - 1)
+ 		return false;
+ 	return true;

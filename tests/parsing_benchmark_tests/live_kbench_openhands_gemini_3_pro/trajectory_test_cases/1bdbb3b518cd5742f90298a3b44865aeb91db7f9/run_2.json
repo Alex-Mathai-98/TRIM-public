@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/*\n\t * Try slow way with current upcase table\n\t */\n\t{\n\t\tstruct {\n\t\t\tu8 len;\n\t\t\tu8 unused;\n\t\t\tu16 name[NTFS_NAME_LEN];\n\t\t} uni_buf;\n\n\t\tuni = (struct cpu_str *)&uni_buf;\n\n\t\tsbi = dentry->d_sb->s_fs_info;\n\n\t\terr = ntfs_nls_to_utf16(sbi, name->name, name->len, uni,\n\t\t\t\t\tNTFS_NAME_LEN, UTF16_HOST_ENDIAN);\n\t\tif (err < 0)\n\t\t\treturn err;\n\n\t\tif (!err)\n\t\t\treturn -EINVAL;\n\n\t\thash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,\n\t\t\t\t       init_name_hash(dentry));\n\t\tname->hash = end_name_hash(hash);\n\t\treturn 0;\n\t}\n}",
+          "before": "\t/*\n\t * Try slow way with current upcase table\n\t */\n\tuni = __getname();\n\tif (!uni)\n\t\treturn -ENOMEM;\n\n\tsbi = dentry->d_sb->s_fs_info;\n\n\terr = ntfs_nls_to_utf16(sbi, name->name, name->len, uni, NTFS_NAME_LEN,\n\t\t\t\tUTF16_HOST_ENDIAN);\n\tif (err < 0)\n\t\tgoto out;\n\n\tif (!err) {\n\t\terr = -EINVAL;\n\t\tgoto out;\n\t}\n\n\thash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,\n\t\t\t       init_name_hash(dentry));\n\tname->hash = end_name_hash(hash);\n\terr = 0;\n\nout:\n\t__putname(uni);\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/namei.c\n+++ /linux/fs/ntfs3/namei.c\n@@ -398,24 +398,24 @@\n-\tuni = __getname();\n-\tif (!uni)\n-\t\treturn -ENOMEM;\n-\n-\tsbi = dentry->d_sb->s_fs_info;\n-\n-\terr = ntfs_nls_to_utf16(sbi, name->name, name->len, uni, NTFS_NAME_LEN,\n-\t\t\t\tUTF16_HOST_ENDIAN);\n-\tif (err < 0)\n-\t\tgoto out;\n-\n-\tif (!err) {\n-\t\terr = -EINVAL;\n-\t\tgoto out;\n-\t}\n-\n-\thash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,\n-\t\t\t       init_name_hash(dentry));\n-\tname->hash = end_name_hash(hash);\n-\terr = 0;\n-\n-out:\n-\t__putname(uni);\n-\treturn err;\n+\t{\n+\t\tstruct {\n+\t\t\tu8 len;\n+\t\t\tu8 unused;\n+\t\t\tu16 name[NTFS_NAME_LEN];\n+\t\t} uni_buf;\n+\n+\t\tuni = (struct cpu_str *)&uni_buf;\n+\n+\t\tsbi = dentry->d_sb->s_fs_info;\n+\n+\t\terr = ntfs_nls_to_utf16(sbi, name->name, name->len, uni,\n+\t\t\t\t\tNTFS_NAME_LEN, UTF16_HOST_ENDIAN);\n+\t\tif (err < 0)\n+\t\t\treturn err;\n+\n+\t\tif (!err)\n+\t\t\treturn -EINVAL;\n+\n+\t\thash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,\n+\t\t\t\t       init_name_hash(dentry));\n+\t\tname->hash = end_name_hash(hash);\n+\t\treturn 0;\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 48",
+          "filename": "fs/ntfs3/namei.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        }
+      ],
+      "end_step": 48,
+      "revision_index": 0,
+      "start_step": 48
+    }
+  ],
+  "success_step": 48
+}

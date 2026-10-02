@@ -1,0 +1,38 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 9254bca2813d..be04460aa574 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -68,6 +68,7 @@
+ #include <linux/uio.h>
+ #include <linux/skb_array.h>
+ #include <linux/bpf.h>
++#include <linux/filter.h>
+ #include <linux/bpf_trace.h>
+ #include <linux/mutex.h>
+ #include <linux/ieee802154.h>
+@@ -1914,21 +1915,25 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 	skb_record_rx_queue(skb, tfile->queue_index);
+ 
+ 	if (skb_xdp) {
++		struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 		struct bpf_prog *xdp_prog;
+ 		int ret;
+ 
+ 		local_bh_disable();
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		rcu_read_lock();
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+ 		if (xdp_prog) {
+ 			ret = do_xdp_generic(xdp_prog, &skb);
+ 			if (ret != XDP_PASS) {
+ 				rcu_read_unlock();
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 				local_bh_enable();
+ 				goto unlock_frags;
+ 			}
+ 		}
+ 		rcu_read_unlock();
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 		local_bh_enable();
+ 	}
+ 

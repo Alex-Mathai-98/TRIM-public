@@ -1,0 +1,41 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6296a11ccb09..8d2f13eadfd1 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -727,6 +727,20 @@ static int validate_bset(struct bch_fs *c, struct bch_dev *ca,
+ 		     btree_node_unsupported_version,
+ 		     "BSET_SEPARATE_WHITEOUTS no longer supported");
+ 
++	if (!offset) {
++		struct btree_node *bn =
++			container_of(i, struct btree_node, keys);
++
++		btree_err_on(bch2_bkey_format_invalid(c, &bn->format, write, &buf1),
++			     -BCH_ERR_btree_node_read_err_bad_node,
++			     c, ca, b, i, NULL,
++			     btree_node_bad_format,
++			     "invalid bkey format: %s\n  %s", buf1.buf,
++			     (printbuf_reset(&buf2),
++			      bch2_bkey_format_to_text(&buf2, &bn->format), buf2.buf));
++		printbuf_reset(&buf1);
++	}
++
+ 	if (!write &&
+ 	    btree_err_on(offset + sectors > (ptr_written ?: btree_sectors(c)),
+ 			 -BCH_ERR_btree_node_read_err_fixable,
+@@ -816,15 +830,6 @@ static int validate_bset(struct bch_fs *c, struct bch_dev *ca,
+ 			compat_btree_node(b->c.level, b->c.btree_id, version,
+ 					  BSET_BIG_ENDIAN(i), write, bn);
+ 
+-		btree_err_on(bch2_bkey_format_invalid(c, &bn->format, write, &buf1),
+-			     -BCH_ERR_btree_node_read_err_bad_node,
+-			     c, ca, b, i, NULL,
+-			     btree_node_bad_format,
+-			     "invalid bkey format: %s\n  %s", buf1.buf,
+-			     (printbuf_reset(&buf2),
+-			      bch2_bkey_format_to_text(&buf2, &bn->format), buf2.buf));
+-		printbuf_reset(&buf1);
+-
+ 		compat_bformat(b->c.level, b->c.btree_id, version,
+ 			       BSET_BIG_ENDIAN(i), write,
+ 			       &bn->format);

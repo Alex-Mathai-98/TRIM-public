@@ -1,0 +1,29 @@
+diff --git a/sound/usb/mixer.c b/sound/usb/mixer.c
+index 409fc1164694..2cd747d200e6 100644
+--- a/sound/usb/mixer.c
++++ b/sound/usb/mixer.c
+@@ -1999,6 +1999,10 @@ static int parse_audio_feature_unit(struct mixer_build *state, int unitid,
+ 
+ 	if (state->mixer->protocol == UAC_VERSION_1) {
+ 		csize = hdr->bControlSize;
++		if (!csize) {
++			usb_audio_dbg(state->chip, "unit %u: invalid control size 0\n", unitid);
++			return -EINVAL;
++		}
+ 		channels = (hdr->bLength - 7) / csize - 1;
+ 		bmaControls = hdr->bmaControls;
+ 	} else if (state->mixer->protocol == UAC_VERSION_2) {
+@@ -2014,6 +2018,13 @@ static int parse_audio_feature_unit(struct mixer_build *state, int unitid,
+ 		bmaControls = ftr->bmaControls;
+ 	}
+ 
++	if (channels > MAX_CHANNELS) {
++		usb_audio_info(state->chip, "unit %u: channels %d > %d, clipped\n",
++			       unitid, channels, MAX_CHANNELS);
++		channels = MAX_CHANNELS;
++	}
++
++
+ 	/* parse the source unit */
+ 	err = parse_audio_unit(state, hdr->bSourceID);
+ 	if (err < 0)

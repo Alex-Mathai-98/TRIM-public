@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "#include <net/netfilter/nf_bpf_link.h>\n#include <net/seg6_local.h>\n\n#define CREATE_TRACE_POINTS",
+          "before": "#include <net/netfilter/nf_bpf_link.h>\n\n#define CREATE_TRACE_POINTS",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c\nindex 6d7a442ceb89..6324c91c146c 100644\n--- a/net/bpf/test_run.c\n+++ b/net/bpf/test_run.c\n@@ -24,6 +24,7 @@\n #include <net/netdev_rx_queue.h>\n #include <net/xdp.h>\n #include <net/netfilter/nf_bpf_link.h>\n+#include <net/seg6_local.h>\n \n #define CREATE_TRACE_POINTS\n #include <trace/events/bpf_test_run.h>",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "net/bpf/test_run.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "\tdo {\n\t\trun_ctx.prog_item = &item;\n\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {\n\t\t\tlocal_lock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n\t\t\tif (this_cpu_ptr(&seg6_bpf_srh_states)->srh)\n\t\t\t\tthis_cpu_ptr(&seg6_bpf_srh_states)->srh = NULL;\n\t\t} else {\n\t\t\tlocal_bh_disable();\n\t\t}\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\n\t\tif (xdp)\n\t\t\t*retval = bpf_prog_run_xdp(prog, ctx);\n\t\telse\n\t\t\t*retval = bpf_prog_run(prog, ctx);\n\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\n\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)\n\t\t\tlocal_unlock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n\t\telse\n\t\t\tlocal_bh_enable();\n\t} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));",
+          "before": "\tdo {\n\t\trun_ctx.prog_item = &item;\n\t\tlocal_bh_disable();\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\n\t\tif (xdp)\n\t\t\t*retval = bpf_prog_run_xdp(prog, ctx);\n\t\telse\n\t\t\t*retval = bpf_prog_run(prog, ctx);\n\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\tlocal_bh_enable();\n\t} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c\nindex 6d7a442ceb89..df02915492a0 100644\n--- a/net/bpf/test_run.c\n+++ b/net/bpf/test_run.c\n@@ -24,6 +24,7 @@\n #include <net/netdev_rx_queue.h>\n #include <net/xdp.h>\n #include <net/netfilter/nf_bpf_link.h>\n+#include <net/seg6_local.h>\n \n #define CREATE_TRACE_POINTS\n #include <trace/events/bpf_test_run.h>\n@@ -424,7 +425,14 @@ static int bpf_test_run(struct bpf_prog *prog, void *ctx, u32 repeat,\n \told_ctx = bpf_set_run_ctx(&run_ctx.run_ctx);\n \tdo {\n \t\trun_ctx.prog_item = &item;\n-\t\tlocal_bh_disable();\n+\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n+\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {\n+\t\t\tlocal_lock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n+\t\t\tif (this_cpu_ptr(&seg6_bpf_srh_states)->srh)\n+\t\t\t\tthis_cpu_ptr(&seg6_bpf_srh_states)->srh = NULL;\n+\t\t} else {\n+\t\t\tlocal_bh_disable();\n+\t\t}\n \t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \n \t\tif (xdp)\n@@ -433,7 +441,12 @@ static int bpf_test_run(struct bpf_prog *prog, void *ctx, u32 repeat,\n \t\t\t*retval = bpf_prog_run(prog, ctx);\n \n \t\tbpf_net_ctx_clear(bpf_net_ctx);\n-\t\tlocal_bh_enable();\n+\n+\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n+\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)\n+\t\t\tlocal_unlock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n+\t\telse\n+\t\t\tlocal_bh_enable();\n \t} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));\n \tbpf_reset_run_ctx(old_ctx);\n \tbpf_test_timer_leave(&t);",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "net/bpf/test_run.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 22
+    },
+    {
+      "edits": [
+        {
+          "after": "\tdo {\n\t\trun_ctx.prog_item = &item;\n\t\tlocal_bh_disable();\n\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {\n\t\t\tlocal_lock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n\t\t\tif (this_cpu_ptr(&seg6_bpf_srh_states)->srh)\n\t\t\t\tthis_cpu_ptr(&seg6_bpf_srh_states)->srh = NULL;\n\t\t}\n\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\n\t\tif (xdp)\n\t\t\t*retval = bpf_prog_run_xdp(prog, ctx);\n\t\telse\n\t\t\t*retval = bpf_prog_run(prog, ctx);\n\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\n\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)\n\t\t\tlocal_unlock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n\n\t\tlocal_bh_enable();\n\t} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));",
+          "before": "\tdo {\n\t\trun_ctx.prog_item = &item;\n\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {\n\t\t\tlocal_lock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n\t\t\tif (this_cpu_ptr(&seg6_bpf_srh_states)->srh)\n\t\t\t\tthis_cpu_ptr(&seg6_bpf_srh_states)->srh = NULL;\n\t\t} else {\n\t\t\tlocal_bh_disable();\n\t\t}\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\n\t\tif (xdp)\n\t\t\t*retval = bpf_prog_run_xdp(prog, ctx);\n\t\telse\n\t\t\t*retval = bpf_prog_run(prog, ctx);\n\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\n\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)\n\t\t\tlocal_unlock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n\t\telse\n\t\t\tlocal_bh_enable();\n\t} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/bpf/test_run.c b/net/bpf/test_run.c\nindex 6d7a442ceb89..11e33f685d00 100644\n--- a/net/bpf/test_run.c\n+++ b/net/bpf/test_run.c\n@@ -24,6 +24,7 @@\n #include <net/netdev_rx_queue.h>\n #include <net/xdp.h>\n #include <net/netfilter/nf_bpf_link.h>\n+#include <net/seg6_local.h>\n \n #define CREATE_TRACE_POINTS\n #include <trace/events/bpf_test_run.h>\n@@ -425,6 +426,13 @@ static int bpf_test_run(struct bpf_prog *prog, void *ctx, u32 repeat,\n \tdo {\n \t\trun_ctx.prog_item = &item;\n \t\tlocal_bh_disable();\n+\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n+\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL) {\n+\t\t\tlocal_lock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n+\t\t\tif (this_cpu_ptr(&seg6_bpf_srh_states)->srh)\n+\t\t\t\tthis_cpu_ptr(&seg6_bpf_srh_states)->srh = NULL;\n+\t\t}\n+\n \t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \n \t\tif (xdp)\n@@ -433,6 +441,11 @@ static int bpf_test_run(struct bpf_prog *prog, void *ctx, u32 repeat,\n \t\t\t*retval = bpf_prog_run(prog, ctx);\n \n \t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\n+\t\tif (IS_ENABLED(CONFIG_IPV6_SEG6_LWTUNNEL) &&\n+\t\t    prog->type == BPF_PROG_TYPE_LWT_SEG6LOCAL)\n+\t\t\tlocal_unlock_nested_bh(&seg6_bpf_srh_states.bh_lock);\n+\n \t\tlocal_bh_enable();\n \t} while (bpf_test_timer_continue(&t, 1, repeat, &ret, time));\n \tbpf_reset_run_ctx(old_ctx);",
+          "explanation": "classic_swe step 33 #1",
+          "filename": "net/bpf/test_run.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 33
+        }
+      ],
+      "end_step": 33,
+      "revision_index": 1,
+      "start_step": 33
+    }
+  ],
+  "success_step": 33
+}

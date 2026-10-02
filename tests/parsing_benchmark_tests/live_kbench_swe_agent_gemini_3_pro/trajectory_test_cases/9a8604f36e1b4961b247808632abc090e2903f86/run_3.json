@@ -1,0 +1,465 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5
+    ],
+    [
+      6,
+      7,
+      8
+    ],
+    [
+      9,
+      10
+    ],
+    [
+      11,
+      12,
+      13
+    ],
+    [
+      14
+    ],
+    [
+      15
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!compute_scc_callchain(env, st, &callchain)) {\n\t\tint i;\n\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n\t\tfor (i = 0; i <= st->curframe; i++) {\n\t\t\tu32 idx = frame_insn_idx(st, i);\n\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n\t\t}\n\t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n\t\t\t     st->insn_idx);\n\t\treturn -EFAULT;\n\t}\n",
+          "before": "\tif (!compute_scc_callchain(env, st, &callchain)) {\n\t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n\t\t\t     st->insn_idx);\n\t\treturn -EFAULT;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..9726e983ea63 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 15
+    },
+    {
+      "edits": [
+        {
+          "after": "\tvisit = scc_visit_lookup(env, &callchain);\n\tif (!visit)\n\t\treturn false;\n\tif (visit->backedges)\n\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n\t\t       st, st->insn_idx, callchain.scc);\n\treturn !!visit->backedges;\n",
+          "before": "\tvisit = scc_visit_lookup(env, &callchain);\n\tif (!visit)\n\t\treturn false;\n\treturn !!visit->backedges;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..81b3a113c294 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,6 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n+\tif (visit->backedges)\n+\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n+\t\t       st, st->insn_idx, callchain.scc);\n \treturn !!visit->backedges;\n }",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "\t\tloop = incomplete_read_marks(env, &sl->state);\n\t\tif (loop)\n\t\t\tprintk(KERN_ERR \"is_state_visited: loop=true st=%p idx=%d\\n\",\n\t\t\t       &sl->state, sl->state.insn_idx);\n",
+          "before": "\t\tloop = incomplete_read_marks(env, &sl->state);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..5ffa4868a1b5 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,6 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n+\tif (visit->backedges)\n+\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n+\t\t       st, st->insn_idx, callchain.scc);\n \treturn !!visit->backedges;\n }\n \n@@ -19309,6 +19318,9 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t}\n \t\t/* See comments for mark_all_regs_read_and_precise() */\n \t\tloop = incomplete_read_marks(env, &sl->state);\n+\t\tif (loop)\n+\t\t\tprintk(KERN_ERR \"is_state_visited: loop=true st=%p idx=%d\\n\",\n+\t\t\t       &sl->state, sl->state.insn_idx);\n \t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n hit:\n \t\t\tsl->hit_cnt++;",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 1,
+      "start_step": 25
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (sl->state.insn_idx == 9)\n\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d scc=%u\\n\",\n\t\t\t       loop, &sl->state, sl->state.insn_idx,\n\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n",
+          "before": "\t\tif (loop)\n\t\t\tprintk(KERN_ERR \"is_state_visited: loop=true st=%p idx=%d\\n\",\n\t\t\t       &sl->state, sl->state.insn_idx);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..caa84a644152 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,6 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n+\tif (visit->backedges)\n+\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n+\t\t       st, st->insn_idx, callchain.scc);\n \treturn !!visit->backedges;\n }\n \n@@ -19309,6 +19318,10 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t}\n \t\t/* See comments for mark_all_regs_read_and_precise() */\n \t\tloop = incomplete_read_marks(env, &sl->state);\n+\t\tif (sl->state.insn_idx == 9)\n+\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d scc=%u\\n\",\n+\t\t\t       loop, &sl->state, sl->state.insn_idx,\n+\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n \t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n hit:\n \t\t\tsl->hit_cnt++;",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 2,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t{\n\t\t\tstatic int cnt = 0;\n\t\t\tif (cnt < 50) {\n\t\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d scc=%u\\n\",\n\t\t\t\t       loop, &sl->state, sl->state.insn_idx,\n\t\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n\t\t\t\tcnt++;\n\t\t\t}\n\t\t}\n",
+          "before": "\t\tif (sl->state.insn_idx == 9)\n\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d scc=%u\\n\",\n\t\t\t       loop, &sl->state, sl->state.insn_idx,\n\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..c6c4f6df8de7 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,6 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n+\tif (visit->backedges)\n+\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n+\t\t       st, st->insn_idx, callchain.scc);\n \treturn !!visit->backedges;\n }\n \n@@ -19309,6 +19318,15 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t}\n \t\t/* See comments for mark_all_regs_read_and_precise() */\n \t\tloop = incomplete_read_marks(env, &sl->state);\n+\t\t{\n+\t\t\tstatic int cnt = 0;\n+\t\t\tif (cnt < 50) {\n+\t\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d scc=%u\\n\",\n+\t\t\t\t       loop, &sl->state, sl->state.insn_idx,\n+\t\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n+\t\t\t\tcnt++;\n+\t\t\t}\n+\t\t}\n \t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n hit:\n \t\t\tsl->hit_cnt++;",
+          "explanation": "classic_swe step 39 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        }
+      ],
+      "end_step": 39,
+      "revision_index": 3,
+      "start_step": 39
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\tif (env->insn_idx == 9 || sl->state.insn_idx == 9)\n\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d env_idx=%d scc9=%u scc_sl=%u\\n\",\n\t\t\t       loop, &sl->state, sl->state.insn_idx, env->insn_idx,\n\t\t\t       env->insn_aux_data[9].scc,\n\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n",
+          "before": "\t\t{\n\t\t\tstatic int cnt = 0;\n\t\t\tif (cnt < 50) {\n\t\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d scc=%u\\n\",\n\t\t\t\t       loop, &sl->state, sl->state.insn_idx,\n\t\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n\t\t\t\tcnt++;\n\t\t\t}\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..9ee1d70e5e67 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,6 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n+\tif (visit->backedges)\n+\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n+\t\t       st, st->insn_idx, callchain.scc);\n \treturn !!visit->backedges;\n }\n \n@@ -19309,6 +19318,11 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t}\n \t\t/* See comments for mark_all_regs_read_and_precise() */\n \t\tloop = incomplete_read_marks(env, &sl->state);\n+\t\tif (env->insn_idx == 9 || sl->state.insn_idx == 9)\n+\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d env_idx=%d scc9=%u scc_sl=%u\\n\",\n+\t\t\t       loop, &sl->state, sl->state.insn_idx, env->insn_idx,\n+\t\t\t       env->insn_aux_data[9].scc,\n+\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n \t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n hit:\n \t\t\tsl->hit_cnt++;",
+          "explanation": "classic_swe step 42 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 4,
+      "start_step": 42
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (visit->backedges)\n\t\treturn true;\n\treturn false;\n",
+          "before": "\tif (visit->backedges)\n\t\tprintk(KERN_ERR \"incomplete_read_marks TRUE: st=%p idx=%d scc=%d\\n\",\n\t\t       st, st->insn_idx, callchain.scc);\n\treturn !!visit->backedges;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..cffd3e2c2cb1 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,7 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19309,6 +19317,11 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t}\n \t\t/* See comments for mark_all_regs_read_and_precise() */\n \t\tloop = incomplete_read_marks(env, &sl->state);\n+\t\tif (env->insn_idx == 9 || sl->state.insn_idx == 9)\n+\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d env_idx=%d scc9=%u scc_sl=%u\\n\",\n+\t\t\t       loop, &sl->state, sl->state.insn_idx, env->insn_idx,\n+\t\t\t       env->insn_aux_data[9].scc,\n+\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n \t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n hit:\n \t\t\tsl->hit_cnt++;",
+          "explanation": "classic_swe step 49 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        },
+        {
+          "after": "\t\tif (0) {\n\t\t\terr = propagate_liveness(env, &sl->state, cur, NULL);\n\t\t\tif (is_jmp_point(env, env->insn_idx))\n\t\t\t\terr = err ? : push_jmp_history(env, cur, 0, 0);\n\t\t\terr = err ? : propagate_precision(env, &sl->state, cur, NULL);\n\t\t} else {\n\t\t\terr = 0;\n\t\t}\n",
+          "before": "\t\terr = propagate_liveness(env, &sl->state, cur, NULL);\n\n\t\t\t/* if previous state reached the exit with precision and\n\t\t\t * current state is equivalent to it (except precision marks)\n\t\t\t * the precision needs to be propagated back in\n\t\t\t * the current state.\n\t\t\t */\n\t\t\tif (is_jmp_point(env, env->insn_idx))\n\t\t\t\terr = err ? : push_jmp_history(env, cur, 0, 0);\n\t\t\terr = err ? : propagate_precision(env, &sl->state, cur, NULL);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..d9c9d583927c 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,7 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19309,6 +19317,11 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t}\n \t\t/* See comments for mark_all_regs_read_and_precise() */\n \t\tloop = incomplete_read_marks(env, &sl->state);\n+\t\tif (env->insn_idx == 9 || sl->state.insn_idx == 9)\n+\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d env_idx=%d scc9=%u scc_sl=%u\\n\",\n+\t\t\t       loop, &sl->state, sl->state.insn_idx, env->insn_idx,\n+\t\t\t       env->insn_aux_data[9].scc,\n+\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n \t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n hit:\n \t\t\tsl->hit_cnt++;\n@@ -19322,16 +19335,14 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t * they'll be immediately forgotten as we're pruning\n \t\t\t * this state and will pop a new one.\n \t\t\t */\n+\t\t\tif (0) {\n \t\t\terr = propagate_liveness(env, &sl->state, cur, NULL);\n-\n-\t\t\t/* if previous state reached the exit with precision and\n-\t\t\t * current state is equivalent to it (except precision marks)\n-\t\t\t * the precision needs to be propagated back in\n-\t\t\t * the current state.\n-\t\t\t */\n \t\t\tif (is_jmp_point(env, env->insn_idx))\n \t\t\t\terr = err ? : push_jmp_history(env, cur, 0, 0);\n \t\t\terr = err ? : propagate_precision(env, &sl->state, cur, NULL);\n+\t\t} else {\n+\t\t\terr = 0;\n+\t\t}\n \t\t\tif (err)\n \t\t\t\treturn err;\n \t\t\t/* When processing iterator based loops above propagate_liveness and",
+          "explanation": "classic_swe step 51 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 51
+        },
+        {
+          "after": "\t\tloop = incomplete_read_marks(env, &sl->state);\n\t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n",
+          "before": "\t\tloop = incomplete_read_marks(env, &sl->state);\n\t\tif (env->insn_idx == 9 || sl->state.insn_idx == 9)\n\t\t\tprintk(KERN_ERR \"Check: loop=%d st=%p idx=%d env_idx=%d scc9=%u scc_sl=%u\\n\",\n\t\t\t       loop, &sl->state, sl->state.insn_idx, env->insn_idx,\n\t\t\t       env->insn_aux_data[9].scc,\n\t\t\t       env->insn_aux_data[sl->state.insn_idx].scc);\n\t\tif (states_equal(env, &sl->state, cur, loop ? RANGE_WITHIN : NOT_EXACT)) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..394bd4a92462 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,7 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19322,16 +19330,14 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t * they'll be immediately forgotten as we're pruning\n \t\t\t * this state and will pop a new one.\n \t\t\t */\n+\t\t\tif (0) {\n \t\t\terr = propagate_liveness(env, &sl->state, cur, NULL);\n-\n-\t\t\t/* if previous state reached the exit with precision and\n-\t\t\t * current state is equivalent to it (except precision marks)\n-\t\t\t * the precision needs to be propagated back in\n-\t\t\t * the current state.\n-\t\t\t */\n \t\t\tif (is_jmp_point(env, env->insn_idx))\n \t\t\t\terr = err ? : push_jmp_history(env, cur, 0, 0);\n \t\t\terr = err ? : propagate_precision(env, &sl->state, cur, NULL);\n+\t\t} else {\n+\t\t\terr = 0;\n+\t\t}\n \t\t\tif (err)\n \t\t\t\treturn err;\n \t\t\t/* When processing iterator based loops above propagate_liveness and",
+          "explanation": "classic_swe step 52 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        }
+      ],
+      "end_step": 52,
+      "revision_index": 5,
+      "start_step": 49
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\terr = propagate_liveness(env, &sl->state, cur, NULL);\n\n\t\t\t/* if previous state reached the exit with precision and\n\t\t\t * current state is equivalent to it (except precision marks)\n\t\t\t * the precision needs to be propagated back in\n\t\t\t * the current state.\n\t\t\t */\n\t\t\tif (is_jmp_point(env, env->insn_idx))\n\t\t\t\terr = err ? : push_jmp_history(env, cur, 0, 0);\n\t\t\terr = err ? : propagate_precision(env, &sl->state, cur, NULL);\n",
+          "before": "\t\tif (0) {\n\t\t\terr = propagate_liveness(env, &sl->state, cur, NULL);\n\t\t\tif (is_jmp_point(env, env->insn_idx))\n\t\t\t\terr = err ? : push_jmp_history(env, cur, 0, 0);\n\t\t\terr = err ? : propagate_precision(env, &sl->state, cur, NULL);\n\t\t} else {\n\t\t\terr = 0;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..f935d4201d33 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,7 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)",
+          "explanation": "classic_swe step 55 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 9,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 55
+        },
+        {
+          "after": "\t\t\t\tbackedge->state.insn_idx = insn_idx;\n\t\t\t\tprintk(KERN_ERR \"Pre-add: sl=%p st=%p idx=%d\\n\", sl, &sl->state, sl->state.insn_idx);\n\t\t\t\terr = err ?: add_scc_backedge(env, &sl->state, backedge);\n",
+          "before": "\t\t\t\tbackedge->state.insn_idx = insn_idx;\n\t\t\t\terr = err ?: add_scc_backedge(env, &sl->state, backedge);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..af9ca49d7492 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -1966,6 +1966,12 @@ static int add_scc_backedge(struct bpf_verifier_env *env,\n \tstruct bpf_scc_visit *visit;\n \n \tif (!compute_scc_callchain(env, st, &callchain)) {\n+\t\tint i;\n+\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n+\t\tfor (i = 0; i <= st->curframe; i++) {\n+\t\t\tu32 idx = frame_insn_idx(st, i);\n+\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n+\t\t}\n \t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n \t\t\t     st->insn_idx);\n \t\treturn -EFAULT;\n@@ -2001,7 +2007,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19415,6 +19423,7 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t\terr = copy_verifier_state(&backedge->state, cur);\n \t\t\t\tbackedge->state.equal_state = &sl->state;\n \t\t\t\tbackedge->state.insn_idx = insn_idx;\n+\t\t\t\tprintk(KERN_ERR \"Pre-add: sl=%p st=%p idx=%d\\n\", sl, &sl->state, sl->state.insn_idx);\n \t\t\t\terr = err ?: add_scc_backedge(env, &sl->state, backedge);\n \t\t\t\tif (err) {\n \t\t\t\t\tfree_verifier_state(&backedge->state, false);",
+          "explanation": "classic_swe step 57 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 10,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 6,
+      "start_step": 55
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (!compute_scc_callchain(env, st, &callchain)) {\n\t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n\t\t\t     st->insn_idx);\n\t\treturn -EFAULT;\n\t}\n",
+          "before": "\tif (!compute_scc_callchain(env, st, &callchain)) {\n\t\tint i;\n\t\tprintk(KERN_ERR \"add_scc_backedge debug: st=%p insn_idx=%d curframe=%d\\n\", st, st->insn_idx, st->curframe);\n\t\tfor (i = 0; i <= st->curframe; i++) {\n\t\t\tu32 idx = frame_insn_idx(st, i);\n\t\t\tprintk(KERN_ERR \"  frame %d: idx=%d scc=%d\\n\", i, idx, env->insn_aux_data[idx].scc);\n\t\t}\n\t\tverifier_bug(env, \"add backedge: no SCC in verification path, insn_idx %d\",\n\t\t\t     st->insn_idx);\n\t\treturn -EFAULT;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..b35515c9da30 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2001,7 +2001,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19415,6 +19417,7 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t\terr = copy_verifier_state(&backedge->state, cur);\n \t\t\t\tbackedge->state.equal_state = &sl->state;\n \t\t\t\tbackedge->state.insn_idx = insn_idx;\n+\t\t\t\tprintk(KERN_ERR \"Pre-add: sl=%p st=%p idx=%d\\n\", sl, &sl->state, sl->state.insn_idx);\n \t\t\t\terr = err ?: add_scc_backedge(env, &sl->state, backedge);\n \t\t\t\tif (err) {\n \t\t\t\t\tfree_verifier_state(&backedge->state, false);",
+          "explanation": "classic_swe step 61 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 11,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 61
+        },
+        {
+          "after": "\t\t\t\terr = err ?: add_scc_backedge(env, &sl->state, backedge);\n",
+          "before": "\t\t\t\tprintk(KERN_ERR \"Pre-add: sl=%p st=%p idx=%d\\n\", sl, &sl->state, sl->state.insn_idx);\n\t\t\t\terr = err ?: add_scc_backedge(env, &sl->state, backedge);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..06df88dd84fd 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2001,7 +2001,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)",
+          "explanation": "classic_swe step 63 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 12,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 63
+        },
+        {
+          "after": "\t\t\tif (loop) {\n\t\t\t\tstruct bpf_scc_callchain check_cc;\n\n\t\t\t\tif (!compute_scc_callchain(env, &sl->state, &check_cc))\n\t\t\t\t\treturn -EFAULT;\n\n\t\t\t\tstruct bpf_scc_backedge *backedge;\n",
+          "before": "\t\t\tif (loop) {\n\t\t\t\tstruct bpf_scc_backedge *backedge;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..38beb3edfd39 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2001,7 +2001,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19407,6 +19409,11 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t *   links for states from `C: foo()` to become invalid.\n \t\t\t */\n \t\t\tif (loop) {\n+\t\t\t\tstruct bpf_scc_callchain check_cc;\n+\n+\t\t\t\tif (!compute_scc_callchain(env, &sl->state, &check_cc))\n+\t\t\t\t\treturn -EFAULT;\n+\n \t\t\t\tstruct bpf_scc_backedge *backedge;\n \n \t\t\t\tbackedge = kzalloc(sizeof(*backedge), GFP_KERNEL_ACCOUNT);",
+          "explanation": "classic_swe step 64 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 13,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 64
+        }
+      ],
+      "end_step": 64,
+      "revision_index": 7,
+      "start_step": 61
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\t\tif (loop) {\n\t\t\t\tstruct bpf_scc_callchain check_cc;\n\t\t\t\tstruct bpf_scc_backedge *backedge;\n\n\t\t\t\tif (!compute_scc_callchain(env, &sl->state, &check_cc))\n\t\t\t\t\treturn -EFAULT;\n",
+          "before": "\t\t\tif (loop) {\n\t\t\t\tstruct bpf_scc_callchain check_cc;\n\n\t\t\t\tif (!compute_scc_callchain(env, &sl->state, &check_cc))\n\t\t\t\t\treturn -EFAULT;\n\n\t\t\t\tstruct bpf_scc_backedge *backedge;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..a53aca62dd92 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -2001,7 +2001,9 @@ static bool incomplete_read_marks(struct bpf_verifier_env *env,\n \tvisit = scc_visit_lookup(env, &callchain);\n \tif (!visit)\n \t\treturn false;\n-\treturn !!visit->backedges;\n+\tif (visit->backedges)\n+\t\treturn true;\n+\treturn false;\n }\n \n static void free_backedges(struct bpf_scc_visit *visit)\n@@ -19407,8 +19409,12 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t *   links for states from `C: foo()` to become invalid.\n \t\t\t */\n \t\t\tif (loop) {\n+\t\t\t\tstruct bpf_scc_callchain check_cc;\n \t\t\t\tstruct bpf_scc_backedge *backedge;\n \n+\t\t\t\tif (!compute_scc_callchain(env, &sl->state, &check_cc))\n+\t\t\t\t\treturn -EFAULT;\n+\n \t\t\t\tbackedge = kzalloc(sizeof(*backedge), GFP_KERNEL_ACCOUNT);\n \t\t\t\tif (!backedge)\n \t\t\t\t\treturn -ENOMEM;",
+          "explanation": "classic_swe step 66 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 14,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 66
+        }
+      ],
+      "end_step": 66,
+      "revision_index": 8,
+      "start_step": 66
+    },
+    {
+      "edits": [
+        {
+          "after": "\treturn !!visit->backedges;\n",
+          "before": "\tif (visit->backedges)\n\t\treturn true;\n\treturn false;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/bpf/verifier.c b/kernel/bpf/verifier.c\nindex fd81cff11617..ecc2b6ac0210 100644\n--- a/kernel/bpf/verifier.c\n+++ b/kernel/bpf/verifier.c\n@@ -19407,8 +19407,12 @@ static int is_state_visited(struct bpf_verifier_env *env, int insn_idx)\n \t\t\t *   links for states from `C: foo()` to become invalid.\n \t\t\t */\n \t\t\tif (loop) {\n+\t\t\t\tstruct bpf_scc_callchain check_cc;\n \t\t\t\tstruct bpf_scc_backedge *backedge;\n \n+\t\t\t\tif (!compute_scc_callchain(env, &sl->state, &check_cc))\n+\t\t\t\t\treturn -EFAULT;\n+\n \t\t\t\tbackedge = kzalloc(sizeof(*backedge), GFP_KERNEL_ACCOUNT);\n \t\t\t\tif (!backedge)\n \t\t\t\t\treturn -ENOMEM;",
+          "explanation": "classic_swe step 69 #1",
+          "filename": "kernel/bpf/verifier.c",
+          "global_edit_idx": 15,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "revision_index": 9,
+      "start_step": 69
+    }
+  ],
+  "success_step": 69
+}

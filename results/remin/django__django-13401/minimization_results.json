@@ -1,0 +1,147 @@
+{
+  "bug_id": "django__django-13401",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "    def __eq__(self, other):\n        # Needed for @total_ordering\n        if isinstance(other, Field):\n            return self.creation_counter == other.creation_counter\n        return NotImplemented",
+        "after": "    def __eq__(self, other):\n        # Needed for @total_ordering\n        if isinstance(other, Field):\n            return (\n                self.creation_counter == other.creation_counter and\n                getattr(self, 'model', None) == getattr(other, 'model', None)\n            )\n        return NotImplemented",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "    def __lt__(self, other):\n        # This is needed because bisect does not take a comparison function.\n        if isinstance(other, Field):\n            return self.creation_counter < other.creation_counter\n        return NotImplemented",
+        "after": "    def __lt__(self, other):\n        # This is needed because bisect does not take a comparison function.\n        if isinstance(other, Field):\n            if self.creation_counter != other.creation_counter:\n                return self.creation_counter < other.creation_counter\n            # If creation_counters are equal, compare by model\n            self_model = getattr(self, 'model', None)\n            other_model = getattr(other, 'model', None)\n            if self_model != other_model:\n                # Use string representation for consistent ordering\n                self_model_str = str(self_model) if self_model else ''\n                other_model_str = str(other_model) if other_model else ''\n                return self_model_str < other_model_str\n            return False  # They are equal\n        return NotImplemented",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "    def __hash__(self):\n        return hash(self.creation_counter)",
+        "after": "    def __hash__(self):\n        return hash((self.creation_counter, getattr(self, 'model', None)))",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex 28374272f4..9880a7c50b 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -516,17 +516,30 @@ class Field(RegisterLookupMixin):\n     def __eq__(self, other):\n         # Needed for @total_ordering\n         if isinstance(other, Field):\n-            return self.creation_counter == other.creation_counter\n+            return (\n+                self.creation_counter == other.creation_counter and\n+                getattr(self, 'model', None) == getattr(other, 'model', None)\n+            )\n         return NotImplemented\n \n     def __lt__(self, other):\n         # This is needed because bisect does not take a comparison function.\n         if isinstance(other, Field):\n-            return self.creation_counter < other.creation_counter\n+            if self.creation_counter != other.creation_counter:\n+                return self.creation_counter < other.creation_counter\n+            # If creation_counters are equal, compare by model\n+            self_model = getattr(self, 'model', None)\n+            other_model = getattr(other, 'model', None)\n+            if self_model != other_model:\n+                # Use string representation for consistent ordering\n+                self_model_str = str(self_model) if self_model else ''\n+                other_model_str = str(other_model) if other_model else ''\n+                return self_model_str < other_model_str\n+            return False  # They are equal\n         return NotImplemented\n \n     def __hash__(self):\n-        return hash(self.creation_counter)\n+        return hash((self.creation_counter, getattr(self, 'model', None)))\n \n     def __deepcopy__(self, memodict):\n         # We don't have to deepcopy very much here, since most things are not\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3,
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2,
+      3,
+      4
+    ],
+    "edit_list_after_file_min": [
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash": 1,
+    "greedy_removal_edit_still_crashes": 3,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      4
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 1,
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      2,
+      3,
+      4
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def __eq__(self, other):\n        # Needed for @total_ordering\n        if isinstance(other, Field):\n            return self.creation_counter == other.creation_counter\n        return NotImplemented",
+          "after": "    def __eq__(self, other):\n        # Needed for @total_ordering\n        if isinstance(other, Field):\n            return (\n                self.creation_counter == other.creation_counter and\n                getattr(self, 'model', None) == getattr(other, 'model', None)\n            )\n        return NotImplemented",
+          "explanation": "classic_swe step 15 #1"
+        },
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def __lt__(self, other):\n        # This is needed because bisect does not take a comparison function.\n        if isinstance(other, Field):\n            return self.creation_counter < other.creation_counter\n        return NotImplemented",
+          "after": "    def __lt__(self, other):\n        # This is needed because bisect does not take a comparison function.\n        if isinstance(other, Field):\n            if self.creation_counter != other.creation_counter:\n                return self.creation_counter < other.creation_counter\n            # If creation_counters are equal, compare by model\n            self_model = getattr(self, 'model', None)\n            other_model = getattr(other, 'model', None)\n            if self_model != other_model:\n                # Use string representation for consistent ordering\n                self_model_str = str(self_model) if self_model else ''\n                other_model_str = str(other_model) if other_model else ''\n                return self_model_str < other_model_str\n            return False  # They are equal\n        return NotImplemented",
+          "explanation": "classic_swe step 16 #1"
+        },
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def __hash__(self):\n        return hash(self.creation_counter)",
+          "after": "    def __hash__(self):\n        return hash((self.creation_counter, getattr(self, 'model', None)))",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 32,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 32,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/fields/__init__.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/fields/__init__.py"
+    ],
+    "gold_files": [
+      "django/db/models/fields/__init__.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 16,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 23,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

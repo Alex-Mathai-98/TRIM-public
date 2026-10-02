@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void hook_sb_delete(struct super_block *const sb)\n{\n\tstruct inode *inode, *prev_inode = NULL;\n\tbool prev_inode_needs_put = false;\n\n\tif (!landlock_initialized)\n",
+          "before": "static void hook_sb_delete(struct super_block *const sb)\n{\n\tstruct inode *inode, *prev_inode = NULL;\n\n\tif (!landlock_initialized)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..d6a63347a846 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_inode_needs_put = false;\n \n \tif (!landlock_initialized)\n \t\treturn;",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        },
+        {
+          "after": "\tspin_lock(&sb->s_inode_list_lock);\n\tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n\t\tstruct landlock_object *object;\n\t\tbool inode_needs_put = false;\n\n\t\t/* Only handles referenced inodes. */\n",
+          "before": "\tspin_lock(&sb->s_inode_list_lock);\n\tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n\t\tstruct landlock_object *object;\n\n\t\t/* Only handles referenced inodes. */\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..104960801caf 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_inode_needs_put = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool inode_needs_put = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        },
+        {
+          "after": "\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tinode_needs_put = true;\n\t\t} else {\n",
+          "before": "\t\t\t * least two references to it.\n\t\t\t */\n\t\t\tiput(inode);\n\t\t} else {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..27183af1dbdd 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_inode_needs_put = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool inode_needs_put = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))\n@@ -1339,7 +1341,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * not sleep nor drop the inode because there is now at\n \t\t\t * least two references to it.\n \t\t\t */\n-\t\t\tiput(inode);\n+\t\t\tinode_needs_put = true;\n \t\t} else {\n \t\t\tspin_unlock(&object->lock);\n \t\t\trcu_read_unlock();",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        },
+        {
+          "after": "\t\tif (prev_inode) {\n\t\t\t/*\n\t\t\t * At this point, we still own the __iget() reference\n\t\t\t * that we just set in this loop walk.  Therefore we\n\t\t\t * can drop the list lock and know that the inode won't\n\t\t\t * disappear from under us until the next loop walk.\n\t\t\t */\n\t\t\tspin_unlock(&sb->s_inode_list_lock);\n\t\t\t/*\n\t\t\t * We can now actually put the inode reference from the\n\t\t\t * previous loop walk, which is not needed anymore.\n\t\t\t */\n\t\t\tif (prev_inode_needs_put)\n\t\t\t\tiput(prev_inode);\n\t\t\tiput(prev_inode);\n\t\t\tcond_resched();\n\t\t\tspin_lock(&sb->s_inode_list_lock);\n\t\t}\n\t\tprev_inode = inode;\n\t\tprev_inode_needs_put = inode_needs_put;\n\t}\n\tspin_unlock(&sb->s_inode_list_lock);\n\n\t/* Puts the inode reference from the last loop walk, if any. */\n\tif (prev_inode) {\n\t\tif (prev_inode_needs_put)\n\t\t\tiput(prev_inode);\n\t\tiput(prev_inode);\n\t}\n",
+          "before": "\t\tif (prev_inode) {\n\t\t\t/*\n\t\t\t * At this point, we still own the __iget() reference\n\t\t\t * that we just set in this loop walk.  Therefore we\n\t\t\t * can drop the list lock and know that the inode won't\n\t\t\t * disappear from under us until the next loop walk.\n\t\t\t */\n\t\t\tspin_unlock(&sb->s_inode_list_lock);\n\t\t\t/*\n\t\t\t * We can now actually put the inode reference from the\n\t\t\t * previous loop walk, which is not needed anymore.\n\t\t\t */\n\t\t\tiput(prev_inode);\n\t\t\tcond_resched();\n\t\t\tspin_lock(&sb->s_inode_list_lock);\n\t\t}\n\t\tprev_inode = inode;\n\t}\n\tspin_unlock(&sb->s_inode_list_lock);\n\n\t/* Puts the inode reference from the last loop walk, if any. */\n\tif (prev_inode)\n\t\tiput(prev_inode);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/security/landlock/fs.c b/security/landlock/fs.c\nindex 0bade2c5aa1d..f3154b2824bf 100644\n--- a/security/landlock/fs.c\n+++ b/security/landlock/fs.c\n@@ -1272,6 +1272,7 @@ static void hook_inode_free_security_rcu(void *inode_security)\n static void hook_sb_delete(struct super_block *const sb)\n {\n \tstruct inode *inode, *prev_inode = NULL;\n+\tbool prev_inode_needs_put = false;\n \n \tif (!landlock_initialized)\n \t\treturn;\n@@ -1279,6 +1280,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \tspin_lock(&sb->s_inode_list_lock);\n \tlist_for_each_entry(inode, &sb->s_inodes, i_sb_list) {\n \t\tstruct landlock_object *object;\n+\t\tbool inode_needs_put = false;\n \n \t\t/* Only handles referenced inodes. */\n \t\tif (!icount_read(inode))\n@@ -1339,7 +1341,7 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * not sleep nor drop the inode because there is now at\n \t\t\t * least two references to it.\n \t\t\t */\n-\t\t\tiput(inode);\n+\t\t\tinode_needs_put = true;\n \t\t} else {\n \t\t\tspin_unlock(&object->lock);\n \t\t\trcu_read_unlock();\n@@ -1357,17 +1359,23 @@ static void hook_sb_delete(struct super_block *const sb)\n \t\t\t * We can now actually put the inode reference from the\n \t\t\t * previous loop walk, which is not needed anymore.\n \t\t\t */\n+\t\t\tif (prev_inode_needs_put)\n+\t\t\t\tiput(prev_inode);\n \t\t\tiput(prev_inode);\n \t\t\tcond_resched();\n \t\t\tspin_lock(&sb->s_inode_list_lock);\n \t\t}\n \t\tprev_inode = inode;\n+\t\tprev_inode_needs_put = inode_needs_put;\n \t}\n \tspin_unlock(&sb->s_inode_list_lock);\n \n \t/* Puts the inode reference from the last loop walk, if any. */\n-\tif (prev_inode)\n+\tif (prev_inode) {\n+\t\tif (prev_inode_needs_put)\n+\t\t\tiput(prev_inode);\n \t\tiput(prev_inode);\n+\t}\n \t/* Waits for pending iput() in release_inode(). */\n \twait_var_event(&landlock_superblock(sb)->inode_refs,\n \t\t       !atomic_long_read(&landlock_superblock(sb)->inode_refs));",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "security/landlock/fs.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        }
+      ],
+      "end_step": 14,
+      "revision_index": 0,
+      "start_step": 9
+    }
+  ],
+  "success_step": 14
+}

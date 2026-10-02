@@ -1,0 +1,27 @@
+diff --git a/mm/vma.c b/mm/vma.c
+index 726b2a31ce59..2ec95f4b3d22 100644
+--- a/mm/vma.c
++++ b/mm/vma.c
+@@ -871,8 +871,11 @@ static __must_check struct vm_area_struct *vma_merge_existing_range(
+ 	 * If we need to remove middle in its entirety but are unable to do so,
+ 	 * we have no sensible recourse but to abort the merge.
+ 	 */
+-	if (vmg->__remove_middle && !can_merge_remove_vma(middle))
++	if (vmg->__remove_middle && !can_merge_remove_vma(middle)) {
++		if (merge_left)
++			vma_iter_next_range(vmg->vmi);
+ 		return NULL;
++	}
+ 
+ 	/*
+ 	 * If we merge both VMAs, then next is also deleted. This implies
+@@ -984,6 +987,9 @@ static __must_check struct vm_area_struct *vma_merge_existing_range(
+ 		 */
+ 		if (!vmg->give_up_on_oom)
+ 			vmg->state = VMA_MERGE_ERROR_NOMEM;
++
++		vma_iter_set(vmg->vmi, start);
++		vma_iter_load(vmg->vmi);
+ 		return NULL;
+ 	}
+ 

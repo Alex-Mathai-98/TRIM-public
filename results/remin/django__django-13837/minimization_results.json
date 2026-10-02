@@ -1,0 +1,141 @@
+{
+  "bug_id": "django__django-13837",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/autoreload.py",
+        "before": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    import django.__main__\n    django_main_path = Path(django.__main__.__file__)\n    py_script = Path(sys.argv[0])\n\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    if py_script == django_main_path:\n        # The server was started with `python -m django runserver`.\n        args += ['-m', 'django']\n        args += sys.argv[1:]\n    elif not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+        "after": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    py_script = Path(sys.argv[0])\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    \n    # Check if Python was launched with -m by examining __main__.__spec__\n    main_module = sys.modules.get('__main__')\n    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n        spec = main_module.__spec__\n        # __main__.__spec__.parent exists if and only if Python was launched with -m\n        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n        if spec.parent is not None:\n            # Python was started with -m pkg\n            args += ['-m', spec.parent]\n            args += sys.argv[1:]\n            return args\n    \n    # Fall back to the original logic for non-module execution\n    if not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+        "explanation": "classic_swe step 12 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/utils/autoreload.py",
+        "before": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    py_script = Path(sys.argv[0])\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    \n    # Check if Python was launched with -m by examining __main__.__spec__\n    main_module = sys.modules.get('__main__')\n    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n        spec = main_module.__spec__\n        # __main__.__spec__.parent exists if and only if Python was launched with -m\n        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n        if spec.parent is not None:\n            # Python was started with -m pkg\n            args += ['-m', spec.parent]\n            args += sys.argv[1:]\n            return args\n    \n    # Fall back to the original logic for non-module execution\n    if not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+        "after": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    py_script = Path(sys.argv[0])\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    \n    # Check if Python was launched with -m by examining __main__.__spec__\n    main_module = sys.modules.get('__main__')\n    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n        spec = main_module.__spec__\n        # __main__.__spec__.parent exists if and only if Python was launched with -m\n        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n        if spec.parent is not None:\n            # Python was started with -m pkg\n            args += ['-m', spec.parent]\n            args += sys.argv[1:]\n            return args\n    \n    # Fallback: Check if this is Django's __main__.py for backward compatibility\n    # This handles cases where __main__.__spec__ is not available or not set correctly\n    try:\n        import django.__main__\n        django_main_path = Path(django.__main__.__file__)\n        if py_script == django_main_path:\n            # The server was started with `python -m django runserver`.\n            args += ['-m', 'django']\n            args += sys.argv[1:]\n            return args\n    except (ImportError, AttributeError):\n        # django.__main__ might not be available or might not have __file__\n        pass\n    \n    # Fall back to the original logic for non-module execution\n    if not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+        "explanation": "classic_swe step 33 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/utils/autoreload.py b/django/utils/autoreload.py\nindex b8efb9f881..64fe0a356f 100644\n--- a/django/utils/autoreload.py\n+++ b/django/utils/autoreload.py\n@@ -216,16 +216,37 @@ def get_child_arguments():\n     executable is reported to not have the .exe extension which can cause bugs\n     on reloading.\n     \"\"\"\n-    import django.__main__\n-    django_main_path = Path(django.__main__.__file__)\n     py_script = Path(sys.argv[0])\n-\n     args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n-    if py_script == django_main_path:\n-        # The server was started with `python -m django runserver`.\n-        args += ['-m', 'django']\n-        args += sys.argv[1:]\n-    elif not py_script.exists():\n+    \n+    # Check if Python was launched with -m by examining __main__.__spec__\n+    main_module = sys.modules.get('__main__')\n+    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n+        spec = main_module.__spec__\n+        # __main__.__spec__.parent exists if and only if Python was launched with -m\n+        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n+        if spec.parent is not None:\n+            # Python was started with -m pkg\n+            args += ['-m', spec.parent]\n+            args += sys.argv[1:]\n+            return args\n+    \n+    # Fallback: Check if this is Django's __main__.py for backward compatibility\n+    # This handles cases where __main__.__spec__ is not available or not set correctly\n+    try:\n+        import django.__main__\n+        django_main_path = Path(django.__main__.__file__)\n+        if py_script == django_main_path:\n+            # The server was started with `python -m django runserver`.\n+            args += ['-m', 'django']\n+            args += sys.argv[1:]\n+            return args\n+    except (ImportError, AttributeError):\n+        # django.__main__ might not be available or might not have __file__\n+        pass\n+    \n+    # Fall back to the original logic for non-module execution\n+    if not py_script.exists():\n         # sys.argv[0] may not exist for several reasons on Windows.\n         # It may exist with a .exe extension or have a -script.py suffix.\n         exe_entrypoint = py_script.with_suffix('.exe')\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      2,
+      8
+    ],
+    "edit_list_after_file_min": [
+      2,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 2,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      2,
+      8
+    ],
+    "edit_list_after_refinement": [
+      2,
+      8
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/autoreload.py",
+          "before": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    import django.__main__\n    django_main_path = Path(django.__main__.__file__)\n    py_script = Path(sys.argv[0])\n\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    if py_script == django_main_path:\n        # The server was started with `python -m django runserver`.\n        args += ['-m', 'django']\n        args += sys.argv[1:]\n    elif not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+          "after": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    py_script = Path(sys.argv[0])\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    \n    # Check if Python was launched with -m by examining __main__.__spec__\n    main_module = sys.modules.get('__main__')\n    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n        spec = main_module.__spec__\n        # __main__.__spec__.parent exists if and only if Python was launched with -m\n        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n        if spec.parent is not None:\n            # Python was started with -m pkg\n            args += ['-m', spec.parent]\n            args += sys.argv[1:]\n            return args\n    \n    # Fall back to the original logic for non-module execution\n    if not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+          "explanation": "classic_swe step 12 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/autoreload.py",
+          "before": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    py_script = Path(sys.argv[0])\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    \n    # Check if Python was launched with -m by examining __main__.__spec__\n    main_module = sys.modules.get('__main__')\n    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n        spec = main_module.__spec__\n        # __main__.__spec__.parent exists if and only if Python was launched with -m\n        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n        if spec.parent is not None:\n            # Python was started with -m pkg\n            args += ['-m', spec.parent]\n            args += sys.argv[1:]\n            return args\n    \n    # Fall back to the original logic for non-module execution\n    if not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+          "after": "def get_child_arguments():\n    \"\"\"\n    Return the executable. This contains a workaround for Windows if the\n    executable is reported to not have the .exe extension which can cause bugs\n    on reloading.\n    \"\"\"\n    py_script = Path(sys.argv[0])\n    args = [sys.executable] + ['-W%s' % o for o in sys.warnoptions]\n    \n    # Check if Python was launched with -m by examining __main__.__spec__\n    main_module = sys.modules.get('__main__')\n    if main_module is not None and getattr(main_module, '__spec__', None) is not None:\n        spec = main_module.__spec__\n        # __main__.__spec__.parent exists if and only if Python was launched with -m\n        # and __main__.__spec__.parent == \"pkg\" if launched with -m pkg\n        if spec.parent is not None:\n            # Python was started with -m pkg\n            args += ['-m', spec.parent]\n            args += sys.argv[1:]\n            return args\n    \n    # Fallback: Check if this is Django's __main__.py for backward compatibility\n    # This handles cases where __main__.__spec__ is not available or not set correctly\n    try:\n        import django.__main__\n        django_main_path = Path(django.__main__.__file__)\n        if py_script == django_main_path:\n            # The server was started with `python -m django runserver`.\n            args += ['-m', 'django']\n            args += sys.argv[1:]\n            return args\n    except (ImportError, AttributeError):\n        # django.__main__ might not be available or might not have __file__\n        pass\n    \n    # Fall back to the original logic for non-module execution\n    if not py_script.exists():\n        # sys.argv[0] may not exist for several reasons on Windows.\n        # It may exist with a .exe extension or have a -script.py suffix.\n        exe_entrypoint = py_script.with_suffix('.exe')\n        if exe_entrypoint.exists():\n            # Should be executed directly, ignoring sys.executable.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [str(exe_entrypoint), *sys.argv[1:]]\n        script_entrypoint = py_script.with_name('%s-script.py' % py_script.name)\n        if script_entrypoint.exists():\n            # Should be executed as usual.\n            # TODO: Remove str() when dropping support for PY37.\n            # args parameter accepts path-like on Windows from Python 3.8.\n            return [*args, str(script_entrypoint), *sys.argv[1:]]\n        raise RuntimeError('Script %s does not exist.' % py_script)\n    else:\n        args += sys.argv\n    return args",
+          "explanation": "classic_swe step 33 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 57,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 57,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/utils/autoreload.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/utils/autoreload.py"
+    ],
+    "gold_files": [
+      "django/utils/autoreload.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 29,
+    "minimized_deleted_lines": 8,
+    "gold_added_lines": 5,
+    "gold_deleted_lines": 5
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

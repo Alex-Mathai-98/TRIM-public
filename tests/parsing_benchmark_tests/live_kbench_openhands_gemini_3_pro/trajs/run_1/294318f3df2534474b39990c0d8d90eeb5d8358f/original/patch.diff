@@ -1,0 +1,51 @@
+diff --git a/include/linux/ns_common.h b/include/linux/ns_common.h
+index 791b18dc77d0..8bd4a0118434 100644
+--- a/include/linux/ns_common.h
++++ b/include/linux/ns_common.h
+@@ -288,12 +288,12 @@ static __always_inline __must_check int __ns_ref_read(const struct ns_common *ns
+ 	((__ns) ? __ns_ref_active_read(to_ns_common(__ns)) : 0)
+ 
+ void __ns_ref_active_get_owner(struct ns_common *ns);
++void __ns_ref_active_resurrect(struct ns_common *ns);
+ 
+ static __always_inline void __ns_ref_active_get(struct ns_common *ns)
+ {
+ 	/* Initial namespaces are always active. */
+-	if (!is_ns_init_id(ns))
+-		WARN_ON_ONCE(atomic_add_negative(1, &ns->__ns_ref_active));
++	__ns_ref_active_resurrect(ns);
+ }
+ #define ns_ref_active_get(__ns) \
+ 	do { if (__ns) __ns_ref_active_get(to_ns_common(__ns)); } while (0)
+@@ -343,8 +343,6 @@ static __always_inline struct ns_common *__must_check ns_get_unless_inactive(str
+ 	return ns;
+ }
+ 
+-void __ns_ref_active_resurrect(struct ns_common *ns);
+-
+ #define ns_ref_active_resurrect(__ns) \
+ 	do { if (__ns) __ns_ref_active_resurrect(to_ns_common(__ns)); } while (0)
+ 
+diff --git a/kernel/nscommon.c b/kernel/nscommon.c
+index 70cb66232e4c..faca5c730864 100644
+--- a/kernel/nscommon.c
++++ b/kernel/nscommon.c
+@@ -299,3 +299,4 @@ void __ns_ref_active_resurrect(struct ns_common *ns)
+ 			return;
+ 	}
+ }
++EXPORT_SYMBOL_GPL(__ns_ref_active_resurrect);
+diff --git a/kernel/nstree.c b/kernel/nstree.c
+index f27f772a6762..0be19973bf17 100644
+--- a/kernel/nstree.c
++++ b/kernel/nstree.c
+@@ -180,7 +180,8 @@ void __ns_tree_add_raw(struct ns_common *ns, struct ns_tree *ns_tree)
+ 	 * are active. For init namespaces this is a no-op as ns_owner()
+ 	 * returns NULL for namespaces owned by init_user_ns.
+ 	 */
+-	__ns_ref_active_get_owner(ns);
++	if (__ns_ref_active_read(ns))
++		__ns_ref_active_get_owner(ns);
+ }
+ 
+ void __ns_tree_remove(struct ns_common *ns, struct ns_tree *ns_tree)

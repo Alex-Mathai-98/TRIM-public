@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static void filter_free_subsystem_filters(struct trace_subsystem_dir *dir,\n\t\t\t\t\t  struct trace_array *tr,\n\t\t\t\t\t  struct event_filter *filter)\n{\n\tstruct trace_event_file *file;\n\tstruct filter_head *head;\n\tstruct filter_list *item;\n\n\thead = kmalloc(sizeof(*head), GFP_KERNEL);\n\tif (!head)\n\t\tgoto free_now;\n\n\tINIT_LIST_HEAD(&head->list);\n\n\titem = kmalloc(sizeof(*item), GFP_KERNEL);\n\tif (!item)\n\t\tgoto free_now;\n\n\titem->filter = filter;\n\tlist_add_tail(&item->list, &head->list);\n\tfilter = NULL;\n\n\tlist_for_each_entry(file, &tr->events, list) {\n\t\tif (file->system != dir)\n\t\t\tcontinue;\n\t\titem = kmalloc(sizeof(*item), GFP_KERNEL);\n\t\tif (!item)\n\t\t\tgoto free_now;\n\t\titem->filter = event_filter(file);\n\t\tlist_add_tail(&item->list, &head->list);\n\t\tevent_clear_filter(file);\n\t}\n\n\tdelay_free_filter(head);\n\treturn;\n free_now:\n\ttracepoint_synchronize_unregister();\n\n\tif (head)\n\t\tfree_filter_list(&head->rcu);\n\n\tlist_for_each_entry(file, &tr->events, list) {\n\t\tif (file->system != dir || !file->filter)\n\t\t\tcontinue;\n\t\t__free_subsystem_filter(file);\n\t}\n\t__free_filter(filter);\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/trace_events_filter.c_fixed b/kernel/trace/trace_events_filter.c_fixed\nnew file mode 100644\nindex 000000000000..7292f17c2af8\n--- /dev/null\n+++ b/kernel/trace/trace_events_filter.c_fixed\n@@ -0,0 +1,48 @@\n+static void filter_free_subsystem_filters(struct trace_subsystem_dir *dir,\n+\t\t\t\t\t  struct trace_array *tr,\n+\t\t\t\t\t  struct event_filter *filter)\n+{\n+\tstruct trace_event_file *file;\n+\tstruct filter_head *head;\n+\tstruct filter_list *item;\n+\n+\thead = kmalloc(sizeof(*head), GFP_KERNEL);\n+\tif (!head)\n+\t\tgoto free_now;\n+\n+\tINIT_LIST_HEAD(&head->list);\n+\n+\titem = kmalloc(sizeof(*item), GFP_KERNEL);\n+\tif (!item)\n+\t\tgoto free_now;\n+\n+\titem->filter = filter;\n+\tlist_add_tail(&item->list, &head->list);\n+\tfilter = NULL;\n+\n+\tlist_for_each_entry(file, &tr->events, list) {\n+\t\tif (file->system != dir)\n+\t\t\tcontinue;\n+\t\titem = kmalloc(sizeof(*item), GFP_KERNEL);\n+\t\tif (!item)\n+\t\t\tgoto free_now;\n+\t\titem->filter = event_filter(file);\n+\t\tlist_add_tail(&item->list, &head->list);\n+\t\tevent_clear_filter(file);\n+\t}\n+\n+\tdelay_free_filter(head);\n+\treturn;\n+ free_now:\n+\ttracepoint_synchronize_unregister();\n+\n+\tif (head)\n+\t\tfree_filter_list(&head->rcu);\n+\n+\tlist_for_each_entry(file, &tr->events, list) {\n+\t\tif (file->system != dir || !file->filter)\n+\t\t\tcontinue;\n+\t\t__free_subsystem_filter(file);\n+\t}\n+\t__free_filter(filter);\n+}",
+          "explanation": "classic_swe step 17 create #1",
+          "filename": "kernel/trace/trace_events_filter.c_fixed",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "\titem->filter = filter;\n\tlist_add_tail(&item->list, &head->list);\n\tfilter = NULL;\n\n\tlist_for_each_entry(file, &tr->events, list) {",
+          "before": "\titem->filter = filter;\n\tlist_add_tail(&item->list, &head->list);\n\n\tlist_for_each_entry(file, &tr->events, list) {",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/trace_events_filter.c b/kernel/trace/trace_events_filter.c\nindex 08141f105c95..e630ef942b87 100644\n--- a/kernel/trace/trace_events_filter.c\n+++ b/kernel/trace/trace_events_filter.c\n@@ -1442,6 +1442,7 @@ static void filter_free_subsystem_filters(struct trace_subsystem_dir *dir,\n \n \titem->filter = filter;\n \tlist_add_tail(&item->list, &head->list);\n+\tfilter = NULL;\n \n \tlist_for_each_entry(file, &tr->events, list) {\n \t\tif (file->system != dir)\ndiff --git a/kernel/trace/trace_events_filter.c_fixed b/kernel/trace/trace_events_filter.c_fixed\nnew file mode 100644\nindex 000000000000..7292f17c2af8\n--- /dev/null\n+++ b/kernel/trace/trace_events_filter.c_fixed\n@@ -0,0 +1,48 @@\n+static void filter_free_subsystem_filters(struct trace_subsystem_dir *dir,\n+\t\t\t\t\t  struct trace_array *tr,\n+\t\t\t\t\t  struct event_filter *filter)\n+{\n+\tstruct trace_event_file *file;\n+\tstruct filter_head *head;\n+\tstruct filter_list *item;\n+\n+\thead = kmalloc(sizeof(*head), GFP_KERNEL);\n+\tif (!head)\n+\t\tgoto free_now;\n+\n+\tINIT_LIST_HEAD(&head->list);\n+\n+\titem = kmalloc(sizeof(*item), GFP_KERNEL);\n+\tif (!item)\n+\t\tgoto free_now;\n+\n+\titem->filter = filter;\n+\tlist_add_tail(&item->list, &head->list);\n+\tfilter = NULL;\n+\n+\tlist_for_each_entry(file, &tr->events, list) {\n+\t\tif (file->system != dir)\n+\t\t\tcontinue;\n+\t\titem = kmalloc(sizeof(*item), GFP_KERNEL);\n+\t\tif (!item)\n+\t\t\tgoto free_now;\n+\t\titem->filter = event_filter(file);\n+\t\tlist_add_tail(&item->list, &head->list);\n+\t\tevent_clear_filter(file);\n+\t}\n+\n+\tdelay_free_filter(head);\n+\treturn;\n+ free_now:\n+\ttracepoint_synchronize_unregister();\n+\n+\tif (head)\n+\t\tfree_filter_list(&head->rcu);\n+\n+\tlist_for_each_entry(file, &tr->events, list) {\n+\t\tif (file->system != dir || !file->filter)\n+\t\t\tcontinue;\n+\t\t__free_subsystem_filter(file);\n+\t}\n+\t__free_filter(filter);\n+}",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "kernel/trace/trace_events_filter.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/trace_events_filter.c b/kernel/trace/trace_events_filter.c\nindex 08141f105c95..e630ef942b87 100644\n--- a/kernel/trace/trace_events_filter.c\n+++ b/kernel/trace/trace_events_filter.c\n@@ -1442,6 +1442,7 @@ static void filter_free_subsystem_filters(struct trace_subsystem_dir *dir,\n \n \titem->filter = filter;\n \tlist_add_tail(&item->list, &head->list);\n+\tfilter = NULL;\n \n \tlist_for_each_entry(file, &tr->events, list) {\n \t\tif (file->system != dir)",
+          "explanation": "classic_swe step 19 rm #1",
+          "filename": "kernel/trace/trace_events_filter.c_fixed",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 19
+}

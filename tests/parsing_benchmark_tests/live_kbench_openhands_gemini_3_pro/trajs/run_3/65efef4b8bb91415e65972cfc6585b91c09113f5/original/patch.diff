@@ -1,0 +1,35 @@
+diff --git a/fs/overlayfs/copy_up.c b/fs/overlayfs/copy_up.c
+index 3601ddfeddc2..68ecff9ed61e 100644
+--- a/fs/overlayfs/copy_up.c
++++ b/fs/overlayfs/copy_up.c
+@@ -442,8 +442,9 @@ struct ovl_fh *ovl_encode_real_fh(struct ovl_fs *ofs, struct dentry *real,
+ 	buflen = (dwords << 2);
+ 
+ 	err = -EIO;
+-	if (WARN_ON(fh_type < 0) ||
+-	    WARN_ON(buflen > MAX_HANDLE_SZ) ||
++	if (fh_type < 0)
++		goto out_err;
++	if (WARN_ON(buflen > MAX_HANDLE_SZ) ||
+ 	    WARN_ON(fh_type == FILEID_INVALID))
+ 		goto out_err;
+ 
+diff --git a/fs/overlayfs/export.c b/fs/overlayfs/export.c
+index 5868cb222955..af89fdc0a4ea 100644
+--- a/fs/overlayfs/export.c
++++ b/fs/overlayfs/export.c
+@@ -269,12 +269,12 @@ static int ovl_encode_fh(struct inode *inode, u32 *fid, int *max_len,
+ 
+ 	dentry = d_find_any_alias(inode);
+ 	if (!dentry)
+-		return FILEID_INVALID;
++		return -ENOENT;
+ 
+ 	bytes = ovl_dentry_to_fid(ofs, dentry, fid, buflen);
+ 	dput(dentry);
+ 	if (bytes <= 0)
+-		return FILEID_INVALID;
++		return bytes;
+ 
+ 	*max_len = bytes >> 2;
+ 	if (bytes > buflen)

@@ -1,0 +1,39 @@
+diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
+index 14bf440ea4df..5a2a8f8ea8d1 100644
+--- a/fs/ocfs2/inode.c
++++ b/fs/ocfs2/inode.c
+@@ -1218,7 +1218,7 @@ static void ocfs2_clear_inode(struct inode *inode)
+ 	 * exception here are successfully wiped inodes - their
+ 	 * metadata can now be considered to be part of the system
+ 	 * inodes from which it came. */
+-	if (!(oi->ip_flags & OCFS2_INODE_DELETED))
++	if (osb->journal && !(oi->ip_flags & OCFS2_INODE_DELETED))
+ 		ocfs2_checkpoint_inode(inode);
+ 
+ 	mlog_bug_on_msg(!list_empty(&oi->ip_io_markers),
+@@ -1281,8 +1281,9 @@ static void ocfs2_clear_inode(struct inode *inode)
+ 	 * the journal is flushed before journal shutdown. Thus it is safe to
+ 	 * have inodes get cleaned up after journal shutdown.
+ 	 */
+-	jbd2_journal_release_jbd_inode(osb->journal->j_journal,
+-				       &oi->ip_jinode);
++	if (osb->journal)
++		jbd2_journal_release_jbd_inode(osb->journal->j_journal,
++					       &oi->ip_jinode);
+ }
+ 
+ void ocfs2_evict_inode(struct inode *inode)
+diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+index 53daa4482406..79af01b82d44 100644
+--- a/fs/ocfs2/super.c
++++ b/fs/ocfs2/super.c
+@@ -1863,7 +1863,8 @@ static void ocfs2_dismount_volume(struct super_block *sb, int mnt_err)
+ 	    !ocfs2_is_hard_readonly(osb))
+ 		hangup_needed = 1;
+ 
+-	ocfs2_dlm_shutdown(osb, hangup_needed);
++	if (!ocfs2_is_hard_readonly(osb))
++		ocfs2_dlm_shutdown(osb, hangup_needed);
+ 
+ 	ocfs2_blockcheck_stats_debugfs_remove(&osb->osb_ecc_stats);
+ 	debugfs_remove_recursive(osb->osb_debug_root);

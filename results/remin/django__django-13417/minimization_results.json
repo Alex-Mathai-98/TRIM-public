@@ -1,0 +1,104 @@
+{
+  "bug_id": "django__django-13417",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "    @property\n    def ordered(self):\n        \"\"\"\n        Return True if the QuerySet is ordered -- i.e. has an order_by()\n        clause or a default ordering on the model (or is empty).\n        \"\"\"\n        if isinstance(self, EmptyQuerySet):\n            return True\n        if self.query.extra_order_by or self.query.order_by:\n            return True\n        elif self.query.default_ordering and self.query.get_meta().ordering:\n            return True\n        else:\n            return False",
+        "after": "    @property\n    def ordered(self):\n        \"\"\"\n        Return True if the QuerySet is ordered -- i.e. has an order_by()\n        clause or a default ordering on the model (or is empty).\n        \"\"\"\n        if isinstance(self, EmptyQuerySet):\n            return True\n        if self.query.extra_order_by or self.query.order_by:\n            return True\n        elif self.query.default_ordering and self.query.get_meta().ordering:\n            # Check if GROUP BY will remove the default ordering\n            if self.query.group_by is not None:\n                # When there's a GROUP BY clause and only default ordering\n                # (no explicit order_by), the default ordering is removed\n                return False\n            return True\n        else:\n            return False",
+        "explanation": "classic_swe step 30 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/query.py b/django/db/models/query.py\nindex 85cd8311a7..e60b888867 100644\n--- a/django/db/models/query.py\n+++ b/django/db/models/query.py\n@@ -1225,6 +1225,11 @@ class QuerySet:\n         if self.query.extra_order_by or self.query.order_by:\n             return True\n         elif self.query.default_ordering and self.query.get_meta().ordering:\n+            # Check if GROUP BY will remove the default ordering\n+            if self.query.group_by is not None:\n+                # When there's a GROUP BY clause and only default ordering\n+                # (no explicit order_by), the default ordering is removed\n+                return False\n             return True\n         else:\n             return False\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/query.py",
+          "before": "    @property\n    def ordered(self):\n        \"\"\"\n        Return True if the QuerySet is ordered -- i.e. has an order_by()\n        clause or a default ordering on the model (or is empty).\n        \"\"\"\n        if isinstance(self, EmptyQuerySet):\n            return True\n        if self.query.extra_order_by or self.query.order_by:\n            return True\n        elif self.query.default_ordering and self.query.get_meta().ordering:\n            return True\n        else:\n            return False",
+          "after": "    @property\n    def ordered(self):\n        \"\"\"\n        Return True if the QuerySet is ordered -- i.e. has an order_by()\n        clause or a default ordering on the model (or is empty).\n        \"\"\"\n        if isinstance(self, EmptyQuerySet):\n            return True\n        if self.query.extra_order_by or self.query.order_by:\n            return True\n        elif self.query.default_ordering and self.query.get_meta().ordering:\n            # Check if GROUP BY will remove the default ordering\n            if self.query.group_by is not None:\n                # When there's a GROUP BY clause and only default ordering\n                # (no explicit order_by), the default ordering is removed\n                return False\n            return True\n        else:\n            return False",
+          "explanation": "classic_swe step 30 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 280,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 280,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/query.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/query.py"
+    ],
+    "gold_files": [
+      "django/db/models/query.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 5,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 6,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

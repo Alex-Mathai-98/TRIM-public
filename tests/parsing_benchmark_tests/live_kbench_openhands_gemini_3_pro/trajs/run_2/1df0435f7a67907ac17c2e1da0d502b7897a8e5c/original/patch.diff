@@ -1,0 +1,72 @@
+diff --git a/include/linux/hugetlb.h b/include/linux/hugetlb.h
+index 42f374e828a2..2e4eff3550cf 100644
+--- a/include/linux/hugetlb.h
++++ b/include/linux/hugetlb.h
+@@ -714,7 +714,7 @@ struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ struct folio *alloc_hugetlb_folio_nodemask(struct hstate *h, int preferred_nid,
+ 				nodemask_t *nmask, gfp_t gfp_mask,
+ 				bool allow_alloc_fallback);
+-struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,
++struct folio *memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,
+ 					  nodemask_t *nmask, gfp_t gfp_mask);
+ 
+ int hugetlb_add_to_page_cache(struct folio *folio, struct address_space *mapping,
+@@ -1118,7 +1118,7 @@ static inline struct folio *alloc_hugetlb_folio(struct vm_area_struct *vma,
+ }
+ 
+ static inline struct folio *
+-alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,
++memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,
+ 			    nodemask_t *nmask, gfp_t gfp_mask)
+ {
+ 	return NULL;
+diff --git a/mm/hugetlb.c b/mm/hugetlb.c
+index 9dc95eac558c..23b0e4a025be 100644
+--- a/mm/hugetlb.c
++++ b/mm/hugetlb.c
+@@ -2334,20 +2334,25 @@ struct folio *alloc_buddy_hugetlb_folio_with_mpol(struct hstate *h,
+ 	return folio;
+ }
+ 
+-struct folio *alloc_hugetlb_folio_reserve(struct hstate *h, int preferred_nid,
++struct folio *memfd_alloc_hugetlb_folio(struct hstate *h, int preferred_nid,
+ 		nodemask_t *nmask, gfp_t gfp_mask)
+ {
+ 	struct folio *folio;
+ 
+ 	spin_lock_irq(&hugetlb_lock);
+-	folio = dequeue_hugetlb_folio_nodemask(h, gfp_mask, preferred_nid,
+-					       nmask);
+-	if (folio) {
+-		VM_BUG_ON(!h->resv_huge_pages);
+-		h->resv_huge_pages--;
++	if (available_huge_pages(h)) {
++		folio = dequeue_hugetlb_folio_nodemask(h, gfp_mask,
++						preferred_nid, nmask);
++		if (folio) {
++			spin_unlock_irq(&hugetlb_lock);
++			return folio;
++		}
+ 	}
+-
+ 	spin_unlock_irq(&hugetlb_lock);
++
++	folio = alloc_surplus_hugetlb_folio(h, gfp_mask, preferred_nid, nmask);
++	if (folio)
++		folio_ref_unfreeze(folio, 1);
+ 	return folio;
+ }
+ 
+diff --git a/mm/memfd.c b/mm/memfd.c
+index ab367e61553d..f6d25a93723a 100644
+--- a/mm/memfd.c
++++ b/mm/memfd.c
+@@ -86,7 +86,7 @@ struct folio *memfd_alloc_folio(struct file *memfd, pgoff_t idx)
+ 		gfp_mask &= ~(__GFP_HIGHMEM | __GFP_MOVABLE);
+ 		idx >>= huge_page_order(h);
+ 
+-		folio = alloc_hugetlb_folio_reserve(h,
++		folio = memfd_alloc_hugetlb_folio(h,
+ 						    numa_node_id(),
+ 						    NULL,
+ 						    gfp_mask);

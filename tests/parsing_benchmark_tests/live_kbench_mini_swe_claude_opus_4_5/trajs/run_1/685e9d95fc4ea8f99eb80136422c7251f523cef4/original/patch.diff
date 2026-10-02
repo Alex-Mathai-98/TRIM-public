@@ -1,0 +1,30 @@
+diff --git a/net/ethtool/common.c b/net/ethtool/common.c
+index 02f941f667dd..2c0806c7bfc9 100644
+--- a/net/ethtool/common.c
++++ b/net/ethtool/common.c
+@@ -868,9 +868,15 @@ int ethtool_get_ts_info_by_phc(struct net_device *dev,
+ int __ethtool_get_ts_info(struct net_device *dev,
+ 			  struct kernel_ethtool_ts_info *info)
+ {
++	struct hwtstamp_provider_desc hwprov_desc;
+ 	struct hwtstamp_provider *hwprov;
+ 
+-	hwprov = rtnl_dereference(dev->hwprov);
++	rcu_read_lock();
++	hwprov = rcu_dereference(dev->hwprov);
++	if (hwprov)
++		hwprov_desc = hwprov->desc;
++	rcu_read_unlock();
++
+ 	/* No provider specified, use default behavior */
+ 	if (!hwprov) {
+ 		const struct ethtool_ops *ops = dev->ethtool_ops;
+@@ -890,7 +896,7 @@ int __ethtool_get_ts_info(struct net_device *dev,
+ 		return err;
+ 	}
+ 
+-	return ethtool_get_ts_info_by_phc(dev, info, &hwprov->desc);
++	return ethtool_get_ts_info_by_phc(dev, info, &hwprov_desc);
+ }
+ 
+ bool net_support_hwtstamp_qualifier(struct net_device *dev,

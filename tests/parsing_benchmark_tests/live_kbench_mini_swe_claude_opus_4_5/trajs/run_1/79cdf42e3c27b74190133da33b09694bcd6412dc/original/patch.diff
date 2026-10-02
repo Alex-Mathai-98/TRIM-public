@@ -1,0 +1,41 @@
+diff --git a/fs/f2fs/segment.c b/fs/f2fs/segment.c
+index c282e8a0a2ec..232d8992dec6 100644
+--- a/fs/f2fs/segment.c
++++ b/fs/f2fs/segment.c
+@@ -2795,7 +2795,7 @@ static int get_new_segment(struct f2fs_sb_info *sbi,
+ 								MAIN_SECS(sbi));
+ 		if (secno >= MAIN_SECS(sbi)) {
+ 			ret = -ENOSPC;
+-			f2fs_bug_on(sbi, 1);
++			f2fs_bug_on(sbi, !pinning);
+ 			goto out_unlock;
+ 		}
+ 	}
+@@ -2806,7 +2806,7 @@ static int get_new_segment(struct f2fs_sb_info *sbi,
+ 							MAIN_SECS(sbi));
+ 		if (secno >= MAIN_SECS(sbi)) {
+ 			ret = -ENOSPC;
+-			f2fs_bug_on(sbi, 1);
++			f2fs_bug_on(sbi, !pinning);
+ 			goto out_unlock;
+ 		}
+ 	}
+@@ -2921,6 +2921,8 @@ static unsigned int __get_next_segno(struct f2fs_sb_info *sbi, int type)
+ 	return curseg->segno;
+ }
+ 
++static void reset_curseg_fields(struct curseg_info *curseg);
++
+ /*
+  * Allocate a current working segment.
+  * This function always allocates a free segment in LFS manner.
+@@ -2938,8 +2940,7 @@ static int new_curseg(struct f2fs_sb_info *sbi, int type, bool new_sec)
+ 	segno = __get_next_segno(sbi, type);
+ 	ret = get_new_segment(sbi, &segno, new_sec, pinning);
+ 	if (ret) {
+-		if (ret == -ENOSPC)
+-			curseg->segno = NULL_SEGNO;
++		reset_curseg_fields(curseg);
+ 		return ret;
+ 	}
+ 

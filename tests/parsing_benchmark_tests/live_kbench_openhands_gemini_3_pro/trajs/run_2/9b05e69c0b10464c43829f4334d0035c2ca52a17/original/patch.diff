@@ -1,0 +1,44 @@
+diff --git a/fs/bcachefs/error.c b/fs/bcachefs/error.c
+index d4dfd13a8076..8730846f888c 100644
+--- a/fs/bcachefs/error.c
++++ b/fs/bcachefs/error.c
+@@ -60,6 +60,7 @@ static bool bch2_fs_trans_inconsistent(struct bch_fs *c, struct btree_trans *tra
+ {
+ 	struct printbuf buf = PRINTBUF;
+ 
++	buf.atomic = 1;
+ 	bch2_log_msg_start(c, &buf);
+ 
+ 	prt_vprintf(&buf, fmt, args);
+@@ -68,7 +69,7 @@ static bool bch2_fs_trans_inconsistent(struct bch_fs *c, struct btree_trans *tra
+ 	if (trans)
+ 		bch2_trans_updates_to_text(&buf, trans);
+ 	bool ret = __bch2_inconsistent_error(c, &buf);
+-	bch2_print_string_as_lines(KERN_ERR, buf.buf);
++	bch2_print_string_as_lines_nonblocking(KERN_ERR, buf.buf);
+ 
+ 	printbuf_exit(&buf);
+ 	return ret;
+@@ -118,7 +119,7 @@ int bch2_fs_topology_error(struct bch_fs *c, const char *fmt, ...)
+ 	va_end(args);
+ 
+ 	int ret = __bch2_topology_error(c, &buf);
+-	bch2_print_string_as_lines(KERN_ERR, buf.buf);
++	bch2_print_string_as_lines_nonblocking(KERN_ERR, buf.buf);
+ 
+ 	printbuf_exit(&buf);
+ 	return ret;
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index a58edde43bee..5ffed1606e89 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -1226,9 +1226,6 @@ static void bch2_dev_release(struct kobject *kobj)
+ 
+ static void bch2_dev_free(struct bch_dev *ca)
+ {
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[WRITE]));
+-	WARN_ON(!percpu_ref_is_zero(&ca->io_ref[READ]));
+-
+ 	cancel_work_sync(&ca->io_error_work);
+ 
+ 	bch2_dev_unlink(ca);

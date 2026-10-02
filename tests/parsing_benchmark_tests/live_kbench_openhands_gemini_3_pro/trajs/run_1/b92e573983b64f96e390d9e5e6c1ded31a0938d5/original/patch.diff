@@ -1,0 +1,16 @@
+diff --git a/fs/bcachefs/btree_iter.c b/fs/bcachefs/btree_iter.c
+index eef9b89c561d..55209b0ac3b4 100644
+--- a/fs/bcachefs/btree_iter.c
++++ b/fs/bcachefs/btree_iter.c
+@@ -758,6 +758,11 @@ static inline int btree_path_lock_root(struct btree_trans *trans,
+ 		if (likely(b == READ_ONCE(*rootp) &&
+ 			   b->c.level == path->level &&
+ 			   !race_fault())) {
++			if (unlikely(!btree_path_pos_in_node(path, b))) {
++				six_unlock_type(&b->c.lock, lock_type);
++				return -BCH_ERR_btree_need_topology_repair;
++			}
++
+ 			for (i = 0; i < path->level; i++)
+ 				path->l[i].b = ERR_PTR(-BCH_ERR_no_btree_node_lock_root);
+ 			path->l[path->level].b = b;

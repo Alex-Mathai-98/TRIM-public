@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2,
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#include <sys/types.h>\n#include <sys/socket.h>\n#include <netinet/in.h>\n#include <netinet/udp.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <unistd.h>\n#include <string.h>\n\n/*\n#ifndef UDP_GRO\n#define UDP_GRO 104\n#endif\n\n#ifndef UDP_ENCAP\n#define UDP_ENCAP 100\n#endif\n*/\n// Hardcoding values as headers might be old\n#define MY_UDP_ENCAP 100\n#define MY_UDP_GRO 104\n\n#define UDP_ENCAP_ESPINUDP 2\n\nint main() {\n    int fd = socket(AF_INET6, SOCK_DGRAM, 0);\n    if (fd < 0) {\n        perror(\"socket\");\n        return 1;\n    }\n\n    int val;\n    \n    // UDP_GRO\n    val = 1;\n    if (setsockopt(fd, IPPROTO_UDP, MY_UDP_GRO, &val, sizeof(val)) < 0) {\n        perror(\"setsockopt UDP_GRO\");\n    } else {\n        printf(\"UDP_GRO set\\n\");\n    }\n\n    // UDP_ENCAP\n    val = UDP_ENCAP_ESPINUDP;\n    if (setsockopt(fd, IPPROTO_UDP, MY_UDP_ENCAP, &val, sizeof(val)) < 0) {\n        perror(\"setsockopt UDP_ENCAP\");\n    } else {\n        printf(\"UDP_ENCAP set\\n\");\n    }\n\n    close(fd);\n    printf(\"Socket closed\\n\");\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/reproduce_crash.c\n+++ /linux/reproduce_crash.c\n@@ -1,0 +2,54 @@\n+#include <sys/types.h>\n+#include <sys/socket.h>\n+#include <netinet/in.h>\n+#include <netinet/udp.h>\n+#include <stdio.h>\n+#include <stdlib.h>\n+#include <unistd.h>\n+#include <string.h>\n+\n+/*\n+#ifndef UDP_GRO\n+#define UDP_GRO 104\n+#endif\n+\n+#ifndef UDP_ENCAP\n+#define UDP_ENCAP 100\n+#endif\n+*/\n+// Hardcoding values as headers might be old\n+#define MY_UDP_ENCAP 100\n+#define MY_UDP_GRO 104\n+\n+#define UDP_ENCAP_ESPINUDP 2\n+\n+int main() {\n+    int fd = socket(AF_INET6, SOCK_DGRAM, 0);\n+    if (fd < 0) {\n+        perror(\"socket\");\n+        return 1;\n+    }\n+\n+    int val;\n+\n+    // UDP_GRO\n+    val = 1;\n+    if (setsockopt(fd, IPPROTO_UDP, MY_UDP_GRO, &val, sizeof(val)) < 0) {\n+        perror(\"setsockopt UDP_GRO\");\n+    } else {\n+        printf(\"UDP_GRO set\\n\");\n+    }\n+\n+    // UDP_ENCAP\n+    val = UDP_ENCAP_ESPINUDP;\n+    if (setsockopt(fd, IPPROTO_UDP, MY_UDP_ENCAP, &val, sizeof(val)) < 0) {\n+        perror(\"setsockopt UDP_ENCAP\");\n+    } else {\n+        printf(\"UDP_ENCAP set\\n\");\n+    }\n+\n+    close(fd);\n+    printf(\"Socket closed\\n\");\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 30",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        }
+      ],
+      "end_step": 30,
+      "revision_index": 0,
+      "start_step": 30
+    },
+    {
+      "edits": [
+        {
+          "after": "\tif (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {\n\t\tstruct udp_sock *up = udp_sk(sk);\n\n\t\tif (READ_ONCE(up->gro_receive))\n\t\t\treturn;\n\n\t\tif (family == AF_INET)\n\t\t\tWRITE_ONCE(up->gro_receive, xfrm4_gro_udp_encap_rcv);\n\t\telse if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)\n\t\t\tWRITE_ONCE(up->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);\n\n\t\tif (udp_test_bit(ENCAP_ENABLED, sk))\n\t\t\tudp_tunnel_update_gro_rcv(sk, true);\n\t}",
+          "before": "\tif (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {\n\t\tif (family == AF_INET)\n\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, xfrm4_gro_udp_encap_rcv);\n\t\telse if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)\n\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/ipv4/udp.c\n+++ /linux/net/ipv4/udp.c\n@@ -2911,0 +2912,5 @@\n+\t\tstruct udp_sock *up = udp_sk(sk);\n+\n+\t\tif (READ_ONCE(up->gro_receive))\n+\t\t\treturn;\n+\n@@ -2913 +2918 @@\n-\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, xfrm4_gro_udp_encap_rcv);\n+\t\t\tWRITE_ONCE(up->gro_receive, xfrm4_gro_udp_encap_rcv);\n@@ -2915 +2920,4 @@\n-\t\t\tWRITE_ONCE(udp_sk(sk)->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);\n+\t\t\tWRITE_ONCE(up->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);\n+\n+\t\tif (udp_test_bit(ENCAP_ENABLED, sk))\n+\t\t\tudp_tunnel_update_gro_rcv(sk, true);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 38",
+          "filename": "net/ipv4/udp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 1,
+      "start_step": 38
+    },
+    {
+      "edits": [
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 46 rm #1",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 46
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 50 rm #1",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 50
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "whole_file_delete",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 56 rm #1",
+          "filename": "reproduce_crash.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 56
+        }
+      ],
+      "end_step": 56,
+      "revision_index": 2,
+      "start_step": 46
+    }
+  ],
+  "success_step": 56
+}

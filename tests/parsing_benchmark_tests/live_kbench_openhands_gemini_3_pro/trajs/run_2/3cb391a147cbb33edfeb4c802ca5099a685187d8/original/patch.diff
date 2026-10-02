@@ -1,0 +1,39 @@
+diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c
+index 3e6cb35baf25..fc797c702f2e 100644
+--- a/net/smc/af_smc.c
++++ b/net/smc/af_smc.c
+@@ -900,7 +900,9 @@ static int smc_switch_to_fallback(struct smc_sock *smc, int reason_code)
+ {
+ 	int rc = 0;
+ 
++	release_sock(&smc->sk);
+ 	mutex_lock(&smc->clcsock_release_lock);
++	lock_sock(&smc->sk);
+ 	if (!smc->clcsock) {
+ 		rc = -EBADF;
+ 		goto out;
+diff --git a/net/smc/smc_close.c b/net/smc/smc_close.c
+index 10219f55aad1..f3974dadc056 100644
+--- a/net/smc/smc_close.c
++++ b/net/smc/smc_close.c
+@@ -23,7 +23,7 @@
+ /* release the clcsock that is assigned to the smc_sock */
+ void smc_clcsock_release(struct smc_sock *smc)
+ {
+-	struct socket *tcp;
++	struct socket *tcp = NULL;
+ 
+ 	if (smc->listen_smc && current_work() != &smc->smc_listen_work)
+ 		cancel_work_sync(&smc->smc_listen_work);
+@@ -31,9 +31,10 @@ void smc_clcsock_release(struct smc_sock *smc)
+ 	if (smc->clcsock) {
+ 		tcp = smc->clcsock;
+ 		smc->clcsock = NULL;
+-		sock_release(tcp);
+ 	}
+ 	mutex_unlock(&smc->clcsock_release_lock);
++	if (tcp)
++		sock_release(tcp);
+ }
+ 
+ static void smc_close_cleanup_listen(struct sock *parent)

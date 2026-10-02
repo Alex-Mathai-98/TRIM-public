@@ -1,0 +1,170 @@
+{
+  "bug_id": "django__django-11333",
+  "short_path": [
+    [
+      {
+        "filename": "django/urls/resolvers.py",
+        "before": "@functools.lru_cache(maxsize=None)\ndef get_resolver(urlconf=None):\n    if urlconf is None:\n        urlconf = settings.ROOT_URLCONF\n    return URLResolver(RegexPattern(r'^/'), urlconf)",
+        "after": "@functools.lru_cache(maxsize=None)\ndef _get_resolver(urlconf):\n    return URLResolver(RegexPattern(r'^/'), urlconf)\n\n\ndef get_resolver(urlconf=None):\n    if urlconf is None:\n        urlconf = settings.ROOT_URLCONF\n    return _get_resolver(urlconf)",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/urls/base.py",
+        "before": "from .resolvers import get_ns_resolver, get_resolver",
+        "after": "from .resolvers import get_ns_resolver, get_resolver, _get_resolver",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/urls/base.py",
+        "before": "def clear_url_caches():\n    get_callable.cache_clear()\n    get_resolver.cache_clear()\n    get_ns_resolver.cache_clear()",
+        "after": "def clear_url_caches():\n    get_callable.cache_clear()\n    _get_resolver.cache_clear()\n    get_ns_resolver.cache_clear()",
+        "explanation": "classic_swe step 20 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/urls/base.py b/django/urls/base.py\nindex 0e1c3d909c..1b63eebf0a 100644\n--- a/django/urls/base.py\n+++ b/django/urls/base.py\n@@ -7,7 +7,7 @@ from django.utils.functional import lazy\n from django.utils.translation import override\n \n from .exceptions import NoReverseMatch, Resolver404\n-from .resolvers import get_ns_resolver, get_resolver\n+from .resolvers import get_ns_resolver, get_resolver, _get_resolver\n from .utils import get_callable\n \n # SCRIPT_NAME prefixes for each thread are stored here. If there's no entry for\n@@ -92,7 +92,7 @@ reverse_lazy = lazy(reverse, str)\n \n def clear_url_caches():\n     get_callable.cache_clear()\n-    get_resolver.cache_clear()\n+    _get_resolver.cache_clear()\n     get_ns_resolver.cache_clear()\n \n \ndiff --git a/django/urls/resolvers.py b/django/urls/resolvers.py\nindex 247e3680c0..0e3bd2ce0b 100644\n--- a/django/urls/resolvers.py\n+++ b/django/urls/resolvers.py\n@@ -64,10 +64,14 @@ class ResolverMatch:\n \n \n @functools.lru_cache(maxsize=None)\n+def _get_resolver(urlconf):\n+    return URLResolver(RegexPattern(r'^/'), urlconf)\n+\n+\n def get_resolver(urlconf=None):\n     if urlconf is None:\n         urlconf = settings.ROOT_URLCONF\n-    return URLResolver(RegexPattern(r'^/'), urlconf)\n+    return _get_resolver(urlconf)\n \n \n @functools.lru_cache(maxsize=None)\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4,
+      5,
+      6,
+      14
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      4,
+      5,
+      6
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      4,
+      5,
+      6
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      4,
+      5,
+      6
+    ],
+    "edit_list_after_refinement": [
+      4,
+      5,
+      6
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 3,
+  "reduction": "4_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/urls/resolvers.py",
+          "before": "@functools.lru_cache(maxsize=None)\ndef get_resolver(urlconf=None):\n    if urlconf is None:\n        urlconf = settings.ROOT_URLCONF\n    return URLResolver(RegexPattern(r'^/'), urlconf)",
+          "after": "@functools.lru_cache(maxsize=None)\ndef _get_resolver(urlconf):\n    return URLResolver(RegexPattern(r'^/'), urlconf)\n\n\ndef get_resolver(urlconf=None):\n    if urlconf is None:\n        urlconf = settings.ROOT_URLCONF\n    return _get_resolver(urlconf)",
+          "explanation": "classic_swe step 17 #1"
+        },
+        {
+          "filename": "django/urls/base.py",
+          "before": "from .resolvers import get_ns_resolver, get_resolver",
+          "after": "from .resolvers import get_ns_resolver, get_resolver, _get_resolver",
+          "explanation": "classic_swe step 19 #1"
+        },
+        {
+          "filename": "django/urls/base.py",
+          "before": "def clear_url_caches():\n    get_callable.cache_clear()\n    get_resolver.cache_clear()\n    get_ns_resolver.cache_clear()",
+          "after": "def clear_url_caches():\n    get_callable.cache_clear()\n    _get_resolver.cache_clear()\n    get_ns_resolver.cache_clear()",
+          "explanation": "classic_swe step 20 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/urls/resolvers.py",
+          "before": "def get_resolver(urlconf=None):\n    if urlconf is None:\n        urlconf = settings.ROOT_URLCONF\n    return _get_resolver(urlconf)",
+          "after": "def get_resolver(urlconf=None):\n    if urlconf is None:\n        from .base import get_urlconf\n        urlconf = get_urlconf()\n        if urlconf is None:\n            urlconf = settings.ROOT_URLCONF\n    return _get_resolver(urlconf)",
+          "explanation": "classic_swe step 45 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 2,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 2,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/urls/base.py",
+      "django/urls/resolvers.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/urls/base.py",
+      "django/urls/resolvers.py"
+    ],
+    "gold_files": [
+      "django/urls/base.py",
+      "django/urls/resolvers.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 3,
+    "minimized_added_lines": 7,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 7,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

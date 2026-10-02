@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct erofs_buf {\n\tstruct address_space *mapping;\n\tstruct page *page;\n\tstruct file *file;\n\tvoid *base;\n\tenum erofs_kmap_type kmap_type;\n};\n",
+          "before": "struct erofs_buf {\n\tstruct address_space *mapping;\n\tstruct page *page;\n\tvoid *base;\n\tenum erofs_kmap_type kmap_type;\n};\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/internal.h b/fs/erofs/internal.h\nindex 9aa4cb3d0b65..3a3f4b2945b1 100644\n--- a/fs/erofs/internal.h\n+++ b/fs/erofs/internal.h\n@@ -210,6 +210,7 @@ enum erofs_kmap_type {\n struct erofs_buf {\n \tstruct address_space *mapping;\n \tstruct page *page;\n+\tstruct file *file;\n \tvoid *base;\n \tenum erofs_kmap_type kmap_type;\n };",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "fs/erofs/internal.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        },
+        {
+          "after": "\tif (!folio || !folio_contains(folio, index)) {\n\t\terofs_put_metabuf(buf);\n\t\tfolio = read_mapping_folio(buf->mapping, index, buf->file);\n\t\tif (IS_ERR(folio))\n\t\t\treturn folio;\n\t}\n",
+          "before": "\tif (!folio || !folio_contains(folio, index)) {\n\t\terofs_put_metabuf(buf);\n\t\tfolio = read_mapping_folio(buf->mapping, index, NULL);\n\t\tif (IS_ERR(folio))\n\t\t\treturn folio;\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6355866220ff..1af2c3952159 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -38,7 +38,7 @@ void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset,\n \t}\n \tif (!folio || !folio_contains(folio, index)) {\n \t\terofs_put_metabuf(buf);\n-\t\tfolio = read_mapping_folio(buf->mapping, index, NULL);\n+\t\tfolio = read_mapping_folio(buf->mapping, index, buf->file);\n \t\tif (IS_ERR(folio))\n \t\t\treturn folio;\n \t}\ndiff --git a/fs/erofs/internal.h b/fs/erofs/internal.h\nindex 9aa4cb3d0b65..3a3f4b2945b1 100644\n--- a/fs/erofs/internal.h\n+++ b/fs/erofs/internal.h\n@@ -210,6 +210,7 @@ enum erofs_kmap_type {\n struct erofs_buf {\n \tstruct address_space *mapping;\n \tstruct page *page;\n+\tstruct file *file;\n \tvoid *base;\n \tenum erofs_kmap_type kmap_type;\n };",
+          "explanation": "classic_swe step 10 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 10
+        },
+        {
+          "after": "void erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb)\n{\n\tstruct erofs_sb_info *sbi = EROFS_SB(sb);\n\n\tbuf->file = NULL;\n\tif (erofs_is_fileio_mode(sbi)) {\n\t\tbuf->mapping = file_inode(sbi->fdev)->i_mapping;\n\t\tbuf->file = sbi->fdev;\n\t} else if (erofs_is_fscache_mode(sb))\n\t\tbuf->mapping = sbi->s_fscache->inode->i_mapping;\n\telse\n\t\tbuf->mapping = sb->s_bdev->bd_mapping;\n}\n",
+          "before": "void erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb)\n{\n\tstruct erofs_sb_info *sbi = EROFS_SB(sb);\n\n\tif (erofs_is_fileio_mode(sbi))\n\t\tbuf->mapping = file_inode(sbi->fdev)->i_mapping;\n\telse if (erofs_is_fscache_mode(sb))\n\t\tbuf->mapping = sbi->s_fscache->inode->i_mapping;\n\telse\n\t\tbuf->mapping = sb->s_bdev->bd_mapping;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/erofs/data.c b/fs/erofs/data.c\nindex 6355866220ff..3711142134a3 100644\n--- a/fs/erofs/data.c\n+++ b/fs/erofs/data.c\n@@ -38,7 +38,7 @@ void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset,\n \t}\n \tif (!folio || !folio_contains(folio, index)) {\n \t\terofs_put_metabuf(buf);\n-\t\tfolio = read_mapping_folio(buf->mapping, index, NULL);\n+\t\tfolio = read_mapping_folio(buf->mapping, index, buf->file);\n \t\tif (IS_ERR(folio))\n \t\t\treturn folio;\n \t}\n@@ -61,9 +61,11 @@ void erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb)\n {\n \tstruct erofs_sb_info *sbi = EROFS_SB(sb);\n \n-\tif (erofs_is_fileio_mode(sbi))\n+\tbuf->file = NULL;\n+\tif (erofs_is_fileio_mode(sbi)) {\n \t\tbuf->mapping = file_inode(sbi->fdev)->i_mapping;\n-\telse if (erofs_is_fscache_mode(sb))\n+\t\tbuf->file = sbi->fdev;\n+\t} else if (erofs_is_fscache_mode(sb))\n \t\tbuf->mapping = sbi->s_fscache->inode->i_mapping;\n \telse\n \t\tbuf->mapping = sb->s_bdev->bd_mapping;\ndiff --git a/fs/erofs/internal.h b/fs/erofs/internal.h\nindex 9aa4cb3d0b65..3a3f4b2945b1 100644\n--- a/fs/erofs/internal.h\n+++ b/fs/erofs/internal.h\n@@ -210,6 +210,7 @@ enum erofs_kmap_type {\n struct erofs_buf {\n \tstruct address_space *mapping;\n \tstruct page *page;\n+\tstruct file *file;\n \tvoid *base;\n \tenum erofs_kmap_type kmap_type;\n };",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "fs/erofs/data.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 9
+    }
+  ],
+  "success_step": 11
+}

@@ -1,0 +1,26 @@
+diff --git a/mm/gup.c b/mm/gup.c
+index adffe663594d..b6947be8ef8d 100644
+--- a/mm/gup.c
++++ b/mm/gup.c
+@@ -860,8 +860,19 @@ static struct page *follow_page_pte(struct vm_area_struct *vma,
+ 	}
+ 	folio = page_folio(page);
+ 
+-	if (!pte_write(pte) && gup_must_unshare(vma, flags, page)) {
+-		page = ERR_PTR(-EMLINK);
++	if ((!pte_write(pte) && gup_must_unshare(vma, flags, page)) ||
++	    (pte_write(pte) && page && PageAnon(page) && !PageAnonExclusive(page))) {
++		if (pte_write(pte)) {
++			ptep_set_wrprotect(mm, address, ptep);
++			flush_tlb_page(vma, address);
++			/*
++			 * We renamed the page as R/O, effectively unsharing it.
++			 * Return NULL so the fault handler can handle the CoW.
++			 */
++			page = NULL;
++		} else {
++			page = ERR_PTR(-EMLINK);
++		}
+ 		goto out;
+ 	}
+ 

@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "struct atm_dev *atm_dev_lookup(int number)\n{\n\tstruct atm_dev *dev;\n\n\tmutex_lock(&atm_dev_mutex);\n\tdev = __atm_dev_lookup(number);\n\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n\t\tatm_dev_put(dev);\n\t\tdev = NULL;\n\t}\n\tmutex_unlock(&atm_dev_mutex);\n\treturn dev;\n}",
+          "before": "struct atm_dev *atm_dev_lookup(int number)\n{\n\tstruct atm_dev *dev;\n\n\tmutex_lock(&atm_dev_mutex);\n\tdev = __atm_dev_lookup(number);\n\tmutex_unlock(&atm_dev_mutex);\n\treturn dev;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..f44c025d06d1 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }",
+          "explanation": "classic_swe step 14 #1",
+          "filename": "net/atm/resources.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 14
+        },
+        {
+          "after": "void atm_dev_deregister(struct atm_dev *dev)\n{\n\tBUG_ON(test_bit(ATM_DF_REMOVED, &dev->flags));\n\tset_bit(ATM_DF_REMOVED, &dev->flags);\n\n\t/*\n\t * if we remove current device from atm_devs list, new device\n\t * with same number can appear, such we need deregister proc,\n\t * release async all vccs and remove them from vccs list too\n\t */\n\tatm_dev_release_vccs(dev);\n\tatm_unregister_sysfs(dev);\n\tatm_proc_dev_deregister(dev);\n\n\tmutex_lock(&atm_dev_mutex);\n\tlist_del(&dev->dev_list);\n\tmutex_unlock(&atm_dev_mutex);\n\n\tatm_dev_put(dev);\n}",
+          "before": "void atm_dev_deregister(struct atm_dev *dev)\n{\n\tBUG_ON(test_bit(ATM_DF_REMOVED, &dev->flags));\n\tset_bit(ATM_DF_REMOVED, &dev->flags);\n\n\t/*\n\t * if we remove current device from atm_devs list, new device\n\t * with same number can appear, such we need deregister proc,\n\t * release async all vccs and remove them from vccs list too\n\t */\n\tmutex_lock(&atm_dev_mutex);\n\tlist_del(&dev->dev_list);\n\tmutex_unlock(&atm_dev_mutex);\n\n\tatm_dev_release_vccs(dev);\n\tatm_unregister_sysfs(dev);\n\tatm_proc_dev_deregister(dev);\n\n\tatm_dev_put(dev);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/atm/resources.c b/net/atm/resources.c\nindex 995d29e7fb13..108c64960f44 100644\n--- a/net/atm/resources.c\n+++ b/net/atm/resources.c\n@@ -68,6 +68,10 @@ struct atm_dev *atm_dev_lookup(int number)\n \n \tmutex_lock(&atm_dev_mutex);\n \tdev = __atm_dev_lookup(number);\n+\tif (dev && test_bit(ATM_DF_REMOVED, &dev->flags)) {\n+\t\tatm_dev_put(dev);\n+\t\tdev = NULL;\n+\t}\n \tmutex_unlock(&atm_dev_mutex);\n \treturn dev;\n }\n@@ -144,14 +148,14 @@ void atm_dev_deregister(struct atm_dev *dev)\n \t * with same number can appear, such we need deregister proc,\n \t * release async all vccs and remove them from vccs list too\n \t */\n-\tmutex_lock(&atm_dev_mutex);\n-\tlist_del(&dev->dev_list);\n-\tmutex_unlock(&atm_dev_mutex);\n-\n \tatm_dev_release_vccs(dev);\n \tatm_unregister_sysfs(dev);\n \tatm_proc_dev_deregister(dev);\n \n+\tmutex_lock(&atm_dev_mutex);\n+\tlist_del(&dev->dev_list);\n+\tmutex_unlock(&atm_dev_mutex);\n+\n \tatm_dev_put(dev);\n }\n EXPORT_SYMBOL(atm_dev_deregister);",
+          "explanation": "classic_swe step 15 #1",
+          "filename": "net/atm/resources.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 15
+        }
+      ],
+      "end_step": 15,
+      "revision_index": 0,
+      "start_step": 14
+    }
+  ],
+  "success_step": 15
+}

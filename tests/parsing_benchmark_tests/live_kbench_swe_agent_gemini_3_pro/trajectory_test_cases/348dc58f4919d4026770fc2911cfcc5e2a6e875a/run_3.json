@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tread_lock_bh(&prot->h.smc_hash->lock);\n\thead = &prot->h.smc_hash->ht;\n\tif (hlist_empty(head))\n\t\tgoto out;\n\n\tsk_for_each(sk, head) {\n\t\tif (!net_eq(sock_net(sk), net))\n\t\t\tcontinue;\n\t\tif (num < snum)\n\t\t\tgoto next;\n\t\trc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh), bc);\n\t\tif (rc < 0)\n\t\t\tgoto out;\nnext:\n\t\tnum++;\n\t}\n\nout:\n\tread_unlock_bh(&prot->h.smc_hash->lock);\n",
+          "before": "\tread_lock(&prot->h.smc_hash->lock);\n\thead = &prot->h.smc_hash->ht;\n\tif (hlist_empty(head))\n\t\tgoto out;\n\n\tsk_for_each(sk, head) {\n\t\tif (!net_eq(sock_net(sk), net))\n\t\t\tcontinue;\n\t\tif (num < snum)\n\t\t\tgoto next;\n\t\trc = __smc_diag_dump(sk, skb, cb, nlmsg_data(cb->nlh), bc);\n\t\tif (rc < 0)\n\t\t\tgoto out;\nnext:\n\t\tnum++;\n\t}\n\nout:\n\tread_unlock(&prot->h.smc_hash->lock);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c\nindex 8ed2f6689b01..ae0239ce4d5b 100644\n--- a/net/smc/smc_diag.c\n+++ b/net/smc/smc_diag.c\n@@ -204,7 +204,7 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,\n \tint rc = 0, num = 0;\n \tstruct sock *sk;\n \n-\tread_lock(&prot->h.smc_hash->lock);\n+\tread_lock_bh(&prot->h.smc_hash->lock);\n \thead = &prot->h.smc_hash->ht;\n \tif (hlist_empty(head))\n \t\tgoto out;\n@@ -222,7 +222,7 @@ static int smc_diag_dump_proto(struct proto *prot, struct sk_buff *skb,\n \t}\n \n out:\n-\tread_unlock(&prot->h.smc_hash->lock);\n+\tread_unlock_bh(&prot->h.smc_hash->lock);\n \tcb_ctx->pos[p_type] = num;\n \treturn rc;\n }",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "net/smc/smc_diag.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    }
+  ],
+  "success_step": 11
+}

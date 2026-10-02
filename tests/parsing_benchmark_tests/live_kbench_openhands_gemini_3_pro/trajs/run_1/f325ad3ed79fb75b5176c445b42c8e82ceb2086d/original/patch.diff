@@ -1,0 +1,49 @@
+diff --git a/drivers/net/wireless/virtual/mac80211_hwsim.c b/drivers/net/wireless/virtual/mac80211_hwsim.c
+index f6add19d1da1..fb7b9ca83ed4 100644
+--- a/drivers/net/wireless/virtual/mac80211_hwsim.c
++++ b/drivers/net/wireless/virtual/mac80211_hwsim.c
+@@ -2647,7 +2647,7 @@ mac80211_hwsim_sta_rc_update(struct ieee80211_hw *hw,
+ 				confbw = chanctx_conf->def.width;
+ 		}
+ 
+-		WARN(bw > hwsim_get_chanwidth(confbw),
++		WARN(hwsim_get_chanwidth(confbw) >= 20 && bw > hwsim_get_chanwidth(confbw),
+ 		     "intf %pM [link=%d]: bad STA %pM bandwidth %d MHz (%d) > channel config %d MHz (%d)\n",
+ 		     vif->addr, link_id, sta->addr, bw, sta->deflink.bandwidth,
+ 		     hwsim_get_chanwidth(data->bw), data->bw);
+diff --git a/net/mac80211/vht.c b/net/mac80211/vht.c
+index c5c5d16ed6c8..f0ad31efb2b7 100644
+--- a/net/mac80211/vht.c
++++ b/net/mac80211/vht.c
+@@ -653,6 +653,31 @@ u32 __ieee80211_vht_handle_opmode(struct ieee80211_sub_if_data *sdata,
+ 	u32 changed = 0;
+ 	u8 nss;
+ 
++	if (band != NL80211_BAND_2GHZ && band != NL80211_BAND_5GHZ)
++		return 0;
++
++	rcu_read_lock();
++	{
++		struct ieee80211_bss_conf *conf;
++
++		conf = rcu_dereference(sdata->vif.link_conf[link_sta->link_id]);
++
++		if (conf) {
++			switch (conf->chanreq.oper.width) {
++			case NL80211_CHAN_WIDTH_5:
++			case NL80211_CHAN_WIDTH_10:
++			case NL80211_CHAN_WIDTH_1:
++			case NL80211_CHAN_WIDTH_2:
++			case NL80211_CHAN_WIDTH_4:
++			case NL80211_CHAN_WIDTH_8:
++			case NL80211_CHAN_WIDTH_16:
++				rcu_read_unlock();
++				return 0;
++			}
++		}
++	}
++	rcu_read_unlock();
++
+ 	/* ignore - no support for BF yet */
+ 	if (opmode & IEEE80211_OPMODE_NOTIF_RX_NSS_TYPE_BF)
+ 		return 0;

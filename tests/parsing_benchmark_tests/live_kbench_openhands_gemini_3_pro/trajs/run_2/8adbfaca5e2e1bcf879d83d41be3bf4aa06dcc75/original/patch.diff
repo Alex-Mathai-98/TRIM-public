@@ -1,0 +1,85 @@
+diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
+index 14bf440ea4df..4ce143e28002 100644
+--- a/fs/ocfs2/inode.c
++++ b/fs/ocfs2/inode.c
+@@ -235,6 +235,9 @@ static int ocfs2_find_actor(struct inode *inode, void *opaque)
+ 	if (oi->ip_blkno != args->fi_blkno)
+ 		goto bail;
+ 
++	if (oi->ip_sysfile_type != args->fi_sysfile_type)
++		goto bail;
++
+ 	ret = 1;
+ bail:
+ 	return ret;
+@@ -256,6 +259,7 @@ static int ocfs2_init_locked_inode(struct inode *inode, void *opaque)
+ 
+ 	inode->i_ino = args->fi_ino;
+ 	OCFS2_I(inode)->ip_blkno = args->fi_blkno;
++	OCFS2_I(inode)->ip_sysfile_type = args->fi_sysfile_type;
+ #ifdef CONFIG_LOCKDEP
+ 	switch (args->fi_sysfile_type) {
+ 	case BAD_BLOCK_SYSTEM_INODE:
+@@ -531,7 +535,6 @@ static int ocfs2_read_locked_inode(struct inode *inode,
+ 	 * the journals, but it's easier and inexpensive to just flag
+ 	 * all system files similarly.
+ 	 */
+-	if (args->fi_flags & OCFS2_FI_FLAG_SYSFILE)
+ 		generation = osb->fs_generation;
+ 
+ 	ocfs2_inode_lock_res_init(&OCFS2_I(inode)->ip_inode_lockres,
+@@ -606,10 +609,12 @@ static int ocfs2_read_locked_inode(struct inode *inode,
+ 	 * understand whether it is asking for a system file inode or
+ 	 * not so the proper lock names can be built.
+ 	 */
+-	mlog_bug_on_msg(!!(fe->i_flags & cpu_to_le32(OCFS2_SYSTEM_FL)) !=
+-			!!(args->fi_flags & OCFS2_FI_FLAG_SYSFILE),
+-			"Inode %llu: system file state is ambiguous\n",
+-			(unsigned long long)args->fi_blkno);
++	if (!!(fe->i_flags & cpu_to_le32(OCFS2_SYSTEM_FL)) !=
++	    !!(args->fi_flags & OCFS2_FI_FLAG_SYSFILE)) {
++		mlog(ML_ERROR, "Inode %llu: system file state is ambiguous\n",
++		     (unsigned long long)args->fi_blkno);
++		goto bail;
++	}
+ 
+ 	if (S_ISCHR(le16_to_cpu(fe->i_mode)) ||
+ 	    S_ISBLK(le16_to_cpu(fe->i_mode)))
+diff --git a/fs/ocfs2/inode.h b/fs/ocfs2/inode.h
+index accf03d4765e..e838a850f57f 100644
+--- a/fs/ocfs2/inode.h
++++ b/fs/ocfs2/inode.h
+@@ -37,6 +37,7 @@ struct ocfs2_inode_info
+ 	struct mutex			ip_io_mutex;
+ 	u32				ip_flags; /* see below */
+ 	u32				ip_attr; /* inode attributes */
++        unsigned int                    ip_sysfile_type; /* only if OCFS2_INODE_SYSTEM_FILE */
+ 
+ 	/* Record unwritten extents during direct io. */
+ 	struct list_head		ip_unwritten_list;
+diff --git a/fs/ocfs2/move_extents.c b/fs/ocfs2/move_extents.c
+index 369c7d27befd..f4491879d358 100644
+--- a/fs/ocfs2/move_extents.c
++++ b/fs/ocfs2/move_extents.c
+@@ -629,15 +629,19 @@ static int ocfs2_move_extent(struct ocfs2_move_extents_context *context,
+ 		goto out;
+ 	}
+ 
++        inode_lock(tl_inode);
+ 	inode_lock(gb_inode);
+ 
+ 	ret = ocfs2_inode_lock(gb_inode, &gb_bh, 1);
+ 	if (ret) {
+ 		mlog_errno(ret);
+-		goto out_unlock_gb_mutex;
++		inode_unlock(gb_inode);
++		inode_unlock(tl_inode);
++		brelse(gb_bh);
++		iput(gb_inode);
++		goto out;
+ 	}
+ 
+-	inode_lock(tl_inode);
+ 
+ 	handle = ocfs2_start_trans(osb, credits);
+ 	if (IS_ERR(handle)) {

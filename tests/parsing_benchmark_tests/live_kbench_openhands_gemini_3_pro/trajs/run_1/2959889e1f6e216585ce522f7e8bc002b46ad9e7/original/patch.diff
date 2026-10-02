@@ -1,0 +1,59 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 162711cc5b20..f72257d69f6f 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -512,8 +512,8 @@ static inline void ocfs2_et_extent_map_insert(struct ocfs2_extent_tree *et,
+ 		et->et_ops->eo_extent_map_insert(et, rec);
+ }
+ 
+-static inline void ocfs2_et_extent_map_truncate(struct ocfs2_extent_tree *et,
+-						u32 clusters)
++void ocfs2_et_extent_map_truncate(struct ocfs2_extent_tree *et,
++				  u32 clusters)
+ {
+ 	if (et->et_ops->eo_extent_map_truncate)
+ 		et->et_ops->eo_extent_map_truncate(et, clusters);
+diff --git a/fs/ocfs2/alloc.h b/fs/ocfs2/alloc.h
+index 1c0c83362904..01a13effb8f7 100644
+--- a/fs/ocfs2/alloc.h
++++ b/fs/ocfs2/alloc.h
+@@ -68,6 +68,8 @@ void ocfs2_init_dx_root_extent_tree(struct ocfs2_extent_tree *et,
+ void ocfs2_init_refcount_extent_tree(struct ocfs2_extent_tree *et,
+ 				     struct ocfs2_caching_info *ci,
+ 				     struct buffer_head *bh);
++void ocfs2_et_extent_map_truncate(struct ocfs2_extent_tree *et, u32 clusters);
++
+ 
+ /*
+  * Read an extent block into *bh.  If *bh is NULL, a bh will be
+diff --git a/fs/ocfs2/refcounttree.c b/fs/ocfs2/refcounttree.c
+index 267b50e8e42e..fbb5f2bf75a1 100644
+--- a/fs/ocfs2/refcounttree.c
++++ b/fs/ocfs2/refcounttree.c
+@@ -2345,6 +2345,8 @@ static int ocfs2_mark_extent_refcounted(struct inode *inode,
+ 		goto out;
+ 	}
+ 
++	ocfs2_et_extent_map_truncate(et, 0);
++
+ 	ret = ocfs2_change_extent_flag(handle, et, cpos,
+ 				       len, phys, meta_ac, dealloc,
+ 				       OCFS2_EXT_REFCOUNTED, 0);
+@@ -3097,6 +3099,8 @@ static int ocfs2_clear_ext_refcount(handle_t *handle,
+ 	if (ret)
+ 		mlog_errno(ret);
+ 
++	ocfs2_et_extent_map_truncate(et, 0);
++
+ out:
+ 	ocfs2_free_path(path);
+ 	return ret;
+@@ -3452,6 +3456,8 @@ int ocfs2_refcount_cow(struct inode *inode,
+ 	u32 p_cluster, num_clusters;
+ 	unsigned int ext_flags;
+ 
++	ocfs2_extent_map_trunc(inode, 0);
++
+ 	while (write_len) {
+ 		ret = ocfs2_get_clusters(inode, cpos, &p_cluster,
+ 					 &num_clusters, &ext_flags);

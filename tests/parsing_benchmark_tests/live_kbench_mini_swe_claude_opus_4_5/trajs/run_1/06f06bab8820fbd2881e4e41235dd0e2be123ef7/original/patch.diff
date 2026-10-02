@@ -1,0 +1,68 @@
+diff --git a/fs/buffer.c b/fs/buffer.c
+index f8c9e5eb4685..032e8f17a576 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -207,6 +207,13 @@ __find_get_block_slow(struct block_device *bdev, sector_t block, bool atomic)
+ 	head = folio_buffers(folio);
+ 	if (!head)
+ 		goto out_unlock;
++	/*
++	 * Upon migration, the BH_Migrate flag is set first before
++	 * i_private_lock is released. This allows us to bail here
++	 * and not block on the folio lock.
++	 */
++	if (test_bit(BH_Migrate, &head->b_state))
++		goto out_unlock;
+ 	bh = head;
+ 	do {
+ 		if (!buffer_mapped(bh))
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index c791aa9a08da..bc5ec5ca3dfd 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -34,6 +34,7 @@ enum bh_state_bits {
+ 	BH_Meta,	/* Buffer contains metadata */
+ 	BH_Prio,	/* Buffer should be submitted with REQ_PRIO */
+ 	BH_Defer_Completion, /* Defer AIO completion to workqueue */
++	BH_Migrate,	/* Buffer is being migrated, do not touch */
+ 
+ 	BH_PrivateStart,/* not a state bit, but the first bit available
+ 			 * for private allocation by other entities
+diff --git a/mm/migrate.c b/mm/migrate.c
+index f3ee6d8d5e2e..db39571f6e8a 100644
+--- a/mm/migrate.c
++++ b/mm/migrate.c
+@@ -847,7 +847,10 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 	if (check_refs) {
+ 		bool busy;
+ 		bool invalidated = false;
++		bool migrating;
+ 
++		migrating = test_and_set_bit_lock(BH_Migrate, &head->b_state);
++		VM_WARN_ON_ONCE(migrating);
+ recheck_buffers:
+ 		busy = false;
+ 		spin_lock(&mapping->i_private_lock);
+@@ -859,12 +862,12 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 			}
+ 			bh = bh->b_this_page;
+ 		} while (bh != head);
++		spin_unlock(&mapping->i_private_lock);
+ 		if (busy) {
+ 			if (invalidated) {
+ 				rc = -EAGAIN;
+ 				goto unlock_buffers;
+ 			}
+-			spin_unlock(&mapping->i_private_lock);
+ 			invalidate_bh_lrus();
+ 			invalidated = true;
+ 			goto recheck_buffers;
+@@ -883,7 +886,7 @@ static int __buffer_migrate_folio(struct address_space *mapping,
+ 
+ unlock_buffers:
+ 	if (check_refs)
+-		spin_unlock(&mapping->i_private_lock);
++		clear_bit_unlock(BH_Migrate, &head->b_state);
+ 	bh = head;
+ 	do {
+ 		unlock_buffer(bh);

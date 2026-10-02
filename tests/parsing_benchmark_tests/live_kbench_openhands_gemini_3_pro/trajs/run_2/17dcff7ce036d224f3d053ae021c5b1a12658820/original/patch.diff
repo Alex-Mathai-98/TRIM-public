@@ -1,0 +1,30 @@
+diff --git a/fs/backing-file.c b/fs/backing-file.c
+index 526ddb4d6f76..7bf9a77a8a31 100644
+--- a/fs/backing-file.c
++++ b/fs/backing-file.c
+@@ -327,6 +327,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,
+ 		      struct backing_file_ctx *ctx)
+ {
+ 	const struct cred *old_cred;
++	struct file *user_file;
+ 	int ret;
+ 
+ 	if (WARN_ON_ONCE(!(file->f_mode & FMODE_BACKING)))
+@@ -335,6 +336,8 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,
+ 	if (!file->f_op->mmap)
+ 		return -ENODEV;
+ 
++	user_file = vma->vm_file;
++
+ 	vma_set_file(vma, file);
+ 
+ 	old_cred = override_creds_light(ctx->cred);
+@@ -342,7 +345,7 @@ int backing_file_mmap(struct file *file, struct vm_area_struct *vma,
+ 	revert_creds_light(old_cred);
+ 
+ 	if (ctx->accessed)
+-		ctx->accessed(vma->vm_file);
++		ctx->accessed(user_file);
+ 
+ 	return ret;
+ }

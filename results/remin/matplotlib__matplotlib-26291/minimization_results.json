@@ -1,0 +1,228 @@
+{
+  "bug_id": "matplotlib__matplotlib-26291",
+  "short_path": [
+    [
+      {
+        "filename": "lib/matplotlib/axes/_base.py",
+        "before": "    def set_axes_locator(self, locator):\n        \"\"\"\n        Set the Axes locator.\n\n        Parameters\n        ----------\n        locator : Callable[[Axes, Renderer], Bbox]\n        \"\"\"\n        self._axes_locator = locator\n        self.stale = True",
+        "after": "    def set_axes_locator(self, locator):\n        \"\"\"\n        Set the Axes locator.\n\n        Parameters\n        ----------\n        locator : Callable[[Axes, Renderer], Bbox]\n        \"\"\"\n        self._axes_locator = locator\n        # Set the figure on the locator if it has a set_figure method\n        if locator is not None and hasattr(locator, 'set_figure'):\n            locator.set_figure(self.figure)\n        self.stale = True",
+        "explanation": "classic_swe step 31 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/axes/_base.py",
+        "before": "    def set_figure(self, fig):\n        # docstring inherited\n        super().set_figure(fig)\n\n        self.bbox = mtransforms.TransformedBbox(self._position,\n                                                fig.transSubfigure)\n        # these will be updated later as data is added\n        self.dataLim = mtransforms.Bbox.null()\n        self._viewLim = mtransforms.Bbox.unit()\n        self.transScale = mtransforms.TransformWrapper(\n            mtransforms.IdentityTransform())\n\n        self._set_lim_and_transforms()",
+        "after": "    def set_figure(self, fig):\n        # docstring inherited\n        super().set_figure(fig)\n\n        self.bbox = mtransforms.TransformedBbox(self._position,\n                                                fig.transSubfigure)\n        # these will be updated later as data is added\n        self.dataLim = mtransforms.Bbox.null()\n        self._viewLim = mtransforms.Bbox.unit()\n        self.transScale = mtransforms.TransformWrapper(\n            mtransforms.IdentityTransform())\n\n        self._set_lim_and_transforms()\n        \n        # Set the figure on the axes locator if it exists and has a set_figure method\n        if (self._axes_locator is not None and \n            hasattr(self._axes_locator, 'set_figure')):\n            self._axes_locator.set_figure(fig)",
+        "explanation": "classic_swe step 32 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/axes/_base.py",
+        "before": "        self._set_lim_and_transforms()\n        \n        # Set the figure on the axes locator if it exists and has a set_figure method\n        if (self._axes_locator is not None and \n            hasattr(self._axes_locator, 'set_figure')):\n            self._axes_locator.set_figure(fig)",
+        "after": "        self._set_lim_and_transforms()\n        \n        # Set the figure on the axes locator if it exists and has a set_figure method\n        if (hasattr(self, '_axes_locator') and self._axes_locator is not None and \n            hasattr(self._axes_locator, 'set_figure')):\n            self._axes_locator.set_figure(fig)",
+        "explanation": "classic_swe step 35 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    def set_figure(self, fig):\n        \"\"\"\n        Set the `.Figure` for the `.OffsetBox` and all its children.\n\n        Parameters\n        ----------\n        fig : `~matplotlib.figure.Figure`\n        \"\"\"\n        super().set_figure(fig)\n        for c in self.get_children():\n            c.set_figure(fig)",
+        "after": "    def set_figure(self, fig):\n        \"\"\"\n        Set the `.Figure` for the `.OffsetBox` and all its children.\n\n        Parameters\n        ----------\n        fig : `~matplotlib.figure.Figure`\n        \"\"\"\n        super().set_figure(fig)\n        for c in self.get_children():\n            if c is not None:\n                c.set_figure(fig)",
+        "explanation": "classic_swe step 41 #1"
+      }
+    ],
+    [
+      {
+        "filename": "lib/matplotlib/offsetbox.py",
+        "before": "    @_compat_get_offset\n    def get_offset(self, bbox, renderer):\n        # docstring inherited\n        pad = (self.borderpad\n               * renderer.points_to_pixels(self.prop.get_size_in_points()))\n        bbox_to_anchor = self.get_bbox_to_anchor()\n        x0, y0 = _get_anchored_bbox(\n            self.loc, Bbox.from_bounds(0, 0, bbox.width, bbox.height),\n            bbox_to_anchor, pad)\n        return x0 - bbox.x0, y0 - bbox.y0",
+        "after": "    @_compat_get_offset\n    def get_offset(self, bbox, renderer):\n        # docstring inherited\n        if renderer is None:\n            renderer = self.figure._get_renderer()\n        pad = (self.borderpad\n               * renderer.points_to_pixels(self.prop.get_size_in_points()))\n        bbox_to_anchor = self.get_bbox_to_anchor()\n        x0, y0 = _get_anchored_bbox(\n            self.loc, Bbox.from_bounds(0, 0, bbox.width, bbox.height),\n            bbox_to_anchor, pad)\n        return x0 - bbox.x0, y0 - bbox.y0",
+        "explanation": "classic_swe step 47 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/lib/matplotlib/axes/_base.py b/lib/matplotlib/axes/_base.py\nindex d393cf209c..56a38aae40 100644\n--- a/lib/matplotlib/axes/_base.py\n+++ b/lib/matplotlib/axes/_base.py\n@@ -834,6 +834,11 @@ class _AxesBase(martist.Artist):\n             mtransforms.IdentityTransform())\n \n         self._set_lim_and_transforms()\n+        \n+        # Set the figure on the axes locator if it exists and has a set_figure method\n+        if (hasattr(self, '_axes_locator') and self._axes_locator is not None and \n+            hasattr(self._axes_locator, 'set_figure')):\n+            self._axes_locator.set_figure(fig)\n \n     def _unstale_viewLim(self):\n         # We should arrange to store this information once per share-group\n@@ -1165,6 +1170,9 @@ class _AxesBase(martist.Artist):\n         locator : Callable[[Axes, Renderer], Bbox]\n         \"\"\"\n         self._axes_locator = locator\n+        # Set the figure on the locator if it has a set_figure method\n+        if locator is not None and hasattr(locator, 'set_figure'):\n+            locator.set_figure(self.figure)\n         self.stale = True\n \n     def get_axes_locator(self):\ndiff --git a/lib/matplotlib/offsetbox.py b/lib/matplotlib/offsetbox.py\nindex 13af941552..6d21edbd55 100644\n--- a/lib/matplotlib/offsetbox.py\n+++ b/lib/matplotlib/offsetbox.py\n@@ -234,7 +234,8 @@ class OffsetBox(martist.Artist):\n         \"\"\"\n         super().set_figure(fig)\n         for c in self.get_children():\n-            c.set_figure(fig)\n+            if c is not None:\n+                c.set_figure(fig)\n \n     @martist.Artist.axes.setter\n     def axes(self, ax):\n@@ -1053,6 +1054,8 @@ class AnchoredOffsetbox(OffsetBox):\n     @_compat_get_offset\n     def get_offset(self, bbox, renderer):\n         # docstring inherited\n+        if renderer is None:\n+            renderer = self.figure._get_renderer()\n         pad = (self.borderpad\n                * renderer.points_to_pixels(self.prop.get_size_in_points()))\n         bbox_to_anchor = self.get_bbox_to_anchor()\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 2,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_still_crashes": 2,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 2,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "edit_list_after_file_min": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 7,
+    "greedy_removal_edit_not_applicable": 2,
+    "greedy_removal_edit_still_crashes": 1,
+    "edit_list_after_greedy": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "edit_list_after_refinement": [
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "edits_after_node_min": 5,
+    "edits_after_file_min": 5,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 5,
+  "reduction": "5_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/axes/_base.py",
+          "before": "    def set_axes_locator(self, locator):\n        \"\"\"\n        Set the Axes locator.\n\n        Parameters\n        ----------\n        locator : Callable[[Axes, Renderer], Bbox]\n        \"\"\"\n        self._axes_locator = locator\n        self.stale = True",
+          "after": "    def set_axes_locator(self, locator):\n        \"\"\"\n        Set the Axes locator.\n\n        Parameters\n        ----------\n        locator : Callable[[Axes, Renderer], Bbox]\n        \"\"\"\n        self._axes_locator = locator\n        # Set the figure on the locator if it has a set_figure method\n        if locator is not None and hasattr(locator, 'set_figure'):\n            locator.set_figure(self.figure)\n        self.stale = True",
+          "explanation": "classic_swe step 31 #1"
+        },
+        {
+          "filename": "lib/matplotlib/axes/_base.py",
+          "before": "    def set_figure(self, fig):\n        # docstring inherited\n        super().set_figure(fig)\n\n        self.bbox = mtransforms.TransformedBbox(self._position,\n                                                fig.transSubfigure)\n        # these will be updated later as data is added\n        self.dataLim = mtransforms.Bbox.null()\n        self._viewLim = mtransforms.Bbox.unit()\n        self.transScale = mtransforms.TransformWrapper(\n            mtransforms.IdentityTransform())\n\n        self._set_lim_and_transforms()",
+          "after": "    def set_figure(self, fig):\n        # docstring inherited\n        super().set_figure(fig)\n\n        self.bbox = mtransforms.TransformedBbox(self._position,\n                                                fig.transSubfigure)\n        # these will be updated later as data is added\n        self.dataLim = mtransforms.Bbox.null()\n        self._viewLim = mtransforms.Bbox.unit()\n        self.transScale = mtransforms.TransformWrapper(\n            mtransforms.IdentityTransform())\n\n        self._set_lim_and_transforms()\n        \n        # Set the figure on the axes locator if it exists and has a set_figure method\n        if (self._axes_locator is not None and \n            hasattr(self._axes_locator, 'set_figure')):\n            self._axes_locator.set_figure(fig)",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/axes/_base.py",
+          "before": "        self._set_lim_and_transforms()\n        \n        # Set the figure on the axes locator if it exists and has a set_figure method\n        if (self._axes_locator is not None and \n            hasattr(self._axes_locator, 'set_figure')):\n            self._axes_locator.set_figure(fig)",
+          "after": "        self._set_lim_and_transforms()\n        \n        # Set the figure on the axes locator if it exists and has a set_figure method\n        if (hasattr(self, '_axes_locator') and self._axes_locator is not None and \n            hasattr(self._axes_locator, 'set_figure')):\n            self._axes_locator.set_figure(fig)",
+          "explanation": "classic_swe step 35 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    def set_figure(self, fig):\n        \"\"\"\n        Set the `.Figure` for the `.OffsetBox` and all its children.\n\n        Parameters\n        ----------\n        fig : `~matplotlib.figure.Figure`\n        \"\"\"\n        super().set_figure(fig)\n        for c in self.get_children():\n            c.set_figure(fig)",
+          "after": "    def set_figure(self, fig):\n        \"\"\"\n        Set the `.Figure` for the `.OffsetBox` and all its children.\n\n        Parameters\n        ----------\n        fig : `~matplotlib.figure.Figure`\n        \"\"\"\n        super().set_figure(fig)\n        for c in self.get_children():\n            if c is not None:\n                c.set_figure(fig)",
+          "explanation": "classic_swe step 41 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/offsetbox.py",
+          "before": "    @_compat_get_offset\n    def get_offset(self, bbox, renderer):\n        # docstring inherited\n        pad = (self.borderpad\n               * renderer.points_to_pixels(self.prop.get_size_in_points()))\n        bbox_to_anchor = self.get_bbox_to_anchor()\n        x0, y0 = _get_anchored_bbox(\n            self.loc, Bbox.from_bounds(0, 0, bbox.width, bbox.height),\n            bbox_to_anchor, pad)\n        return x0 - bbox.x0, y0 - bbox.y0",
+          "after": "    @_compat_get_offset\n    def get_offset(self, bbox, renderer):\n        # docstring inherited\n        if renderer is None:\n            renderer = self.figure._get_renderer()\n        pad = (self.borderpad\n               * renderer.points_to_pixels(self.prop.get_size_in_points()))\n        bbox_to_anchor = self.get_bbox_to_anchor()\n        x0, y0 = _get_anchored_bbox(\n            self.loc, Bbox.from_bounds(0, 0, bbox.width, bbox.height),\n            bbox_to_anchor, pad)\n        return x0 - bbox.x0, y0 - bbox.y0",
+          "explanation": "classic_swe step 47 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 49,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 49,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [],
+    "extra_files_in_minimized": [
+      "lib/matplotlib/axes/_base.py",
+      "lib/matplotlib/offsetbox.py"
+    ],
+    "missing_files_vs_gold": [
+      "lib/mpl_toolkits/axes_grid1/inset_locator.py"
+    ],
+    "minimized_files": [
+      "lib/matplotlib/axes/_base.py",
+      "lib/matplotlib/offsetbox.py"
+    ],
+    "gold_files": [
+      "lib/mpl_toolkits/axes_grid1/inset_locator.py"
+    ],
+    "minimized_hunks": 4,
+    "gold_hunks": 1,
+    "minimized_added_lines": 12,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "no_overlap"
+}

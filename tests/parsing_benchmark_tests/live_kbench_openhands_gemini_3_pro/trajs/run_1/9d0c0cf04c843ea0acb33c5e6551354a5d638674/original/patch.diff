@@ -1,0 +1,37 @@
+diff --git a/drivers/usb/atm/cxacru.c b/drivers/usb/atm/cxacru.c
+index 0dd85d2635b9..611e982c4bda 100644
+--- a/drivers/usb/atm/cxacru.c
++++ b/drivers/usb/atm/cxacru.c
+@@ -1131,6 +1131,7 @@ static int cxacru_bind(struct usbatm_data *usbatm_instance,
+ 	struct cxacru_data *instance;
+ 	struct usb_device *usb_dev = interface_to_usbdev(intf);
+ 	struct usb_host_endpoint *cmd_ep = usb_dev->ep_in[CXACRU_EP_CMD];
++	struct usb_host_endpoint *out_ep = usb_dev->ep_out[CXACRU_EP_CMD];
+ 	struct usb_endpoint_descriptor *in, *out;
+ 	int ret;
+ 
+@@ -1172,8 +1173,22 @@ static int cxacru_bind(struct usbatm_data *usbatm_instance,
+ 		goto fail;
+ 	}
+ 
+-	if (!cmd_ep) {
+-		usb_dbg(usbatm_instance, "cxacru_bind: no command endpoint\n");
++	if (!cmd_ep || !out_ep) {
++		usb_dbg(usbatm_instance, "cxacru_bind: no command endpoints\n");
++		ret = -ENODEV;
++		goto fail;
++	}
++
++	if ((cmd_ep->desc.bmAttributes & USB_ENDPOINT_XFERTYPE_MASK) !=
++			(out_ep->desc.bmAttributes & USB_ENDPOINT_XFERTYPE_MASK)) {
++		usb_dbg(usbatm_instance, "cxacru_bind: conflicting endpoint types\n");
++		ret = -ENODEV;
++		goto fail;
++	}
++
++	if (usb_endpoint_xfer_isoc(&cmd_ep->desc) ||
++	    usb_endpoint_xfer_control(&cmd_ep->desc)) {
++		usb_dbg(usbatm_instance, "cxacru_bind: wrong endpoint type\n");
+ 		ret = -ENODEV;
+ 		goto fail;
+ 	}

@@ -1,0 +1,200 @@
+diff --git a/fs/bcachefs/alloc_background.c b/fs/bcachefs/alloc_background.c
+index e8c246e5803c..c00855db2b68 100644
+--- a/fs/bcachefs/alloc_background.c
++++ b/fs/bcachefs/alloc_background.c
+@@ -1338,7 +1338,7 @@ int bch2_check_alloc_hole_bucket_gens(struct btree_trans *trans,
+ 	return ret;
+ }
+ 
+-int bch2_check_discard_freespace_key(struct btree_trans *trans, struct btree_iter *iter, u8 *gen)
++int bch2_check_discard_freespace_key(struct btree_trans *trans, struct btree_iter *iter, u8 *gen, bool fix)
+ {
+ 	struct bch_fs *c = trans->c;
+ 	enum bch_data_type state = iter->btree_id == BTREE_ID_need_discard
+@@ -1359,8 +1359,11 @@ int bch2_check_discard_freespace_key(struct btree_trans *trans, struct btree_ite
+ 	if (!bch2_dev_bucket_exists(c, bucket)) {
+ 		if (fsck_err(trans, need_discard_freespace_key_to_invalid_dev_bucket,
+ 			     "entry in %s btree for nonexistant dev:bucket %llu:%llu",
+-			     bch2_btree_id_str(iter->btree_id), bucket.inode, bucket.offset))
++			     bch2_btree_id_str(iter->btree_id), bucket.inode, bucket.offset)) {
++			if (!fix)
++				return -BCH_ERR_bucket_alloc_fix_freespace;
+ 			goto delete;
++		}
+ 		ret = 1;
+ 		goto out;
+ 	}
+@@ -1378,8 +1381,11 @@ int bch2_check_discard_freespace_key(struct btree_trans *trans, struct btree_ite
+ 			     iter->pos.inode,
+ 			     iter->pos.offset,
+ 			     a->data_type == state,
+-			     genbits >> 56, alloc_freespace_genbits(*a) >> 56))
++			     genbits >> 56, alloc_freespace_genbits(*a) >> 56)) {
++			if (!fix)
++				return -BCH_ERR_bucket_alloc_fix_freespace;
+ 			goto delete;
++		}
+ 		ret = 1;
+ 		goto out;
+ 	}
+@@ -1402,7 +1408,7 @@ int bch2_check_discard_freespace_key(struct btree_trans *trans, struct btree_ite
+ static int bch2_check_discard_freespace_key_fsck(struct btree_trans *trans, struct btree_iter *iter)
+ {
+ 	u8 gen;
+-	int ret = bch2_check_discard_freespace_key(trans, iter, &gen);
++	int ret = bch2_check_discard_freespace_key(trans, iter, &gen, true);
+ 	return ret < 0 ? ret : 0;
+ }
+ 
+diff --git a/fs/bcachefs/alloc_background.h b/fs/bcachefs/alloc_background.h
+index 8cacddd188f4..de25ba4ee94b 100644
+--- a/fs/bcachefs/alloc_background.h
++++ b/fs/bcachefs/alloc_background.h
+@@ -310,7 +310,7 @@ int bch2_trigger_alloc(struct btree_trans *, enum btree_id, unsigned,
+ 		       struct bkey_s_c, struct bkey_s,
+ 		       enum btree_iter_update_trigger_flags);
+ 
+-int bch2_check_discard_freespace_key(struct btree_trans *, struct btree_iter *, u8 *);
++int bch2_check_discard_freespace_key(struct btree_trans *, struct btree_iter *, u8 *, bool);
+ int bch2_check_alloc_info(struct bch_fs *);
+ int bch2_check_alloc_to_lru_refs(struct bch_fs *);
+ void bch2_dev_do_discards(struct bch_dev *);
+diff --git a/fs/bcachefs/alloc_foreground.c b/fs/bcachefs/alloc_foreground.c
+index 4d1ff7f1f302..f09150b27cc3 100644
+--- a/fs/bcachefs/alloc_foreground.c
++++ b/fs/bcachefs/alloc_foreground.c
+@@ -281,7 +281,7 @@ static struct open_bucket *try_alloc_bucket(struct btree_trans *trans, struct bc
+ 	u64 b = freespace_iter->pos.offset & ~(~0ULL << 56);
+ 	u8 gen;
+ 
+-	int ret = bch2_check_discard_freespace_key(trans, freespace_iter, &gen);
++	int ret = bch2_check_discard_freespace_key(trans, freespace_iter, &gen, s->fix_errors);
+ 	if (ret < 0)
+ 		return ERR_PTR(ret);
+ 	if (ret)
+@@ -514,7 +514,7 @@ static struct open_bucket *bch2_bucket_alloc_trans(struct btree_trans *trans,
+ 				      enum bch_watermark watermark,
+ 				      enum bch_data_type data_type,
+ 				      struct closure *cl,
+-				      bool nowait,
++				      enum bch_write_flags flags,
+ 				      struct bch_dev_usage *usage)
+ {
+ 	struct bch_fs *c = trans->c;
+@@ -523,8 +523,9 @@ static struct open_bucket *bch2_bucket_alloc_trans(struct btree_trans *trans,
+ 	u64 avail;
+ 	struct bucket_alloc_state s = {
+ 		.btree_bitmap = data_type == BCH_DATA_btree,
++		.fix_errors = (flags & BCH_WRITE_FIX_FREESPACE) != 0,
+ 	};
+-	bool waiting = nowait;
++	bool waiting = flags & BCH_WRITE_ALLOC_NOWAIT;
+ again:
+ 	bch2_dev_usage_read_fast(ca, usage);
+ 	avail = dev_buckets_free(ca, *usage, watermark);
+@@ -720,7 +721,7 @@ int bch2_bucket_alloc_set_trans(struct btree_trans *trans,
+ 		}
+ 
+ 		ob = bch2_bucket_alloc_trans(trans, ca, watermark, data_type,
+-					     cl, flags & BCH_WRITE_ALLOC_NOWAIT, &usage);
++					     cl, flags, &usage);
+ 		if (!IS_ERR(ob))
+ 			bch2_dev_stripe_increment_inlined(ca, stripe, &usage);
+ 		bch2_dev_put(ca);
+@@ -1309,6 +1310,21 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,
+ 	struct write_point *wp;
+ 	struct open_bucket *ob;
+ 	struct open_buckets ptrs;
++
++#define ALLOC_BUCKETS(_trans, _ptrs, _wp, _devs, _target, _ec, _replicas, _eff, _cache, _wm, _flags, _cl) \
++({ \
++	int _ret = open_bucket_add_buckets(_trans, _ptrs, _wp, _devs, _target, _ec, _replicas, _eff, _cache, _wm, _flags, _cl); \
++	if (_ret == -BCH_ERR_bucket_alloc_fix_freespace) { \
++		if ((_wm) != BCH_WATERMARK_btree) { \
++			mutex_unlock(&(_wp)->lock); \
++			open_bucket_add_buckets(_trans, _ptrs, _wp, _devs, _target, _ec, _replicas, _eff, _cache, _wm, (_flags) | BCH_WRITE_FIX_FREESPACE, _cl); \
++			bch2_open_buckets_put((_trans)->c, _ptrs); \
++			goto retry; \
++		} \
++	} \
++	_ret; \
++})
++
+ 	unsigned nr_effective, write_points_nr;
+ 	bool have_cache;
+ 	int ret;
+@@ -1335,7 +1351,7 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,
+ 		have_cache = true;
+ 
+ 	if (target && !(flags & BCH_WRITE_ONLY_SPECIFIED_DEVS)) {
+-		ret = open_bucket_add_buckets(trans, &ptrs, wp, devs_have,
++		ret = ALLOC_BUCKETS(trans, &ptrs, wp, devs_have,
+ 					      target, erasure_code,
+ 					      nr_replicas, &nr_effective,
+ 					      &have_cache, watermark,
+@@ -1346,7 +1362,7 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,
+ 
+ 		/* Don't retry from all devices if we're out of open buckets: */
+ 		if (bch2_err_matches(ret, BCH_ERR_open_buckets_empty)) {
+-			int ret2 = open_bucket_add_buckets(trans, &ptrs, wp, devs_have,
++			int ret2 = ALLOC_BUCKETS(trans, &ptrs, wp, devs_have,
+ 					      target, erasure_code,
+ 					      nr_replicas, &nr_effective,
+ 					      &have_cache, watermark,
+@@ -1365,13 +1381,13 @@ int bch2_alloc_sectors_start_trans(struct btree_trans *trans,
+ 		 */
+ 		have_cache = true;
+ 
+-		ret = open_bucket_add_buckets(trans, &ptrs, wp, devs_have,
++		ret = ALLOC_BUCKETS(trans, &ptrs, wp, devs_have,
+ 					      0, erasure_code,
+ 					      nr_replicas, &nr_effective,
+ 					      &have_cache, watermark,
+ 					      flags, cl);
+ 	} else {
+-		ret = open_bucket_add_buckets(trans, &ptrs, wp, devs_have,
++		ret = ALLOC_BUCKETS(trans, &ptrs, wp, devs_have,
+ 					      target, erasure_code,
+ 					      nr_replicas, &nr_effective,
+ 					      &have_cache, watermark,
+diff --git a/fs/bcachefs/alloc_types.h b/fs/bcachefs/alloc_types.h
+index 9bbb28e90b93..e7c20c21cbde 100644
+--- a/fs/bcachefs/alloc_types.h
++++ b/fs/bcachefs/alloc_types.h
+@@ -14,6 +14,7 @@ struct bucket_alloc_state {
+ 		BTREE_BITMAP_YES,
+ 		BTREE_BITMAP_ANY,
+ 	}	btree_bitmap;
++	bool	fix_errors;
+ 
+ 	u64	buckets_seen;
+ 	u64	skipped_open;
+diff --git a/fs/bcachefs/errcode.h b/fs/bcachefs/errcode.h
+index a0cfc0f286f4..8da58a081764 100644
+--- a/fs/bcachefs/errcode.h
++++ b/fs/bcachefs/errcode.h
+@@ -277,7 +277,8 @@
+ 	x(BCH_ERR_nopromote,		nopromote_enomem)			\
+ 	x(0,				invalid_snapshot_node)			\
+ 	x(0,				option_needs_open_fs)			\
+-	x(0,				remove_disk_accounting_entry)
++	x(0,				remove_disk_accounting_entry)		\
++	x(0,				bucket_alloc_fix_freespace)
+ 
+ enum bch_errcode {
+ 	BCH_ERR_START		= 2048,
+diff --git a/fs/bcachefs/io_write.h b/fs/bcachefs/io_write.h
+index 5400ce94ee57..125db559406b 100644
+--- a/fs/bcachefs/io_write.h
++++ b/fs/bcachefs/io_write.h
+@@ -35,7 +35,9 @@ void bch2_submit_wbio_replicas(struct bch_write_bio *, struct bch_fs *,
+ 	x(IN_WORKER)			\
+ 	x(SUBMITTED)			\
+ 	x(IO_ERROR)			\
+-	x(CONVERT_UNWRITTEN)
++	x(CONVERT_UNWRITTEN)		\
++	x(FIX_FREESPACE)
++
+ 
+ enum __bch_write_flags {
+ #define x(f)	__BCH_WRITE_##f,

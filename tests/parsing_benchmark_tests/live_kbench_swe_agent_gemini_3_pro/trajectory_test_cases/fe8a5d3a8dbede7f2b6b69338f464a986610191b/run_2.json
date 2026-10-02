@@ -1,0 +1,323 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3
+    ],
+    [
+      4
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      7,
+      8
+    ],
+    [
+      9,
+      10
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static inline void skb_page_unref(netmem_ref netmem, bool recycle)\n{\n\tif (!netmem)\n\t\treturn;\n#ifdef CONFIG_PAGE_POOL\n",
+          "before": "static inline void skb_page_unref(netmem_ref netmem, bool recycle)\n{\n#ifdef CONFIG_PAGE_POOL\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/skbuff_ref.h b/include/linux/skbuff_ref.h\nindex 0f3c58007488..ab9188d75af6 100644\n--- a/include/linux/skbuff_ref.h\n+++ b/include/linux/skbuff_ref.h\n@@ -36,6 +36,8 @@ bool napi_pp_put_page(netmem_ref netmem);\n \n static inline void skb_page_unref(netmem_ref netmem, bool recycle)\n {\n+\tif (!netmem)\n+\t\treturn;\n #ifdef CONFIG_PAGE_POOL\n \tif (recycle && napi_pp_put_page(netmem))\n \t\treturn;",
+          "explanation": "classic_swe step 49 #1",
+          "filename": "include/linux/skbuff_ref.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 49
+        }
+      ],
+      "end_step": 49,
+      "revision_index": 0,
+      "start_step": 49
+    },
+    {
+      "edits": [
+        {
+          "after": "static inline void skb_page_unref(netmem_ref netmem, bool recycle)\n{\n#ifdef CONFIG_PAGE_POOL\n",
+          "before": "static inline void skb_page_unref(netmem_ref netmem, bool recycle)\n{\n\tif (!netmem)\n\t\treturn;\n#ifdef CONFIG_PAGE_POOL\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 53 #1",
+          "filename": "include/linux/skbuff_ref.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        },
+        {
+          "after": "\tfor (i = 0; i < shinfo->nr_frags; i++) {\n\t\tif (shinfo->frags[i].netmem)\n\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n\t}\n",
+          "before": "\tfor (i = 0; i < shinfo->nr_frags; i++)\n\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..1e3b77290c63 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -1115,8 +1115,10 @@ static void skb_release_data(struct sk_buff *skb, enum skb_drop_reason reason)\n \t\t\tgoto free_head;\n \t}\n \n-\tfor (i = 0; i < shinfo->nr_frags; i++)\n-\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n+\tfor (i = 0; i < shinfo->nr_frags; i++) {\n+\t\tif (shinfo->frags[i].netmem)\n+\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n+\t}\n \n free_head:\n \tif (shinfo->frag_list)",
+          "explanation": "classic_swe step 56 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 56
+        }
+      ],
+      "end_step": 56,
+      "revision_index": 1,
+      "start_step": 53
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++)\n\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n",
+          "before": "\tfor (i = 0; i < shinfo->nr_frags; i++) {\n\t\tif (shinfo->frags[i].netmem)\n\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..15368fa4af93 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -1115,7 +1115,7 @@ static void skb_release_data(struct sk_buff *skb, enum skb_drop_reason reason)\n \t\t\tgoto free_head;\n \t}\n \n-\tfor (i = 0; i < shinfo->nr_frags; i++)\n+\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++)\n \t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n \n free_head:",
+          "explanation": "classic_swe step 60 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 60
+        }
+      ],
+      "end_step": 60,
+      "revision_index": 2,
+      "start_step": 60
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++) {\n\t\tif (shinfo->frags[i].netmem)\n\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n\t}\n",
+          "before": "\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++)\n\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..15e65f96f702 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -1115,8 +1115,10 @@ static void skb_release_data(struct sk_buff *skb, enum skb_drop_reason reason)\n \t\t\tgoto free_head;\n \t}\n \n-\tfor (i = 0; i < shinfo->nr_frags; i++)\n-\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n+\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++) {\n+\t\tif (shinfo->frags[i].netmem)\n+\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n+\t}\n \n free_head:\n \tif (shinfo->frag_list)",
+          "explanation": "classic_swe step 62 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 62
+        }
+      ],
+      "end_step": 62,
+      "revision_index": 3,
+      "start_step": 62
+    },
+    {
+      "edits": [
+        {
+          "after": "\tfor (i = 0; i < shinfo->nr_frags; i++)\n\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n",
+          "before": "\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++) {\n\t\tif (shinfo->frags[i].netmem)\n\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 65 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 5,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 65
+        },
+        {
+          "after": "\tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n\n\tif (frag_limit > MAX_SKB_FRAGS)\n\t\tfrag_limit = MAX_SKB_FRAGS;\n",
+          "before": "\tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..1b5c6242cade 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -7195,6 +7195,9 @@ ssize_t skb_splice_from_iter(struct sk_buff *skb, struct iov_iter *iter,\n \t\t\t     ssize_t maxsize, gfp_t gfp)\n {\n \tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n+\n+\tif (frag_limit > MAX_SKB_FRAGS)\n+\t\tfrag_limit = MAX_SKB_FRAGS;\n \tstruct page *pages[8], **ppages = pages;\n \tssize_t spliced = 0, ret = 0;\n \tunsigned int i;",
+          "explanation": "classic_swe step 67 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 6,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        }
+      ],
+      "end_step": 67,
+      "revision_index": 4,
+      "start_step": 65
+    },
+    {
+      "edits": [
+        {
+          "after": "\tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n",
+          "before": "\tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n\n\tif (frag_limit > MAX_SKB_FRAGS)\n\t\tfrag_limit = MAX_SKB_FRAGS;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 70 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 7,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 70
+        },
+        {
+          "after": "int skb_append_pagefrags(struct sk_buff *skb, struct page *page,\n\t\t\t int offset, size_t size, size_t max_frags)\n{\n\tint i = skb_shinfo(skb)->nr_frags;\n\n\tif (max_frags > MAX_SKB_FRAGS)\n\t\tmax_frags = MAX_SKB_FRAGS;\n\n\tif (skb_can_coalesce(skb, i, page, offset)) {\n",
+          "before": "int skb_append_pagefrags(struct sk_buff *skb, struct page *page,\n\t\t\t int offset, size_t size, size_t max_frags)\n{\n\tint i = skb_shinfo(skb)->nr_frags;\n\n\tif (skb_can_coalesce(skb, i, page, offset)) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..d351cbb1b16c 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -4539,6 +4539,9 @@ int skb_append_pagefrags(struct sk_buff *skb, struct page *page,\n {\n \tint i = skb_shinfo(skb)->nr_frags;\n \n+\tif (max_frags > MAX_SKB_FRAGS)\n+\t\tmax_frags = MAX_SKB_FRAGS;\n+\n \tif (skb_can_coalesce(skb, i, page, offset)) {\n \t\tskb_frag_size_add(&skb_shinfo(skb)->frags[i - 1], size);\n \t} else if (i < max_frags) {",
+          "explanation": "classic_swe step 72 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 8,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 72
+        }
+      ],
+      "end_step": 72,
+      "revision_index": 5,
+      "start_step": 70
+    },
+    {
+      "edits": [
+        {
+          "after": "\tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n\n\tif (frag_limit > MAX_SKB_FRAGS)\n\t\tfrag_limit = MAX_SKB_FRAGS;\n",
+          "before": "\tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..85ac9372ce9a 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -4539,6 +4539,9 @@ int skb_append_pagefrags(struct sk_buff *skb, struct page *page,\n {\n \tint i = skb_shinfo(skb)->nr_frags;\n \n+\tif (max_frags > MAX_SKB_FRAGS)\n+\t\tmax_frags = MAX_SKB_FRAGS;\n+\n \tif (skb_can_coalesce(skb, i, page, offset)) {\n \t\tskb_frag_size_add(&skb_shinfo(skb)->frags[i - 1], size);\n \t} else if (i < max_frags) {\n@@ -7195,6 +7198,9 @@ ssize_t skb_splice_from_iter(struct sk_buff *skb, struct iov_iter *iter,\n \t\t\t     ssize_t maxsize, gfp_t gfp)\n {\n \tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n+\n+\tif (frag_limit > MAX_SKB_FRAGS)\n+\t\tfrag_limit = MAX_SKB_FRAGS;\n \tstruct page *pages[8], **ppages = pages;\n \tssize_t spliced = 0, ret = 0;\n \tunsigned int i;",
+          "explanation": "classic_swe step 77 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 9,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 77
+        },
+        {
+          "after": "\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++) {\n\t\tif (shinfo->frags[i].netmem)\n\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n\t}\n",
+          "before": "\tfor (i = 0; i < shinfo->nr_frags; i++)\n\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/skbuff.c b/net/core/skbuff.c\nindex 74149dc4ee31..2fa1ccf4808f 100644\n--- a/net/core/skbuff.c\n+++ b/net/core/skbuff.c\n@@ -1115,8 +1115,10 @@ static void skb_release_data(struct sk_buff *skb, enum skb_drop_reason reason)\n \t\t\tgoto free_head;\n \t}\n \n-\tfor (i = 0; i < shinfo->nr_frags; i++)\n-\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n+\tfor (i = 0; i < shinfo->nr_frags && i < MAX_SKB_FRAGS; i++) {\n+\t\tif (shinfo->frags[i].netmem)\n+\t\t\t__skb_frag_unref(&shinfo->frags[i], skb->pp_recycle);\n+\t}\n \n free_head:\n \tif (shinfo->frag_list)\n@@ -4539,6 +4541,9 @@ int skb_append_pagefrags(struct sk_buff *skb, struct page *page,\n {\n \tint i = skb_shinfo(skb)->nr_frags;\n \n+\tif (max_frags > MAX_SKB_FRAGS)\n+\t\tmax_frags = MAX_SKB_FRAGS;\n+\n \tif (skb_can_coalesce(skb, i, page, offset)) {\n \t\tskb_frag_size_add(&skb_shinfo(skb)->frags[i - 1], size);\n \t} else if (i < max_frags) {\n@@ -7195,6 +7200,9 @@ ssize_t skb_splice_from_iter(struct sk_buff *skb, struct iov_iter *iter,\n \t\t\t     ssize_t maxsize, gfp_t gfp)\n {\n \tsize_t frag_limit = READ_ONCE(net_hotdata.sysctl_max_skb_frags);\n+\n+\tif (frag_limit > MAX_SKB_FRAGS)\n+\t\tfrag_limit = MAX_SKB_FRAGS;\n \tstruct page *pages[8], **ppages = pages;\n \tssize_t spliced = 0, ret = 0;\n \tunsigned int i;",
+          "explanation": "classic_swe step 78 #1",
+          "filename": "net/core/skbuff.c",
+          "global_edit_idx": 10,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 78
+        }
+      ],
+      "end_step": 78,
+      "revision_index": 6,
+      "start_step": 77
+    }
+  ],
+  "success_step": 78
+}

@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nextern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);\nextern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);\n\n",
+          "before": "\nextern struct afs_cell *afs_get_cell(struct afs_cell *, enum afs_cell_trace);\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/afs/internal.h\n+++ /linux/fs/afs/internal.h\n@@ -1049,0 +1050 @@\n+extern struct afs_cell *afs_try_get_cell(struct afs_cell *, enum afs_cell_trace);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 53",
+          "filename": "fs/afs/internal.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        },
+        {
+          "after": "\n\n/*\n * Get a reference on a cell record if it is not zero.\n */\nstruct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n{\n\tif (refcount_inc_not_zero(&cell->ref)) {\n\t\ttrace_afs_cell(cell->debug_id, refcount_read(&cell->ref),\n\t\t\t       atomic_read(&cell->active), reason);\n\t\treturn cell;\n\t}\n\treturn NULL;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/afs/cell.c\n+++ /linux/fs/afs/cell.c\n@@ -550,0 +551,15 @@\n+\n+\n+/*\n+ * Get a reference on a cell record if it is not zero.\n+ */\n+struct afs_cell *afs_try_get_cell(struct afs_cell *cell, enum afs_cell_trace reason)\n+{\n+\tif (refcount_inc_not_zero(&cell->ref)) {\n+\t\ttrace_afs_cell(cell->debug_id, refcount_read(&cell->ref),\n+\t\t\t       atomic_read(&cell->active), reason);\n+\t\treturn cell;\n+\t}\n+\treturn NULL;\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 59",
+          "filename": "fs/afs/cell.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 551,
+          "step_index": 59
+        },
+        {
+          "after": "",
+          "before": "",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "delete_range",
+          "ending_line": 356,
+          "expected_diff": null,
+          "explanation": "openhands step 67 sed d #1",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 283,
+          "step_index": 67
+        },
+        {
+          "after": "static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)\n{\n\tstruct afs_cell *cell;\n\tloff_t newpos;\n\tunsigned int ix;\n\n\t_enter(\"%llu\", ctx->pos);\n\n\tfor (;;) {\n\t\trcu_read_lock();\n\t\tix = ctx->pos >> 1;\n\t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n\t\tif (!cell) {\n\t\t\trcu_read_unlock();\n\t\t\treturn 0;\n\t\t}\n\n\t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD ||\n\t\t    !afs_try_get_cell(cell, afs_cell_trace_get_atcell)) {\n\t\t\trcu_read_unlock();\n\t\t\tctx->pos = (ix + 1) << 1;\n\t\t\tcontinue;\n\t\t}\n\t\trcu_read_unlock();\n\n\t\tnewpos = ix << 1;\n\t\tif (newpos > ctx->pos)\n\t\t\tctx->pos = newpos;\n\n\t\t_debug(\"pos %llu -> cell %u\", ctx->pos, cell->dynroot_ino);\n\n\t\tif ((ctx->pos & 1) == 0) {\n\t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n\t\t\t\t      cell->dynroot_ino, DT_DIR)) {\n\t\t\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\t\t\t\treturn 0;\n\t\t\t}\n\t\t\tctx->pos++;\n\t\t}\n\t\tif ((ctx->pos & 1) == 1) {\n\t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n\t\t\t\t      cell->dynroot_ino + 1, DT_DIR)) {\n\t\t\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\t\t\t\treturn 0;\n\t\t\t}\n\t\t\tctx->pos++;\n\t\t}\n\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n\t}\n\treturn 0;\n}\n\n/*\n * Read the AFS dynamic root directory.  This produces a list of cellnames,\n * dotted and undotted, along with @cell and .@cell links if configured.\n */\nstatic int afs_dynroot_readdir(struct file *file, struct dir_context *ctx)\n{\n\tstruct afs_net *net = afs_d2net(file->f_path.dentry);\n\tint ret = 0;\n\n\tif (!dir_emit_dots(file, ctx))\n\t\treturn 0;\n\n\tif (ctx->pos == 2) {\n\t\tif (rcu_access_pointer(net->ws_cell) &&\n\t\t    !dir_emit(ctx, \"@cell\", 5, 2, DT_LNK))\n\t\t\treturn 0;\n\t\tctx->pos = 3;\n\t}\n\tif (ctx->pos == 3) {\n\t\tif (rcu_access_pointer(net->ws_cell) &&\n\t\t    !dir_emit(ctx, \".@cell\", 6, 3, DT_LNK))\n\t\t\treturn 0;\n\t\tctx->pos = 4;\n\t}\n\n\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {\n\t\tret = afs_dynroot_readdir_cells(net, ctx);\n\t}\n\treturn ret;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/afs/dynroot.c\n+++ /linux/fs/afs/dynroot.c\n@@ -282,0 +283,84 @@\n+static int afs_dynroot_readdir_cells(struct afs_net *net, struct dir_context *ctx)\n+{\n+\tstruct afs_cell *cell;\n+\tloff_t newpos;\n+\tunsigned int ix;\n+\n+\t_enter(\"%llu\", ctx->pos);\n+\n+\tfor (;;) {\n+\t\trcu_read_lock();\n+\t\tix = ctx->pos >> 1;\n+\t\tcell = idr_get_next(&net->cells_dyn_ino, &ix);\n+\t\tif (!cell) {\n+\t\t\trcu_read_unlock();\n+\t\t\treturn 0;\n+\t\t}\n+\n+\t\tif (READ_ONCE(cell->state) == AFS_CELL_REMOVING ||\n+\t\t    READ_ONCE(cell->state) == AFS_CELL_DEAD ||\n+\t\t    !afs_try_get_cell(cell, afs_cell_trace_get_atcell)) {\n+\t\t\trcu_read_unlock();\n+\t\t\tctx->pos = (ix + 1) << 1;\n+\t\t\tcontinue;\n+\t\t}\n+\t\trcu_read_unlock();\n+\n+\t\tnewpos = ix << 1;\n+\t\tif (newpos > ctx->pos)\n+\t\t\tctx->pos = newpos;\n+\n+\t\t_debug(\"pos %llu -> cell %u\", ctx->pos, cell->dynroot_ino);\n+\n+\t\tif ((ctx->pos & 1) == 0) {\n+\t\t\tif (!dir_emit(ctx, cell->name, cell->name_len,\n+\t\t\t\t      cell->dynroot_ino, DT_DIR)) {\n+\t\t\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n+\t\t\t\treturn 0;\n+\t\t\t}\n+\t\t\tctx->pos++;\n+\t\t}\n+\t\tif ((ctx->pos & 1) == 1) {\n+\t\t\tif (!dir_emit(ctx, cell->name - 1, cell->name_len + 1,\n+\t\t\t\t      cell->dynroot_ino + 1, DT_DIR)) {\n+\t\t\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n+\t\t\t\treturn 0;\n+\t\t\t}\n+\t\t\tctx->pos++;\n+\t\t}\n+\t\tafs_put_cell(cell, afs_cell_trace_put_atcell);\n+\t}\n+\treturn 0;\n+}\n+\n+/*\n+ * Read the AFS dynamic root directory.  This produces a list of cellnames,\n+ * dotted and undotted, along with @cell and .@cell links if configured.\n+ */\n+static int afs_dynroot_readdir(struct file *file, struct dir_context *ctx)\n+{\n+\tstruct afs_net *net = afs_d2net(file->f_path.dentry);\n+\tint ret = 0;\n+\n+\tif (!dir_emit_dots(file, ctx))\n+\t\treturn 0;\n+\n+\tif (ctx->pos == 2) {\n+\t\tif (rcu_access_pointer(net->ws_cell) &&\n+\t\t    !dir_emit(ctx, \"@cell\", 5, 2, DT_LNK))\n+\t\t\treturn 0;\n+\t\tctx->pos = 3;\n+\t}\n+\tif (ctx->pos == 3) {\n+\t\tif (rcu_access_pointer(net->ws_cell) &&\n+\t\t    !dir_emit(ctx, \".@cell\", 6, 3, DT_LNK))\n+\t\t\treturn 0;\n+\t\tctx->pos = 4;\n+\t}\n+\n+\tif ((unsigned long long)ctx->pos <= AFS_MAX_DYNROOT_CELL_INO) {\n+\t\tret = afs_dynroot_readdir_cells(net, ctx);\n+\t}\n+\treturn ret;\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 69",
+          "filename": "fs/afs/dynroot.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 283,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "revision_index": 0,
+      "start_step": 53
+    }
+  ],
+  "success_step": 69
+}

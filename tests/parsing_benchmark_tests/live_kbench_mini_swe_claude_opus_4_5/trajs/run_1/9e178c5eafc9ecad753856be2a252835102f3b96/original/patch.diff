@@ -1,0 +1,38 @@
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index d480b94117cd..2a719d9bae52 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1521,7 +1521,6 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 			struct block_device *fs_dev,
+ 			unsigned long long start, int len, int blocksize)
+ {
+-	static struct lock_class_key jbd2_trans_commit_key;
+ 	journal_t *journal;
+ 	int err;
+ 	int n;
+@@ -1560,7 +1559,7 @@ static journal_t *journal_init_common(struct block_device *bdev,
+ 	journal->j_max_batch_time = 15000; /* 15ms */
+ 	atomic_set(&journal->j_reserved_credits, 0);
+ 	lockdep_init_map(&journal->j_trans_commit_map, "jbd2_handle",
+-			 &jbd2_trans_commit_key, 0);
++			 &journal->j_trans_commit_key, 0);
+ 
+ 	/* The journal is marked for error until we succeed with recovery! */
+ 	journal->j_flags = JBD2_ABORT;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 43b9297fe8a7..7df0f1408088 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1252,6 +1252,12 @@ struct journal_s
+ 	 * require transaction commit to finish.
+ 	 */
+ 	struct lockdep_map	j_trans_commit_map;
++	/**
++	 * @j_trans_commit_key:
++	 *
++	 * Lock class key for j_trans_commit_map, unique to each journal.
++	 */
++	struct lock_class_key	j_trans_commit_key;
+ #endif
+ 
+ 	/**

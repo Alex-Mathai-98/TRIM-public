@@ -1,0 +1,103 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (b->c.btree_id >= 64)\n\t\treturn false;\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n\t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n\t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n}",
+          "before": "\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n\t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n\t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/btree_cache.c\n+++ /linux/fs/bcachefs/btree_cache.c\n@@ -210,0 +211,3 @@\n+\n+\tif (b->c.btree_id >= 64)\n+\t\treturn false;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 95",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 95
+        }
+      ],
+      "end_step": 95,
+      "revision_index": 0,
+      "start_step": 95
+    },
+    {
+      "edits": [
+        {
+          "after": "\nint bch2_btree_lost_data(struct bch_fs *c,\n\t\t\t struct printbuf *msg,\n\t\t\t enum btree_id btree)\n{\n\tint ret = 0;\n\n\tmutex_lock(&c->sb_lock);\n\tstruct bch_sb_field_ext *ext = bch2_sb_field_get(c->disk_sb.sb, ext);\n\n\tif (btree < 64) {\n\t\tu64 b = BIT_ULL(btree);\n\n\t\tif (!(c->sb.btrees_lost_data & b)) {\n\t\t\tprt_printf(msg, \"flagging btree \");\n\t\t\tbch2_btree_id_to_text(msg, btree);\n\t\t\tprt_printf(msg, \" lost data\\n\");\n\n\t\t\text->btrees_lost_data |= cpu_to_le64(b);\n\t\t}\n\t} else {\n\t\tprt_printf(msg, \"flagging btree \");\n\t\tbch2_btree_id_to_text(msg, btree);\n\t\tprt_printf(msg, \" lost data\\n\");\n\t}\n",
+          "before": "\nint bch2_btree_lost_data(struct bch_fs *c,\n\t\t\t struct printbuf *msg,\n\t\t\t enum btree_id btree)\n{\n\tu64 b = BIT_ULL(btree);\n\tint ret = 0;\n\n\tmutex_lock(&c->sb_lock);\n\tstruct bch_sb_field_ext *ext = bch2_sb_field_get(c->disk_sb.sb, ext);\n\n\tif (!(c->sb.btrees_lost_data & b)) {\n\t\tprt_printf(msg, \"flagging btree \");\n\t\tbch2_btree_id_to_text(msg, btree);\n\t\tprt_printf(msg, \" lost data\\n\");\n\n\t\text->btrees_lost_data |= cpu_to_le64(b);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/recovery.c\n+++ /linux/fs/bcachefs/recovery.c\n@@ -40 +39,0 @@\n-\tu64 b = BIT_ULL(btree);\n@@ -46 +45,11 @@\n-\tif (!(c->sb.btrees_lost_data & b)) {\n+\tif (btree < 64) {\n+\t\tu64 b = BIT_ULL(btree);\n+\n+\t\tif (!(c->sb.btrees_lost_data & b)) {\n+\t\t\tprt_printf(msg, \"flagging btree \");\n+\t\t\tbch2_btree_id_to_text(msg, btree);\n+\t\t\tprt_printf(msg, \" lost data\\n\");\n+\n+\t\t\text->btrees_lost_data |= cpu_to_le64(b);\n+\t\t}\n+\t} else {\n@@ -50,2 +58,0 @@\n-\n-\t\text->btrees_lost_data |= cpu_to_le64(b);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 142",
+          "filename": "fs/bcachefs/recovery.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 142
+        }
+      ],
+      "end_step": 142,
+      "revision_index": 1,
+      "start_step": 142
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\t\tstruct btree_root *r = bch2_btree_id_root(c, i);\n\t\tstruct btree *b = r->b;\n\n\t\tif (!b)\n\t\t\tcontinue;\n\n\t\tbtree_node_lock_nopath_nofail(trans, &b->c, SIX_LOCK_read);\n",
+          "before": "\n\t\tstruct btree_root *r = bch2_btree_id_root(c, i);\n\t\tstruct btree *b = r->b;\n\n\t\tbtree_node_lock_nopath_nofail(trans, &b->c, SIX_LOCK_read);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/bcachefs/btree_gc.c\n+++ /linux/fs/bcachefs/btree_gc.c\n@@ -600,0 +601,3 @@\n+\t\tif (!b)\n+\t\t\tcontinue;\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 159",
+          "filename": "fs/bcachefs/btree_gc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 159
+        }
+      ],
+      "end_step": 159,
+      "revision_index": 2,
+      "start_step": 159
+    }
+  ],
+  "success_step": 159
+}

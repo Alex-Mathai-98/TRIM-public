@@ -1,0 +1,54 @@
+diff --git a/fs/ext4/inline.c b/fs/ext4/inline.c
+index fbc1c84b555c..22ab551338d8 100644
+--- a/fs/ext4/inline.c
++++ b/fs/ext4/inline.c
+@@ -164,14 +164,21 @@ int ext4_find_inline_data_nolock(struct inode *inode)
+ 		goto out;
+ 
+ 	if (!is.s.not_found) {
++		u16 inline_off;
+ 		if (is.s.here->e_value_inum) {
+ 			EXT4_ERROR_INODE(inode, "inline data xattr refers "
+ 					 "to an external xattr inode");
+ 			error = -EFSCORRUPTED;
+ 			goto out;
+ 		}
+-		EXT4_I(inode)->i_inline_off = (u16)((void *)is.s.here -
++		inline_off = (u16)((void *)is.s.here -
+ 					(void *)ext4_raw_inode(&is.iloc));
++		if (!inline_off) {
++			EXT4_ERROR_INODE(inode, "inline data xattr offset is 0");
++			error = -EFSCORRUPTED;
++			goto out;
++		}
++		EXT4_I(inode)->i_inline_off = inline_off;
+ 		EXT4_I(inode)->i_inline_size = EXT4_MIN_INLINE_DATA_SIZE +
+ 				le32_to_cpu(is.s.here->e_value_size);
+ 	}
+@@ -792,7 +799,25 @@ int ext4_write_inline_data_end(struct inode *inode, loff_t pos, unsigned len,
+ 		 * ext4_write_begin() called
+ 		 * ext4_try_to_write_inline_data()
+ 		 */
+-		(void) ext4_find_inline_data_nolock(inode);
++		if ((ret = ext4_find_inline_data_nolock(inode))) {
++			ext4_write_unlock_xattr(inode, &no_expand);
++			brelse(iloc.bh);
++			folio_unlock(folio);
++			folio_put(folio);
++			ext4_std_error(inode->i_sb, ret);
++			goto out;
++		}
++
++		if (pos + len > EXT4_I(inode)->i_inline_size) {
++			ext4_write_unlock_xattr(inode, &no_expand);
++			brelse(iloc.bh);
++			folio_unlock(folio);
++			folio_put(folio);
++			ext4_warning(inode->i_sb, "inline data write too large: %llu + %u > %u",
++				     (unsigned long long)pos, len, EXT4_I(inode)->i_inline_size);
++			ret = -ENOSPC;
++			goto out;
++		}
+ 
+ 		kaddr = kmap_local_folio(folio, 0);
+ 		ext4_write_inline_data(inode, &iloc, kaddr, pos, copied);

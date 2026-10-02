@@ -1,0 +1,48 @@
+diff --git a/drivers/iommu/iommufd/eventq.c b/drivers/iommu/iommufd/eventq.c
+index fc4de63b0bce..d326c80ad363 100644
+--- a/drivers/iommu/iommufd/eventq.c
++++ b/drivers/iommu/iommufd/eventq.c
+@@ -373,6 +373,9 @@ static int iommufd_eventq_fops_release(struct inode *inode, struct file *filep)
+ {
+ 	struct iommufd_eventq *eventq = filep->private_data;
+ 
++	if (!eventq)
++		return 0;
++
+ 	refcount_dec(&eventq->obj.users);
+ 	iommufd_ctx_put(eventq->ictx);
+ 	return 0;
+@@ -409,8 +412,12 @@ static int iommufd_eventq_init(struct iommufd_eventq *eventq, char *name,
+ 	refcount_inc(&eventq->obj.users);
+ 
+ 	fdno = get_unused_fd_flags(O_CLOEXEC);
+-	if (fdno < 0)
++	if (fdno < 0) {
++		filep->private_data = NULL;
++		refcount_dec(&eventq->obj.users);
++		iommufd_ctx_put(eventq->ictx);
+ 		fput(filep);
++	}
+ 	return fdno;
+ }
+ 
+@@ -452,6 +459,9 @@ int iommufd_fault_alloc(struct iommufd_ucmd *ucmd)
+ 	return 0;
+ out_put_fdno:
+ 	put_unused_fd(fdno);
++	fault->common.filep->private_data = NULL;
++	refcount_dec(&fault->common.obj.users);
++	iommufd_ctx_put(fault->common.ictx);
+ 	fput(fault->common.filep);
+ 	return rc;
+ }
+@@ -536,6 +546,9 @@ int iommufd_veventq_alloc(struct iommufd_ucmd *ucmd)
+ 
+ out_put_fdno:
+ 	put_unused_fd(fdno);
++	veventq->common.filep->private_data = NULL;
++	refcount_dec(&veventq->common.obj.users);
++	iommufd_ctx_put(veventq->common.ictx);
+ 	fput(veventq->common.filep);
+ out_abort:
+ 	iommufd_object_abort_and_destroy(ucmd->ictx, &veventq->common.obj);

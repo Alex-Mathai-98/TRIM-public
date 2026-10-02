@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)\n{\n\tif (xdp_prog) {\n\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\t\tstruct xdp_buff xdp;\n\t\tu32 act;\n\t\tint err;\n\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\t\tact = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);\n\t\tif (act != XDP_PASS) {\n\t\t\tswitch (act) {\n\t\t\tcase XDP_REDIRECT:\n\t\t\t\terr = xdp_do_generic_redirect((*pskb)->dev, *pskb,\n\t\t\t\t\t\t\t      &xdp, xdp_prog);\n\t\t\t\tif (err) {\n\t\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\t\t\tgoto out_redir;\n\t\t\t\t}\n\t\t\t\tbreak;\n\t\t\tcase XDP_TX:\n\t\t\t\tgeneric_xdp_tx(*pskb, xdp_prog);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\treturn XDP_DROP;\n\t\t}\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t}\n\treturn XDP_PASS;\nout_redir:\n\tkfree_skb_reason(*pskb, SKB_DROP_REASON_XDP);\n\treturn XDP_DROP;\n}",
+          "before": "int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)\n{\n\tif (xdp_prog) {\n\t\tstruct xdp_buff xdp;\n\t\tu32 act;\n\t\tint err;\n\n\t\tact = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);\n\t\tif (act != XDP_PASS) {\n\t\t\tswitch (act) {\n\t\t\tcase XDP_REDIRECT:\n\t\t\t\terr = xdp_do_generic_redirect((*pskb)->dev, *pskb,\n\t\t\t\t\t\t\t      &xdp, xdp_prog);\n\t\t\t\tif (err)\n\t\t\t\t\tgoto out_redir;\n\t\t\t\tbreak;\n\t\t\tcase XDP_TX:\n\t\t\t\tgeneric_xdp_tx(*pskb, xdp_prog);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\treturn XDP_DROP;\n\t\t}\n\t}\n\treturn XDP_PASS;\nout_redir:\n\tkfree_skb_reason(*pskb, SKB_DROP_REASON_XDP);\n\treturn XDP_DROP;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/dev.c b/net/core/dev.c\nindex 385c4091aa77..da2f0e96c17e 100644\n--- a/net/core/dev.c\n+++ b/net/core/dev.c\n@@ -5127,25 +5127,31 @@ static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);\n int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)\n {\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \t\tint err;\n \n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\tact = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);\n \t\tif (act != XDP_PASS) {\n \t\t\tswitch (act) {\n \t\t\tcase XDP_REDIRECT:\n \t\t\t\terr = xdp_do_generic_redirect((*pskb)->dev, *pskb,\n \t\t\t\t\t\t\t      &xdp, xdp_prog);\n-\t\t\t\tif (err)\n+\t\t\t\tif (err) {\n+\t\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\t\t\tgoto out_redir;\n+\t\t\t\t}\n \t\t\t\tbreak;\n \t\t\tcase XDP_TX:\n \t\t\t\tgeneric_xdp_tx(*pskb, xdp_prog);\n \t\t\t\tbreak;\n \t\t\t}\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t\t\treturn XDP_DROP;\n \t\t}\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n \t}\n \treturn XDP_PASS;\n out_redir:",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "net/core/dev.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 0,
+      "start_step": 27
+    },
+    {
+      "edits": [
+        {
+          "after": "int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)\n{\n\tif (xdp_prog) {\n\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\t\tstruct xdp_buff xdp;\n\t\tu32 act;\n\t\tint err;\n\n\t\tlocal_bh_disable();\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\t\tact = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);\n\t\tif (act != XDP_PASS) {\n\t\t\tswitch (act) {\n\t\t\tcase XDP_REDIRECT:\n\t\t\t\terr = xdp_do_generic_redirect((*pskb)->dev, *pskb,\n\t\t\t\t\t\t\t      &xdp, xdp_prog);\n\t\t\t\tif (err) {\n\t\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\t\t\tlocal_bh_enable();\n\t\t\t\t\tgoto out_redir;\n\t\t\t\t}\n\t\t\t\tbreak;\n\t\t\tcase XDP_TX:\n\t\t\t\tgeneric_xdp_tx(*pskb, xdp_prog);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\tlocal_bh_enable();\n\t\t\treturn XDP_DROP;\n\t\t}\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\tlocal_bh_enable();\n\t}\n\treturn XDP_PASS;\nout_redir:\n\tkfree_skb_reason(*pskb, SKB_DROP_REASON_XDP);\n\treturn XDP_DROP;\n}",
+          "before": "int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)\n{\n\tif (xdp_prog) {\n\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n\t\tstruct xdp_buff xdp;\n\t\tu32 act;\n\t\tint err;\n\n\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n\t\tact = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);\n\t\tif (act != XDP_PASS) {\n\t\t\tswitch (act) {\n\t\t\tcase XDP_REDIRECT:\n\t\t\t\terr = xdp_do_generic_redirect((*pskb)->dev, *pskb,\n\t\t\t\t\t\t\t      &xdp, xdp_prog);\n\t\t\t\tif (err) {\n\t\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\t\t\tgoto out_redir;\n\t\t\t\t}\n\t\t\t\tbreak;\n\t\t\tcase XDP_TX:\n\t\t\t\tgeneric_xdp_tx(*pskb, xdp_prog);\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t\t\treturn XDP_DROP;\n\t\t}\n\t\tbpf_net_ctx_clear(bpf_net_ctx);\n\t}\n\treturn XDP_PASS;\nout_redir:\n\tkfree_skb_reason(*pskb, SKB_DROP_REASON_XDP);\n\treturn XDP_DROP;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/core/dev.c b/net/core/dev.c\nindex 385c4091aa77..a320cc904c99 100644\n--- a/net/core/dev.c\n+++ b/net/core/dev.c\n@@ -5127,25 +5127,35 @@ static DEFINE_STATIC_KEY_FALSE(generic_xdp_needed_key);\n int do_xdp_generic(struct bpf_prog *xdp_prog, struct sk_buff **pskb)\n {\n \tif (xdp_prog) {\n+\t\tstruct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;\n \t\tstruct xdp_buff xdp;\n \t\tu32 act;\n \t\tint err;\n \n+\t\tlocal_bh_disable();\n+\t\tbpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);\n \t\tact = netif_receive_generic_xdp(pskb, &xdp, xdp_prog);\n \t\tif (act != XDP_PASS) {\n \t\t\tswitch (act) {\n \t\t\tcase XDP_REDIRECT:\n \t\t\t\terr = xdp_do_generic_redirect((*pskb)->dev, *pskb,\n \t\t\t\t\t\t\t      &xdp, xdp_prog);\n-\t\t\t\tif (err)\n+\t\t\t\tif (err) {\n+\t\t\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\t\t\tlocal_bh_enable();\n \t\t\t\t\tgoto out_redir;\n+\t\t\t\t}\n \t\t\t\tbreak;\n \t\t\tcase XDP_TX:\n \t\t\t\tgeneric_xdp_tx(*pskb, xdp_prog);\n \t\t\t\tbreak;\n \t\t\t}\n+\t\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\t\tlocal_bh_enable();\n \t\t\treturn XDP_DROP;\n \t\t}\n+\t\tbpf_net_ctx_clear(bpf_net_ctx);\n+\t\tlocal_bh_enable();\n \t}\n \treturn XDP_PASS;\n out_redir:",
+          "explanation": "classic_swe step 38 #1",
+          "filename": "net/core/dev.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 38
+        }
+      ],
+      "end_step": 38,
+      "revision_index": 1,
+      "start_step": 38
+    }
+  ],
+  "success_step": 38
+}

@@ -1,0 +1,25 @@
+diff --git a/net/ipv4/udp.c b/net/ipv4/udp.c
+index 8867fe687888..3f03139b929a 100644
+--- a/net/ipv4/udp.c
++++ b/net/ipv4/udp.c
+@@ -2909,10 +2909,18 @@ static void set_xfrm_gro_udp_encap_rcv(__u16 encap_type, unsigned short family,
+ {
+ #ifdef CONFIG_XFRM
+ 	if (udp_test_bit(GRO_ENABLED, sk) && encap_type == UDP_ENCAP_ESPINUDP) {
++		struct udp_sock *up = udp_sk(sk);
++
++		if (READ_ONCE(up->gro_receive))
++			return;
++
+ 		if (family == AF_INET)
+-			WRITE_ONCE(udp_sk(sk)->gro_receive, xfrm4_gro_udp_encap_rcv);
++			WRITE_ONCE(up->gro_receive, xfrm4_gro_udp_encap_rcv);
+ 		else if (IS_ENABLED(CONFIG_IPV6) && family == AF_INET6)
+-			WRITE_ONCE(udp_sk(sk)->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);
++			WRITE_ONCE(up->gro_receive, ipv6_stub->xfrm6_gro_udp_encap_rcv);
++
++		if (udp_test_bit(ENCAP_ENABLED, sk))
++			udp_tunnel_update_gro_rcv(sk, true);
+ 	}
+ #endif
+ }

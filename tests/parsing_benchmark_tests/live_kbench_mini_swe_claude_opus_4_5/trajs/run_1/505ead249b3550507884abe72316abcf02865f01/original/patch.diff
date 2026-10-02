@@ -1,0 +1,95 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 9254bca2813d..ae0dc4c48923 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -68,6 +68,7 @@
+ #include <linux/uio.h>
+ #include <linux/skb_array.h>
+ #include <linux/bpf.h>
++#include <linux/filter.h>
+ #include <linux/bpf_trace.h>
+ #include <linux/mutex.h>
+ #include <linux/ieee802154.h>
+@@ -1667,6 +1668,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	size_t copied;
+ 	int pad = TUN_RX_PAD;
+ 	int err = 0;
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
+ 	rcu_read_lock();
+ 	xdp_prog = rcu_dereference(tun->xdp_prog);
+@@ -1699,6 +1701,7 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	*skb_xdp = 0;
+ 
+ 	local_bh_disable();
++	bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 	rcu_read_lock();
+ 	xdp_prog = rcu_dereference(tun->xdp_prog);
+ 	if (xdp_prog) {
+@@ -1728,12 +1731,14 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 		pad = xdp.data - xdp.data_hard_start;
+ 		len = xdp.data_end - xdp.data;
+ 	}
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 	rcu_read_unlock();
+ 	local_bh_enable();
+ 
+ 	return __tun_build_skb(tfile, alloc_frag, buf, buflen, len, pad);
+ 
+ out:
++	bpf_net_ctx_clear(bpf_net_ctx);
+ 	rcu_read_unlock();
+ 	local_bh_enable();
+ 	return NULL;
+@@ -1757,6 +1762,7 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 	int skb_xdp = 1;
+ 	bool frags = tun_napi_frags_enabled(tfile);
+ 	enum skb_drop_reason drop_reason = SKB_DROP_REASON_NOT_SPECIFIED;
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
+ 	if (!(tun->flags & IFF_NO_PI)) {
+ 		if (len < sizeof(pi))
+@@ -1918,16 +1924,19 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 		int ret;
+ 
+ 		local_bh_disable();
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		rcu_read_lock();
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+ 		if (xdp_prog) {
+ 			ret = do_xdp_generic(xdp_prog, &skb);
+ 			if (ret != XDP_PASS) {
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 				rcu_read_unlock();
+ 				local_bh_enable();
+ 				goto unlock_frags;
+ 			}
+ 		}
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 		rcu_read_unlock();
+ 		local_bh_enable();
+ 	}
+@@ -2560,6 +2569,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)
+ 	struct tun_struct *tun = tun_get(tfile);
+ 	struct tun_msg_ctl *ctl = m->msg_control;
+ 	struct xdp_buff *xdp;
++	struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
+ 	if (!tun)
+ 		return -EBADFD;
+@@ -2573,6 +2583,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)
+ 		memset(&tpage, 0, sizeof(tpage));
+ 
+ 		local_bh_disable();
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		rcu_read_lock();
+ 
+ 		for (i = 0; i < n; i++) {
+@@ -2588,6 +2599,7 @@ static int tun_sendmsg(struct socket *sock, struct msghdr *m, size_t total_len)
+ 		if (tfile->napi_enabled && queued > 0)
+ 			napi_schedule(&tfile->napi);
+ 
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 		rcu_read_unlock();
+ 		local_bh_enable();
+ 

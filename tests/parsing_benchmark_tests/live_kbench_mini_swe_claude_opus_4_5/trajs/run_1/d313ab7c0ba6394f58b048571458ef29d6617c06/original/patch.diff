@@ -1,0 +1,30 @@
+diff --git a/net/ethtool/ioctl.c b/net/ethtool/ioctl.c
+index 8262cc10f98d..1c49c9809602 100644
+--- a/net/ethtool/ioctl.c
++++ b/net/ethtool/ioctl.c
+@@ -60,7 +60,14 @@ static struct devlink *netdev_to_devlink_get(struct net_device *dev)
+ u32 ethtool_op_get_link(struct net_device *dev)
+ {
+ 	/* Synchronize carrier state with link watch, see also rtnl_getlink() */
+-	__linkwatch_sync_dev(dev);
++	if (netdev_need_ops_lock(dev))
++		/* Caller is expected to hold the netdev ops lock, which
++		 * __linkwatch_sync_dev() will assert.
++		 */
++		__linkwatch_sync_dev(dev);
++	else
++		/* Caller may not hold RTNL, so acquire the lock ourselves. */
++		linkwatch_sync_dev(dev);
+ 
+ 	return netif_carrier_ok(dev) ? 1 : 0;
+ }
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..2b239c62fe35
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "d313ab7c0ba6394f58b048571458ef29d6617c06": 89694
++}
+\ No newline at end of file

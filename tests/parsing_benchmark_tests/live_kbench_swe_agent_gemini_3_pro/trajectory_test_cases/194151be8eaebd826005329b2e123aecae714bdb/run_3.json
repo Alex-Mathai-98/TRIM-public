@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (!err) {\n\t\traw_spin_lock_irqsave(&cpu_buffer->reader_lock, flags);\n\t\t/* This is the first time it is mapped by user */\n\t\tcpu_buffer->mapped++;\n\t\tcpu_buffer->user_mapped = 1;\n\t\traw_spin_unlock_irqrestore(&cpu_buffer->reader_lock, flags);\n\t} else {\n\t\tkfree(cpu_buffer->subbuf_ids);\n\t\tcpu_buffer->subbuf_ids = NULL;\n\t\trb_free_meta_page(cpu_buffer);\n\t\tatomic_dec(&cpu_buffer->resize_disabled);\n\t}\n\n\treturn err;\n}\n",
+          "before": "\tif (!err) {\n\t\traw_spin_lock_irqsave(&cpu_buffer->reader_lock, flags);\n\t\t/* This is the first time it is mapped by user */\n\t\tcpu_buffer->mapped++;\n\t\tcpu_buffer->user_mapped = 1;\n\t\traw_spin_unlock_irqrestore(&cpu_buffer->reader_lock, flags);\n\t} else {\n\t\tkfree(cpu_buffer->subbuf_ids);\n\t\tcpu_buffer->subbuf_ids = NULL;\n\t\trb_free_meta_page(cpu_buffer);\n\t\tatomic_dec(&cpu_buffer->resize_disabled);\n\t}\n\n\treturn 0;\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 43460949ad3f..1244d2c5c384 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7273,7 +7273,7 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t\tatomic_dec(&cpu_buffer->resize_disabled);\n \t}\n \n-\treturn 0;\n+\treturn err;\n }\n \n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "\tret = ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma);\n\tif (ret) {\n\t\tput_snapshot_map(iter->tr);\n\t\treturn ret;\n\t}\n\n\tvma->vm_ops = &tracing_buffers_vmops;\n\n\treturn 0;\n",
+          "before": "\tret = ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma);\n\tif (ret)\n\t\tput_snapshot_map(iter->tr);\n\n\tvma->vm_ops = &tracing_buffers_vmops;\n\n\treturn ret;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex 43460949ad3f..1244d2c5c384 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -7273,7 +7273,7 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,\n \t\tatomic_dec(&cpu_buffer->resize_disabled);\n \t}\n \n-\treturn 0;\n+\treturn err;\n }\n \n int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)\ndiff --git a/kernel/trace/trace.c b/kernel/trace/trace.c\nindex b3c94fbaf002..e4bfe153b410 100644\n--- a/kernel/trace/trace.c\n+++ b/kernel/trace/trace.c\n@@ -8624,12 +8624,14 @@ static int tracing_buffers_mmap(struct file *filp, struct vm_area_struct *vma)\n \t\treturn ret;\n \n \tret = ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma);\n-\tif (ret)\n+\tif (ret) {\n \t\tput_snapshot_map(iter->tr);\n+\t\treturn ret;\n+\t}\n \n \tvma->vm_ops = &tracing_buffers_vmops;\n \n-\treturn ret;\n+\treturn 0;\n }\n \n static const struct file_operations tracing_buffers_fops = {",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "kernel/trace/trace.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 22
+    }
+  ],
+  "success_step": 23
+}

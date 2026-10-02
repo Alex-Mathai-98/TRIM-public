@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int smack_watch_key(struct key *key)\n{\n\tstruct smk_audit_info ad;\n\tstruct smack_known *tkp = smk_of_current();\n\tstruct smack_known **blob;\n\tstruct smack_known *skp;\n\tint rc;\n\n\tif (key == NULL)\n\t\treturn -EINVAL;\n\t/*\n\t * If the key hasn't been initialized give it access so that\n\t * it may do so.\n\t */\n\tif (key->security == NULL)\n\t\treturn 0;\n\n\tblob = smack_key(key);\n\tskp = *blob;\n\tif (skp == NULL)\n\t\treturn 0;\n\n\t/*\n\t * This should not occur\n\t */\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, skp, MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, skp, MAY_READ, rc);\n\treturn rc;\n}",
+          "before": "static int smack_watch_key(struct key *key)\n{\n\tstruct smk_audit_info ad;\n\tstruct smack_known *tkp = smk_of_current();\n\tint rc;\n\n\tif (key == NULL)\n\t\treturn -EINVAL;\n\t/*\n\t * If the key hasn't been initialized give it access so that\n\t * it may do so.\n\t */\n\tif (key->security == NULL)\n\t\treturn 0;\n\t/*\n\t * This should not occur\n\t */\n\tif (tkp == NULL)\n\t\treturn -EACCES;\n\n\tif (smack_privileged_cred(CAP_MAC_OVERRIDE, current_cred()))\n\t\treturn 0;\n\n#ifdef CONFIG_AUDIT\n\tsmk_ad_init(&ad, __func__, LSM_AUDIT_DATA_KEY);\n\tad.a.u.key_struct.key = key->serial;\n\tad.a.u.key_struct.key_desc = key->description;\n#endif\n\trc = smk_access(tkp, key->security, MAY_READ, &ad);\n\trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);\n\treturn rc;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/security/smack/smack_lsm.c\n+++ /linux/security/smack/smack_lsm.c\n@@ -4631,0 +4632,2 @@\n+\tstruct smack_known **blob;\n+\tstruct smack_known *skp;\n@@ -4641,0 +4644,6 @@\n+\n+\tblob = smack_key(key);\n+\tskp = *blob;\n+\tif (skp == NULL)\n+\t\treturn 0;\n+\n@@ -4656,2 +4664,2 @@\n-\trc = smk_access(tkp, key->security, MAY_READ, &ad);\n-\trc = smk_bu_note(\"key watch\", tkp, key->security, MAY_READ, rc);\n+\trc = smk_access(tkp, skp, MAY_READ, &ad);\n+\trc = smk_bu_note(\"key watch\", tkp, skp, MAY_READ, rc);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 53",
+          "filename": "security/smack/smack_lsm.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 53
+        }
+      ],
+      "end_step": 53,
+      "revision_index": 0,
+      "start_step": 53
+    }
+  ],
+  "success_step": 53
+}

@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/* Freeze time data consistency protection */\n\tseqcount_spinlock_t freeze_seq;\n",
+          "before": "\t/* Freeze time data consistency protection */\n\tseqcount_t freeze_seq;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h\nindex 93318fce31f3..b760a3c470a5 100644\n--- a/include/linux/cgroup-defs.h\n+++ b/include/linux/cgroup-defs.h\n@@ -452,7 +452,7 @@ struct cgroup_freezer_state {\n \tint nr_frozen_tasks;\n \n \t/* Freeze time data consistency protection */\n-\tseqcount_t freeze_seq;\n+\tseqcount_spinlock_t freeze_seq;\n \n \t/*\n \t * Most recent time the cgroup was requested to freeze.",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "include/linux/cgroup-defs.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        },
+        {
+          "after": "\tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n\tif (cgrp->freezer.e_freeze) {\n",
+          "before": "\tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n\tseqcount_init(&cgrp->freezer.freeze_seq);\n\tif (cgrp->freezer.e_freeze) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h\nindex 93318fce31f3..b760a3c470a5 100644\n--- a/include/linux/cgroup-defs.h\n+++ b/include/linux/cgroup-defs.h\n@@ -452,7 +452,7 @@ struct cgroup_freezer_state {\n \tint nr_frozen_tasks;\n \n \t/* Freeze time data consistency protection */\n-\tseqcount_t freeze_seq;\n+\tseqcount_spinlock_t freeze_seq;\n \n \t/*\n \t * Most recent time the cgroup was requested to freeze.\ndiff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c\nindex 6ae5f48cf64e..fdee387f0d6b 100644\n--- a/kernel/cgroup/cgroup.c\n+++ b/kernel/cgroup/cgroup.c\n@@ -5892,7 +5892,7 @@ static struct cgroup *cgroup_create(struct cgroup *parent, const char *name,\n \t * if the parent has to be frozen, the child has too.\n \t */\n \tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n-\tseqcount_init(&cgrp->freezer.freeze_seq);\n+\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n \tif (cgrp->freezer.e_freeze) {\n \t\t/*\n \t\t * Set the CGRP_FREEZE flag, so when a process will be",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "kernel/cgroup/cgroup.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\tcgrp->max_depth = INT_MAX;\n\tprev_cputime_init(&cgrp->prev_cputime);\n\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n\n\tfor_each_subsys(ss, ssid)\n",
+          "before": "\tcgrp->max_depth = INT_MAX;\n\tprev_cputime_init(&cgrp->prev_cputime);\n\n\tfor_each_subsys(ss, ssid)\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h\nindex 93318fce31f3..b760a3c470a5 100644\n--- a/include/linux/cgroup-defs.h\n+++ b/include/linux/cgroup-defs.h\n@@ -452,7 +452,7 @@ struct cgroup_freezer_state {\n \tint nr_frozen_tasks;\n \n \t/* Freeze time data consistency protection */\n-\tseqcount_t freeze_seq;\n+\tseqcount_spinlock_t freeze_seq;\n \n \t/*\n \t * Most recent time the cgroup was requested to freeze.\ndiff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c\nindex 6ae5f48cf64e..64510d7cde22 100644\n--- a/kernel/cgroup/cgroup.c\n+++ b/kernel/cgroup/cgroup.c\n@@ -2119,6 +2119,7 @@ static void init_cgroup_housekeeping(struct cgroup *cgrp)\n \tcgrp->max_descendants = INT_MAX;\n \tcgrp->max_depth = INT_MAX;\n \tprev_cputime_init(&cgrp->prev_cputime);\n+\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n \n \tfor_each_subsys(ss, ssid)\n \t\tINIT_LIST_HEAD(&cgrp->e_csets[ssid]);\n@@ -5892,7 +5893,7 @@ static struct cgroup *cgroup_create(struct cgroup *parent, const char *name,\n \t * if the parent has to be frozen, the child has too.\n \t */\n \tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n-\tseqcount_init(&cgrp->freezer.freeze_seq);\n+\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n \tif (cgrp->freezer.e_freeze) {\n \t\t/*\n \t\t * Set the CGRP_FREEZE flag, so when a process will be",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "kernel/cgroup/cgroup.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        },
+        {
+          "after": "\tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n\tif (cgrp->freezer.e_freeze) {\n",
+          "before": "\tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n\tif (cgrp->freezer.e_freeze) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/include/linux/cgroup-defs.h b/include/linux/cgroup-defs.h\nindex 93318fce31f3..b760a3c470a5 100644\n--- a/include/linux/cgroup-defs.h\n+++ b/include/linux/cgroup-defs.h\n@@ -452,7 +452,7 @@ struct cgroup_freezer_state {\n \tint nr_frozen_tasks;\n \n \t/* Freeze time data consistency protection */\n-\tseqcount_t freeze_seq;\n+\tseqcount_spinlock_t freeze_seq;\n \n \t/*\n \t * Most recent time the cgroup was requested to freeze.\ndiff --git a/kernel/cgroup/cgroup.c b/kernel/cgroup/cgroup.c\nindex 6ae5f48cf64e..b437f3755c07 100644\n--- a/kernel/cgroup/cgroup.c\n+++ b/kernel/cgroup/cgroup.c\n@@ -2119,6 +2119,7 @@ static void init_cgroup_housekeeping(struct cgroup *cgrp)\n \tcgrp->max_descendants = INT_MAX;\n \tcgrp->max_depth = INT_MAX;\n \tprev_cputime_init(&cgrp->prev_cputime);\n+\tseqcount_spinlock_init(&cgrp->freezer.freeze_seq, &css_set_lock);\n \n \tfor_each_subsys(ss, ssid)\n \t\tINIT_LIST_HEAD(&cgrp->e_csets[ssid]);\n@@ -5892,7 +5893,6 @@ static struct cgroup *cgroup_create(struct cgroup *parent, const char *name,\n \t * if the parent has to be frozen, the child has too.\n \t */\n \tcgrp->freezer.e_freeze = parent->freezer.e_freeze;\n-\tseqcount_init(&cgrp->freezer.freeze_seq);\n \tif (cgrp->freezer.e_freeze) {\n \t\t/*\n \t\t * Set the CGRP_FREEZE flag, so when a process will be",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "kernel/cgroup/cgroup.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 0,
+      "start_step": 19
+    }
+  ],
+  "success_step": 32
+}

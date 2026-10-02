@@ -1,0 +1,26 @@
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index 873e4be7e1dc..53276064cd2c 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -2047,6 +2047,21 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 			goto err_print;
+ 	}
+ 
++	if (!sbs.nr) {
++		ret = -EINVAL;
++		goto err_print;
++	}
++
++	best = NULL;
++	darray_for_each(sbs, sb)
++		if (sb->sb && (!best || sb_cmp(sb->sb, best->sb) > 0))
++			best = sb;
++
++	if (!best) {
++		ret = -EINVAL;
++		goto err_print;
++	}
++
+ 	c = bch2_fs_alloc(best->sb, opts);
+ 	ret = PTR_ERR_OR_ZERO(c);
+ 	if (ret)

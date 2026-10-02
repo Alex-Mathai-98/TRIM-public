@@ -1,0 +1,44 @@
+diff --git a/net/atm/lec.c b/net/atm/lec.c
+index acef984f3367..49069949d50d 100644
+--- a/net/atm/lec.c
++++ b/net/atm/lec.c
+@@ -11,6 +11,7 @@
+ #include <linux/kernel.h>
+ #include <linux/bitops.h>
+ #include <linux/capability.h>
++#include <linux/mutex.h>
+ 
+ /* We are ethernet device */
+ #include <linux/if_ether.h>
+@@ -124,6 +125,7 @@ static unsigned char bus_mac[ETH_ALEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+ 
+ /* Device structures */
+ static struct net_device *dev_lec[MAX_LEC_ITF];
++static DEFINE_MUTEX(lec_ioctl_mutex);
+ 
+ #if IS_ENABLED(CONFIG_BRIDGE)
+ static void lec_handle_bridge(struct sk_buff *skb, struct net_device *dev)
+@@ -742,6 +744,7 @@ static int lecd_attach(struct atm_vcc *vcc, int arg)
+ 		snprintf(dev_lec[i]->name, IFNAMSIZ, "lec%d", i);
+ 		if (register_netdev(dev_lec[i])) {
+ 			free_netdev(dev_lec[i]);
++			dev_lec[i] = NULL;
+ 			return -EINVAL;
+ 		}
+ 
+@@ -1003,6 +1006,7 @@ static int lane_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
+ 		return -ENOIOCTLCMD;
+ 	}
+ 
++	mutex_lock(&lec_ioctl_mutex);
+ 	switch (cmd) {
+ 	case ATMLEC_CTRL:
+ 		err = lecd_attach(vcc, (int)arg);
+@@ -1016,6 +1020,7 @@ static int lane_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
+ 		err = lec_vcc_attach(vcc, (void __user *)arg);
+ 		break;
+ 	}
++	mutex_unlock(&lec_ioctl_mutex);
+ 
+ 	return err;
+ }

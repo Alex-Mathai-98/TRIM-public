@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n\t\t\t   struct folio *src, void *src_private,\n\t\t\t   enum migrate_mode mode, bool do_copy)\n{\n\tint rc, expected_count = folio_expected_refs(mapping, src);\n\n\t/* Check whether src does not have extra refs before we do more work */\n\tif (folio_ref_count(src) != expected_count)\n\t\treturn -EAGAIN;\n\n\tif (do_copy) {\n\t\trc = folio_mc_copy(dst, src);\n\t\tif (unlikely(rc))\n\t\t\treturn rc;\n\t}\n\n\trc = __folio_migrate_mapping(mapping, dst, src, expected_count);",
+          "before": "static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n\t\t\t   struct folio *src, void *src_private,\n\t\t\t   enum migrate_mode mode)\n{\n\tint rc, expected_count = folio_expected_refs(mapping, src);\n\n\t/* Check whether src does not have extra refs before we do more work */\n\tif (folio_ref_count(src) != expected_count)\n\t\treturn -EAGAIN;\n\n\trc = folio_mc_copy(dst, src);\n\tif (unlikely(rc))\n\t\treturn rc;\n\n\trc = __folio_migrate_mapping(mapping, dst, src, expected_count);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/migrate.c b/mm/migrate.c\nindex f3ee6d8d5e2e..8ce67fc91f3e 100644\n--- a/mm/migrate.c\n+++ b/mm/migrate.c\n@@ -747,7 +747,7 @@ EXPORT_SYMBOL(folio_migrate_flags);\n \n static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t\t   struct folio *src, void *src_private,\n-\t\t\t   enum migrate_mode mode)\n+\t\t\t   enum migrate_mode mode, bool do_copy)\n {\n \tint rc, expected_count = folio_expected_refs(mapping, src);\n \n@@ -755,9 +755,11 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \tif (folio_ref_count(src) != expected_count)\n \t\treturn -EAGAIN;\n \n-\trc = folio_mc_copy(dst, src);\n-\tif (unlikely(rc))\n-\t\treturn rc;\n+\tif (do_copy) {\n+\t\trc = folio_mc_copy(dst, src);\n+\t\tif (unlikely(rc))\n+\t\t\treturn rc;\n+\t}\n \n \trc = __folio_migrate_mapping(mapping, dst, src, expected_count);\n \tif (rc != MIGRATEPAGE_SUCCESS)",
+          "explanation": "classic_swe step 8 #1",
+          "filename": "mm/migrate.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 8
+        },
+        {
+          "after": "\treturn __migrate_folio(mapping, dst, src, NULL, mode, true);",
+          "before": "\treturn __migrate_folio(mapping, dst, src, NULL, mode);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/migrate.c b/mm/migrate.c\nindex f3ee6d8d5e2e..1483a35361a2 100644\n--- a/mm/migrate.c\n+++ b/mm/migrate.c\n@@ -747,7 +747,7 @@ EXPORT_SYMBOL(folio_migrate_flags);\n \n static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t\t   struct folio *src, void *src_private,\n-\t\t\t   enum migrate_mode mode)\n+\t\t\t   enum migrate_mode mode, bool do_copy)\n {\n \tint rc, expected_count = folio_expected_refs(mapping, src);\n \n@@ -755,9 +755,11 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \tif (folio_ref_count(src) != expected_count)\n \t\treturn -EAGAIN;\n \n-\trc = folio_mc_copy(dst, src);\n-\tif (unlikely(rc))\n-\t\treturn rc;\n+\tif (do_copy) {\n+\t\trc = folio_mc_copy(dst, src);\n+\t\tif (unlikely(rc))\n+\t\t\treturn rc;\n+\t}\n \n \trc = __folio_migrate_mapping(mapping, dst, src, expected_count);\n \tif (rc != MIGRATEPAGE_SUCCESS)\n@@ -786,7 +788,7 @@ int migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t  struct folio *src, enum migrate_mode mode)\n {\n \tBUG_ON(folio_test_writeback(src));\t/* Writeback must be complete */\n-\treturn __migrate_folio(mapping, dst, src, NULL, mode);\n+\treturn __migrate_folio(mapping, dst, src, NULL, mode, true);\n }\n EXPORT_SYMBOL(migrate_folio);",
+          "explanation": "classic_swe step 9 #1",
+          "filename": "mm/migrate.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 9
+        },
+        {
+          "after": "\treturn __migrate_folio(mapping, dst, src, folio_get_private(src), mode, true);",
+          "before": "\treturn __migrate_folio(mapping, dst, src, folio_get_private(src), mode);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/migrate.c b/mm/migrate.c\nindex f3ee6d8d5e2e..b152fb1565bb 100644\n--- a/mm/migrate.c\n+++ b/mm/migrate.c\n@@ -747,7 +747,7 @@ EXPORT_SYMBOL(folio_migrate_flags);\n \n static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t\t   struct folio *src, void *src_private,\n-\t\t\t   enum migrate_mode mode)\n+\t\t\t   enum migrate_mode mode, bool do_copy)\n {\n \tint rc, expected_count = folio_expected_refs(mapping, src);\n \n@@ -755,9 +755,11 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \tif (folio_ref_count(src) != expected_count)\n \t\treturn -EAGAIN;\n \n-\trc = folio_mc_copy(dst, src);\n-\tif (unlikely(rc))\n-\t\treturn rc;\n+\tif (do_copy) {\n+\t\trc = folio_mc_copy(dst, src);\n+\t\tif (unlikely(rc))\n+\t\t\treturn rc;\n+\t}\n \n \trc = __folio_migrate_mapping(mapping, dst, src, expected_count);\n \tif (rc != MIGRATEPAGE_SUCCESS)\n@@ -786,7 +788,7 @@ int migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t  struct folio *src, enum migrate_mode mode)\n {\n \tBUG_ON(folio_test_writeback(src));\t/* Writeback must be complete */\n-\treturn __migrate_folio(mapping, dst, src, NULL, mode);\n+\treturn __migrate_folio(mapping, dst, src, NULL, mode, true);\n }\n EXPORT_SYMBOL(migrate_folio);\n \n@@ -940,7 +942,7 @@ EXPORT_SYMBOL_GPL(buffer_migrate_folio_norefs);\n int filemap_migrate_folio(struct address_space *mapping,\n \t\tstruct folio *dst, struct folio *src, enum migrate_mode mode)\n {\n-\treturn __migrate_folio(mapping, dst, src, folio_get_private(src), mode);\n+\treturn __migrate_folio(mapping, dst, src, folio_get_private(src), mode, true);\n }\n EXPORT_SYMBOL_GPL(filemap_migrate_folio);",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "mm/migrate.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        },
+        {
+          "after": "\tif (check_refs) {\n\t\tbool busy;\n\t\tbool invalidated = false;\n\n\t\trc = folio_mc_copy(dst, src);\n\t\tif (unlikely(rc)) {\n\t\t\tbh = head;\n\t\t\tdo {\n\t\t\t\tunlock_buffer(bh);\n\t\t\t\tbh = bh->b_this_page;\n\t\t\t} while (bh != head);\n\t\t\treturn rc;\n\t\t}\n\nrecheck_buffers:\n\t\tbusy = false;\n\t\tspin_lock(&mapping->i_private_lock);\n\t\tbh = head;\n\t\tdo {\n\t\t\tif (atomic_read(&bh->b_count)) {\n\t\t\t\tbusy = true;\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tbh = bh->b_this_page;\n\t\t} while (bh != head);\n\t\tif (busy) {\n\t\t\tif (invalidated) {\n\t\t\t\trc = -EAGAIN;\n\t\t\t\tgoto unlock_buffers;\n\t\t\t}\n\t\t\tspin_unlock(&mapping->i_private_lock);\n\t\t\tinvalidate_bh_lrus();\n\t\t\tinvalidated = true;\n\t\t\tgoto recheck_buffers;\n\t\t}\n\t}\n\n\tif (check_refs)\n\t\trc = __migrate_folio(mapping, dst, src, folio_get_private(src), mode, false);\n\telse\n\t\trc = filemap_migrate_folio(mapping, dst, src, mode);\n\tif (rc != MIGRATEPAGE_SUCCESS)\n\t\tgoto unlock_buffers;",
+          "before": "\tif (check_refs) {\n\t\tbool busy;\n\t\tbool invalidated = false;\n\nrecheck_buffers:\n\t\tbusy = false;\n\t\tspin_lock(&mapping->i_private_lock);\n\t\tbh = head;\n\t\tdo {\n\t\t\tif (atomic_read(&bh->b_count)) {\n\t\t\t\tbusy = true;\n\t\t\t\tbreak;\n\t\t\t}\n\t\t\tbh = bh->b_this_page;\n\t\t} while (bh != head);\n\t\tif (busy) {\n\t\t\tif (invalidated) {\n\t\t\t\trc = -EAGAIN;\n\t\t\t\tgoto unlock_buffers;\n\t\t\t}\n\t\t\tspin_unlock(&mapping->i_private_lock);\n\t\t\tinvalidate_bh_lrus();\n\t\t\tinvalidated = true;\n\t\t\tgoto recheck_buffers;\n\t\t}\n\t}\n\n\trc = filemap_migrate_folio(mapping, dst, src, mode);\n\tif (rc != MIGRATEPAGE_SUCCESS)\n\t\tgoto unlock_buffers;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/migrate.c b/mm/migrate.c\nindex f3ee6d8d5e2e..1a72184df50d 100644\n--- a/mm/migrate.c\n+++ b/mm/migrate.c\n@@ -747,7 +747,7 @@ EXPORT_SYMBOL(folio_migrate_flags);\n \n static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t\t   struct folio *src, void *src_private,\n-\t\t\t   enum migrate_mode mode)\n+\t\t\t   enum migrate_mode mode, bool do_copy)\n {\n \tint rc, expected_count = folio_expected_refs(mapping, src);\n \n@@ -755,9 +755,11 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,\n \tif (folio_ref_count(src) != expected_count)\n \t\treturn -EAGAIN;\n \n-\trc = folio_mc_copy(dst, src);\n-\tif (unlikely(rc))\n-\t\treturn rc;\n+\tif (do_copy) {\n+\t\trc = folio_mc_copy(dst, src);\n+\t\tif (unlikely(rc))\n+\t\t\treturn rc;\n+\t}\n \n \trc = __folio_migrate_mapping(mapping, dst, src, expected_count);\n \tif (rc != MIGRATEPAGE_SUCCESS)\n@@ -786,7 +788,7 @@ int migrate_folio(struct address_space *mapping, struct folio *dst,\n \t\t  struct folio *src, enum migrate_mode mode)\n {\n \tBUG_ON(folio_test_writeback(src));\t/* Writeback must be complete */\n-\treturn __migrate_folio(mapping, dst, src, NULL, mode);\n+\treturn __migrate_folio(mapping, dst, src, NULL, mode, true);\n }\n EXPORT_SYMBOL(migrate_folio);\n \n@@ -848,6 +850,16 @@ static int __buffer_migrate_folio(struct address_space *mapping,\n \t\tbool busy;\n \t\tbool invalidated = false;\n \n+\t\trc = folio_mc_copy(dst, src);\n+\t\tif (unlikely(rc)) {\n+\t\t\tbh = head;\n+\t\t\tdo {\n+\t\t\t\tunlock_buffer(bh);\n+\t\t\t\tbh = bh->b_this_page;\n+\t\t\t} while (bh != head);\n+\t\t\treturn rc;\n+\t\t}\n+\n recheck_buffers:\n \t\tbusy = false;\n \t\tspin_lock(&mapping->i_private_lock);\n@@ -871,7 +883,10 @@ static int __buffer_migrate_folio(struct address_space *mapping,\n \t\t}\n \t}\n \n-\trc = filemap_migrate_folio(mapping, dst, src, mode);\n+\tif (check_refs)\n+\t\trc = __migrate_folio(mapping, dst, src, folio_get_private(src), mode, false);\n+\telse\n+\t\trc = filemap_migrate_folio(mapping, dst, src, mode);\n \tif (rc != MIGRATEPAGE_SUCCESS)\n \t\tgoto unlock_buffers;\n \n@@ -940,7 +955,7 @@ EXPORT_SYMBOL_GPL(buffer_migrate_folio_norefs);\n int filemap_migrate_folio(struct address_space *mapping,\n \t\tstruct folio *dst, struct folio *src, enum migrate_mode mode)\n {\n-\treturn __migrate_folio(mapping, dst, src, folio_get_private(src), mode);\n+\treturn __migrate_folio(mapping, dst, src, folio_get_private(src), mode, true);\n }\n EXPORT_SYMBOL_GPL(filemap_migrate_folio);",
+          "explanation": "classic_swe step 13 #1",
+          "filename": "mm/migrate.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 13
+        }
+      ],
+      "end_step": 13,
+      "revision_index": 0,
+      "start_step": 8
+    }
+  ],
+  "success_step": 13
+}

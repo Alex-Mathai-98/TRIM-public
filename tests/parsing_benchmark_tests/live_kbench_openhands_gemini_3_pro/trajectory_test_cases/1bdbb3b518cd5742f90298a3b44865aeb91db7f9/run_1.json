@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/*\n\t * Try slow way with current upcase table\n\t */\n\tuni = kmalloc(sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16),\n\t\t      GFP_ATOMIC);\n\tif (!uni)\n\t\treturn -ENOMEM;\n\n\tsbi = dentry->d_sb->s_fs_info;\n\n\terr = ntfs_nls_to_utf16(sbi, name->name, name->len, uni, NTFS_NAME_LEN,\n\t\t\t\tUTF16_HOST_ENDIAN);\n\tif (err < 0)\n\t\tgoto out;\n\n\tif (!err) {\n\t\terr = -EINVAL;\n\t\tgoto out;\n\t}\n\n\thash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,\n\t\t\t       init_name_hash(dentry));\n\tname->hash = end_name_hash(hash);\n\terr = 0;\n\nout:\n\tkfree(uni);\n\treturn err;\n}",
+          "before": "\t/*\n\t * Try slow way with current upcase table\n\t */\n\tuni = __getname();\n\tif (!uni)\n\t\treturn -ENOMEM;\n\n\tsbi = dentry->d_sb->s_fs_info;\n\n\terr = ntfs_nls_to_utf16(sbi, name->name, name->len, uni, NTFS_NAME_LEN,\n\t\t\t\tUTF16_HOST_ENDIAN);\n\tif (err < 0)\n\t\tgoto out;\n\n\tif (!err) {\n\t\terr = -EINVAL;\n\t\tgoto out;\n\t}\n\n\thash = ntfs_names_hash(uni->name, uni->len, sbi->upcase,\n\t\t\t       init_name_hash(dentry));\n\tname->hash = end_name_hash(hash);\n\terr = 0;\n\nout:\n\t__putname(uni);\n\treturn err;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/namei.c\n+++ /linux/fs/ntfs3/namei.c\n@@ -398 +398,2 @@\n-\tuni = __getname();\n+\tuni = kmalloc(sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16),\n+\t\t      GFP_ATOMIC);\n@@ -420 +421 @@\n-\t__putname(uni);\n+\tkfree(uni);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 39",
+          "filename": "fs/ntfs3/namei.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 39
+        },
+        {
+          "after": "\n\t/*\n\t * Try slow way with current upcase table\n\t */\n\tsbi = dentry->d_sb->s_fs_info;\n\tuni1 = kmalloc(sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16) +\n\t\t       sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16),\n\t\t       GFP_ATOMIC);\n\tif (!uni1)\n\t\treturn -ENOMEM;\n\n\tret = ntfs_nls_to_utf16(sbi, str, len1, uni1, NTFS_NAME_LEN,\n\t\t\t\tUTF16_HOST_ENDIAN);\n\tif (ret < 0)\n\t\tgoto out;\n\n\tif (!ret) {\n\t\tret = -EINVAL;\n\t\tgoto out;\n\t}\n\n\tuni2 = Add2Ptr(uni1, sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16));\n\n\tret = ntfs_nls_to_utf16(sbi, name->name, name->len,\n\t\t\t\t(struct cpu_str *)uni2, NTFS_NAME_LEN,\n\t\t\t\tUTF16_LITTLE_ENDIAN);\n\tif (ret < 0)\n\t\tgoto out;\n\n\tif (!ret) {\n\t\tret = -EINVAL;\n\t\tgoto out;\n\t}\n\n\tret = !ntfs_cmp_names_cpu(uni1, uni2, sbi->upcase, false) ? 0 : 1;\n\nout:\n\tkfree(uni1);\n\treturn ret;\n",
+          "before": "\n\t/*\n\t * Try slow way with current upcase table\n\t */\n\tsbi = dentry->d_sb->s_fs_info;\n\tuni1 = __getname();\n\tif (!uni1)\n\t\treturn -ENOMEM;\n\n\tret = ntfs_nls_to_utf16(sbi, str, len1, uni1, NTFS_NAME_LEN,\n\t\t\t\tUTF16_HOST_ENDIAN);\n\tif (ret < 0)\n\t\tgoto out;\n\n\tif (!ret) {\n\t\tret = -EINVAL;\n\t\tgoto out;\n\t}\n\n\tuni2 = Add2Ptr(uni1, 2048);\n\n\tret = ntfs_nls_to_utf16(sbi, name->name, name->len,\n\t\t\t\t(struct cpu_str *)uni2, NTFS_NAME_LEN,\n\t\t\t\tUTF16_LITTLE_ENDIAN);\n\tif (ret < 0)\n\t\tgoto out;\n\n\tif (!ret) {\n\t\tret = -EINVAL;\n\t\tgoto out;\n\t}\n\n\tret = !ntfs_cmp_names_cpu(uni1, uni2, sbi->upcase, false) ? 0 : 1;\n\nout:\n\t__putname(uni1);\n\treturn ret;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/ntfs3/namei.c\n+++ /linux/fs/ntfs3/namei.c\n@@ -460 +460,3 @@\n-\tuni1 = __getname();\n+\tuni1 = kmalloc(sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16) +\n+\t\t       sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16),\n+\t\t       GFP_ATOMIC);\n@@ -474 +476 @@\n-\tuni2 = Add2Ptr(uni1, 2048);\n+\tuni2 = Add2Ptr(uni1, sizeof(struct cpu_str) + NTFS_NAME_LEN * sizeof(u16));\n@@ -490 +492 @@\n-\t__putname(uni1);\n+\tkfree(uni1);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "fs/ntfs3/namei.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 0,
+      "start_step": 39
+    }
+  ],
+  "success_step": 41
+}

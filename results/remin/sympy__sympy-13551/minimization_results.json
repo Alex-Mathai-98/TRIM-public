@@ -1,0 +1,167 @@
+{
+  "bug_id": "sympy__sympy-13551",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/concrete/products.py",
+        "before": "            if q.is_Number:\n\n                # There is expression, which couldn't change by\n                # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                # We have to catch this case.\n\n                p = sum([self._eval_product(i, (k, a, n)) for i in p.as_coeff_Add()])",
+        "after": "            if q.is_Number:\n\n                # There is expression, which couldn't change by\n                # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                # We have to catch this case.\n                \n                # However, we cannot compute Product(a + b) as Product(a) + Product(b)\n                # This is mathematically incorrect. We should only do this if the\n                # addition can be properly factored or simplified.\n                \n                # Check if this is a simple case where all terms are constants\n                # or can be factored out\n                terms = p.as_coeff_Add()\n                can_factor = True\n                for term in terms:\n                    if term.has(k):\n                        can_factor = False\n                        break\n                \n                if can_factor:\n                    # All terms are constants, so Product(a + b) = (a + b)^(number of terms)\n                    p = p**(n - a + 1)\n                else:\n                    # Cannot safely compute this, return None\n                    return None",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "sympy/concrete/products.py",
+        "before": "            else:\n                p = self._eval_product(p, (k, a, n))\n            return p / q",
+        "after": "            else:\n                p = self._eval_product(p, (k, a, n))\n            \n            if p is None:\n                return None\n            return p / q",
+        "explanation": "classic_swe step 39 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/concrete/products.py b/sympy/concrete/products.py\nindex 66aafde2d6..ac891a00b4 100644\n--- a/sympy/concrete/products.py\n+++ b/sympy/concrete/products.py\n@@ -282,10 +282,31 @@ def _eval_product(self, term, limits):\n                 # There is expression, which couldn't change by\n                 # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                 # We have to catch this case.\n-\n-                p = sum([self._eval_product(i, (k, a, n)) for i in p.as_coeff_Add()])\n+                \n+                # However, we cannot compute Product(a + b) as Product(a) + Product(b)\n+                # This is mathematically incorrect. We should only do this if the\n+                # addition can be properly factored or simplified.\n+                \n+                # Check if this is a simple case where all terms are constants\n+                # or can be factored out\n+                terms = p.as_coeff_Add()\n+                can_factor = True\n+                for term in terms:\n+                    if term.has(k):\n+                        can_factor = False\n+                        break\n+                \n+                if can_factor:\n+                    # All terms are constants, so Product(a + b) = (a + b)^(number of terms)\n+                    p = p**(n - a + 1)\n+                else:\n+                    # Cannot safely compute this, return None\n+                    return None\n             else:\n                 p = self._eval_product(p, (k, a, n))\n+            \n+            if p is None:\n+                return None\n             return p / q\n \n         elif term.is_Mul:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      6,
+      10,
+      13,
+      14
+    ],
+    "nodes_original_count": 4,
+    "node_list_original": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "find_minimum_substring_node_no_crash": 2,
+    "find_minimum_substring_node_still_crashes": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      2,
+      3
+    ],
+    "node_list_after_phase2": [
+      2,
+      3
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      2,
+      3
+    ],
+    "edit_list_after_node_min": [
+      13,
+      14
+    ],
+    "edit_list_after_file_min": [
+      13,
+      14
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      13,
+      14
+    ],
+    "edit_list_after_refinement": [
+      13,
+      14
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 2,
+  "reduction": "4_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/products.py",
+          "before": "        elif term.is_Add:\n            p, q = term.as_numer_denom()\n            q = self._eval_product(q, (k, a, n))\n            if q.is_Number:\n\n                # There is expression, which couldn't change by\n                # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                # We have to catch this case.\n\n                p = sum([self._eval_product(i, (k, a, n)) for i in p.as_coeff_Add()])\n            else:\n                p = self._eval_product(p, (k, a, n))\n            return p / q",
+          "after": "        elif term.is_Add:\n            # For addition terms, we need to be very careful.\n            # The transformation Product(a + b) = Product(a) + Product(b) is incorrect.\n            # Only attempt this if we can factor out common terms properly.\n            p, q = term.as_numer_denom()\n            \n            # If q is just 1, then the term wasn't really a fraction\n            if q == 1:\n                # This is a pure addition like n + 1, not a fraction\n                # We cannot simplify this in general, so return None\n                return None\n            \n            # If q contains the variable k, we need to be careful\n            if q.has(k):\n                # This is a case like (a + b)/f(k) where f(k) depends on k\n                # The current approach of Product(a+b)/Product(f(k)) is wrong\n                # We should only do this if the addition can be factored properly\n                return None\n            \n            # If we get here, q is a constant and we have Product((a + b)/c)\n            # This can be computed as Product(a + b)/c^(number of terms)\n            q_product = q**(n - a + 1)\n            p_product = self._eval_product(p, (k, a, n))\n            if p_product is not None:\n                return p_product / q_product\n            else:\n                return None",
+          "explanation": "classic_swe step 19 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/products.py",
+          "before": "        elif term.is_Add:\n            # For addition terms, we need to be very careful.\n            # The transformation Product(a + b) = Product(a) + Product(b) is incorrect.\n            # Only attempt this if we can factor out common terms properly.\n            p, q = term.as_numer_denom()\n            \n            # If q is just 1, then the term wasn't really a fraction\n            if q == 1:\n                # This is a pure addition like n + 1, not a fraction\n                # We cannot simplify this in general, so return None\n                return None\n            \n            # If q contains the variable k, we need to be careful\n            if q.has(k):\n                # This is a case like (a + b)/f(k) where f(k) depends on k\n                # The current approach of Product(a+b)/Product(f(k)) is wrong\n                # We should only do this if the addition can be factored properly\n                return None\n            \n            # If we get here, q is a constant and we have Product((a + b)/c)\n            # This can be computed as Product(a + b)/c^(number of terms)\n            q_product = q**(n - a + 1)\n            p_product = self._eval_product(p, (k, a, n))\n            if p_product is not None:\n                return p_product / q_product\n            else:\n                return None",
+          "after": "        elif term.is_Add:\n            p, q = term.as_numer_denom()\n            q = self._eval_product(q, (k, a, n))\n            if q.is_Number:\n\n                # There is expression, which couldn't change by\n                # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                # We have to catch this case.\n\n                p = sum([self._eval_product(i, (k, a, n)) for i in p.as_coeff_Add()])\n            else:\n                p = self._eval_product(p, (k, a, n))\n            return p / q",
+          "explanation": "classic_swe step 32 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/products.py",
+          "before": "            if q.is_Number:\n\n                # There is expression, which couldn't change by\n                # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                # We have to catch this case.\n\n                p = sum([self._eval_product(i, (k, a, n)) for i in p.as_coeff_Add()])",
+          "after": "            if q.is_Number:\n\n                # There is expression, which couldn't change by\n                # as_numer_denom(). E.g. n**(2/3) + 1 --> (n**(2/3) + 1, 1).\n                # We have to catch this case.\n                \n                # However, we cannot compute Product(a + b) as Product(a) + Product(b)\n                # This is mathematically incorrect. We should only do this if the\n                # addition can be properly factored or simplified.\n                \n                # Check if this is a simple case where all terms are constants\n                # or can be factored out\n                terms = p.as_coeff_Add()\n                can_factor = True\n                for term in terms:\n                    if term.has(k):\n                        can_factor = False\n                        break\n                \n                if can_factor:\n                    # All terms are constants, so Product(a + b) = (a + b)^(number of terms)\n                    p = p**(n - a + 1)\n                else:\n                    # Cannot safely compute this, return None\n                    return None",
+          "explanation": "classic_swe step 37 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "sympy/concrete/products.py",
+          "before": "            else:\n                p = self._eval_product(p, (k, a, n))\n            return p / q",
+          "after": "            else:\n                p = self._eval_product(p, (k, a, n))\n            \n            if p is None:\n                return None\n            return p / q",
+          "explanation": "classic_swe step 39 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 17,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 17,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/concrete/products.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/concrete/products.py"
+    ],
+    "gold_files": [
+      "sympy/concrete/products.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 23,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

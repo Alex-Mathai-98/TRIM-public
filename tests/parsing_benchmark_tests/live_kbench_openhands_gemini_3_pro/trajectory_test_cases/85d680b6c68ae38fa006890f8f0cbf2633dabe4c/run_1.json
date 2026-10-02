@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static bool bond_should_use_rtnl(struct bonding *bond)\n{\n\tstruct slave *slave;\n\tstruct list_head *iter;\n\n\tif (bond->params.use_carrier)\n\t\treturn false;\n\n\tbond_for_each_slave_rcu(bond, slave, iter) {\n\t\tif (!netif_running(slave->dev))\n\t\t\tcontinue;\n\t\tif (slave->dev->ethtool_ops->get_link &&\n\t\t    !netdev_need_ops_lock(slave->dev))\n\t\t\treturn true;\n\t}\n\n\treturn false;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -2966,0 +2967,19 @@\n+static bool bond_should_use_rtnl(struct bonding *bond)\n+{\n+\tstruct slave *slave;\n+\tstruct list_head *iter;\n+\n+\tif (bond->params.use_carrier)\n+\t\treturn false;\n+\n+\tbond_for_each_slave_rcu(bond, slave, iter) {\n+\t\tif (!netif_running(slave->dev))\n+\t\t\tcontinue;\n+\t\tif (slave->dev->ethtool_ops->get_link &&\n+\t\t    !netdev_need_ops_lock(slave->dev))\n+\t\t\treturn true;\n+\t}\n+\n+\treturn false;\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 45",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 2967,
+          "step_index": 45
+        },
+        {
+          "after": "\trcu_read_lock();\n\tif (bond_should_use_rtnl(bond)) {\n\t\trcu_read_unlock();\n\n\t\tif (!rtnl_trylock()) {\n\t\t\tdelay = 1;\n\t\t\tshould_notify_peers = false;\n\t\t\tgoto re_arm;\n\t\t}\n\n\t\trcu_read_lock();\n\t\tshould_notify_peers = bond_should_notify_peers(bond);\n\t\tcommit = !!bond_miimon_inspect(bond);\n\t\tif (bond->send_peer_notif)\n\t\t\tbond->send_peer_notif--;\n\t\trcu_read_unlock();\n\n\t\tif (commit) {\n\t\t\tbond_for_each_slave(bond, slave, iter)\n\t\t\t\tbond_commit_link_state(slave, BOND_SLAVE_NOTIFY_LATER);\n\t\t\tbond_miimon_commit(bond);\n\t\t}\n\t\trtnl_unlock();\n\t\tgoto re_arm;\n\t}\n\n\tshould_notify_peers = bond_should_notify_peers(bond);\n\tcommit = !!bond_miimon_inspect(bond);\n\tif (bond->send_peer_notif) {\n\t\trcu_read_unlock();\n\t\tif (rtnl_trylock()) {\n\t\t\tbond->send_peer_notif--;\n\t\t\trtnl_unlock();\n\t\t}\n\t} else {\n\t\trcu_read_unlock();\n\t}",
+          "before": "\trcu_read_lock();\n\tshould_notify_peers = bond_should_notify_peers(bond);\n\tcommit = !!bond_miimon_inspect(bond);\n\tif (bond->send_peer_notif) {\n\t\trcu_read_unlock();\n\t\tif (rtnl_trylock()) {\n\t\t\tbond->send_peer_notif--;\n\t\t\trtnl_unlock();\n\t\t}\n\t} else {\n\t\trcu_read_unlock();\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/net/bonding/bond_main.c\n+++ /linux/drivers/net/bonding/bond_main.c\n@@ -3001,0 +3002,25 @@\n+\tif (bond_should_use_rtnl(bond)) {\n+\t\trcu_read_unlock();\n+\n+\t\tif (!rtnl_trylock()) {\n+\t\t\tdelay = 1;\n+\t\t\tshould_notify_peers = false;\n+\t\t\tgoto re_arm;\n+\t\t}\n+\n+\t\trcu_read_lock();\n+\t\tshould_notify_peers = bond_should_notify_peers(bond);\n+\t\tcommit = !!bond_miimon_inspect(bond);\n+\t\tif (bond->send_peer_notif)\n+\t\t\tbond->send_peer_notif--;\n+\t\trcu_read_unlock();\n+\n+\t\tif (commit) {\n+\t\t\tbond_for_each_slave(bond, slave, iter)\n+\t\t\t\tbond_commit_link_state(slave, BOND_SLAVE_NOTIFY_LATER);\n+\t\t\tbond_miimon_commit(bond);\n+\t\t}\n+\t\trtnl_unlock();\n+\t\tgoto re_arm;\n+\t}\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 47",
+          "filename": "drivers/net/bonding/bond_main.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 0,
+      "start_step": 45
+    }
+  ],
+  "success_step": 47
+}

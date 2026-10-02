@@ -1,0 +1,26 @@
+diff --git a/net/bluetooth/l2cap_core.c b/net/bluetooth/l2cap_core.c
+index adb8c33ac595..4f9876fa4d26 100644
+--- a/net/bluetooth/l2cap_core.c
++++ b/net/bluetooth/l2cap_core.c
+@@ -1805,6 +1805,11 @@ static void l2cap_conn_del(struct hci_conn *hcon, int err)
+ 	if (conn->info_state & L2CAP_INFO_FEAT_MASK_REQ_SENT)
+ 		cancel_delayed_work_sync(&conn->info_timer);
+ 
++	if (conn->hchan) {
++		hci_chan_del(conn->hchan);
++		conn->hchan = NULL;
++	}
++
+ 	hcon->l2cap_data = NULL;
+ 	l2cap_conn_put(conn);
+ }
+@@ -1813,7 +1818,8 @@ static void l2cap_conn_free(struct kref *ref)
+ {
+ 	struct l2cap_conn *conn = container_of(ref, struct l2cap_conn, ref);
+ 
+-	hci_chan_del(conn->hchan);
++	if (conn->hchan)
++		hci_chan_del(conn->hchan);
+ 	hci_conn_put(conn->hcon);
+ 	kfree(conn);
+ }

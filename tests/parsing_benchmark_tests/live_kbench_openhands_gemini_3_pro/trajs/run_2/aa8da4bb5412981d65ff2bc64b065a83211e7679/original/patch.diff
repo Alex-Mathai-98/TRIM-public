@@ -1,0 +1,46 @@
+diff --git a/check_offsets.c b/check_offsets.c
+new file mode 100644
+index 000000000000..4df502e93bc1
+--- /dev/null
++++ b/check_offsets.c
+@@ -0,0 +1,10 @@
++
++#include <linux/net.h>
++#include <linux/module.h>
++#include <stdio.h>
++
++int main() {
++    printf("Offset of sk in socket: %lu\n", offsetof(struct socket, sk));
++    printf("Offset of ops in socket: %lu\n", offsetof(struct socket, ops));
++    return 0;
++}
+diff --git a/net/sctp/sysctl.c b/net/sctp/sysctl.c
+index 8e1e97be4df7..4507b3565b9a 100644
+--- a/net/sctp/sysctl.c
++++ b/net/sctp/sysctl.c
+@@ -24,7 +24,9 @@
+ #include <net/sctp/structs.h>
+ #include <net/sctp/sctp.h>
+ #include <linux/sysctl.h>
++#include <linux/mutex.h>
+ 
++static DEFINE_MUTEX(sctp_udp_tunnel_mutex);
+ static int timer_max = 86400000; /* ms in one day */
+ static int sack_timer_min = 1;
+ static int sack_timer_max = 500;
+@@ -549,6 +551,7 @@ static int proc_sctp_do_udp_port(const struct ctl_table *ctl, int write,
+ 		if (new_value > max || new_value < min)
+ 			return -EINVAL;
+ 
++		mutex_lock(&sctp_udp_tunnel_mutex);
+ 		net->sctp.udp_port = new_value;
+ 		sctp_udp_sock_stop(net);
+ 		if (new_value) {
+@@ -556,6 +559,7 @@ static int proc_sctp_do_udp_port(const struct ctl_table *ctl, int write,
+ 			if (ret)
+ 				net->sctp.udp_port = 0;
+ 		}
++		mutex_unlock(&sctp_udp_tunnel_mutex);
+ 
+ 		/* Update the value in the control socket */
+ 		lock_sock(sk);

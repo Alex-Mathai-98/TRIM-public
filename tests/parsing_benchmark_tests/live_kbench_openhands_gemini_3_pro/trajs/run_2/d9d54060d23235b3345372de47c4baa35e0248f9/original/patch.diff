@@ -1,0 +1,19 @@
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index adc5046fe9dd..7618f393a12c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2824,6 +2824,14 @@ static void ext4_apply_options(struct fs_context *fc, struct super_block *sb)
+ #define APPLY(X) ({ if (ctx->spec & EXT4_SPEC_##X) sbi->X = ctx->X; })
+ 	APPLY(s_commit_interval);
+ 	APPLY(s_stripe);
++	if (sbi->s_stripe > 0 && sbi->s_cluster_ratio > 1 &&
++	    sbi->s_stripe % sbi->s_cluster_ratio != 0) {
++		ext4_msg(sb, KERN_WARNING,
++			 "stripe (%lu) is not aligned with cluster size (%u), "
++			 "stripe is disabled",
++			 sbi->s_stripe, sbi->s_cluster_ratio);
++		sbi->s_stripe = 0;
++	}
+ 	APPLY(s_max_batch_time);
+ 	APPLY(s_min_batch_time);
+ 	APPLY(s_want_extra_isize);

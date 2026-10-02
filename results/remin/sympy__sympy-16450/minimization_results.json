@@ -1,0 +1,104 @@
+{
+  "bug_id": "sympy__sympy-16450",
+  "short_path": [
+    [
+      {
+        "filename": "sympy/simplify/simplify.py",
+        "before": "def posify(eq):\n    \"\"\"Return eq (with generic symbols made positive) and a\n    dictionary containing the mapping between the old and new\n    symbols.\n\n    Any symbol that has positive=None will be replaced with a positive dummy\n    symbol having the same name. This replacement will allow more symbolic\n    processing of expressions, especially those involving powers and\n    logarithms.\n\n    A dictionary that can be sent to subs to restore eq to its original\n    symbols is also returned.\n\n    >>> from sympy import posify, Symbol, log, solve\n    >>> from sympy.abc import x\n    >>> posify(x + Symbol('p', positive=True) + Symbol('n', negative=True))\n    (_x + n + p, {_x: x})\n\n    >>> eq = 1/x\n    >>> log(eq).expand()\n    log(1/x)\n    >>> log(posify(eq)[0]).expand()\n    -log(_x)\n    >>> p, rep = posify(eq)\n    >>> log(p).expand().subs(rep)\n    -log(x)\n\n    It is possible to apply the same transformations to an iterable\n    of expressions:\n\n    >>> eq = x**2 - 4\n    >>> solve(eq, x)\n    [-2, 2]\n    >>> eq_x, reps = posify([eq, x]); eq_x\n    [_x**2 - 4, _x]\n    >>> solve(*eq_x)\n    [2]\n    \"\"\"\n    eq = sympify(eq)\n    if iterable(eq):\n        f = type(eq)\n        eq = list(eq)\n        syms = set()\n        for e in eq:\n            syms = syms.union(e.atoms(Symbol))\n        reps = {}\n        for s in syms:\n            reps.update(dict((v, k) for k, v in posify(s)[1].items()))\n        for i, e in enumerate(eq):\n            eq[i] = e.subs(reps)\n        return f(eq), {r: s for s, r in reps.items()}\n\n    reps = {s: Dummy(s.name, positive=True)\n                 for s in eq.free_symbols if s.is_positive is None}\n    eq = eq.subs(reps)\n    return eq, {r: s for s, r in reps.items()}",
+        "after": "def posify(eq):\n    \"\"\"Return eq (with generic symbols made positive) and a\n    dictionary containing the mapping between the old and new\n    symbols.\n\n    Any symbol that has positive=None will be replaced with a positive dummy\n    symbol having the same name. This replacement will allow more symbolic\n    processing of expressions, especially those involving powers and\n    logarithms.\n\n    A dictionary that can be sent to subs to restore eq to its original\n    symbols is also returned.\n\n    >>> from sympy import posify, Symbol, log, solve\n    >>> from sympy.abc import x\n    >>> posify(x + Symbol('p', positive=True) + Symbol('n', negative=True))\n    (_x + n + p, {_x: x})\n\n    >>> eq = 1/x\n    >>> log(eq).expand()\n    log(1/x)\n    >>> log(posify(eq)[0]).expand()\n    -log(_x)\n    >>> p, rep = posify(eq)\n    >>> log(p).expand().subs(rep)\n    -log(x)\n\n    It is possible to apply the same transformations to an iterable\n    of expressions:\n\n    >>> eq = x**2 - 4\n    >>> solve(eq, x)\n    [-2, 2]\n    >>> eq_x, reps = posify([eq, x]); eq_x\n    [_x**2 - 4, _x]\n    >>> solve(*eq_x)\n    [2]\n    \"\"\"\n    eq = sympify(eq)\n    if iterable(eq):\n        f = type(eq)\n        eq = list(eq)\n        syms = set()\n        for e in eq:\n            syms = syms.union(e.atoms(Symbol))\n        reps = {}\n        for s in syms:\n            reps.update(dict((v, k) for k, v in posify(s)[1].items()))\n        for i, e in enumerate(eq):\n            eq[i] = e.subs(reps)\n        return f(eq), {r: s for s, r in reps.items()}\n\n    def _get_posify_assumptions(symbol):\n        \"\"\"Get assumptions from symbol that are compatible with positive=True\"\"\"\n        \n        # Assumptions that are incompatible with positive=True\n        incompatible = {\n            'imaginary', 'zero', 'negative', 'nonpositive', 'infinite'\n        }\n        \n        # Assumptions that are automatically derived from positive=True\n        # so we don't need to explicitly set them\n        auto_derived = {\n            'positive', 'real', 'complex', 'hermitian', 'nonnegative', \n            'nonzero'\n        }\n        \n        # Get the original assumptions from the symbol\n        original_assumptions = symbol._assumptions._generator\n        \n        # Filter out incompatible and auto-derived assumptions\n        preservable = {}\n        for key, value in original_assumptions.items():\n            if key not in incompatible and key not in auto_derived:\n                preservable[key] = value\n        \n        # Always add positive=True\n        preservable['positive'] = True\n        \n        return preservable\n\n    reps = {}\n    for s in eq.free_symbols:\n        if s.is_positive is None:\n            assumptions = _get_posify_assumptions(s)\n            reps[s] = Dummy(s.name, **assumptions)\n    eq = eq.subs(reps)\n    return eq, {r: s for s, r in reps.items()}",
+        "explanation": "classic_swe step 21 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sympy/simplify/simplify.py b/sympy/simplify/simplify.py\nindex c6b511f206..cc48079ca3 100644\n--- a/sympy/simplify/simplify.py\n+++ b/sympy/simplify/simplify.py\n@@ -251,8 +251,40 @@ def posify(eq):\n             eq[i] = e.subs(reps)\n         return f(eq), {r: s for s, r in reps.items()}\n \n-    reps = {s: Dummy(s.name, positive=True)\n-                 for s in eq.free_symbols if s.is_positive is None}\n+    def _get_posify_assumptions(symbol):\n+        \"\"\"Get assumptions from symbol that are compatible with positive=True\"\"\"\n+        \n+        # Assumptions that are incompatible with positive=True\n+        incompatible = {\n+            'imaginary', 'zero', 'negative', 'nonpositive', 'infinite'\n+        }\n+        \n+        # Assumptions that are automatically derived from positive=True\n+        # so we don't need to explicitly set them\n+        auto_derived = {\n+            'positive', 'real', 'complex', 'hermitian', 'nonnegative', \n+            'nonzero'\n+        }\n+        \n+        # Get the original assumptions from the symbol\n+        original_assumptions = symbol._assumptions._generator\n+        \n+        # Filter out incompatible and auto-derived assumptions\n+        preservable = {}\n+        for key, value in original_assumptions.items():\n+            if key not in incompatible and key not in auto_derived:\n+                preservable[key] = value\n+        \n+        # Always add positive=True\n+        preservable['positive'] = True\n+        \n+        return preservable\n+\n+    reps = {}\n+    for s in eq.free_symbols:\n+        if s.is_positive is None:\n+            assumptions = _get_posify_assumptions(s)\n+            reps[s] = Dummy(s.name, **assumptions)\n     eq = eq.subs(reps)\n     return eq, {r: s for s, r in reps.items()}\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      3
+    ],
+    "edit_list_after_file_min": [
+      3
+    ],
+    "edit_list_after_greedy": [
+      3
+    ],
+    "edit_list_after_refinement": [
+      3
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sympy/simplify/simplify.py",
+          "before": "def posify(eq):\n    \"\"\"Return eq (with generic symbols made positive) and a\n    dictionary containing the mapping between the old and new\n    symbols.\n\n    Any symbol that has positive=None will be replaced with a positive dummy\n    symbol having the same name. This replacement will allow more symbolic\n    processing of expressions, especially those involving powers and\n    logarithms.\n\n    A dictionary that can be sent to subs to restore eq to its original\n    symbols is also returned.\n\n    >>> from sympy import posify, Symbol, log, solve\n    >>> from sympy.abc import x\n    >>> posify(x + Symbol('p', positive=True) + Symbol('n', negative=True))\n    (_x + n + p, {_x: x})\n\n    >>> eq = 1/x\n    >>> log(eq).expand()\n    log(1/x)\n    >>> log(posify(eq)[0]).expand()\n    -log(_x)\n    >>> p, rep = posify(eq)\n    >>> log(p).expand().subs(rep)\n    -log(x)\n\n    It is possible to apply the same transformations to an iterable\n    of expressions:\n\n    >>> eq = x**2 - 4\n    >>> solve(eq, x)\n    [-2, 2]\n    >>> eq_x, reps = posify([eq, x]); eq_x\n    [_x**2 - 4, _x]\n    >>> solve(*eq_x)\n    [2]\n    \"\"\"\n    eq = sympify(eq)\n    if iterable(eq):\n        f = type(eq)\n        eq = list(eq)\n        syms = set()\n        for e in eq:\n            syms = syms.union(e.atoms(Symbol))\n        reps = {}\n        for s in syms:\n            reps.update(dict((v, k) for k, v in posify(s)[1].items()))\n        for i, e in enumerate(eq):\n            eq[i] = e.subs(reps)\n        return f(eq), {r: s for s, r in reps.items()}\n\n    reps = {s: Dummy(s.name, positive=True)\n                 for s in eq.free_symbols if s.is_positive is None}\n    eq = eq.subs(reps)\n    return eq, {r: s for s, r in reps.items()}",
+          "after": "def posify(eq):\n    \"\"\"Return eq (with generic symbols made positive) and a\n    dictionary containing the mapping between the old and new\n    symbols.\n\n    Any symbol that has positive=None will be replaced with a positive dummy\n    symbol having the same name. This replacement will allow more symbolic\n    processing of expressions, especially those involving powers and\n    logarithms.\n\n    A dictionary that can be sent to subs to restore eq to its original\n    symbols is also returned.\n\n    >>> from sympy import posify, Symbol, log, solve\n    >>> from sympy.abc import x\n    >>> posify(x + Symbol('p', positive=True) + Symbol('n', negative=True))\n    (_x + n + p, {_x: x})\n\n    >>> eq = 1/x\n    >>> log(eq).expand()\n    log(1/x)\n    >>> log(posify(eq)[0]).expand()\n    -log(_x)\n    >>> p, rep = posify(eq)\n    >>> log(p).expand().subs(rep)\n    -log(x)\n\n    It is possible to apply the same transformations to an iterable\n    of expressions:\n\n    >>> eq = x**2 - 4\n    >>> solve(eq, x)\n    [-2, 2]\n    >>> eq_x, reps = posify([eq, x]); eq_x\n    [_x**2 - 4, _x]\n    >>> solve(*eq_x)\n    [2]\n    \"\"\"\n    eq = sympify(eq)\n    if iterable(eq):\n        f = type(eq)\n        eq = list(eq)\n        syms = set()\n        for e in eq:\n            syms = syms.union(e.atoms(Symbol))\n        reps = {}\n        for s in syms:\n            reps.update(dict((v, k) for k, v in posify(s)[1].items()))\n        for i, e in enumerate(eq):\n            eq[i] = e.subs(reps)\n        return f(eq), {r: s for s, r in reps.items()}\n\n    def _get_posify_assumptions(symbol):\n        \"\"\"Get assumptions from symbol that are compatible with positive=True\"\"\"\n        \n        # Assumptions that are incompatible with positive=True\n        incompatible = {\n            'imaginary', 'zero', 'negative', 'nonpositive', 'infinite'\n        }\n        \n        # Assumptions that are automatically derived from positive=True\n        # so we don't need to explicitly set them\n        auto_derived = {\n            'positive', 'real', 'complex', 'hermitian', 'nonnegative', \n            'nonzero'\n        }\n        \n        # Get the original assumptions from the symbol\n        original_assumptions = symbol._assumptions._generator\n        \n        # Filter out incompatible and auto-derived assumptions\n        preservable = {}\n        for key, value in original_assumptions.items():\n            if key not in incompatible and key not in auto_derived:\n                preservable[key] = value\n        \n        # Always add positive=True\n        preservable['positive'] = True\n        \n        return preservable\n\n    reps = {}\n    for s in eq.free_symbols:\n        if s.is_positive is None:\n            assumptions = _get_posify_assumptions(s)\n            reps[s] = Dummy(s.name, **assumptions)\n    eq = eq.subs(reps)\n    return eq, {r: s for s, r in reps.items()}",
+          "explanation": "classic_swe step 21 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 38,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 38,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sympy/simplify/simplify.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sympy/simplify/simplify.py"
+    ],
+    "gold_files": [
+      "sympy/simplify/simplify.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 34,
+    "minimized_deleted_lines": 2,
+    "gold_added_lines": 1,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

@@ -1,0 +1,165 @@
+{
+  "bug_id": "django__django-13807",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/backends/sqlite3/base.py",
+        "before": "                    violations = chain.from_iterable(\n                        cursor.execute('PRAGMA foreign_key_check(%s)' % table_name).fetchall()\n                        for table_name in table_names\n                    )",
+        "after": "                    violations = chain.from_iterable(\n                        cursor.execute('PRAGMA foreign_key_check(%s)' % self.ops.quote_name(table_name)).fetchall()\n                        for table_name in table_names\n                    )",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/backends/sqlite3/base.py",
+        "before": "                    foreign_key = cursor.execute(\n                        'PRAGMA foreign_key_list(%s)' % table_name\n                    ).fetchall()[foreign_key_index]",
+        "after": "                    foreign_key = cursor.execute(\n                        'PRAGMA foreign_key_list(%s)' % self.ops.quote_name(table_name)\n                    ).fetchall()[foreign_key_index]",
+        "explanation": "classic_swe step 18 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/backends/sqlite3/base.py",
+        "before": "                    primary_key_value, bad_value = cursor.execute(\n                        'SELECT %s, %s FROM %s WHERE rowid = %%s' % (\n                            primary_key_column_name, column_name, table_name\n                        ),\n                        (rowid,),\n                    ).fetchone()",
+        "after": "                    primary_key_value, bad_value = cursor.execute(\n                        'SELECT %s, %s FROM %s WHERE rowid = %%s' % (\n                            self.ops.quote_name(primary_key_column_name), \n                            self.ops.quote_name(column_name), \n                            self.ops.quote_name(table_name)\n                        ),\n                        (rowid,),\n                    ).fetchone()",
+        "explanation": "classic_swe step 19 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/backends/sqlite3/base.py b/django/db/backends/sqlite3/base.py\nindex 2eeaf98c0d..5a4fcf89fd 100644\n--- a/django/db/backends/sqlite3/base.py\n+++ b/django/db/backends/sqlite3/base.py\n@@ -327,19 +327,21 @@ class DatabaseWrapper(BaseDatabaseWrapper):\n                     violations = cursor.execute('PRAGMA foreign_key_check').fetchall()\n                 else:\n                     violations = chain.from_iterable(\n-                        cursor.execute('PRAGMA foreign_key_check(%s)' % table_name).fetchall()\n+                        cursor.execute('PRAGMA foreign_key_check(%s)' % self.ops.quote_name(table_name)).fetchall()\n                         for table_name in table_names\n                     )\n                 # See https://www.sqlite.org/pragma.html#pragma_foreign_key_check\n                 for table_name, rowid, referenced_table_name, foreign_key_index in violations:\n                     foreign_key = cursor.execute(\n-                        'PRAGMA foreign_key_list(%s)' % table_name\n+                        'PRAGMA foreign_key_list(%s)' % self.ops.quote_name(table_name)\n                     ).fetchall()[foreign_key_index]\n                     column_name, referenced_column_name = foreign_key[3:5]\n                     primary_key_column_name = self.introspection.get_primary_key_column(cursor, table_name)\n                     primary_key_value, bad_value = cursor.execute(\n                         'SELECT %s, %s FROM %s WHERE rowid = %%s' % (\n-                            primary_key_column_name, column_name, table_name\n+                            self.ops.quote_name(primary_key_column_name), \n+                            self.ops.quote_name(column_name), \n+                            self.ops.quote_name(table_name)\n                         ),\n                         (rowid,),\n                     ).fetchone()\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_no_crash": 1,
+    "node_list_after_refinement": [
+      0
+    ],
+    "edit_list_after_node_min": [
+      3,
+      4,
+      5
+    ],
+    "edit_list_after_file_min": [
+      3,
+      4,
+      5
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 3,
+    "edit_list_after_greedy": [
+      3,
+      4,
+      5
+    ],
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "edit_list_after_refinement": [
+      3,
+      4,
+      5
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 4,
+  "minimized_edit_count": 3,
+  "reduction": "4_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/sqlite3/base.py",
+          "before": "                    violations = chain.from_iterable(\n                        cursor.execute('PRAGMA foreign_key_check(%s)' % table_name).fetchall()\n                        for table_name in table_names\n                    )",
+          "after": "                    violations = chain.from_iterable(\n                        cursor.execute('PRAGMA foreign_key_check(%s)' % self.ops.quote_name(table_name)).fetchall()\n                        for table_name in table_names\n                    )",
+          "explanation": "classic_swe step 17 #1"
+        },
+        {
+          "filename": "django/db/backends/sqlite3/base.py",
+          "before": "                    foreign_key = cursor.execute(\n                        'PRAGMA foreign_key_list(%s)' % table_name\n                    ).fetchall()[foreign_key_index]",
+          "after": "                    foreign_key = cursor.execute(\n                        'PRAGMA foreign_key_list(%s)' % self.ops.quote_name(table_name)\n                    ).fetchall()[foreign_key_index]",
+          "explanation": "classic_swe step 18 #1"
+        },
+        {
+          "filename": "django/db/backends/sqlite3/base.py",
+          "before": "                    primary_key_value, bad_value = cursor.execute(\n                        'SELECT %s, %s FROM %s WHERE rowid = %%s' % (\n                            primary_key_column_name, column_name, table_name\n                        ),\n                        (rowid,),\n                    ).fetchone()",
+          "after": "                    primary_key_value, bad_value = cursor.execute(\n                        'SELECT %s, %s FROM %s WHERE rowid = %%s' % (\n                            self.ops.quote_name(primary_key_column_name), \n                            self.ops.quote_name(column_name), \n                            self.ops.quote_name(table_name)\n                        ),\n                        (rowid,),\n                    ).fetchone()",
+          "explanation": "classic_swe step 19 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/backends/sqlite3/base.py",
+          "before": "                        cursor.execute(\n                            \"\"\"\n                            SELECT REFERRING.`%s`, REFERRING.`%s` FROM `%s` as REFERRING\n                            LEFT JOIN `%s` as REFERRED\n                            ON (REFERRING.`%s` = REFERRED.`%s`)\n                            WHERE REFERRING.`%s` IS NOT NULL AND REFERRED.`%s` IS NULL\n                            \"\"\"\n                            % (\n                                primary_key_column_name, column_name, table_name,\n                                referenced_table_name, column_name, referenced_column_name,\n                                column_name, referenced_column_name,\n                            )\n                        )",
+          "after": "                        cursor.execute(\n                            \"\"\"\n                            SELECT REFERRING.%s, REFERRING.%s FROM %s as REFERRING\n                            LEFT JOIN %s as REFERRED\n                            ON (REFERRING.%s = REFERRED.%s)\n                            WHERE REFERRING.%s IS NOT NULL AND REFERRED.%s IS NULL\n                            \"\"\"\n                            % (\n                                self.ops.quote_name(primary_key_column_name), \n                                self.ops.quote_name(column_name), \n                                self.ops.quote_name(table_name),\n                                self.ops.quote_name(referenced_table_name), \n                                self.ops.quote_name(column_name), \n                                self.ops.quote_name(referenced_column_name),\n                                self.ops.quote_name(column_name), \n                                self.ops.quote_name(referenced_column_name),\n                            )\n                        )",
+          "explanation": "classic_swe step 30 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 38,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 38,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/backends/sqlite3/base.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/backends/sqlite3/base.py"
+    ],
+    "gold_files": [
+      "django/db/backends/sqlite3/base.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 5,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 8,
+    "gold_deleted_lines": 3
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

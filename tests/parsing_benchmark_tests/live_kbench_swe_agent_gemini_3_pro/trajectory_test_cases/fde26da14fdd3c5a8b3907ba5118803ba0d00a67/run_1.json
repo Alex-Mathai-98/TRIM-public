@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ],
+    [
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t/* prevent another thread from changing buffer sizes */\n\tmutex_lock(&buffer->mutex);\n\n\told_order = buffer->subbuf_order;\n\told_size = buffer->subbuf_size;\n\n\tatomic_inc(&buffer->record_disabled);\n",
+          "before": "\told_order = buffer->subbuf_order;\n\told_size = buffer->subbuf_size;\n\n\t/* prevent another thread from changing buffer sizes */\n\tmutex_lock(&buffer->mutex);\n\tatomic_inc(&buffer->record_disabled);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex e24509bd0af5..e6f810b716aa 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -6791,11 +6791,12 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)\n \tif (psize > RB_WRITE_MASK + 1)\n \t\treturn -EINVAL;\n \n+\t/* prevent another thread from changing buffer sizes */\n+\tmutex_lock(&buffer->mutex);\n+\n \told_order = buffer->subbuf_order;\n \told_size = buffer->subbuf_size;\n \n-\t/* prevent another thread from changing buffer sizes */\n-\tmutex_lock(&buffer->mutex);\n \tatomic_inc(&buffer->record_disabled);\n \n \t/* Make sure all commits have finished */",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        },
+        {
+          "after": "\t\tlist_for_each_entry_safe(bpage, tmp, &cpu_buffer->new_pages, list) {\n\t\t\tlist_del_init(&bpage->list);\n\t\t\tfree_buffer_page(bpage);\n\t\t}\n\t\tcpu_buffer->nr_pages_to_update = 0;\n\t}\n",
+          "before": "\t\tlist_for_each_entry_safe(bpage, tmp, &cpu_buffer->new_pages, list) {\n\t\t\tlist_del_init(&bpage->list);\n\t\t\tfree_buffer_page(bpage);\n\t\t}\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex e24509bd0af5..d057083974ea 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -6791,11 +6791,12 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)\n \tif (psize > RB_WRITE_MASK + 1)\n \t\treturn -EINVAL;\n \n+\t/* prevent another thread from changing buffer sizes */\n+\tmutex_lock(&buffer->mutex);\n+\n \told_order = buffer->subbuf_order;\n \told_size = buffer->subbuf_size;\n \n-\t/* prevent another thread from changing buffer sizes */\n-\tmutex_lock(&buffer->mutex);\n \tatomic_inc(&buffer->record_disabled);\n \n \t/* Make sure all commits have finished */\n@@ -6921,6 +6922,7 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)\n \t\t\tlist_del_init(&bpage->list);\n \t\t\tfree_buffer_page(bpage);\n \t\t}\n+\t\tcpu_buffer->nr_pages_to_update = 0;\n \t}\n \n \treturn err;",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 21
+    },
+    {
+      "edits": [
+        {
+          "after": "\t/* free pages if they weren't inserted */\n\tif (!success) {\n\t\tstruct buffer_page *bpage, *tmp;\n\n\t\t/*\n\t\t * The list was modified to point to the ring buffer.\n\t\t * We need to restore it to iterate over it.\n\t\t */\n\t\tcpu_buffer->new_pages.next->prev = &cpu_buffer->new_pages;\n\t\tcpu_buffer->new_pages.prev->next = &cpu_buffer->new_pages;\n\n\t\tlist_for_each_entry_safe(bpage, tmp, &cpu_buffer->new_pages,\n\t\t\t\t\t list) {\n",
+          "before": "\t/* free pages if they weren't inserted */\n\tif (!success) {\n\t\tstruct buffer_page *bpage, *tmp;\n\t\tlist_for_each_entry_safe(bpage, tmp, &cpu_buffer->new_pages,\n\t\t\t\t\t list) {\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c\nindex e24509bd0af5..872f5673ec1a 100644\n--- a/kernel/trace/ring_buffer.c\n+++ b/kernel/trace/ring_buffer.c\n@@ -2780,6 +2780,14 @@ rb_insert_pages(struct ring_buffer_per_cpu *cpu_buffer)\n \t/* free pages if they weren't inserted */\n \tif (!success) {\n \t\tstruct buffer_page *bpage, *tmp;\n+\n+\t\t/*\n+\t\t * The list was modified to point to the ring buffer.\n+\t\t * We need to restore it to iterate over it.\n+\t\t */\n+\t\tcpu_buffer->new_pages.next->prev = &cpu_buffer->new_pages;\n+\t\tcpu_buffer->new_pages.prev->next = &cpu_buffer->new_pages;\n+\n \t\tlist_for_each_entry_safe(bpage, tmp, &cpu_buffer->new_pages,\n \t\t\t\t\t list) {\n \t\t\tlist_del_init(&bpage->list);\n@@ -6791,11 +6799,12 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)\n \tif (psize > RB_WRITE_MASK + 1)\n \t\treturn -EINVAL;\n \n+\t/* prevent another thread from changing buffer sizes */\n+\tmutex_lock(&buffer->mutex);\n+\n \told_order = buffer->subbuf_order;\n \told_size = buffer->subbuf_size;\n \n-\t/* prevent another thread from changing buffer sizes */\n-\tmutex_lock(&buffer->mutex);\n \tatomic_inc(&buffer->record_disabled);\n \n \t/* Make sure all commits have finished */\n@@ -6921,6 +6930,7 @@ int ring_buffer_subbuf_order_set(struct trace_buffer *buffer, int order)\n \t\t\tlist_del_init(&bpage->list);\n \t\t\tfree_buffer_page(bpage);\n \t\t}\n+\t\tcpu_buffer->nr_pages_to_update = 0;\n \t}\n \n \treturn err;",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "kernel/trace/ring_buffer.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 1,
+      "start_step": 26
+    }
+  ],
+  "success_step": 26
+}

@@ -1,0 +1,131 @@
+{
+  "bug_id": "django__django-15103",
+  "short_path": [
+    [
+      {
+        "filename": "django/utils/html.py",
+        "before": "def json_script(value, element_id):\n    \"\"\"\n    Escape all the HTML/XML special characters with their unicode escapes, so\n    value is safe to be output anywhere except for inside a tag attribute. Wrap\n    the escaped JSON in a script tag.\n    \"\"\"\n    from django.core.serializers.json import DjangoJSONEncoder\n    json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)\n    return format_html(\n        '<script id=\"{}\" type=\"application/json\">{}</script>',\n        element_id, mark_safe(json_str)\n    )",
+        "after": "def json_script(value, element_id=None):\n    \"\"\"\n    Escape all the HTML/XML special characters with their unicode escapes, so\n    value is safe to be output anywhere except for inside a tag attribute. Wrap\n    the escaped JSON in a script tag.\n    \"\"\"\n    from django.core.serializers.json import DjangoJSONEncoder\n    json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)\n    if element_id:\n        return format_html(\n            '<script id=\"{}\" type=\"application/json\">{}</script>',\n            element_id, mark_safe(json_str)\n        )\n    else:\n        return format_html(\n            '<script type=\"application/json\">{}</script>',\n            mark_safe(json_str)\n        )",
+        "explanation": "classic_swe step 12 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/template/defaultfilters.py",
+        "before": "@register.filter(is_safe=True)\ndef json_script(value, element_id):\n    \"\"\"\n    Output value JSON-encoded, wrapped in a <script type=\"application/json\">\n    tag.\n    \"\"\"\n    return _json_script(value, element_id)",
+        "after": "@register.filter(is_safe=True)\ndef json_script(value, element_id=None):\n    \"\"\"\n    Output value JSON-encoded, wrapped in a <script type=\"application/json\">\n    tag.\n    \"\"\"\n    return _json_script(value, element_id)",
+        "explanation": "classic_swe step 14 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/template/defaultfilters.py b/django/template/defaultfilters.py\nindex 5ccef38048..12f0d4caaa 100644\n--- a/django/template/defaultfilters.py\n+++ b/django/template/defaultfilters.py\n@@ -83,7 +83,7 @@ def escapejs_filter(value):\n \n \n @register.filter(is_safe=True)\n-def json_script(value, element_id):\n+def json_script(value, element_id=None):\n     \"\"\"\n     Output value JSON-encoded, wrapped in a <script type=\"application/json\">\n     tag.\ndiff --git a/django/utils/html.py b/django/utils/html.py\nindex da1b5675ec..8147c5d3d0 100644\n--- a/django/utils/html.py\n+++ b/django/utils/html.py\n@@ -61,7 +61,7 @@ _json_script_escapes = {\n }\n \n \n-def json_script(value, element_id):\n+def json_script(value, element_id=None):\n     \"\"\"\n     Escape all the HTML/XML special characters with their unicode escapes, so\n     value is safe to be output anywhere except for inside a tag attribute. Wrap\n@@ -69,10 +69,16 @@ def json_script(value, element_id):\n     \"\"\"\n     from django.core.serializers.json import DjangoJSONEncoder\n     json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)\n-    return format_html(\n-        '<script id=\"{}\" type=\"application/json\">{}</script>',\n-        element_id, mark_safe(json_str)\n-    )\n+    if element_id:\n+        return format_html(\n+            '<script id=\"{}\" type=\"application/json\">{}</script>',\n+            element_id, mark_safe(json_str)\n+        )\n+    else:\n+        return format_html(\n+            '<script type=\"application/json\">{}</script>',\n+            mark_safe(json_str)\n+        )\n \n \n def conditional_escape(text):\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2,
+      3
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2,
+      3
+    ],
+    "greedy_removal_file_no_crash": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "edit_list_after_file_min": [
+      2,
+      3
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      2,
+      3
+    ],
+    "edit_list_after_refinement": [
+      2,
+      3
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/utils/html.py",
+          "before": "def json_script(value, element_id):\n    \"\"\"\n    Escape all the HTML/XML special characters with their unicode escapes, so\n    value is safe to be output anywhere except for inside a tag attribute. Wrap\n    the escaped JSON in a script tag.\n    \"\"\"\n    from django.core.serializers.json import DjangoJSONEncoder\n    json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)\n    return format_html(\n        '<script id=\"{}\" type=\"application/json\">{}</script>',\n        element_id, mark_safe(json_str)\n    )",
+          "after": "def json_script(value, element_id=None):\n    \"\"\"\n    Escape all the HTML/XML special characters with their unicode escapes, so\n    value is safe to be output anywhere except for inside a tag attribute. Wrap\n    the escaped JSON in a script tag.\n    \"\"\"\n    from django.core.serializers.json import DjangoJSONEncoder\n    json_str = json.dumps(value, cls=DjangoJSONEncoder).translate(_json_script_escapes)\n    if element_id:\n        return format_html(\n            '<script id=\"{}\" type=\"application/json\">{}</script>',\n            element_id, mark_safe(json_str)\n        )\n    else:\n        return format_html(\n            '<script type=\"application/json\">{}</script>',\n            mark_safe(json_str)\n        )",
+          "explanation": "classic_swe step 12 #1"
+        },
+        {
+          "filename": "django/template/defaultfilters.py",
+          "before": "@register.filter(is_safe=True)\ndef json_script(value, element_id):\n    \"\"\"\n    Output value JSON-encoded, wrapped in a <script type=\"application/json\">\n    tag.\n    \"\"\"\n    return _json_script(value, element_id)",
+          "after": "@register.filter(is_safe=True)\ndef json_script(value, element_id=None):\n    \"\"\"\n    Output value JSON-encoded, wrapped in a <script type=\"application/json\">\n    tag.\n    \"\"\"\n    return _json_script(value, element_id)",
+          "explanation": "classic_swe step 14 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 17,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 17,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/template/defaultfilters.py",
+      "django/utils/html.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/template/defaultfilters.py",
+      "django/utils/html.py"
+    ],
+    "gold_files": [
+      "django/template/defaultfilters.py",
+      "django/utils/html.py"
+    ],
+    "minimized_hunks": 3,
+    "gold_hunks": 3,
+    "minimized_added_lines": 12,
+    "minimized_deleted_lines": 6,
+    "gold_added_lines": 10,
+    "gold_deleted_lines": 7
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

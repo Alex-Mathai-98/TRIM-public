@@ -1,0 +1,19 @@
+diff --git a/fs/bcachefs/sb-members.c b/fs/bcachefs/sb-members.c
+index 363eb0c6eb7c..defbd5df5767 100644
+--- a/fs/bcachefs/sb-members.c
++++ b/fs/bcachefs/sb-members.c
+@@ -343,8 +343,13 @@ static void bch2_sb_members_v2_to_text(struct printbuf *out, struct bch_sb *sb,
+ 	struct bch_sb_field_disk_groups *gi = bch2_sb_field_get(sb, disk_groups);
+ 	unsigned i;
+ 
+-	for (i = 0; i < sb->nr_devices; i++)
++	for (i = 0; i < sb->nr_devices; i++) {
++		if ((void *) __bch2_members_v2_get_mut(mi, i) +
++		    min_t(size_t, le16_to_cpu(mi->member_bytes), sizeof(struct bch_member)) >
++		    vstruct_end(&mi->field))
++			break;
+ 		member_to_text(out, members_v2_get(mi, i), gi, sb, i);
++	}
+ }
+ 
+ static int bch2_sb_members_v2_validate(struct bch_sb *sb, struct bch_sb_field *f,

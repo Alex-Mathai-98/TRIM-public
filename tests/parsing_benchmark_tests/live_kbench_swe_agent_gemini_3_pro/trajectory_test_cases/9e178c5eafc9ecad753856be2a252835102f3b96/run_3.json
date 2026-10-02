@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tdown_read(&EXT4_I(inode)->xattr_sem);\n",
+          "before": "\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 2e02efbddaac..4f5fdf9d191f 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -862,7 +862,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \tqsize_t ea_inode_refs = 0;\n \tint ret;\n \n-\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n+\tdown_read(&EXT4_I(inode)->xattr_sem);\n \n \tif (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {\n \t\tret = ext4_get_inode_loc(inode, &iloc);",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        },
+        {
+          "after": "\t*usage = ea_inode_refs + 1;\n\tret = 0;\nout:\n\tup_read(&EXT4_I(inode)->xattr_sem);\n\tbrelse(iloc.bh);\n",
+          "before": "\t*usage = ea_inode_refs + 1;\n\tret = 0;\nout:\n\tbrelse(iloc.bh);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 2e02efbddaac..cfff4fe2386f 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -862,7 +862,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \tqsize_t ea_inode_refs = 0;\n \tint ret;\n \n-\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n+\tdown_read(&EXT4_I(inode)->xattr_sem);\n \n \tif (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {\n \t\tret = ext4_get_inode_loc(inode, &iloc);\n@@ -897,6 +897,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \t*usage = ea_inode_refs + 1;\n \tret = 0;\n out:\n+\tup_read(&EXT4_I(inode)->xattr_sem);\n \tbrelse(iloc.bh);\n \tbrelse(bh);\n \treturn ret;",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "fs/ext4/xattr.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\terror = dquot_transfer(idmap, inode, attr);\n",
+          "before": "\t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n\t\terror = dquot_transfer(idmap, inode, attr);\n\t\tup_read(&EXT4_I(inode)->xattr_sem);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c\nindex 783c883d4d5e..b32d4e574968 100644\n--- a/fs/ext4/inode.c\n+++ b/fs/ext4/inode.c\n@@ -5885,9 +5885,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,\n \t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n \t\t * counts xattr inode references.\n \t\t */\n-\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n \t\terror = dquot_transfer(idmap, inode, attr);\n-\t\tup_read(&EXT4_I(inode)->xattr_sem);\n \n \t\tif (error) {\n \t\t\text4_journal_stop(handle);\ndiff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 2e02efbddaac..cfff4fe2386f 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -862,7 +862,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \tqsize_t ea_inode_refs = 0;\n \tint ret;\n \n-\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n+\tdown_read(&EXT4_I(inode)->xattr_sem);\n \n \tif (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {\n \t\tret = ext4_get_inode_loc(inode, &iloc);\n@@ -897,6 +897,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \t*usage = ea_inode_refs + 1;\n \tret = 0;\n out:\n+\tup_read(&EXT4_I(inode)->xattr_sem);\n \tbrelse(iloc.bh);\n \tbrelse(bh);\n \treturn ret;",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "fs/ext4/inode.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        },
+        {
+          "after": "\t\t/* __dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\terr = __dquot_transfer(inode, transfer_to);\n",
+          "before": "\t\t/* __dquot_transfer() calls back ext4_get_inode_usage() which\n\t\t * counts xattr inode references.\n\t\t */\n\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n\t\terr = __dquot_transfer(inode, transfer_to);\n\t\tup_read(&EXT4_I(inode)->xattr_sem);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c\nindex 783c883d4d5e..b32d4e574968 100644\n--- a/fs/ext4/inode.c\n+++ b/fs/ext4/inode.c\n@@ -5885,9 +5885,7 @@ int ext4_setattr(struct mnt_idmap *idmap, struct dentry *dentry,\n \t\t/* dquot_transfer() calls back ext4_get_inode_usage() which\n \t\t * counts xattr inode references.\n \t\t */\n-\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n \t\terror = dquot_transfer(idmap, inode, attr);\n-\t\tup_read(&EXT4_I(inode)->xattr_sem);\n \n \t\tif (error) {\n \t\t\text4_journal_stop(handle);\ndiff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c\nindex 366a9b615bf0..8ad9efe6cf01 100644\n--- a/fs/ext4/ioctl.c\n+++ b/fs/ext4/ioctl.c\n@@ -778,9 +778,7 @@ static int ext4_ioctl_setproject(struct inode *inode, __u32 projid)\n \t\t/* __dquot_transfer() calls back ext4_get_inode_usage() which\n \t\t * counts xattr inode references.\n \t\t */\n-\t\tdown_read(&EXT4_I(inode)->xattr_sem);\n \t\terr = __dquot_transfer(inode, transfer_to);\n-\t\tup_read(&EXT4_I(inode)->xattr_sem);\n \t\tdqput(transfer_to[PRJQUOTA]);\n \t\tif (err)\n \t\t\tgoto out_dirty;\ndiff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c\nindex 2e02efbddaac..cfff4fe2386f 100644\n--- a/fs/ext4/xattr.c\n+++ b/fs/ext4/xattr.c\n@@ -862,7 +862,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \tqsize_t ea_inode_refs = 0;\n \tint ret;\n \n-\tlockdep_assert_held_read(&EXT4_I(inode)->xattr_sem);\n+\tdown_read(&EXT4_I(inode)->xattr_sem);\n \n \tif (ext4_test_inode_state(inode, EXT4_STATE_XATTR)) {\n \t\tret = ext4_get_inode_loc(inode, &iloc);\n@@ -897,6 +897,7 @@ int ext4_get_inode_usage(struct inode *inode, qsize_t *usage)\n \t*usage = ea_inode_refs + 1;\n \tret = 0;\n out:\n+\tup_read(&EXT4_I(inode)->xattr_sem);\n \tbrelse(iloc.bh);\n \tbrelse(bh);\n \treturn ret;",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "fs/ext4/ioctl.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 26
+}

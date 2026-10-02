@@ -1,0 +1,109 @@
+{
+  "bug_id": "matplotlib__matplotlib-14623",
+  "short_path": [
+    [
+      {
+        "filename": "lib/matplotlib/ticker.py",
+        "before": "    def nonsingular(self, vmin, vmax):\n        if not np.isfinite(vmin) or not np.isfinite(vmax):\n            return 1, 10  # initial range, no data plotted yet\n\n        if vmin > vmax:\n            vmin, vmax = vmax, vmin\n        if vmax <= 0:\n            cbook._warn_external(\n                \"Data has no positive values, and therefore cannot be \"\n                \"log-scaled.\")\n            return 1, 10\n\n        minpos = self.axis.get_minpos()\n        if not np.isfinite(minpos):\n            minpos = 1e-300  # This should never take effect.\n        if vmin <= 0:\n            vmin = minpos\n        if vmin == vmax:\n            vmin = _decade_less(vmin, self._base)\n            vmax = _decade_greater(vmax, self._base)\n        return vmin, vmax",
+        "after": "    def nonsingular(self, vmin, vmax):\n        if not np.isfinite(vmin) or not np.isfinite(vmax):\n            return 1, 10  # initial range, no data plotted yet\n\n        # Preserve the original order if both values are positive to allow\n        # for axis inversion (e.g., set_ylim(high, low) for log scale)\n        original_order_preserved = False\n        if vmin > 0 and vmax > 0:\n            original_order_preserved = True\n        elif vmin > vmax:\n            vmin, vmax = vmax, vmin\n            \n        if vmax <= 0:\n            cbook._warn_external(\n                \"Data has no positive values, and therefore cannot be \"\n                \"log-scaled.\")\n            return 1, 10\n\n        minpos = self.axis.get_minpos()\n        if not np.isfinite(minpos):\n            minpos = 1e-300  # This should never take effect.\n        if vmin <= 0:\n            vmin = minpos\n        if vmin == vmax:\n            if original_order_preserved:\n                # If we preserved order and they're equal, we need to expand\n                # but maintain the intended direction\n                vmin_expanded = _decade_less(vmin, self._base)\n                vmax_expanded = _decade_greater(vmax, self._base)\n                # Return in the same order as input\n                return vmin_expanded, vmax_expanded\n            else:\n                vmin = _decade_less(vmin, self._base)\n                vmax = _decade_greater(vmax, self._base)\n        return vmin, vmax",
+        "explanation": "classic_swe step 36 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/lib/matplotlib/ticker.py b/lib/matplotlib/ticker.py\nindex 209a3f92ce..02b0326ef1 100644\n--- a/lib/matplotlib/ticker.py\n+++ b/lib/matplotlib/ticker.py\n@@ -2379,8 +2379,14 @@ class LogLocator(Locator):\n         if not np.isfinite(vmin) or not np.isfinite(vmax):\n             return 1, 10  # initial range, no data plotted yet\n \n-        if vmin > vmax:\n+        # Preserve the original order if both values are positive to allow\n+        # for axis inversion (e.g., set_ylim(high, low) for log scale)\n+        original_order_preserved = False\n+        if vmin > 0 and vmax > 0:\n+            original_order_preserved = True\n+        elif vmin > vmax:\n             vmin, vmax = vmax, vmin\n+            \n         if vmax <= 0:\n             cbook._warn_external(\n                 \"Data has no positive values, and therefore cannot be \"\n@@ -2393,8 +2399,16 @@ class LogLocator(Locator):\n         if vmin <= 0:\n             vmin = minpos\n         if vmin == vmax:\n-            vmin = _decade_less(vmin, self._base)\n-            vmax = _decade_greater(vmax, self._base)\n+            if original_order_preserved:\n+                # If we preserved order and they're equal, we need to expand\n+                # but maintain the intended direction\n+                vmin_expanded = _decade_less(vmin, self._base)\n+                vmax_expanded = _decade_greater(vmax, self._base)\n+                # Return in the same order as input\n+                return vmin_expanded, vmax_expanded\n+            else:\n+                vmin = _decade_less(vmin, self._base)\n+                vmax = _decade_greater(vmax, self._base)\n         return vmin, vmax\n \n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      5
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      5
+    ],
+    "edit_list_after_file_min": [
+      5
+    ],
+    "edit_list_after_greedy": [
+      5
+    ],
+    "edit_list_after_refinement": [
+      5
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/ticker.py",
+          "before": "    def nonsingular(self, vmin, vmax):\n        if not np.isfinite(vmin) or not np.isfinite(vmax):\n            return 1, 10  # initial range, no data plotted yet\n\n        if vmin > vmax:\n            vmin, vmax = vmax, vmin\n        if vmax <= 0:\n            cbook._warn_external(\n                \"Data has no positive values, and therefore cannot be \"\n                \"log-scaled.\")\n            return 1, 10\n\n        minpos = self.axis.get_minpos()\n        if not np.isfinite(minpos):\n            minpos = 1e-300  # This should never take effect.\n        if vmin <= 0:\n            vmin = minpos\n        if vmin == vmax:\n            vmin = _decade_less(vmin, self._base)\n            vmax = _decade_greater(vmax, self._base)\n        return vmin, vmax",
+          "after": "    def nonsingular(self, vmin, vmax):\n        if not np.isfinite(vmin) or not np.isfinite(vmax):\n            return 1, 10  # initial range, no data plotted yet\n\n        # Preserve the original order if both values are positive to allow\n        # for axis inversion (e.g., set_ylim(high, low) for log scale)\n        original_order_preserved = False\n        if vmin > 0 and vmax > 0:\n            original_order_preserved = True\n        elif vmin > vmax:\n            vmin, vmax = vmax, vmin\n            \n        if vmax <= 0:\n            cbook._warn_external(\n                \"Data has no positive values, and therefore cannot be \"\n                \"log-scaled.\")\n            return 1, 10\n\n        minpos = self.axis.get_minpos()\n        if not np.isfinite(minpos):\n            minpos = 1e-300  # This should never take effect.\n        if vmin <= 0:\n            vmin = minpos\n        if vmin == vmax:\n            if original_order_preserved:\n                # If we preserved order and they're equal, we need to expand\n                # but maintain the intended direction\n                vmin_expanded = _decade_less(vmin, self._base)\n                vmax_expanded = _decade_greater(vmax, self._base)\n                # Return in the same order as input\n                return vmin_expanded, vmax_expanded\n            else:\n                vmin = _decade_less(vmin, self._base)\n                vmax = _decade_greater(vmax, self._base)\n        return vmin, vmax",
+          "explanation": "classic_swe step 36 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 400,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 400,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "lib/matplotlib/ticker.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [
+      "lib/matplotlib/axes/_base.py",
+      "lib/mpl_toolkits/mplot3d/axes3d.py"
+    ],
+    "minimized_files": [
+      "lib/matplotlib/ticker.py"
+    ],
+    "gold_files": [
+      "lib/matplotlib/axes/_base.py",
+      "lib/matplotlib/ticker.py",
+      "lib/mpl_toolkits/mplot3d/axes3d.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 6,
+    "minimized_added_lines": 17,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 17,
+    "gold_deleted_lines": 2
+  },
+  "gold_equivalence": "subset_of_gold"
+}

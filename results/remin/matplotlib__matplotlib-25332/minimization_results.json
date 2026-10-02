@@ -1,0 +1,104 @@
+{
+  "bug_id": "matplotlib__matplotlib-25332",
+  "short_path": [
+    [
+      {
+        "filename": "lib/matplotlib/cbook.py",
+        "before": "    def get_siblings(self, a):\n        \"\"\"Return all of the items joined with *a*, including itself.\"\"\"\n        self.clean()\n        siblings = self._mapping.get(weakref.ref(a), [weakref.ref(a)])\n        return [x() for x in siblings]",
+        "after": "    def get_siblings(self, a):\n        \"\"\"Return all of the items joined with *a*, including itself.\"\"\"\n        self.clean()\n        siblings = self._mapping.get(weakref.ref(a), [weakref.ref(a)])\n        return [x() for x in siblings]\n\n    def __getstate__(self):\n        \"\"\"\n        Support for pickling.\n        \n        Convert weak references to strong references for pickling.\n        \"\"\"\n        self.clean()\n        # Convert the mapping from weakref -> [weakref, ...] to obj -> [obj, ...]\n        strong_mapping = {}\n        for weak_key, weak_list in self._mapping.items():\n            strong_key = weak_key()\n            if strong_key is not None:  # Only include live references\n                strong_list = []\n                for weak_ref in weak_list:\n                    strong_obj = weak_ref()\n                    if strong_obj is not None:\n                        strong_list.append(strong_obj)\n                if strong_list:  # Only include non-empty lists\n                    strong_mapping[strong_key] = strong_list\n        return {'_strong_mapping': strong_mapping}\n\n    def __setstate__(self, state):\n        \"\"\"\n        Support for unpickling.\n        \n        Convert strong references back to weak references after unpickling.\n        \"\"\"\n        strong_mapping = state['_strong_mapping']\n        self._mapping = {}\n        \n        # Rebuild the weak reference mapping\n        for strong_key, strong_list in strong_mapping.items():\n            weak_key = weakref.ref(strong_key)\n            weak_list = [weakref.ref(obj) for obj in strong_list]\n            self._mapping[weak_key] = weak_list\n            \n            # Make sure all objects in the list point to the same list\n            for weak_ref in weak_list:\n                self._mapping[weak_ref] = weak_list",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/lib/matplotlib/cbook.py b/lib/matplotlib/cbook.py\nindex c9699b2e21..4925f4ab83 100644\n--- a/lib/matplotlib/cbook.py\n+++ b/lib/matplotlib/cbook.py\n@@ -846,6 +846,46 @@ class Grouper:\n         siblings = self._mapping.get(weakref.ref(a), [weakref.ref(a)])\n         return [x() for x in siblings]\n \n+    def __getstate__(self):\n+        \"\"\"\n+        Support for pickling.\n+        \n+        Convert weak references to strong references for pickling.\n+        \"\"\"\n+        self.clean()\n+        # Convert the mapping from weakref -> [weakref, ...] to obj -> [obj, ...]\n+        strong_mapping = {}\n+        for weak_key, weak_list in self._mapping.items():\n+            strong_key = weak_key()\n+            if strong_key is not None:  # Only include live references\n+                strong_list = []\n+                for weak_ref in weak_list:\n+                    strong_obj = weak_ref()\n+                    if strong_obj is not None:\n+                        strong_list.append(strong_obj)\n+                if strong_list:  # Only include non-empty lists\n+                    strong_mapping[strong_key] = strong_list\n+        return {'_strong_mapping': strong_mapping}\n+\n+    def __setstate__(self, state):\n+        \"\"\"\n+        Support for unpickling.\n+        \n+        Convert strong references back to weak references after unpickling.\n+        \"\"\"\n+        strong_mapping = state['_strong_mapping']\n+        self._mapping = {}\n+        \n+        # Rebuild the weak reference mapping\n+        for strong_key, strong_list in strong_mapping.items():\n+            weak_key = weakref.ref(strong_key)\n+            weak_list = [weakref.ref(obj) for obj in strong_list]\n+            self._mapping[weak_key] = weak_list\n+            \n+            # Make sure all objects in the list point to the same list\n+            for weak_ref in weak_list:\n+                self._mapping[weak_ref] = weak_list\n+\n \n class GrouperView:\n     \"\"\"Immutable view over a `.Grouper`.\"\"\"\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      1
+    ],
+    "edit_list_after_file_min": [
+      1
+    ],
+    "edit_list_after_greedy": [
+      1
+    ],
+    "edit_list_after_refinement": [
+      1
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "lib/matplotlib/cbook.py",
+          "before": "    def get_siblings(self, a):\n        \"\"\"Return all of the items joined with *a*, including itself.\"\"\"\n        self.clean()\n        siblings = self._mapping.get(weakref.ref(a), [weakref.ref(a)])\n        return [x() for x in siblings]",
+          "after": "    def get_siblings(self, a):\n        \"\"\"Return all of the items joined with *a*, including itself.\"\"\"\n        self.clean()\n        siblings = self._mapping.get(weakref.ref(a), [weakref.ref(a)])\n        return [x() for x in siblings]\n\n    def __getstate__(self):\n        \"\"\"\n        Support for pickling.\n        \n        Convert weak references to strong references for pickling.\n        \"\"\"\n        self.clean()\n        # Convert the mapping from weakref -> [weakref, ...] to obj -> [obj, ...]\n        strong_mapping = {}\n        for weak_key, weak_list in self._mapping.items():\n            strong_key = weak_key()\n            if strong_key is not None:  # Only include live references\n                strong_list = []\n                for weak_ref in weak_list:\n                    strong_obj = weak_ref()\n                    if strong_obj is not None:\n                        strong_list.append(strong_obj)\n                if strong_list:  # Only include non-empty lists\n                    strong_mapping[strong_key] = strong_list\n        return {'_strong_mapping': strong_mapping}\n\n    def __setstate__(self, state):\n        \"\"\"\n        Support for unpickling.\n        \n        Convert strong references back to weak references after unpickling.\n        \"\"\"\n        strong_mapping = state['_strong_mapping']\n        self._mapping = {}\n        \n        # Rebuild the weak reference mapping\n        for strong_key, strong_list in strong_mapping.items():\n            weak_key = weakref.ref(strong_key)\n            weak_list = [weakref.ref(obj) for obj in strong_list]\n            self._mapping[weak_key] = weak_list\n            \n            # Make sure all objects in the list point to the same list\n            for weak_ref in weak_list:\n                self._mapping[weak_ref] = weak_list",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 181,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 181,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "lib/matplotlib/cbook.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "lib/matplotlib/cbook.py"
+    ],
+    "gold_files": [
+      "lib/matplotlib/cbook.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 40,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 13,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

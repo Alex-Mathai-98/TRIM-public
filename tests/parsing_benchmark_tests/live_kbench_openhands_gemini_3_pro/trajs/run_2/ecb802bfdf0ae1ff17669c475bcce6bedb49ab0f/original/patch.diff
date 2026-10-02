@@ -1,0 +1,20 @@
+diff --git a/mm/mlock.c b/mm/mlock.c
+index 3cb72b579ffd..fdb9a9f21995 100644
+--- a/mm/mlock.c
++++ b/mm/mlock.c
+@@ -733,6 +733,15 @@ static int apply_mlockall_flags(int flags)
+ 		newflags = vma->vm_flags & ~VM_LOCKED_MASK;
+ 		newflags |= to_add;
+ 
++		/*
++		 * If we have valid prev, it should be strictly before the current
++		 * vma. If not, then we probably entered a new vma from the
++		 * previous iteration, or something else is inconsistent; just
++		 * ignore prev to avoid sanity check failures in vma_merge.
++		 */
++		if (prev && vma->vm_start <= prev->vm_start)
++			prev = NULL;
++
+ 		error = mlock_fixup(&vmi, vma, &prev, vma->vm_start, vma->vm_end,
+ 				    newflags);
+ 		/* Ignore errors, but prev needs fixing up. */

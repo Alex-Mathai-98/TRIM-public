@@ -1,0 +1,54 @@
+diff --git a/fs/bcachefs/super-io.c b/fs/bcachefs/super-io.c
+index d86d5dae54c9..084ec6c83829 100644
+--- a/fs/bcachefs/super-io.c
++++ b/fs/bcachefs/super-io.c
+@@ -609,6 +609,9 @@ int bch2_sb_to_fs(struct bch_fs *c, struct bch_sb *src)
+ 
+ 	lockdep_assert_held(&c->sb_lock);
+ 
++	if (!src)
++		return -EINVAL;
++
+ 	ret =   bch2_sb_realloc(&c->disk_sb, 0) ?:
+ 		__copy_super(&c->disk_sb, src) ?:
+ 		bch2_sb_replicas_to_cpu_replicas(c) ?:
+diff --git a/fs/bcachefs/super.c b/fs/bcachefs/super.c
+index 873e4be7e1dc..64aeb556d641 100644
+--- a/fs/bcachefs/super.c
++++ b/fs/bcachefs/super.c
+@@ -1997,6 +1997,7 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 	DARRAY(struct bch_sb_handle) sbs = { 0 };
+ 	struct bch_fs *c = NULL;
+ 	struct bch_sb_handle *best = NULL;
++	struct bch_sb_handle *sb2;
+ 	struct printbuf errbuf = PRINTBUF;
+ 	int ret = 0;
+ 
+@@ -2038,7 +2039,14 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 		    ret == -BCH_ERR_device_splitbrain) {
+ 			bch2_free_super(sb);
+ 			darray_remove_item(&sbs, sb);
+-			best -= best > sb;
++			if (best == sb) {
++				best = NULL;
++				darray_for_each(sbs, sb2)
++					if (!best || sb_cmp(sb2->sb, best->sb) > 0)
++						best = sb2;
++			} else {
++				best -= best > sb;
++			}
+ 			ret = 0;
+ 			continue;
+ 		}
+@@ -2047,6 +2055,11 @@ struct bch_fs *bch2_fs_open(char * const *devices, unsigned nr_devices,
+ 			goto err_print;
+ 	}
+ 
++	if (!best) {
++		ret = -BCH_ERR_device_has_been_removed;
++		goto err;
++	}
++
+ 	c = bch2_fs_alloc(best->sb, opts);
+ 	ret = PTR_ERR_OR_ZERO(c);
+ 	if (ret)

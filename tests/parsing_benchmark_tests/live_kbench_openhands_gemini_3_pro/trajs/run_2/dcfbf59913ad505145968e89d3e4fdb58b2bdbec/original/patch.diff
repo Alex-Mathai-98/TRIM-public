@@ -1,0 +1,63 @@
+diff --git a/fs/nilfs2/dir.c b/fs/nilfs2/dir.c
+index 14e8d82f8629..67fa7b10e03f 100644
+--- a/fs/nilfs2/dir.c
++++ b/fs/nilfs2/dir.c
+@@ -315,9 +315,10 @@ struct nilfs_dir_entry *nilfs_find_entry(struct inode *dir,
+ 		if (IS_ERR(kaddr))
+ 			return ERR_CAST(kaddr);
+ 
++		char *limit = kaddr + nilfs_last_byte(dir, n) - reclen;
++
+ 		de = (struct nilfs_dir_entry *)kaddr;
+-		kaddr += nilfs_last_byte(dir, n) - reclen;
+-		while ((char *)de <= kaddr) {
++		while ((char *)de <= limit) {
+ 			if (de->rec_len == 0) {
+ 				nilfs_error(dir->i_sb,
+ 					    "zero-length directory entry");
+@@ -443,14 +444,15 @@ int nilfs_add_link(struct dentry *dentry, struct inode *inode)
+ 	for (n = 0; n <= npages; n++) {
+ 		char *kaddr = nilfs_get_folio(dir, n, &folio);
+ 		char *dir_end;
++		char *limit;
+ 
+ 		if (IS_ERR(kaddr))
+ 			return PTR_ERR(kaddr);
+ 		folio_lock(folio);
+ 		dir_end = kaddr + nilfs_last_byte(dir, n);
+ 		de = (struct nilfs_dir_entry *)kaddr;
+-		kaddr += folio_size(folio) - reclen;
+-		while ((char *)de <= kaddr) {
++		limit = kaddr + folio_size(folio) - reclen;
++		while ((char *)de <= limit) {
+ 			if ((char *)de == dir_end) {
+ 				/* We hit i_size */
+ 				name_len = 0;
+@@ -505,7 +507,7 @@ int nilfs_add_link(struct dentry *dentry, struct inode *inode)
+ 	nilfs_mark_inode_dirty(dir);
+ 	/* OFFSET_CACHE */
+ out_put:
+-	folio_release_kmap(folio, de);
++	folio_release_kmap(folio, (char *)((unsigned long)de & ~(folio_size(folio) - 1)));
+ 	return err;
+ out_unlock:
+ 	folio_unlock(folio);
+@@ -611,14 +613,14 @@ int nilfs_empty_dir(struct inode *inode)
+ 		if (IS_ERR(kaddr))
+ 			return 0;
+ 
+-		de = (struct nilfs_dir_entry *)kaddr;
+-		kaddr += nilfs_last_byte(inode, i) - NILFS_DIR_REC_LEN(1);
++		char *limit = kaddr + nilfs_last_byte(inode, i) - NILFS_DIR_REC_LEN(1);
+ 
+-		while ((char *)de <= kaddr) {
++		de = (struct nilfs_dir_entry *)kaddr;
++		while ((char *)de <= limit) {
+ 			if (de->rec_len == 0) {
+ 				nilfs_error(inode->i_sb,
+ 					    "zero-length directory entry (kaddr=%p, de=%p)",
+-					    kaddr, de);
++					    limit, de);
+ 				goto not_empty;
+ 			}
+ 			if (de->inode != 0) {

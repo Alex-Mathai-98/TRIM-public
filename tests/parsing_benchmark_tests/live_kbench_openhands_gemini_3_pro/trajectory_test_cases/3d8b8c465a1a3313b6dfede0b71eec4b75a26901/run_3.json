@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n{\n\tint nest_level;\n\n\tpreempt_disable();\n\tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n\tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n\t\tthis_cpu_dec(bpf_bprintf_nest_level);\n\t\tpreempt_enable();\n\t\treturn -EBUSY;\n\t}\n\t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n\n\treturn 0;\n}\n\nvoid bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n\t\treturn;\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n\tpreempt_enable();\n}",
+          "before": "int bpf_try_get_buffers(struct bpf_bprintf_buffers **bufs)\n{\n\tint nest_level;\n\n\tnest_level = this_cpu_inc_return(bpf_bprintf_nest_level);\n\tif (WARN_ON_ONCE(nest_level > MAX_BPRINTF_NEST_LEVEL)) {\n\t\tthis_cpu_dec(bpf_bprintf_nest_level);\n\t\treturn -EBUSY;\n\t}\n\t*bufs = this_cpu_ptr(&bpf_bprintf_bufs[nest_level - 1]);\n\n\treturn 0;\n}\n\nvoid bpf_put_buffers(void)\n{\n\tif (WARN_ON_ONCE(this_cpu_read(bpf_bprintf_nest_level) == 0))\n\t\treturn;\n\tthis_cpu_dec(bpf_bprintf_nest_level);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/bpf/helpers.c\n+++ /linux/kernel/bpf/helpers.c\n@@ -776,0 +777 @@\n+\tpreempt_disable();\n@@ -779,0 +781 @@\n+\t\tpreempt_enable();\n@@ -791,0 +794 @@\n+\tpreempt_enable();",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 42",
+          "filename": "kernel/bpf/helpers.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 42
+        }
+      ],
+      "end_step": 42,
+      "revision_index": 0,
+      "start_step": 42
+    }
+  ],
+  "success_step": 42
+}

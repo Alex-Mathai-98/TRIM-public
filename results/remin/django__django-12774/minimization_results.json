@@ -1,0 +1,216 @@
+{
+  "bug_id": "django__django-12774",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "    def in_bulk(self, id_list=None, *, field_name='pk'):\n        \"\"\"\n        Return a dictionary mapping each of the given IDs to the object with\n        that ID. If `id_list` isn't provided, evaluate the entire QuerySet.\n        \"\"\"\n        assert not self.query.is_sliced, \\\n            \"Cannot use 'limit' or 'offset' with in_bulk\"\n        if field_name != 'pk' and not self.model._meta.get_field(field_name).unique:\n            raise ValueError(\"in_bulk()'s field_name must be a unique field but %r isn't.\" % field_name)",
+        "after": "    def in_bulk(self, id_list=None, *, field_name='pk'):\n        \"\"\"\n        Return a dictionary mapping each of the given IDs to the object with\n        that ID. If `id_list` isn't provided, evaluate the entire QuerySet.\n        \"\"\"\n        assert not self.query.is_sliced, \\\n            \"Cannot use 'limit' or 'offset' with in_bulk\"\n        if field_name != 'pk' and not self._is_field_unique(field_name):\n            raise ValueError(\"in_bulk()'s field_name must be a unique field but %r isn't.\" % field_name)",
+        "explanation": "classic_swe step 15 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/query.py",
+        "before": "    def last(self):\n        \"\"\"Return the last object of a query or None if no match is found.\"\"\"\n        for obj in (self.reverse() if self.ordered else self.order_by('-pk'))[:1]:\n            return obj\n\n    def in_bulk(self, id_list=None, *, field_name='pk'):",
+        "after": "    def last(self):\n        \"\"\"Return the last object of a query or None if no match is found.\"\"\"\n        for obj in (self.reverse() if self.ordered else self.order_by('-pk'))[:1]:\n            return obj\n\n    def _is_field_unique(self, field_name):\n        \"\"\"\n        Check if a field is unique either through field.unique=True or through\n        a single-field UniqueConstraint without conditions.\n        \"\"\"\n        # Check if field has unique=True\n        field = self.model._meta.get_field(field_name)\n        if field.unique:\n            return True\n        \n        # Check if field is covered by a single-field UniqueConstraint without conditions\n        for constraint in self.model._meta.total_unique_constraints:\n            if (len(constraint.fields) == 1 and \n                constraint.fields[0] == field_name and \n                constraint.condition is None):\n                return True\n        \n        return False\n\n    def in_bulk(self, id_list=None, *, field_name='pk'):",
+        "explanation": "classic_swe step 16 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/lookup/models.py",
+        "before": "class Freebie(models.Model):\n    gift_product = models.ForeignKey(Product, models.CASCADE)\n    stock_id = models.IntegerField(blank=True, null=True)\n\n    stock = models.ForeignObject(\n        Stock,\n        from_fields=['stock_id', 'gift_product'],\n        to_fields=['id', 'product'],\n        on_delete=models.CASCADE,\n    )",
+        "after": "class Freebie(models.Model):\n    gift_product = models.ForeignKey(Product, models.CASCADE)\n    stock_id = models.IntegerField(blank=True, null=True)\n\n    stock = models.ForeignObject(\n        Stock,\n        from_fields=['stock_id', 'gift_product'],\n        to_fields=['id', 'product'],\n        on_delete=models.CASCADE,\n    )\n\n\nclass UniqueConstraintArticle(models.Model):\n    \"\"\"Model to test in_bulk() with UniqueConstraint instead of unique=True.\"\"\"\n    headline = models.CharField(max_length=100)\n    slug = models.CharField(max_length=100)  # Not unique=True, but has UniqueConstraint\n    \n    class Meta:\n        constraints = [\n            models.UniqueConstraint(fields=['slug'], name='lookup_uniqueconstraintarticle_slug_unq')\n        ]",
+        "explanation": "classic_swe step 36 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/lookup/tests.py",
+        "before": "from .models import (\n    Article, Author, Freebie, Game, IsNullWithNoneAsRHS, Player, Season, Tag,\n)",
+        "after": "from .models import (\n    Article, Author, Freebie, Game, IsNullWithNoneAsRHS, Player, Season, Tag,\n    UniqueConstraintArticle,\n)",
+        "explanation": "classic_swe step 37 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/lookup/tests.py",
+        "before": "    def test_in_bulk_non_unique_field(self):\n        msg = \"in_bulk()'s field_name must be a unique field but 'author' isn't.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Article.objects.in_bulk([self.au1], field_name='author')",
+        "after": "    def test_in_bulk_non_unique_field(self):\n        msg = \"in_bulk()'s field_name must be a unique field but 'author' isn't.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Article.objects.in_bulk([self.au1], field_name='author')\n\n    def test_in_bulk_with_unique_constraint(self):\n        \"\"\"Test that in_bulk() works with fields that have UniqueConstraint.\"\"\"\n        # Create test objects with UniqueConstraint\n        uca1 = UniqueConstraintArticle.objects.create(headline='UCA 1', slug='uca1')\n        uca2 = UniqueConstraintArticle.objects.create(headline='UCA 2', slug='uca2')\n        uca3 = UniqueConstraintArticle.objects.create(headline='UCA 3', slug='uca3')\n        \n        # Test in_bulk with specific slugs\n        result = UniqueConstraintArticle.objects.in_bulk(\n            [uca1.slug, uca3.slug], field_name='slug'\n        )\n        expected = {uca1.slug: uca1, uca3.slug: uca3}\n        self.assertEqual(result, expected)\n        \n        # Test in_bulk with all objects\n        result = UniqueConstraintArticle.objects.in_bulk(field_name='slug')\n        expected = {uca1.slug: uca1, uca2.slug: uca2, uca3.slug: uca3}\n        self.assertEqual(result, expected)\n        \n        # Test with non-existent slugs\n        result = UniqueConstraintArticle.objects.in_bulk(\n            ['non-existent', uca2.slug], field_name='slug'\n        )\n        expected = {uca2.slug: uca2}\n        self.assertEqual(result, expected)",
+        "explanation": "classic_swe step 38 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/query.py b/django/db/models/query.py\nindex d9c9b0db04..0d02ab3edb 100644\n--- a/django/db/models/query.py\n+++ b/django/db/models/query.py\n@@ -682,6 +682,25 @@ class QuerySet:\n         for obj in (self.reverse() if self.ordered else self.order_by('-pk'))[:1]:\n             return obj\n \n+    def _is_field_unique(self, field_name):\n+        \"\"\"\n+        Check if a field is unique either through field.unique=True or through\n+        a single-field UniqueConstraint without conditions.\n+        \"\"\"\n+        # Check if field has unique=True\n+        field = self.model._meta.get_field(field_name)\n+        if field.unique:\n+            return True\n+        \n+        # Check if field is covered by a single-field UniqueConstraint without conditions\n+        for constraint in self.model._meta.total_unique_constraints:\n+            if (len(constraint.fields) == 1 and \n+                constraint.fields[0] == field_name and \n+                constraint.condition is None):\n+                return True\n+        \n+        return False\n+\n     def in_bulk(self, id_list=None, *, field_name='pk'):\n         \"\"\"\n         Return a dictionary mapping each of the given IDs to the object with\n@@ -689,7 +708,7 @@ class QuerySet:\n         \"\"\"\n         assert not self.query.is_sliced, \\\n             \"Cannot use 'limit' or 'offset' with in_bulk\"\n-        if field_name != 'pk' and not self.model._meta.get_field(field_name).unique:\n+        if field_name != 'pk' and not self._is_field_unique(field_name):\n             raise ValueError(\"in_bulk()'s field_name must be a unique field but %r isn't.\" % field_name)\n         if id_list is not None:\n             if not id_list:\ndiff --git a/tests/lookup/models.py b/tests/lookup/models.py\nindex fbc9fa606f..6921d0a37d 100644\n--- a/tests/lookup/models.py\n+++ b/tests/lookup/models.py\n@@ -108,3 +108,14 @@ class Freebie(models.Model):\n         to_fields=['id', 'product'],\n         on_delete=models.CASCADE,\n     )\n+\n+\n+class UniqueConstraintArticle(models.Model):\n+    \"\"\"Model to test in_bulk() with UniqueConstraint instead of unique=True.\"\"\"\n+    headline = models.CharField(max_length=100)\n+    slug = models.CharField(max_length=100)  # Not unique=True, but has UniqueConstraint\n+    \n+    class Meta:\n+        constraints = [\n+            models.UniqueConstraint(fields=['slug'], name='lookup_uniqueconstraintarticle_slug_unq')\n+        ]\ndiff --git a/tests/lookup/tests.py b/tests/lookup/tests.py\nindex baefdf9701..708dccd703 100644\n--- a/tests/lookup/tests.py\n+++ b/tests/lookup/tests.py\n@@ -12,6 +12,7 @@ from django.utils.deprecation import RemovedInDjango40Warning\n \n from .models import (\n     Article, Author, Freebie, Game, IsNullWithNoneAsRHS, Player, Season, Tag,\n+    UniqueConstraintArticle,\n )\n \n \n@@ -194,6 +195,32 @@ class LookupTests(TestCase):\n         with self.assertRaisesMessage(ValueError, msg):\n             Article.objects.in_bulk([self.au1], field_name='author')\n \n+    def test_in_bulk_with_unique_constraint(self):\n+        \"\"\"Test that in_bulk() works with fields that have UniqueConstraint.\"\"\"\n+        # Create test objects with UniqueConstraint\n+        uca1 = UniqueConstraintArticle.objects.create(headline='UCA 1', slug='uca1')\n+        uca2 = UniqueConstraintArticle.objects.create(headline='UCA 2', slug='uca2')\n+        uca3 = UniqueConstraintArticle.objects.create(headline='UCA 3', slug='uca3')\n+        \n+        # Test in_bulk with specific slugs\n+        result = UniqueConstraintArticle.objects.in_bulk(\n+            [uca1.slug, uca3.slug], field_name='slug'\n+        )\n+        expected = {uca1.slug: uca1, uca3.slug: uca3}\n+        self.assertEqual(result, expected)\n+        \n+        # Test in_bulk with all objects\n+        result = UniqueConstraintArticle.objects.in_bulk(field_name='slug')\n+        expected = {uca1.slug: uca1, uca2.slug: uca2, uca3.slug: uca3}\n+        self.assertEqual(result, expected)\n+        \n+        # Test with non-existent slugs\n+        result = UniqueConstraintArticle.objects.in_bulk(\n+            ['non-existent', uca2.slug], field_name='slug'\n+        )\n+        expected = {uca2.slug: uca2}\n+        self.assertEqual(result, expected)\n+\n     def test_values(self):\n         # values() returns a list of dictionaries instead of object instances --\n         # and you can specify which fields you want to retrieve.\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      1,
+      2,
+      3,
+      6,
+      7,
+      8
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      1,
+      2,
+      3,
+      6,
+      7,
+      8
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes": 2,
+    "greedy_removal_file_still_crashes_cache_hit": 1,
+    "edit_list_after_file_min": [
+      1,
+      2,
+      3,
+      6,
+      7,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes": 9,
+    "greedy_removal_edit_still_crashes_cache_hit": 1,
+    "greedy_removal_edit_no_crash": 1,
+    "edit_list_after_greedy": [
+      2,
+      3,
+      6,
+      7,
+      8
+    ],
+    "edit_list_after_refinement": [
+      2,
+      3,
+      6,
+      7,
+      8
+    ],
+    "edits_after_node_min": 6,
+    "edits_after_file_min": 6,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 6,
+  "minimized_edit_count": 5,
+  "reduction": "6_to_5",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/query.py",
+          "before": "from django.db.models import AutoField, DateField, DateTimeField, sql",
+          "after": "from django.db.models import AutoField, DateField, DateTimeField, sql\nfrom django.db.models.constraints import UniqueConstraint",
+          "explanation": "classic_swe step 14 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "    def in_bulk(self, id_list=None, *, field_name='pk'):\n        \"\"\"\n        Return a dictionary mapping each of the given IDs to the object with\n        that ID. If `id_list` isn't provided, evaluate the entire QuerySet.\n        \"\"\"\n        assert not self.query.is_sliced, \\\n            \"Cannot use 'limit' or 'offset' with in_bulk\"\n        if field_name != 'pk' and not self.model._meta.get_field(field_name).unique:\n            raise ValueError(\"in_bulk()'s field_name must be a unique field but %r isn't.\" % field_name)",
+          "after": "    def in_bulk(self, id_list=None, *, field_name='pk'):\n        \"\"\"\n        Return a dictionary mapping each of the given IDs to the object with\n        that ID. If `id_list` isn't provided, evaluate the entire QuerySet.\n        \"\"\"\n        assert not self.query.is_sliced, \\\n            \"Cannot use 'limit' or 'offset' with in_bulk\"\n        if field_name != 'pk' and not self._is_field_unique(field_name):\n            raise ValueError(\"in_bulk()'s field_name must be a unique field but %r isn't.\" % field_name)",
+          "explanation": "classic_swe step 15 #1"
+        },
+        {
+          "filename": "django/db/models/query.py",
+          "before": "    def last(self):\n        \"\"\"Return the last object of a query or None if no match is found.\"\"\"\n        for obj in (self.reverse() if self.ordered else self.order_by('-pk'))[:1]:\n            return obj\n\n    def in_bulk(self, id_list=None, *, field_name='pk'):",
+          "after": "    def last(self):\n        \"\"\"Return the last object of a query or None if no match is found.\"\"\"\n        for obj in (self.reverse() if self.ordered else self.order_by('-pk'))[:1]:\n            return obj\n\n    def _is_field_unique(self, field_name):\n        \"\"\"\n        Check if a field is unique either through field.unique=True or through\n        a single-field UniqueConstraint without conditions.\n        \"\"\"\n        # Check if field has unique=True\n        field = self.model._meta.get_field(field_name)\n        if field.unique:\n            return True\n        \n        # Check if field is covered by a single-field UniqueConstraint without conditions\n        for constraint in self.model._meta.total_unique_constraints:\n            if (len(constraint.fields) == 1 and \n                constraint.fields[0] == field_name and \n                constraint.condition is None):\n                return True\n        \n        return False\n\n    def in_bulk(self, id_list=None, *, field_name='pk'):",
+          "explanation": "classic_swe step 16 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/lookup/models.py",
+          "before": "class Freebie(models.Model):\n    gift_product = models.ForeignKey(Product, models.CASCADE)\n    stock_id = models.IntegerField(blank=True, null=True)\n\n    stock = models.ForeignObject(\n        Stock,\n        from_fields=['stock_id', 'gift_product'],\n        to_fields=['id', 'product'],\n        on_delete=models.CASCADE,\n    )",
+          "after": "class Freebie(models.Model):\n    gift_product = models.ForeignKey(Product, models.CASCADE)\n    stock_id = models.IntegerField(blank=True, null=True)\n\n    stock = models.ForeignObject(\n        Stock,\n        from_fields=['stock_id', 'gift_product'],\n        to_fields=['id', 'product'],\n        on_delete=models.CASCADE,\n    )\n\n\nclass UniqueConstraintArticle(models.Model):\n    \"\"\"Model to test in_bulk() with UniqueConstraint instead of unique=True.\"\"\"\n    headline = models.CharField(max_length=100)\n    slug = models.CharField(max_length=100)  # Not unique=True, but has UniqueConstraint\n    \n    class Meta:\n        constraints = [\n            models.UniqueConstraint(fields=['slug'], name='lookup_uniqueconstraintarticle_slug_unq')\n        ]",
+          "explanation": "classic_swe step 36 #1"
+        },
+        {
+          "filename": "tests/lookup/tests.py",
+          "before": "from .models import (\n    Article, Author, Freebie, Game, IsNullWithNoneAsRHS, Player, Season, Tag,\n)",
+          "after": "from .models import (\n    Article, Author, Freebie, Game, IsNullWithNoneAsRHS, Player, Season, Tag,\n    UniqueConstraintArticle,\n)",
+          "explanation": "classic_swe step 37 #1"
+        },
+        {
+          "filename": "tests/lookup/tests.py",
+          "before": "    def test_in_bulk_non_unique_field(self):\n        msg = \"in_bulk()'s field_name must be a unique field but 'author' isn't.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Article.objects.in_bulk([self.au1], field_name='author')",
+          "after": "    def test_in_bulk_non_unique_field(self):\n        msg = \"in_bulk()'s field_name must be a unique field but 'author' isn't.\"\n        with self.assertRaisesMessage(ValueError, msg):\n            Article.objects.in_bulk([self.au1], field_name='author')\n\n    def test_in_bulk_with_unique_constraint(self):\n        \"\"\"Test that in_bulk() works with fields that have UniqueConstraint.\"\"\"\n        # Create test objects with UniqueConstraint\n        uca1 = UniqueConstraintArticle.objects.create(headline='UCA 1', slug='uca1')\n        uca2 = UniqueConstraintArticle.objects.create(headline='UCA 2', slug='uca2')\n        uca3 = UniqueConstraintArticle.objects.create(headline='UCA 3', slug='uca3')\n        \n        # Test in_bulk with specific slugs\n        result = UniqueConstraintArticle.objects.in_bulk(\n            [uca1.slug, uca3.slug], field_name='slug'\n        )\n        expected = {uca1.slug: uca1, uca3.slug: uca3}\n        self.assertEqual(result, expected)\n        \n        # Test in_bulk with all objects\n        result = UniqueConstraintArticle.objects.in_bulk(field_name='slug')\n        expected = {uca1.slug: uca1, uca2.slug: uca2, uca3.slug: uca3}\n        self.assertEqual(result, expected)\n        \n        # Test with non-existent slugs\n        result = UniqueConstraintArticle.objects.in_bulk(\n            ['non-existent', uca2.slug], field_name='slug'\n        )\n        expected = {uca2.slug: uca2}\n        self.assertEqual(result, expected)",
+          "explanation": "classic_swe step 38 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 41,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 41,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/models/query.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/lookup/models.py",
+      "tests/lookup/tests.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/query.py",
+      "tests/lookup/models.py",
+      "tests/lookup/tests.py"
+    ],
+    "gold_files": [
+      "django/db/models/query.py"
+    ],
+    "minimized_hunks": 5,
+    "gold_hunks": 1,
+    "minimized_added_lines": 58,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 11,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

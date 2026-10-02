@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n\t\t\tint (*bucket_fn)(const struct request *),\n\t\t\tunsigned int buckets, void *data, gfp_t gfp);\n",
+          "before": "blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n\t\t\tint (*bucket_fn)(const struct request *),\n\t\t\tunsigned int buckets, void *data);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/block/blk-stat.h b/block/blk-stat.h\nindex 5d7f18ba436d..8ced694a821a 100644\n--- a/block/blk-stat.h\n+++ b/block/blk-stat.h\n@@ -85,7 +85,7 @@ void blk_stat_disable_accounting(struct request_queue *q);\n struct blk_stat_callback *\n blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n \t\t\tint (*bucket_fn)(const struct request *),\n-\t\t\tunsigned int buckets, void *data);\n+\t\t\tunsigned int buckets, void *data, gfp_t gfp);\n \n /**\n  * blk_stat_add_callback() - Add a block statistics callback to be run on a",
+          "explanation": "classic_swe step 22 #1",
+          "filename": "block/blk-stat.h",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 22
+        },
+        {
+          "after": "blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n\t\t\tint (*bucket_fn)(const struct request *),\n\t\t\tunsigned int buckets, void *data, gfp_t gfp)\n{\n\tstruct blk_stat_callback *cb;\n\n\tcb = kmalloc(sizeof(*cb), gfp);\n\tif (!cb)\n\t\treturn NULL;\n\n\tcb->stat = kmalloc_array(buckets, sizeof(struct blk_rq_stat), gfp);\n\tif (!cb->stat) {\n\t\tkfree(cb);\n\t\treturn NULL;\n\t}\n\tcb->cpu_stat = __alloc_percpu_gfp(buckets * sizeof(struct blk_rq_stat),\n\t\t\t\t      __alignof__(struct blk_rq_stat), gfp);\n",
+          "before": "blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n\t\t\tint (*bucket_fn)(const struct request *),\n\t\t\tunsigned int buckets, void *data)\n{\n\tstruct blk_stat_callback *cb;\n\n\tcb = kmalloc(sizeof(*cb), GFP_KERNEL);\n\tif (!cb)\n\t\treturn NULL;\n\n\tcb->stat = kmalloc_array(buckets, sizeof(struct blk_rq_stat),\n\t\t\t\t GFP_KERNEL);\n\tif (!cb->stat) {\n\t\tkfree(cb);\n\t\treturn NULL;\n\t}\n\tcb->cpu_stat = __alloc_percpu(buckets * sizeof(struct blk_rq_stat),\n\t\t\t\t      __alignof__(struct blk_rq_stat));\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/block/blk-stat.c b/block/blk-stat.c\nindex eaf60097bbe1..96bc1412b7ee 100644\n--- a/block/blk-stat.c\n+++ b/block/blk-stat.c\n@@ -99,22 +99,21 @@ static void blk_stat_timer_fn(struct timer_list *t)\n struct blk_stat_callback *\n blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n \t\t\tint (*bucket_fn)(const struct request *),\n-\t\t\tunsigned int buckets, void *data)\n+\t\t\tunsigned int buckets, void *data, gfp_t gfp)\n {\n \tstruct blk_stat_callback *cb;\n \n-\tcb = kmalloc(sizeof(*cb), GFP_KERNEL);\n+\tcb = kmalloc(sizeof(*cb), gfp);\n \tif (!cb)\n \t\treturn NULL;\n \n-\tcb->stat = kmalloc_array(buckets, sizeof(struct blk_rq_stat),\n-\t\t\t\t GFP_KERNEL);\n+\tcb->stat = kmalloc_array(buckets, sizeof(struct blk_rq_stat), gfp);\n \tif (!cb->stat) {\n \t\tkfree(cb);\n \t\treturn NULL;\n \t}\n-\tcb->cpu_stat = __alloc_percpu(buckets * sizeof(struct blk_rq_stat),\n-\t\t\t\t      __alignof__(struct blk_rq_stat));\n+\tcb->cpu_stat = __alloc_percpu_gfp(buckets * sizeof(struct blk_rq_stat),\n+\t\t\t\t      __alignof__(struct blk_rq_stat), gfp);\n \tif (!cb->cpu_stat) {\n \t\tkfree(cb->stat);\n \t\tkfree(cb);\ndiff --git a/block/blk-stat.h b/block/blk-stat.h\nindex 5d7f18ba436d..8ced694a821a 100644\n--- a/block/blk-stat.h\n+++ b/block/blk-stat.h\n@@ -85,7 +85,7 @@ void blk_stat_disable_accounting(struct request_queue *q);\n struct blk_stat_callback *\n blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n \t\t\tint (*bucket_fn)(const struct request *),\n-\t\t\tunsigned int buckets, void *data);\n+\t\t\tunsigned int buckets, void *data, gfp_t gfp);\n \n /**\n  * blk_stat_add_callback() - Add a block statistics callback to be run on a",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "block/blk-stat.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\trwb = kzalloc(sizeof(*rwb), GFP_NOIO);\n\tif (!rwb)\n\t\treturn -ENOMEM;\n\n\trwb->cb = blk_stat_alloc_callback(wb_timer_fn, wbt_data_dir, 2, rwb,\n\t\t\t\t\t  GFP_NOIO);\n",
+          "before": "\trwb = kzalloc(sizeof(*rwb), GFP_KERNEL);\n\tif (!rwb)\n\t\treturn -ENOMEM;\n\n\trwb->cb = blk_stat_alloc_callback(wb_timer_fn, wbt_data_dir, 2, rwb);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/block/blk-stat.c b/block/blk-stat.c\nindex eaf60097bbe1..96bc1412b7ee 100644\n--- a/block/blk-stat.c\n+++ b/block/blk-stat.c\n@@ -99,22 +99,21 @@ static void blk_stat_timer_fn(struct timer_list *t)\n struct blk_stat_callback *\n blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n \t\t\tint (*bucket_fn)(const struct request *),\n-\t\t\tunsigned int buckets, void *data)\n+\t\t\tunsigned int buckets, void *data, gfp_t gfp)\n {\n \tstruct blk_stat_callback *cb;\n \n-\tcb = kmalloc(sizeof(*cb), GFP_KERNEL);\n+\tcb = kmalloc(sizeof(*cb), gfp);\n \tif (!cb)\n \t\treturn NULL;\n \n-\tcb->stat = kmalloc_array(buckets, sizeof(struct blk_rq_stat),\n-\t\t\t\t GFP_KERNEL);\n+\tcb->stat = kmalloc_array(buckets, sizeof(struct blk_rq_stat), gfp);\n \tif (!cb->stat) {\n \t\tkfree(cb);\n \t\treturn NULL;\n \t}\n-\tcb->cpu_stat = __alloc_percpu(buckets * sizeof(struct blk_rq_stat),\n-\t\t\t\t      __alignof__(struct blk_rq_stat));\n+\tcb->cpu_stat = __alloc_percpu_gfp(buckets * sizeof(struct blk_rq_stat),\n+\t\t\t\t      __alignof__(struct blk_rq_stat), gfp);\n \tif (!cb->cpu_stat) {\n \t\tkfree(cb->stat);\n \t\tkfree(cb);\ndiff --git a/block/blk-stat.h b/block/blk-stat.h\nindex 5d7f18ba436d..8ced694a821a 100644\n--- a/block/blk-stat.h\n+++ b/block/blk-stat.h\n@@ -85,7 +85,7 @@ void blk_stat_disable_accounting(struct request_queue *q);\n struct blk_stat_callback *\n blk_stat_alloc_callback(void (*timer_fn)(struct blk_stat_callback *),\n \t\t\tint (*bucket_fn)(const struct request *),\n-\t\t\tunsigned int buckets, void *data);\n+\t\t\tunsigned int buckets, void *data, gfp_t gfp);\n \n /**\n  * blk_stat_add_callback() - Add a block statistics callback to be run on a\ndiff --git a/block/blk-wbt.c b/block/blk-wbt.c\nindex 6dfc659d22e2..1db7035df404 100644\n--- a/block/blk-wbt.c\n+++ b/block/blk-wbt.c\n@@ -894,11 +894,12 @@ int wbt_init(struct gendisk *disk)\n \tint i;\n \tint ret;\n \n-\trwb = kzalloc(sizeof(*rwb), GFP_KERNEL);\n+\trwb = kzalloc(sizeof(*rwb), GFP_NOIO);\n \tif (!rwb)\n \t\treturn -ENOMEM;\n \n-\trwb->cb = blk_stat_alloc_callback(wb_timer_fn, wbt_data_dir, 2, rwb);\n+\trwb->cb = blk_stat_alloc_callback(wb_timer_fn, wbt_data_dir, 2, rwb,\n+\t\t\t\t\t  GFP_NOIO);\n \tif (!rwb->cb) {\n \t\tkfree(rwb);\n \t\treturn -ENOMEM;",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "block/blk-wbt.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        }
+      ],
+      "end_step": 26,
+      "revision_index": 0,
+      "start_step": 22
+    }
+  ],
+  "success_step": 26
+}

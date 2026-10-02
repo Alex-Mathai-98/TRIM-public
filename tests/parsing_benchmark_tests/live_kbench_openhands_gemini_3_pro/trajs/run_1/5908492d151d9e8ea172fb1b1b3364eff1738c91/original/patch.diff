@@ -1,0 +1,27 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6296a11ccb09..79367ccd335f 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1128,8 +1128,20 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 		if (ret)
+ 			goto fsck_err;
+ 
+-		if (!b->written)
+-			btree_node_set_format(b, b->data->format);
++		if (!b->written) {
++			struct bkey_format f = b->data->format;
++
++			if (btree_err_on(!f.key_u64s,
++				     -BCH_ERR_btree_node_read_err_must_retry,
++				     c, ca, b, NULL, NULL,
++				     btree_node_bad_format,
++				     "invalid bkey format: key_u64s %u", f.key_u64s)) {
++				ret = -BCH_ERR_btree_node_read_err_must_retry;
++				goto fsck_err;
++			}
++
++			btree_node_set_format(b, f);
++		}
+ 
+ 		ret = validate_bset_keys(c, b, i, READ, have_retry, saw_error);
+ 		if (ret)

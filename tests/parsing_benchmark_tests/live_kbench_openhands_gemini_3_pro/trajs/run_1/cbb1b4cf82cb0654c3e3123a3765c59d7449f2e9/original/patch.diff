@@ -1,0 +1,19 @@
+diff --git a/fs/udf/super.c b/fs/udf/super.c
+index 1c8a736b3309..f40a7b29e4b0 100644
+--- a/fs/udf/super.c
++++ b/fs/udf/super.c
+@@ -1457,6 +1457,14 @@ static int udf_load_logicalvol(struct super_block *sb, sector_t block,
+ 		goto out_bh;
+ 	}
+ 
++	if (le32_to_cpu(lvd->numPartitionMaps) > table_len / sizeof(struct genericPartitionMap)) {
++		udf_err(sb, "error loading logical volume descriptor: "
++			"Number of partition maps %u too large for map table length %u\n",
++			le32_to_cpu(lvd->numPartitionMaps), table_len);
++		ret = -EIO;
++		goto out_bh;
++	}
++
+ 	ret = udf_verify_domain_identifier(sb, &lvd->domainIdent,
+ 					   "logical volume");
+ 	if (ret)

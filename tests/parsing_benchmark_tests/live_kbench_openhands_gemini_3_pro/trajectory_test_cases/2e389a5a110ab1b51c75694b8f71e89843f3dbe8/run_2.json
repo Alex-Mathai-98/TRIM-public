@@ -1,0 +1,108 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n#define _GNU_SOURCE\n#include <sys/mman.h>\n#include <sys/ioctl.h>\n#include <linux/userfaultfd.h>\n#include <fcntl.h>\n#include <unistd.h>\n#include <stdint.h>\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <sys/syscall.h>\n\n#ifndef __NR_userfaultfd\n#define __NR_userfaultfd 323\n#endif\n\nint main() {\n    // mmap(&(0x7f0000000000/0xb36000)=nil, 0xb36000, 0xb635773f06ebbeee, 0x8031, 0xffffffffffffffff, 0x0)\n    // 0xb36000 = 11755520 (~11.2 MB). \n    // 0x8031 = MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED\n    // But syzkaller usually uses more random flags. 0x31 = 110001 -> MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED (0x10) | 0x20?\n    // MAP_SHARED=0x1, MAP_PRIVATE=0x2. 0x31?\n    // MAP_ANONYMOUS=0x20. MAP_FIXED=0x10.\n    // 0x10 | 0x20 | 0x1 = 0x31.\n    // The repro says 0x8031. 0x8000 might be MAP_POPULATE?\n    \n    // address 0x20000000.\n    void *addr1 = (void*)0x20000000;\n    size_t len1 = 0xc00000; // 12MB. \n    // Note: syzkaller sometimes maps at random addresses. \n    // \"mmap(&(0x7f0000000000/0xc00000)=nil, 0xc00000, ...\" in mremap line suggests 0xc00000 size?\n    // In mmap line: 0xb36000. \n    // Let's use 0xc00000 to be consistent with mremap.\n    \n    // Clean up\n    munmap(addr1, 0x2000000); \n\n    void *ptr = mmap(addr1, len1, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);\n    if (ptr == MAP_FAILED) {\n        perror(\"mmap\");\n        // return 1;\n    }\n\n    // userfaultfd\n    int uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);\n    if (uffd == -1) {\n        perror(\"userfaultfd\");\n        // return 1;\n    }\n\n    struct uffdio_api api;\n    memset(&api, 0, sizeof(api));\n    api.api = UFFD_API;\n    api.features = 0; // The repro had 0xaa? \n    // 0xaa = UFFD_FEATURE_EVENT_FORK | UFFD_FEATURE_EVENT_REMAP ...\n    api.features = UFFD_FEATURE_EVENT_REMAP | UFFD_FEATURE_EVENT_REMOVE | UFFD_FEATURE_MISSING_HUGETLB | UFFD_FEATURE_MISSING_SHMEM;\n    \n    if (ioctl(uffd, UFFDIO_API, &api) == -1) {\n        perror(\"UFFDIO_API\");\n    }\n\n    struct uffdio_register reg;\n    memset(&reg, 0, sizeof(reg));\n    reg.range.start = (unsigned long)addr1;\n    reg.range.len = 0x400000; // 4MB\n    reg.mode = UFFDIO_REGISTER_MODE_MISSING;\n    if (ioctl(uffd, UFFDIO_REGISTER, &reg) == -1) {\n        perror(\"UFFDIO_REGISTER\");\n    }\n\n    // mremap\n    // mremap(&(0x7f0000000000/0xc00000)=nil, 0xc00000, 0x400000, 0x3, &(0x7f0000c00000/0x400000)=nil)\n    // old_addr = addr1 (0x20000000)\n    // old_len = 0xc00000 (12MB)\n    // new_len = 0x400000 (4MB)\n    // flags = MREMAP_MAYMOVE | MREMAP_FIXED (0x3)\n    // new_addr = 0x20c00000 (addr1 + 12MB)\n    \n    void *new_addr = (void*)((unsigned long)addr1 + 0xc00000); // 0x20c00000\n    \n    void *ptr2 = mremap(addr1, len1, 0x400000, MREMAP_MAYMOVE | MREMAP_FIXED, new_addr);\n    if (ptr2 == MAP_FAILED) {\n        perror(\"mremap\");\n    } else {\n        printf(\"mremap success: %p\\n\", ptr2);\n    }\n\n    return 0;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/repro.c\n+++ /linux/repro.c\n@@ -1,0 +2,90 @@\n+#define _GNU_SOURCE\n+#include <sys/mman.h>\n+#include <sys/ioctl.h>\n+#include <linux/userfaultfd.h>\n+#include <fcntl.h>\n+#include <unistd.h>\n+#include <stdint.h>\n+#include <stdlib.h>\n+#include <stdio.h>\n+#include <string.h>\n+#include <sys/syscall.h>\n+\n+#ifndef __NR_userfaultfd\n+#define __NR_userfaultfd 323\n+#endif\n+\n+int main() {\n+    // mmap(&(0x7f0000000000/0xb36000)=nil, 0xb36000, 0xb635773f06ebbeee, 0x8031, 0xffffffffffffffff, 0x0)\n+    // 0xb36000 = 11755520 (~11.2 MB).\n+    // 0x8031 = MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED\n+    // But syzkaller usually uses more random flags. 0x31 = 110001 -> MAP_SHARED | MAP_ANONYMOUS | MAP_FIXED (0x10) | 0x20?\n+    // MAP_SHARED=0x1, MAP_PRIVATE=0x2. 0x31?\n+    // MAP_ANONYMOUS=0x20. MAP_FIXED=0x10.\n+    // 0x10 | 0x20 | 0x1 = 0x31.\n+    // The repro says 0x8031. 0x8000 might be MAP_POPULATE?\n+\n+    // address 0x20000000.\n+    void *addr1 = (void*)0x20000000;\n+    size_t len1 = 0xc00000; // 12MB.\n+    // Note: syzkaller sometimes maps at random addresses.\n+    // \"mmap(&(0x7f0000000000/0xc00000)=nil, 0xc00000, ...\" in mremap line suggests 0xc00000 size?\n+    // In mmap line: 0xb36000.\n+    // Let's use 0xc00000 to be consistent with mremap.\n+\n+    // Clean up\n+    munmap(addr1, 0x2000000);\n+\n+    void *ptr = mmap(addr1, len1, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);\n+    if (ptr == MAP_FAILED) {\n+        perror(\"mmap\");\n+        // return 1;\n+    }\n+\n+    // userfaultfd\n+    int uffd = syscall(__NR_userfaultfd, O_CLOEXEC | O_NONBLOCK);\n+    if (uffd == -1) {\n+        perror(\"userfaultfd\");\n+        // return 1;\n+    }\n+\n+    struct uffdio_api api;\n+    memset(&api, 0, sizeof(api));\n+    api.api = UFFD_API;\n+    api.features = 0; // The repro had 0xaa?\n+    // 0xaa = UFFD_FEATURE_EVENT_FORK | UFFD_FEATURE_EVENT_REMAP ...\n+    api.features = UFFD_FEATURE_EVENT_REMAP | UFFD_FEATURE_EVENT_REMOVE | UFFD_FEATURE_MISSING_HUGETLB | UFFD_FEATURE_MISSING_SHMEM;\n+\n+    if (ioctl(uffd, UFFDIO_API, &api) == -1) {\n+        perror(\"UFFDIO_API\");\n+    }\n+\n+    struct uffdio_register reg;\n+    memset(&reg, 0, sizeof(reg));\n+    reg.range.start = (unsigned long)addr1;\n+    reg.range.len = 0x400000; // 4MB\n+    reg.mode = UFFDIO_REGISTER_MODE_MISSING;\n+    if (ioctl(uffd, UFFDIO_REGISTER, &reg) == -1) {\n+        perror(\"UFFDIO_REGISTER\");\n+    }\n+\n+    // mremap\n+    // mremap(&(0x7f0000000000/0xc00000)=nil, 0xc00000, 0x400000, 0x3, &(0x7f0000c00000/0x400000)=nil)\n+    // old_addr = addr1 (0x20000000)\n+    // old_len = 0xc00000 (12MB)\n+    // new_len = 0x400000 (4MB)\n+    // flags = MREMAP_MAYMOVE | MREMAP_FIXED (0x3)\n+    // new_addr = 0x20c00000 (addr1 + 12MB)\n+\n+    void *new_addr = (void*)((unsigned long)addr1 + 0xc00000); // 0x20c00000\n+\n+    void *ptr2 = mremap(addr1, len1, 0x400000, MREMAP_MAYMOVE | MREMAP_FIXED, new_addr);\n+    if (ptr2 == MAP_FAILED) {\n+        perror(\"mremap\");\n+    } else {\n+        printf(\"mremap success: %p\\n\", ptr2);\n+    }\n+\n+    return 0;\n+}\n+",
+          "edit_type": "whole_file_actions",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands create step 48",
+          "filename": "repro.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 48
+        },
+        {
+          "after": "    api.features = UFFD_FEATURE_EVENT_REMAP | UFFD_FEATURE_EVENT_REMOVE | UFFD_FEATURE_MISSING_HUGETLBFS | UFFD_FEATURE_MISSING_SHMEM;",
+          "before": "    api.features = UFFD_FEATURE_EVENT_REMAP | UFFD_FEATURE_EVENT_REMOVE | UFFD_FEATURE_MISSING_HUGETLB | UFFD_FEATURE_MISSING_SHMEM;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/repro.c\n+++ /linux/repro.c\n@@ -57 +57 @@\n-    api.features = UFFD_FEATURE_EVENT_REMAP | UFFD_FEATURE_EVENT_REMOVE | UFFD_FEATURE_MISSING_HUGETLB | UFFD_FEATURE_MISSING_SHMEM;\n+    api.features = UFFD_FEATURE_EVENT_REMAP | UFFD_FEATURE_EVENT_REMOVE | UFFD_FEATURE_MISSING_HUGETLBFS | UFFD_FEATURE_MISSING_SHMEM;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 55",
+          "filename": "repro.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 55
+        },
+        {
+          "after": "pmd_present(*new_pmd) && WARN_ON_ONCE",
+          "before": "WARN_ON_ONCE",
+          "best_effort": true,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace_once_at_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands step 65 sed s #1",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 361,
+          "step_index": 65
+        },
+        {
+          "after": "\tif (!pmd_none(*new_pmd))\n\t\treturn false;",
+          "before": "\tif (pmd_present(*new_pmd) && WARN_ON_ONCE(!pmd_none(*new_pmd)))\n\t\treturn false;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mremap.c\n+++ /linux/mm/mremap.c\n@@ -361 +361 @@\n-\tif (pmd_present(*new_pmd) && WARN_ON_ONCE(!pmd_none(*new_pmd)))\n+\tif (!pmd_none(*new_pmd))",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 73",
+          "filename": "mm/mremap.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 73
+        }
+      ],
+      "end_step": 73,
+      "revision_index": 0,
+      "start_step": 48
+    }
+  ],
+  "success_step": 73
+}

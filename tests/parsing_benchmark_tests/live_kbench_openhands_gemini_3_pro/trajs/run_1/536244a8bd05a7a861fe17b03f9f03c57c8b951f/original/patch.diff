@@ -1,0 +1,103 @@
+diff --git a/io_uring/timeout.c b/io_uring/timeout.c
+index bbe58638eca7..27f9806ca10a 100644
+--- a/io_uring/timeout.c
++++ b/io_uring/timeout.c
+@@ -85,7 +85,8 @@ static void io_timeout_complete(struct io_kiocb *req, struct io_tw_state *ts)
+ 	io_req_task_complete(req, ts);
+ }
+ 
+-static bool io_kill_timeout(struct io_kiocb *req, int status)
++static bool io_kill_timeout(struct io_kiocb *req, int status,
++			    struct io_wq_work_list *list)
+ 	__must_hold(&req->ctx->timeout_lock)
+ {
+ 	struct io_timeout_data *io = req->async_data;
+@@ -98,7 +99,13 @@ static bool io_kill_timeout(struct io_kiocb *req, int status)
+ 		atomic_set(&req->ctx->cq_timeouts,
+ 			atomic_read(&req->ctx->cq_timeouts) + 1);
+ 		list_del_init(&timeout->list);
+-		io_req_queue_tw_complete(req, status);
++		io_req_set_res(req, status, 0);
++		req->io_task_work.func = io_req_task_complete;
++		if (list) {
++			wq_list_add_head(&req->comp_list, list);
++		} else {
++			io_req_task_work_add(req);
++		}
+ 		return true;
+ 	}
+ 	return false;
+@@ -106,9 +113,11 @@ static bool io_kill_timeout(struct io_kiocb *req, int status)
+ 
+ __cold void io_flush_timeouts(struct io_ring_ctx *ctx)
+ {
++	struct io_wq_work_list list;
+ 	u32 seq;
+ 	struct io_timeout *timeout, *tmp;
+ 
++	INIT_WQ_LIST(&list);
+ 	raw_spin_lock_irq(&ctx->timeout_lock);
+ 	seq = ctx->cached_cq_tail - atomic_read(&ctx->cq_timeouts);
+ 
+@@ -131,10 +140,18 @@ __cold void io_flush_timeouts(struct io_ring_ctx *ctx)
+ 		if (events_got < events_needed)
+ 			break;
+ 
+-		io_kill_timeout(req, 0);
++		io_kill_timeout(req, 0, &list);
+ 	}
+ 	ctx->cq_last_tm_flush = seq;
+ 	raw_spin_unlock_irq(&ctx->timeout_lock);
++
++	while (!wq_list_empty(&list)) {
++		struct io_wq_work_node *node = list.first;
++		struct io_kiocb *req = container_of(node, struct io_kiocb, comp_list);
++
++		wq_list_del(&list, node, NULL);
++		io_req_task_work_add(req);
++	}
+ }
+ 
+ static void io_req_tw_fail_links(struct io_kiocb *link, struct io_tw_state *ts)
+@@ -660,9 +677,11 @@ static bool io_match_task(struct io_kiocb *head, struct io_uring_task *tctx,
+ __cold bool io_kill_timeouts(struct io_ring_ctx *ctx, struct io_uring_task *tctx,
+ 			     bool cancel_all)
+ {
++	struct io_wq_work_list list;
+ 	struct io_timeout *timeout, *tmp;
+ 	int canceled = 0;
+ 
++	INIT_WQ_LIST(&list);
+ 	/*
+ 	 * completion_lock is needed for io_match_task(). Take it before
+ 	 * timeout_lockfirst to keep locking ordering.
+@@ -673,10 +692,18 @@ __cold bool io_kill_timeouts(struct io_ring_ctx *ctx, struct io_uring_task *tctx
+ 		struct io_kiocb *req = cmd_to_io_kiocb(timeout);
+ 
+ 		if (io_match_task(req, tctx, cancel_all) &&
+-		    io_kill_timeout(req, -ECANCELED))
++		    io_kill_timeout(req, -ECANCELED, &list))
+ 			canceled++;
+ 	}
+ 	raw_spin_unlock_irq(&ctx->timeout_lock);
+ 	spin_unlock(&ctx->completion_lock);
++
++	while (!wq_list_empty(&list)) {
++		struct io_wq_work_node *node = list.first;
++		struct io_kiocb *req = container_of(node, struct io_kiocb, comp_list);
++
++		wq_list_del(&list, node, NULL);
++		io_req_task_work_add(req);
++	}
+ 	return canceled != 0;
+ }
+diff --git a/receipt.json b/receipt.json
+new file mode 100644
+index 000000000000..f0f0d8b80b3f
+--- /dev/null
++++ b/receipt.json
+@@ -0,0 +1,3 @@
++{
++    "536244a8bd05a7a861fe17b03f9f03c57c8b951f": 91350
++}
+\ No newline at end of file

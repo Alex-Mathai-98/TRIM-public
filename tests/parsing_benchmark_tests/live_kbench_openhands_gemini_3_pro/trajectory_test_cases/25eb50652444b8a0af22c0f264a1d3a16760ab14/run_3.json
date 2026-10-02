@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\tmutex_lock(&atm_dev_mutex);\n\tlist_del(&dev->dev_list);\n\tatm_unregister_sysfs(dev);\n\tatm_proc_dev_deregister(dev);\n\tmutex_unlock(&atm_dev_mutex);\n\n\tatm_dev_release_vccs(dev);\n",
+          "before": "\n\tmutex_lock(&atm_dev_mutex);\n\tlist_del(&dev->dev_list);\n\tmutex_unlock(&atm_dev_mutex);\n\n\tatm_dev_release_vccs(dev);\n\tatm_unregister_sysfs(dev);\n\tatm_proc_dev_deregister(dev);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/net/atm/resources.c\n+++ /linux/net/atm/resources.c\n@@ -149,3 +148,0 @@\n-\tmutex_unlock(&atm_dev_mutex);\n-\n-\tatm_dev_release_vccs(dev);\n@@ -153,0 +151,3 @@\n+\tmutex_unlock(&atm_dev_mutex);\n+\n+\tatm_dev_release_vccs(dev);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 41",
+          "filename": "net/atm/resources.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 41
+        }
+      ],
+      "end_step": 41,
+      "revision_index": 0,
+      "start_step": 41
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\n\tif (dev) {\n\t\tif (dev->ops != &atmtcp_v_dev_ops) {\n\t\t\tatm_dev_put(dev);\n\t\t\treturn -EMEDIUMTYPE;\n\t\t}\n\t\tspin_lock(&dev->lock);\n\t\tif (!PRIV(dev)) {\n\t\t\tspin_unlock(&dev->lock);\n\t\t\tatm_dev_put(dev);\n\t\t\treturn -EUNATCH;\n\t\t}\n\t\tif (PRIV(dev)->vcc) {\n\t\t\tspin_unlock(&dev->lock);\n\t\t\tatm_dev_put(dev);\n\t\t\treturn -EBUSY;\n\t\t}\n\t\tPRIV(dev)->vcc = vcc;\n\t\tspin_unlock(&dev->lock);\n\t}\n\telse {\n\t\tint error;\n\n\t\terror = atmtcp_create(itf,0,&dev);\n\t\tif (error) return error;\n\t\tspin_lock(&dev->lock);\n\t\tPRIV(dev)->vcc = vcc;\n\t\tspin_unlock(&dev->lock);\n\t}\n\n",
+          "before": "\n\n\tif (dev) {\n\t\tif (dev->ops != &atmtcp_v_dev_ops) {\n\t\t\tatm_dev_put(dev);\n\t\t\treturn -EMEDIUMTYPE;\n\t\t}\n\t\tif (PRIV(dev)->vcc) {\n\t\t\tatm_dev_put(dev);\n\t\t\treturn -EBUSY;\n\t\t}\n\t}\n\telse {\n\t\tint error;\n\n\t\terror = atmtcp_create(itf,0,&dev);\n\t\tif (error) return error;\n\t}\n\tPRIV(dev)->vcc = vcc;\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -396,0 +397,6 @@\n+\t\tspin_lock(&dev->lock);\n+\t\tif (!PRIV(dev)) {\n+\t\t\tspin_unlock(&dev->lock);\n+\t\t\tatm_dev_put(dev);\n+\t\t\treturn -EUNATCH;\n+\t\t}\n@@ -397,0 +404 @@\n+\t\t\tspin_unlock(&dev->lock);\n@@ -400,0 +408,2 @@\n+\t\tPRIV(dev)->vcc = vcc;\n+\t\tspin_unlock(&dev->lock);\n@@ -407,2 +416,4 @@\n-\t}\n-\tPRIV(dev)->vcc = vcc;\n+\t\tspin_lock(&dev->lock);\n+\t\tPRIV(dev)->vcc = vcc;\n+\t\tspin_unlock(&dev->lock);\n+\t}",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 67",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 67
+        },
+        {
+          "after": "\n\n\n\tatm_dev_deregister(dev);\n\tspin_lock(&dev->lock);\n\tdev->dev_data = NULL;\n\tspin_unlock(&dev->lock);\n\tkfree(dev_data);\n\tatm_dev_put(dev);\n\treturn 0;\n\n\n",
+          "before": "\n\n\n\tkfree(dev_data);\n\tatm_dev_put(dev);\n\tatm_dev_deregister(dev);\n\treturn 0;\n\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/drivers/atm/atmtcp.c\n+++ /linux/drivers/atm/atmtcp.c\n@@ -457,0 +458,4 @@\n+\tatm_dev_deregister(dev);\n+\tspin_lock(&dev->lock);\n+\tdev->dev_data = NULL;\n+\tspin_unlock(&dev->lock);\n@@ -460 +463,0 @@\n-\tatm_dev_deregister(dev);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 69",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 69
+        }
+      ],
+      "end_step": 69,
+      "revision_index": 1,
+      "start_step": 67
+    }
+  ],
+  "success_step": 69
+}

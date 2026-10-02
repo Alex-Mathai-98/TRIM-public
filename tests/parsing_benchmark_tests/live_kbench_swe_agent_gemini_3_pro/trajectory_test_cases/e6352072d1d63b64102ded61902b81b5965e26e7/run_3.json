@@ -1,0 +1,85 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\terr = hu->proto->open(hu);\n\tif (err) {\n\t\thu->hdev = NULL;\n\t\thci_free_dev(hdev);\n\t\treturn err;\n\t}\n\n\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\n\tif (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))",
+          "before": "\terr = hu->proto->open(hu);\n\tif (err) {\n\t\thu->hdev = NULL;\n\t\thci_free_dev(hdev);\n\t\treturn err;\n\t}\n\n\tif (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c\nindex d0adae3267b4..f0fd005f50a4 100644\n--- a/drivers/bluetooth/hci_ldisc.c\n+++ b/drivers/bluetooth/hci_ldisc.c\n@@ -685,6 +685,8 @@ static int hci_uart_register_dev(struct hci_uart *hu)\n \t\treturn err;\n \t}\n \n+\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n+\n \tif (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))\n \t\treturn 0;",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "drivers/bluetooth/hci_ldisc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        },
+        {
+          "after": "\tif (hci_register_dev(hdev) < 0) {\n\t\tBT_ERR(\"Can't register HCI device\");\n\t\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\t\thu->proto->close(hu);\n\t\thu->hdev = NULL;\n\t\thci_free_dev(hdev);\n\t\treturn -ENODEV;\n\t}",
+          "before": "\tif (hci_register_dev(hdev) < 0) {\n\t\tBT_ERR(\"Can't register HCI device\");\n\t\thu->proto->close(hu);\n\t\thu->hdev = NULL;\n\t\thci_free_dev(hdev);\n\t\treturn -ENODEV;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c\nindex d0adae3267b4..5195c066d724 100644\n--- a/drivers/bluetooth/hci_ldisc.c\n+++ b/drivers/bluetooth/hci_ldisc.c\n@@ -685,11 +685,14 @@ static int hci_uart_register_dev(struct hci_uart *hu)\n \t\treturn err;\n \t}\n \n+\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n+\n \tif (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))\n \t\treturn 0;\n \n \tif (hci_register_dev(hdev) < 0) {\n \t\tBT_ERR(\"Can't register HCI device\");\n+\t\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n \t\thu->proto->close(hu);\n \t\thu->hdev = NULL;\n \t\thci_free_dev(hdev);",
+          "explanation": "classic_swe step 24 #1",
+          "filename": "drivers/bluetooth/hci_ldisc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 24
+        },
+        {
+          "after": "\thu->proto = p;\n\n\terr = hci_uart_register_dev(hu);",
+          "before": "\thu->proto = p;\n\n\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n\n\terr = hci_uart_register_dev(hu);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/bluetooth/hci_ldisc.c b/drivers/bluetooth/hci_ldisc.c\nindex d0adae3267b4..31262a5b8943 100644\n--- a/drivers/bluetooth/hci_ldisc.c\n+++ b/drivers/bluetooth/hci_ldisc.c\n@@ -685,11 +685,14 @@ static int hci_uart_register_dev(struct hci_uart *hu)\n \t\treturn err;\n \t}\n \n+\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n+\n \tif (test_bit(HCI_UART_INIT_PENDING, &hu->hdev_flags))\n \t\treturn 0;\n \n \tif (hci_register_dev(hdev) < 0) {\n \t\tBT_ERR(\"Can't register HCI device\");\n+\t\tclear_bit(HCI_UART_PROTO_INIT, &hu->flags);\n \t\thu->proto->close(hu);\n \t\thu->hdev = NULL;\n \t\thci_free_dev(hdev);\n@@ -712,8 +715,6 @@ static int hci_uart_set_proto(struct hci_uart *hu, int id)\n \n \thu->proto = p;\n \n-\tset_bit(HCI_UART_PROTO_INIT, &hu->flags);\n-\n \terr = hci_uart_register_dev(hu);\n \tif (err) {\n \t\treturn err;",
+          "explanation": "classic_swe step 25 #1",
+          "filename": "drivers/bluetooth/hci_ldisc.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 25
+        }
+      ],
+      "end_step": 25,
+      "revision_index": 0,
+      "start_step": 23
+    }
+  ],
+  "success_step": 25
+}

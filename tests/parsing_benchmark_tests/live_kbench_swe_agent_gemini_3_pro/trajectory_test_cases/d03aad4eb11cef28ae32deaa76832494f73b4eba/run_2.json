@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t} else {\n\t\tlong ret;\n\n\t\t/* Wait for transmission to complete (or abort) */\n\t\tret = wait_for_completion_interruptible_timeout(\n\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(5000));\n\t\tif (!ret || ret < 0) {\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"task interrupted or timed out\\n\");\n\t\t}\n\n\t\tictx->tx.busy = false;\n\t\tretval = ictx->tx.status;\n\t\tif (retval)\n\t\t\tpr_err_ratelimited(\"packet tx failed (%d)\\n\", retval);\n\t}\n",
+          "before": "\t} else {\n\t\t/* Wait for transmission to complete (or abort) */\n\t\tretval = wait_for_completion_interruptible(\n\t\t\t\t&ictx->tx.finished);\n\t\tif (retval) {\n\t\t\tusb_kill_urb(ictx->tx_urb);\n\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n\t\t}\n\n\t\tictx->tx.busy = false;\n\t\tretval = ictx->tx.status;\n\t\tif (retval)\n\t\t\tpr_err_ratelimited(\"packet tx failed (%d)\\n\", retval);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..d81d59ba6c33 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -645,12 +645,14 @@ static int send_packet(struct imon_context *ictx)\n \t\tsmp_rmb(); /* ensure later readers know we're not busy */\n \t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n \t} else {\n+\t\tlong ret;\n+\n \t\t/* Wait for transmission to complete (or abort) */\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tret = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(5000));\n+\t\tif (!ret || ret < 0) {\n \t\t\tusb_kill_urb(ictx->tx_urb);\n-\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n+\t\t\tpr_err_ratelimited(\"task interrupted or timed out\\n\");\n \t\t}\n \n \t\tictx->tx.busy = false;",
+          "explanation": "classic_swe step 11 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 11
+        }
+      ],
+      "end_step": 11,
+      "revision_index": 0,
+      "start_step": 11
+    },
+    {
+      "edits": [
+        {
+          "after": "\tictx->idev = imon_init_idev(ictx);\n",
+          "before": "\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n\tif (ret) {\n\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n\t\tgoto urb_submit_failed;\n\t}\n\n\tictx->idev = imon_init_idev(ictx);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..38725fd0ed51 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -645,12 +645,14 @@ static int send_packet(struct imon_context *ictx)\n \t\tsmp_rmb(); /* ensure later readers know we're not busy */\n \t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n \t} else {\n+\t\tlong ret;\n+\n \t\t/* Wait for transmission to complete (or abort) */\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tret = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(5000));\n+\t\tif (!ret || ret < 0) {\n \t\t\tusb_kill_urb(ictx->tx_urb);\n-\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n+\t\t\tpr_err_ratelimited(\"task interrupted or timed out\\n\");\n \t\t}\n \n \t\tictx->tx.busy = false;\n@@ -2262,12 +2264,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tusb_rx_callback_intf0, ictx,\n \t\tictx->rx_endpoint_intf0->bInterval);\n \n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n\tif (ret)\n\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n\n\tictx->dev_present_intf0 = true;\n",
+          "before": "\tictx->dev_present_intf0 = true;\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/media/rc/imon.c b/drivers/media/rc/imon.c\nindex cb6f36ebe5c8..e7636677e358 100644\n--- a/drivers/media/rc/imon.c\n+++ b/drivers/media/rc/imon.c\n@@ -645,12 +645,14 @@ static int send_packet(struct imon_context *ictx)\n \t\tsmp_rmb(); /* ensure later readers know we're not busy */\n \t\tpr_err_ratelimited(\"error submitting urb(%d)\\n\", retval);\n \t} else {\n+\t\tlong ret;\n+\n \t\t/* Wait for transmission to complete (or abort) */\n-\t\tretval = wait_for_completion_interruptible(\n-\t\t\t\t&ictx->tx.finished);\n-\t\tif (retval) {\n+\t\tret = wait_for_completion_interruptible_timeout(\n+\t\t\t\t&ictx->tx.finished, msecs_to_jiffies(5000));\n+\t\tif (!ret || ret < 0) {\n \t\t\tusb_kill_urb(ictx->tx_urb);\n-\t\t\tpr_err_ratelimited(\"task interrupted\\n\");\n+\t\t\tpr_err_ratelimited(\"task interrupted or timed out\\n\");\n \t\t}\n \n \t\tictx->tx.busy = false;\n@@ -2262,12 +2264,6 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tusb_rx_callback_intf0, ictx,\n \t\tictx->rx_endpoint_intf0->bInterval);\n \n-\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n-\tif (ret) {\n-\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n-\t\tgoto urb_submit_failed;\n-\t}\n-\n \tictx->idev = imon_init_idev(ictx);\n \tif (!ictx->idev) {\n \t\tdev_err(dev, \"%s: input device setup failed\\n\", __func__);\n@@ -2280,6 +2276,10 @@ static struct imon_context *imon_init_intf0(struct usb_interface *intf,\n \t\tgoto rdev_setup_failed;\n \t}\n \n+\tret = usb_submit_urb(ictx->rx_urb_intf0, GFP_KERNEL);\n+\tif (ret)\n+\t\tpr_err(\"usb_submit_urb failed for intf0 (%d)\\n\", ret);\n+\n \tictx->dev_present_intf0 = true;\n \n \tmutex_unlock(&ictx->lock);",
+          "explanation": "classic_swe step 28 #1",
+          "filename": "drivers/media/rc/imon.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 28
+        }
+      ],
+      "end_step": 28,
+      "revision_index": 1,
+      "start_step": 26
+    }
+  ],
+  "success_step": 28
+}

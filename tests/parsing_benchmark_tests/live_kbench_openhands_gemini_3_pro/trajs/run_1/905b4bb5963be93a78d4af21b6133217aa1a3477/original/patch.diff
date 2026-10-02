@@ -1,0 +1,72 @@
+diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c
+index 36dfa6a48aa6..d66907a8a8ad 100644
+--- a/fs/bcachefs/btree_cache.c
++++ b/fs/bcachefs/btree_cache.c
+@@ -1350,7 +1350,15 @@ void bch2_btree_node_evict(struct btree_trans *trans, const struct bkey_i *k)
+ 	if (!b)
+ 		return;
+ 
+-	BUG_ON(b == btree_node_root(trans->c, b));
++	if (b->c.btree_id < BTREE_ID_NR)
++		BUG_ON(b == c->btree_roots_known[b->c.btree_id].b);
++	else {
++		unsigned idx = b->c.btree_id - BTREE_ID_NR;
++
++		if (idx < c->btree_roots_extra.nr)
++			BUG_ON(b == c->btree_roots_extra.data[idx].b);
++	}
++
+ wait_on_io:
+ 	/* not allowed to wait on io with btree locks held: */
+ 
+@@ -1405,10 +1413,22 @@ void bch2_btree_id_level_to_text(struct printbuf *out, enum btree_id btree, unsi
+ 
+ void bch2_btree_pos_to_text(struct printbuf *out, struct bch_fs *c, const struct btree *b)
+ {
++	struct btree_root *r = NULL;
++
++	if (b->c.btree_id < BTREE_ID_NR) {
++		r = &c->btree_roots_known[b->c.btree_id];
++	} else {
++		unsigned idx = b->c.btree_id - BTREE_ID_NR;
++
++		if (idx < c->btree_roots_extra.nr)
++			r = &c->btree_roots_extra.data[idx];
++	}
++
+ 	bch2_btree_id_to_text(out, b->c.btree_id);
+-	prt_printf(out, " level %u/%u\n  ",
+-		   b->c.level,
+-		   bch2_btree_id_root(c, b->c.btree_id)->level);
++	prt_printf(out, " level %u", b->c.level);
++	if (r)
++		prt_printf(out, "/%u", r->level);
++	prt_printf(out, "\n  ");
+ 	bch2_bkey_val_to_text(out, c, bkey_i_to_s_c(&b->key));
+ }
+ 
+diff --git a/fs/bcachefs/btree_node_scan.c b/fs/bcachefs/btree_node_scan.c
+index 4b4df31d4b95..7a24cf31db03 100644
+--- a/fs/bcachefs/btree_node_scan.c
++++ b/fs/bcachefs/btree_node_scan.c
+@@ -103,7 +103,19 @@ static bool found_btree_node_is_readable(struct btree_trans *trans,
+ 	 * to be re-read so the read path can trim keys that are no longer in
+ 	 * this node
+ 	 */
+-	if (b != btree_node_root(trans->c, b))
++	struct bch_fs *c = trans->c;
++	struct btree_root *r = NULL;
++
++	if (b->c.btree_id < BTREE_ID_NR) {
++		r = &c->btree_roots_known[b->c.btree_id];
++	} else {
++		unsigned idx = b->c.btree_id - BTREE_ID_NR;
++
++		if (idx < c->btree_roots_extra.nr)
++			r = &c->btree_roots_extra.data[idx];
++	}
++
++	if (!r || b != r->b)
+ 		bch2_btree_node_evict(trans, &tmp.k);
+ 	return ret;
+ }

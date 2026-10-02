@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int nfs_net_init(struct net *net)\n{\n\tstruct nfs_net *nn = net_generic(net, nfs_net_id);\n\tint err;\n\n\tnfs_clients_init(net);\n\n\tif (!rpc_proc_register(net, &nn->rpcstats)) {\n\t\tnfs_clients_exit(net);\n\t\treturn -ENOMEM;\n\t}\n\n\terr = nfs_fs_proc_net_init(net);\n\tif (err) {\n\t\trpc_proc_unregister(net, \"nfs\");\n\t\tnfs_clients_exit(net);\n\t\treturn err;\n\t}\n\n\treturn 0;\n}",
+          "before": "static int nfs_net_init(struct net *net)\n{\n\tstruct nfs_net *nn = net_generic(net, nfs_net_id);\n\n\tnfs_clients_init(net);\n\n\tif (!rpc_proc_register(net, &nn->rpcstats)) {\n\t\tnfs_clients_exit(net);\n\t\treturn -ENOMEM;\n\t}\n\n\treturn nfs_fs_proc_net_init(net);\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nfs/inode.c\n+++ /linux/fs/nfs/inode.c\n@@ -2546,0 +2547 @@\n+\tint err;\n@@ -2555 +2556,8 @@\n-\treturn nfs_fs_proc_net_init(net);\n+\terr = nfs_fs_proc_net_init(net);\n+\tif (err) {\n+\t\trpc_proc_unregister(net, \"nfs\");\n+\t\tnfs_clients_exit(net);\n+\t\treturn err;\n+\t}\n+\n+\treturn 0;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 52",
+          "filename": "fs/nfs/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 52
+        }
+      ],
+      "end_step": 52,
+      "revision_index": 0,
+      "start_step": 52
+    },
+    {
+      "edits": [
+        {
+          "after": "int nfsd_proc_stat_init(struct net *net);",
+          "before": "void nfsd_proc_stat_init(struct net *net);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nfsd/stats.h\n+++ /linux/fs/nfsd/stats.h\n@@ -13 +13 @@\n-void nfsd_proc_stat_init(struct net *net);\n+int nfsd_proc_stat_init(struct net *net);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 92",
+          "filename": "fs/nfsd/stats.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 92
+        },
+        {
+          "after": "\nint nfsd_proc_stat_init(struct net *net)\n{\n\tstruct nfsd_net *nn = net_generic(net, nfsd_net_id);\n\n\tif (!svc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops))\n\t\treturn -ENOMEM;\n\treturn 0;\n}\n",
+          "before": "\nvoid nfsd_proc_stat_init(struct net *net)\n{\n\tstruct nfsd_net *nn = net_generic(net, nfsd_net_id);\n\n\tsvc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops);\n}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nfsd/stats.c\n+++ /linux/fs/nfsd/stats.c\n@@ -76 +76 @@\n-void nfsd_proc_stat_init(struct net *net)\n+int nfsd_proc_stat_init(struct net *net)\n@@ -80 +80,3 @@\n-\tsvc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops);\n+\tif (!svc_proc_register(net, &nn->nfsd_svcstats, &nfsd_proc_ops))\n+\t\treturn -ENOMEM;\n+\treturn 0;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 94",
+          "filename": "fs/nfsd/stats.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 94
+        },
+        {
+          "after": "\n\tseqlock_init(&nn->writeverf_lock);\n\tretval = nfsd_proc_stat_init(net);\n\tif (retval)\n\t\tgoto out_proc_error;\n#if IS_ENABLED(CONFIG_NFS_LOCALIO)\n\tspin_lock_init(&nn->local_clients_lock);\n\tINIT_LIST_HEAD(&nn->local_clients);\n#endif\n\treturn 0;\n\nout_proc_error:\n\tpercpu_counter_destroy_many(nn->counter, NFSD_STATS_COUNTERS_NUM);\nout_repcache_error:\n\tnfsd_idmap_shutdown(net);\n",
+          "before": "\n\tseqlock_init(&nn->writeverf_lock);\n\tnfsd_proc_stat_init(net);\n#if IS_ENABLED(CONFIG_NFS_LOCALIO)\n\tspin_lock_init(&nn->local_clients_lock);\n\tINIT_LIST_HEAD(&nn->local_clients);\n#endif\n\treturn 0;\n\nout_repcache_error:\n\tnfsd_idmap_shutdown(net);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/nfsd/nfsctl.c\n+++ /linux/fs/nfsd/nfsctl.c\n@@ -2216 +2216,3 @@\n-\tnfsd_proc_stat_init(net);\n+\tretval = nfsd_proc_stat_init(net);\n+\tif (retval)\n+\t\tgoto out_proc_error;\n@@ -2222,0 +2225,2 @@\n+out_proc_error:\n+\tpercpu_counter_destroy_many(nn->counter, NFSD_STATS_COUNTERS_NUM);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 119",
+          "filename": "fs/nfsd/nfsctl.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 119
+        }
+      ],
+      "end_step": 119,
+      "revision_index": 1,
+      "start_step": 92
+    }
+  ],
+  "success_step": 119
+}

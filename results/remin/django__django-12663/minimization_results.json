@@ -1,0 +1,201 @@
+{
+  "bug_id": "django__django-12663",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "from django.utils.functional import Promise, cached_property",
+        "after": "from django.utils.functional import LazyObject, Promise, cached_property",
+        "explanation": "classic_swe step 24 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+        "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object\n            if value._wrapped is value.__class__._wrapped:  # Check if not yet initialized\n                value._setup()\n            value = value._wrapped\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+        "explanation": "classic_swe step 25 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object\n            if value._wrapped is value.__class__._wrapped:  # Check if not yet initialized\n                value._setup()\n            value = value._wrapped\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+        "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/__init__.py",
+        "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+        "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        # Handle model instances by extracting their primary key\n        if hasattr(value, '_meta'):\n            value = value.pk\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+        "explanation": "classic_swe step 46 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/fields/__init__.py b/django/db/models/fields/__init__.py\nindex caa03665ea..7e030cbd3f 100644\n--- a/django/db/models/fields/__init__.py\n+++ b/django/db/models/fields/__init__.py\n@@ -21,7 +21,7 @@ from django.utils.dateparse import (\n     parse_date, parse_datetime, parse_duration, parse_time,\n )\n from django.utils.duration import duration_microseconds, duration_string\n-from django.utils.functional import Promise, cached_property\n+from django.utils.functional import LazyObject, Promise, cached_property\n from django.utils.ipv6 import clean_ipv6_address\n from django.utils.itercompat import is_iterable\n from django.utils.text import capfirst\n@@ -1768,6 +1768,14 @@ class IntegerField(Field):\n         value = super().get_prep_value(value)\n         if value is None:\n             return None\n+        # Handle LazyObject instances by unwrapping them\n+        if isinstance(value, LazyObject):\n+            # Force evaluation of the lazy object by accessing an attribute\n+            # This will trigger _setup() if the object is not yet initialized\n+            value = value.__reduce__()[1][0]\n+        # Handle model instances by extracting their primary key\n+        if hasattr(value, '_meta'):\n+            value = value.pk\n         try:\n             return int(value)\n         except (TypeError, ValueError) as e:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4,
+      5,
+      8,
+      10
+    ],
+    "nodes_original_count": 3,
+    "node_list_original": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 2,
+    "node_list_after_phase1": [
+      0,
+      1,
+      2
+    ],
+    "find_minimum_subsequence_node_no_crash_cache_hit": 1,
+    "find_minimum_subsequence_node_not_applicable": 1,
+    "node_list_after_phase2": [
+      0,
+      1,
+      2
+    ],
+    "node_refinement_passes": 2,
+    "greedy_removal_node_no_crash_cache_hit": 2,
+    "greedy_removal_node_no_crash": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 2,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      3,
+      4,
+      5,
+      8
+    ],
+    "edit_list_after_file_min": [
+      3,
+      4,
+      5,
+      8
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "greedy_removal_edit_not_applicable": 4,
+    "greedy_removal_edit_still_crashes": 1,
+    "edit_list_after_greedy": [
+      3,
+      4,
+      5,
+      8
+    ],
+    "edit_list_after_refinement": [
+      3,
+      4,
+      5,
+      8
+    ],
+    "edits_after_node_min": 4,
+    "edits_after_file_min": 4,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 5,
+  "minimized_edit_count": 4,
+  "reduction": "5_to_4",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "from django.utils.functional import Promise, cached_property",
+          "after": "from django.utils.functional import LazyObject, Promise, cached_property",
+          "explanation": "classic_swe step 24 #1"
+        },
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object\n            if value._wrapped is value.__class__._wrapped:  # Check if not yet initialized\n                value._setup()\n            value = value._wrapped\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "explanation": "classic_swe step 25 #1"
+        },
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object\n            if value._wrapped is value.__class__._wrapped:  # Check if not yet initialized\n                value._setup()\n            value = value._wrapped\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "explanation": "classic_swe step 27 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        # Handle model instances by extracting their primary key\n        if hasattr(value, '_meta'):\n            value = value.pk\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "explanation": "classic_swe step 46 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/__init__.py",
+          "before": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n        # Handle model instances by extracting their primary key\n        if hasattr(value, '_meta'):\n            value = value.pk\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "after": "    def get_prep_value(self, value):\n        value = super().get_prep_value(value)\n        if value is None:\n            return None\n        # Handle LazyObject instances by unwrapping them\n        if isinstance(value, LazyObject):\n            # Force evaluation of the lazy object by accessing an attribute\n            # This will trigger _setup() if the object is not yet initialized\n            value = value.__reduce__()[1][0]\n            # Check again if the unwrapped value is None\n            if value is None:\n                return None\n        # Handle model instances by extracting their primary key\n        if hasattr(value, '_meta'):\n            value = value.pk\n            # Check if the primary key is None\n            if value is None:\n                return None\n        try:\n            return int(value)\n        except (TypeError, ValueError) as e:\n            raise e.__class__(\n                \"Field '%s' expected a number but got %r.\" % (self.name, value),\n            ) from e",
+          "explanation": "classic_swe step 51 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 135,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 135,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [],
+    "extra_files_in_minimized": [
+      "django/db/models/fields/__init__.py"
+    ],
+    "missing_files_vs_gold": [
+      "django/db/models/sql/query.py"
+    ],
+    "minimized_files": [
+      "django/db/models/fields/__init__.py"
+    ],
+    "gold_files": [
+      "django/db/models/sql/query.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 9,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 2,
+    "gold_deleted_lines": 1
+  },
+  "gold_equivalence": "no_overlap"
+}

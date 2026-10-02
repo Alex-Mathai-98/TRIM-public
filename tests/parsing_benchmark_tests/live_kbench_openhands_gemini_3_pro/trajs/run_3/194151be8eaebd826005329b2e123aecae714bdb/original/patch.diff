@@ -1,0 +1,34 @@
+diff --git a/kernel/trace/ring_buffer.c b/kernel/trace/ring_buffer.c
+index 43460949ad3f..1244d2c5c384 100644
+--- a/kernel/trace/ring_buffer.c
++++ b/kernel/trace/ring_buffer.c
+@@ -7273,7 +7273,7 @@ int ring_buffer_map(struct trace_buffer *buffer, int cpu,
+ 		atomic_dec(&cpu_buffer->resize_disabled);
+ 	}
+ 
+-	return 0;
++	return err;
+ }
+ 
+ int ring_buffer_unmap(struct trace_buffer *buffer, int cpu)
+diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
+index b3c94fbaf002..e4bfe153b410 100644
+--- a/kernel/trace/trace.c
++++ b/kernel/trace/trace.c
+@@ -8624,12 +8624,14 @@ static int tracing_buffers_mmap(struct file *filp, struct vm_area_struct *vma)
+ 		return ret;
+ 
+ 	ret = ring_buffer_map(iter->array_buffer->buffer, iter->cpu_file, vma);
+-	if (ret)
++	if (ret) {
+ 		put_snapshot_map(iter->tr);
++		return ret;
++	}
+ 
+ 	vma->vm_ops = &tracing_buffers_vmops;
+ 
+-	return ret;
++	return 0;
+ }
+ 
+ static const struct file_operations tracing_buffers_fops = {

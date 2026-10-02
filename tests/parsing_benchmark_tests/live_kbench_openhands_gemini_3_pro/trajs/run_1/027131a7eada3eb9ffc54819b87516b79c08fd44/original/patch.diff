@@ -1,0 +1,73 @@
+diff --git a/include/net/bluetooth/l2cap.h b/include/net/bluetooth/l2cap.h
+index 313d0b972e06..ce2362166dda 100644
+--- a/include/net/bluetooth/l2cap.h
++++ b/include/net/bluetooth/l2cap.h
+@@ -671,6 +671,7 @@ struct l2cap_conn {
+ 	struct mutex		chan_lock;
+ 	struct kref		ref;
+ 	struct list_head	users;
++	struct rcu_head		rcu;
+ };
+ 
+ struct l2cap_user {
+diff --git a/net/bluetooth/l2cap_core.c b/net/bluetooth/l2cap_core.c
+index 9988ba382b68..a98ec2f8f6e4 100644
+--- a/net/bluetooth/l2cap_core.c
++++ b/net/bluetooth/l2cap_core.c
+@@ -970,7 +970,10 @@ static void l2cap_send_cmd(struct l2cap_conn *conn, u8 ident, u8 code, u16 len,
+ 	bt_cb(skb)->force_active = BT_POWER_FORCE_ACTIVE_ON;
+ 	skb->priority = HCI_PRIO_MAX;
+ 
+-	hci_send_acl(conn->hchan, skb, flags);
++	if (conn->hchan)
++		hci_send_acl(conn->hchan, skb, flags);
++	else
++		kfree_skb(skb);
+ }
+ 
+ static void l2cap_do_send(struct l2cap_chan *chan, struct sk_buff *skb)
+@@ -1807,7 +1810,7 @@ static void l2cap_conn_free(struct kref *ref)
+ 	struct l2cap_conn *conn = container_of(ref, struct l2cap_conn, ref);
+ 
+ 	hci_conn_put(conn->hcon);
+-	kfree(conn);
++	kfree_rcu(conn, rcu);
+ }
+ 
+ struct l2cap_conn *l2cap_conn_get(struct l2cap_conn *conn)
+@@ -7477,9 +7480,15 @@ static void l2cap_recv_reset(struct l2cap_conn *conn)
+ 
+ void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
+ {
+-	struct l2cap_conn *conn = hcon->l2cap_data;
++	struct l2cap_conn *conn;
+ 	int len;
+ 
++	rcu_read_lock();
++	conn = hcon->l2cap_data;
++	if (conn && !kref_get_unless_zero(&conn->ref))
++		conn = NULL;
++	rcu_read_unlock();
++
+ 	if (!conn)
+ 		conn = l2cap_conn_add(hcon);
+ 
+@@ -7512,7 +7521,7 @@ void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
+ 		if (len == skb->len) {
+ 			/* Complete frame received */
+ 			l2cap_recv_frame(conn, skb);
+-			return;
++			goto done;
+ 		}
+ 
+ 		BT_DBG("Start: total len %d, frag len %u", len, skb->len);
+@@ -7576,6 +7585,9 @@ void l2cap_recv_acldata(struct hci_conn *hcon, struct sk_buff *skb, u16 flags)
+ 
+ drop:
+ 	kfree_skb(skb);
++done:
++	if (conn)
++		l2cap_conn_put(conn);
+ }
+ 
+ static struct hci_cb l2cap_cb = {

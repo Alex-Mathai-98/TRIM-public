@@ -1,0 +1,71 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n\n\tif (b->c.btree_id > BTREE_ID_NR_MAX)\n\t\treturn false;\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n",
+          "before": "\tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n\n\treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 91e0aa796e6b..555048a7227b 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -209,6 +209,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id > BTREE_ID_NR_MAX)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);",
+          "explanation": "classic_swe step 31 #1",
+          "filename": "fs/bcachefs/btree_cache.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 31
+        }
+      ],
+      "end_step": 31,
+      "revision_index": 0,
+      "start_step": 31
+    },
+    {
+      "edits": [
+        {
+          "after": "\tint ret = 0;\n\n\tmutex_lock(&c->sb_lock);\n\tstruct bch_sb_field_ext *ext = bch2_sb_field_get(c->disk_sb.sb, ext);\n\n\tif (btree <= BTREE_ID_NR_MAX) {\n\t\tu64 b = BIT_ULL(btree);\n\n\t\tif (!(c->sb.btrees_lost_data & b)) {\n\t\t\tprt_printf(msg, \"flagging btree \");\n\t\t\tbch2_btree_id_to_text(msg, btree);\n\t\t\tprt_printf(msg, \" lost data\\n\");\n\n\t\t\text->btrees_lost_data |= cpu_to_le64(b);\n\t\t}\n\t}\n",
+          "before": "\tu64 b = BIT_ULL(btree);\n\tint ret = 0;\n\n\tmutex_lock(&c->sb_lock);\n\tstruct bch_sb_field_ext *ext = bch2_sb_field_get(c->disk_sb.sb, ext);\n\n\tif (!(c->sb.btrees_lost_data & b)) {\n\t\tprt_printf(msg, \"flagging btree \");\n\t\tbch2_btree_id_to_text(msg, btree);\n\t\tprt_printf(msg, \" lost data\\n\");\n\n\t\text->btrees_lost_data |= cpu_to_le64(b);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/bcachefs/btree_cache.c b/fs/bcachefs/btree_cache.c\nindex 91e0aa796e6b..555048a7227b 100644\n--- a/fs/bcachefs/btree_cache.c\n+++ b/fs/bcachefs/btree_cache.c\n@@ -209,6 +209,9 @@ static inline bool __btree_node_pinned(struct btree_cache *bc, struct btree *b)\n \n \tu64 mask = bc->pinned_nodes_mask[!!b->c.level];\n \n+\tif (b->c.btree_id > BTREE_ID_NR_MAX)\n+\t\treturn false;\n+\n \treturn ((mask & BIT_ULL(b->c.btree_id)) &&\n \t\tbbpos_cmp(bc->pinned_nodes_start, pos) < 0 &&\n \t\tbbpos_cmp(bc->pinned_nodes_end, pos) >= 0);\ndiff --git a/fs/bcachefs/recovery.c b/fs/bcachefs/recovery.c\nindex d0b7e3a36a54..797ebcbdba50 100644\n--- a/fs/bcachefs/recovery.c\n+++ b/fs/bcachefs/recovery.c\n@@ -37,18 +37,21 @@ int bch2_btree_lost_data(struct bch_fs *c,\n \t\t\t struct printbuf *msg,\n \t\t\t enum btree_id btree)\n {\n-\tu64 b = BIT_ULL(btree);\n \tint ret = 0;\n \n \tmutex_lock(&c->sb_lock);\n \tstruct bch_sb_field_ext *ext = bch2_sb_field_get(c->disk_sb.sb, ext);\n \n-\tif (!(c->sb.btrees_lost_data & b)) {\n-\t\tprt_printf(msg, \"flagging btree \");\n-\t\tbch2_btree_id_to_text(msg, btree);\n-\t\tprt_printf(msg, \" lost data\\n\");\n+\tif (btree <= BTREE_ID_NR_MAX) {\n+\t\tu64 b = BIT_ULL(btree);\n \n-\t\text->btrees_lost_data |= cpu_to_le64(b);\n+\t\tif (!(c->sb.btrees_lost_data & b)) {\n+\t\t\tprt_printf(msg, \"flagging btree \");\n+\t\t\tbch2_btree_id_to_text(msg, btree);\n+\t\t\tprt_printf(msg, \" lost data\\n\");\n+\n+\t\t\text->btrees_lost_data |= cpu_to_le64(b);\n+\t\t}\n \t}\n \n \t/* Once we have runtime self healing for topology errors we won't need this: */",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "fs/bcachefs/recovery.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 1,
+      "start_step": 36
+    }
+  ],
+  "success_step": 36
+}

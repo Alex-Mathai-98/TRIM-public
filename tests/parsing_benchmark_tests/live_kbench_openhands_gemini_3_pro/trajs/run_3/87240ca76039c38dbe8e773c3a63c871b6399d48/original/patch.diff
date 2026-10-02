@@ -1,0 +1,35 @@
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ca5499e9412b..29b335bf70d4 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -535,9 +535,18 @@ static void ext4_cache_extents(struct inode *inode,
+ 		ext4_lblk_t lblk = le32_to_cpu(ex->ee_block);
+ 		int len = ext4_ext_get_actual_len(ex);
+ 
+-		if (prev && (prev != lblk))
++		if (len == 0)
++			continue;
++
++		if (lblk + len <= lblk)
++			continue;
++
++		if (prev && (prev != lblk)) {
++			if (prev > lblk)
++				continue;
+ 			ext4_es_cache_extent(inode, prev, lblk - prev, ~0,
+ 					     EXTENT_STATUS_HOLE);
++		}
+ 
+ 		if (ext4_ext_is_unwritten(ex))
+ 			status = EXTENT_STATUS_UNWRITTEN;
+@@ -898,6 +907,10 @@ ext4_find_extent(struct inode *inode, ext4_lblk_t block,
+ 
+ 	eh = ext_inode_hdr(inode);
+ 	depth = ext_depth(inode);
++	if (ext4_ext_check_inode(inode)) {
++		ret = -EFSCORRUPTED;
++		goto err;
++	}
+ 	if (depth < 0 || depth > EXT4_MAX_EXTENT_DEPTH) {
+ 		EXT4_ERROR_INODE(inode, "inode has invalid extent depth: %d",
+ 				 depth);

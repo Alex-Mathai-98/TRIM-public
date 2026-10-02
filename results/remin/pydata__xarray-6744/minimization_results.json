@@ -1,0 +1,104 @@
+{
+  "bug_id": "pydata__xarray-6744",
+  "short_path": [
+    [
+      {
+        "filename": "xarray/core/rolling.py",
+        "before": "    def __iter__(self) -> Iterator[tuple[RollingKey, DataArray]]:\n        if self.ndim > 1:\n            raise ValueError(\"__iter__ is only supported for 1d-rolling\")\n        stops = np.arange(1, len(self.window_labels) + 1)\n        starts = stops - int(self.window[0])\n        starts[: int(self.window[0])] = 0\n        for (label, start, stop) in zip(self.window_labels, starts, stops):\n            window = self.obj.isel({self.dim[0]: slice(start, stop)})\n\n            counts = window.count(dim=self.dim[0])\n            window = window.where(counts >= self.min_periods)\n\n            yield (label, window)",
+        "after": "    def __iter__(self) -> Iterator[tuple[RollingKey, DataArray]]:\n        if self.ndim > 1:\n            raise ValueError(\"__iter__ is only supported for 1d-rolling\")\n        \n        window_size = int(self.window[0])\n        \n        if self.center[0]:\n            # For centered windows, adjust the start and stop positions\n            # The window should be centered around each position\n            offset = window_size // 2\n            starts = np.arange(len(self.window_labels)) - offset\n            stops = starts + window_size\n        else:\n            # For non-centered windows (original behavior)\n            stops = np.arange(1, len(self.window_labels) + 1)\n            starts = stops - window_size\n        \n        # Ensure starts are not negative\n        starts = np.maximum(starts, 0)\n        # Ensure stops don't exceed the array length\n        stops = np.minimum(stops, len(self.window_labels))\n        \n        for (label, start, stop) in zip(self.window_labels, starts, stops):\n            window = self.obj.isel({self.dim[0]: slice(start, stop)})\n\n            counts = window.count(dim=self.dim[0])\n            window = window.where(counts >= self.min_periods)\n\n            yield (label, window)",
+        "explanation": "classic_swe step 17 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/xarray/core/rolling.py b/xarray/core/rolling.py\nindex aef290f6..aaf8e999 100644\n--- a/xarray/core/rolling.py\n+++ b/xarray/core/rolling.py\n@@ -270,9 +270,25 @@ class DataArrayRolling(Rolling[\"DataArray\"]):\n     def __iter__(self) -> Iterator[tuple[RollingKey, DataArray]]:\n         if self.ndim > 1:\n             raise ValueError(\"__iter__ is only supported for 1d-rolling\")\n-        stops = np.arange(1, len(self.window_labels) + 1)\n-        starts = stops - int(self.window[0])\n-        starts[: int(self.window[0])] = 0\n+        \n+        window_size = int(self.window[0])\n+        \n+        if self.center[0]:\n+            # For centered windows, adjust the start and stop positions\n+            # The window should be centered around each position\n+            offset = window_size // 2\n+            starts = np.arange(len(self.window_labels)) - offset\n+            stops = starts + window_size\n+        else:\n+            # For non-centered windows (original behavior)\n+            stops = np.arange(1, len(self.window_labels) + 1)\n+            starts = stops - window_size\n+        \n+        # Ensure starts are not negative\n+        starts = np.maximum(starts, 0)\n+        # Ensure stops don't exceed the array length\n+        stops = np.minimum(stops, len(self.window_labels))\n+        \n         for (label, start, stop) in zip(self.window_labels, starts, stops):\n             window = self.obj.isel({self.dim[0]: slice(start, stop)})\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      2
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      2
+    ],
+    "edit_list_after_file_min": [
+      2
+    ],
+    "edit_list_after_greedy": [
+      2
+    ],
+    "edit_list_after_refinement": [
+      2
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "xarray/core/rolling.py",
+          "before": "    def __iter__(self) -> Iterator[tuple[RollingKey, DataArray]]:\n        if self.ndim > 1:\n            raise ValueError(\"__iter__ is only supported for 1d-rolling\")\n        stops = np.arange(1, len(self.window_labels) + 1)\n        starts = stops - int(self.window[0])\n        starts[: int(self.window[0])] = 0\n        for (label, start, stop) in zip(self.window_labels, starts, stops):\n            window = self.obj.isel({self.dim[0]: slice(start, stop)})\n\n            counts = window.count(dim=self.dim[0])\n            window = window.where(counts >= self.min_periods)\n\n            yield (label, window)",
+          "after": "    def __iter__(self) -> Iterator[tuple[RollingKey, DataArray]]:\n        if self.ndim > 1:\n            raise ValueError(\"__iter__ is only supported for 1d-rolling\")\n        \n        window_size = int(self.window[0])\n        \n        if self.center[0]:\n            # For centered windows, adjust the start and stop positions\n            # The window should be centered around each position\n            offset = window_size // 2\n            starts = np.arange(len(self.window_labels)) - offset\n            stops = starts + window_size\n        else:\n            # For non-centered windows (original behavior)\n            stops = np.arange(1, len(self.window_labels) + 1)\n            starts = stops - window_size\n        \n        # Ensure starts are not negative\n        starts = np.maximum(starts, 0)\n        # Ensure stops don't exceed the array length\n        stops = np.minimum(stops, len(self.window_labels))\n        \n        for (label, start, stop) in zip(self.window_labels, starts, stops):\n            window = self.obj.isel({self.dim[0]: slice(start, stop)})\n\n            counts = window.count(dim=self.dim[0])\n            window = window.where(counts >= self.min_periods)\n\n            yield (label, window)",
+          "explanation": "classic_swe step 17 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 3,
+    "f2p_fail": 0,
+    "p2p_pass": 1815,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 3,
+    "f2p_fail": 0,
+    "p2p_pass": 1815,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "xarray/core/rolling.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "xarray/core/rolling.py"
+    ],
+    "gold_files": [
+      "xarray/core/rolling.py"
+    ],
+    "minimized_hunks": 1,
+    "gold_hunks": 1,
+    "minimized_added_lines": 19,
+    "minimized_deleted_lines": 3,
+    "gold_added_lines": 11,
+    "gold_deleted_lines": 6
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

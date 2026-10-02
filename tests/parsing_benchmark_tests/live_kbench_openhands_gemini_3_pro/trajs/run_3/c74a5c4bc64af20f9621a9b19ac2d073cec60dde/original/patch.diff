@@ -1,0 +1,66 @@
+diff --git a/drivers/net/tun.c b/drivers/net/tun.c
+index 9254bca2813d..57e28bbd98bd 100644
+--- a/drivers/net/tun.c
++++ b/drivers/net/tun.c
+@@ -68,6 +68,7 @@
+ #include <linux/uio.h>
+ #include <linux/skb_array.h>
+ #include <linux/bpf.h>
++#include <linux/filter.h>
+ #include <linux/bpf_trace.h>
+ #include <linux/mutex.h>
+ #include <linux/ieee802154.h>
+@@ -1704,7 +1705,9 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 	if (xdp_prog) {
+ 		struct xdp_buff xdp;
+ 		u32 act;
++		struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
++		bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 		xdp_init_buff(&xdp, buflen, &tfile->xdp_rxq);
+ 		xdp_prepare_buff(&xdp, buf, pad, len, false);
+ 
+@@ -1717,16 +1720,20 @@ static struct sk_buff *tun_build_skb(struct tun_struct *tun,
+ 		if (err < 0) {
+ 			if (act == XDP_REDIRECT || act == XDP_TX)
+ 				put_page(alloc_frag->page);
++			bpf_net_ctx_clear(bpf_net_ctx);
+ 			goto out;
+ 		}
+ 
+ 		if (err == XDP_REDIRECT)
+ 			xdp_do_flush();
+-		if (err != XDP_PASS)
++		if (err != XDP_PASS) {
++			bpf_net_ctx_clear(bpf_net_ctx);
+ 			goto out;
++		}
+ 
+ 		pad = xdp.data - xdp.data_hard_start;
+ 		len = xdp.data_end - xdp.data;
++		bpf_net_ctx_clear(bpf_net_ctx);
+ 	}
+ 	rcu_read_unlock();
+ 	local_bh_enable();
+@@ -1916,17 +1923,21 @@ static ssize_t tun_get_user(struct tun_struct *tun, struct tun_file *tfile,
+ 	if (skb_xdp) {
+ 		struct bpf_prog *xdp_prog;
+ 		int ret;
++		struct bpf_net_context __bpf_net_ctx, *bpf_net_ctx;
+ 
+ 		local_bh_disable();
+ 		rcu_read_lock();
+ 		xdp_prog = rcu_dereference(tun->xdp_prog);
+ 		if (xdp_prog) {
++			bpf_net_ctx = bpf_net_ctx_set(&__bpf_net_ctx);
+ 			ret = do_xdp_generic(xdp_prog, &skb);
+ 			if (ret != XDP_PASS) {
++				bpf_net_ctx_clear(bpf_net_ctx);
+ 				rcu_read_unlock();
+ 				local_bh_enable();
+ 				goto unlock_frags;
+ 			}
++			bpf_net_ctx_clear(bpf_net_ctx);
+ 		}
+ 		rcu_read_unlock();
+ 		local_bh_enable();

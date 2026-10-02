@@ -1,0 +1,149 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\t\tpr_debug(\"mask_bits %u, netmask %u\\n\", mask_bits, netmask);\n\t\thosts = 2U << (32 - netmask - 1);\n\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n\t}\n",
+          "before": "\t\tpr_debug(\"mask_bits %u, netmask %u\\n\", mask_bits, netmask);\n\t\thosts = 2U << (32 - netmask - 1);\n\t\telements = 2UL << (netmask - mask_bits - 1);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c\nindex e4fa00abde6a..218e2b20dab6 100644\n--- a/net/netfilter/ipset/ip_set_bitmap_ip.c\n+++ b/net/netfilter/ipset/ip_set_bitmap_ip.c\n@@ -309,7 +309,7 @@ bitmap_ip_create(struct net *net, struct ip_set *set, struct nlattr *tb[],\n \n \t\tpr_debug(\"mask_bits %u, netmask %u\\n\", mask_bits, netmask);\n \t\thosts = 2U << (32 - netmask - 1);\n-\t\telements = 2UL << (netmask - mask_bits - 1);\n+\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n \t}\n \tif (elements > IPSET_BITMAP_MAX_RANGE + 1)\n \t\treturn -IPSET_ERR_BITMAP_RANGE_SIZE;",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "net/netfilter/ipset/ip_set_bitmap_ip.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        }
+      ],
+      "end_step": 16,
+      "revision_index": 0,
+      "start_step": 16
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n\t\tpr_err(\"DEBUG: create netmask %u hosts %u elements %llu first %x last %x\\n\", netmask, hosts, elements, first_ip, last_ip);\n\t}\n",
+          "before": "\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c\nindex e4fa00abde6a..b3c825de27ec 100644\n--- a/net/netfilter/ipset/ip_set_bitmap_ip.c\n+++ b/net/netfilter/ipset/ip_set_bitmap_ip.c\n@@ -309,7 +309,8 @@ bitmap_ip_create(struct net *net, struct ip_set *set, struct nlattr *tb[],\n \n \t\tpr_debug(\"mask_bits %u, netmask %u\\n\", mask_bits, netmask);\n \t\thosts = 2U << (32 - netmask - 1);\n-\t\telements = 2UL << (netmask - mask_bits - 1);\n+\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n+\t\tpr_err(\"DEBUG: create netmask %u hosts %u elements %llu first %x last %x\\n\", netmask, hosts, elements, first_ip, last_ip);\n \t}\n \tif (elements > IPSET_BITMAP_MAX_RANGE + 1)\n \t\treturn -IPSET_ERR_BITMAP_RANGE_SIZE;",
+          "explanation": "classic_swe step 20 #1",
+          "filename": "net/netfilter/ipset/ip_set_bitmap_ip.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 20
+        },
+        {
+          "after": "\tfor (; !before(ip_to, ip); ip += map->hosts) {\n\t\te.id = ip_to_id(map, ip);\n\t\tpr_err(\"DEBUG: uadt ip %x id %u elements %u hosts %u\\n\", ip, e.id, map->elements, map->hosts);\n\t\tret = adtfn(set, &e, &ext, &ext, flags);\n",
+          "before": "\tfor (; !before(ip_to, ip); ip += map->hosts) {\n\t\te.id = ip_to_id(map, ip);\n\t\tret = adtfn(set, &e, &ext, &ext, flags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c\nindex e4fa00abde6a..c15162db2bde 100644\n--- a/net/netfilter/ipset/ip_set_bitmap_ip.c\n+++ b/net/netfilter/ipset/ip_set_bitmap_ip.c\n@@ -183,6 +183,7 @@ bitmap_ip_uadt(struct ip_set *set, struct nlattr *tb[],\n \n \tfor (; !before(ip_to, ip); ip += map->hosts) {\n \t\te.id = ip_to_id(map, ip);\n+\t\tpr_err(\"DEBUG: uadt ip %x id %u elements %u hosts %u\\n\", ip, e.id, map->elements, map->hosts);\n \t\tret = adtfn(set, &e, &ext, &ext, flags);\n \n \t\tif (ret && !ip_set_eexist(ret, flags))\n@@ -309,7 +310,8 @@ bitmap_ip_create(struct net *net, struct ip_set *set, struct nlattr *tb[],\n \n \t\tpr_debug(\"mask_bits %u, netmask %u\\n\", mask_bits, netmask);\n \t\thosts = 2U << (32 - netmask - 1);\n-\t\telements = 2UL << (netmask - mask_bits - 1);\n+\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n+\t\tpr_err(\"DEBUG: create netmask %u hosts %u elements %llu first %x last %x\\n\", netmask, hosts, elements, first_ip, last_ip);\n \t}\n \tif (elements > IPSET_BITMAP_MAX_RANGE + 1)\n \t\treturn -IPSET_ERR_BITMAP_RANGE_SIZE;",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "net/netfilter/ipset/ip_set_bitmap_ip.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 1,
+      "start_step": 20
+    },
+    {
+      "edits": [
+        {
+          "after": "\t\telements = 2UL << (netmask - mask_bits - 1);\n\t}\n",
+          "before": "\t\telements = ((u64)last_ip - first_ip + 1) >> (32 - netmask);\n\t\tpr_err(\"DEBUG: create netmask %u hosts %u elements %llu first %x last %x\\n\", netmask, hosts, elements, first_ip, last_ip);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c\nindex e4fa00abde6a..47861e2021c0 100644\n--- a/net/netfilter/ipset/ip_set_bitmap_ip.c\n+++ b/net/netfilter/ipset/ip_set_bitmap_ip.c\n@@ -183,6 +183,7 @@ bitmap_ip_uadt(struct ip_set *set, struct nlattr *tb[],\n \n \tfor (; !before(ip_to, ip); ip += map->hosts) {\n \t\te.id = ip_to_id(map, ip);\n+\t\tpr_err(\"DEBUG: uadt ip %x id %u elements %u hosts %u\\n\", ip, e.id, map->elements, map->hosts);\n \t\tret = adtfn(set, &e, &ext, &ext, flags);\n \n \t\tif (ret && !ip_set_eexist(ret, flags))",
+          "explanation": "classic_swe step 26 #1",
+          "filename": "net/netfilter/ipset/ip_set_bitmap_ip.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 26
+        },
+        {
+          "after": "\tif (ip < map->first_ip || ip_to > map->last_ip)\n\t\treturn -IPSET_ERR_BITMAP_RANGE;\n\n\tfor (; !before(ip_to, ip); ip += map->hosts) {\n\t\te.id = ip_to_id(map, ip);\n\t\tret = adtfn(set, &e, &ext, &ext, flags);\n",
+          "before": "\tif (ip_to > map->last_ip)\n\t\treturn -IPSET_ERR_BITMAP_RANGE;\n\n\tfor (; !before(ip_to, ip); ip += map->hosts) {\n\t\te.id = ip_to_id(map, ip);\n\t\tpr_err(\"DEBUG: uadt ip %x id %u elements %u hosts %u\\n\", ip, e.id, map->elements, map->hosts);\n\t\tret = adtfn(set, &e, &ext, &ext, flags);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/netfilter/ipset/ip_set_bitmap_ip.c b/net/netfilter/ipset/ip_set_bitmap_ip.c\nindex e4fa00abde6a..705c316b001a 100644\n--- a/net/netfilter/ipset/ip_set_bitmap_ip.c\n+++ b/net/netfilter/ipset/ip_set_bitmap_ip.c\n@@ -178,7 +178,7 @@ bitmap_ip_uadt(struct ip_set *set, struct nlattr *tb[],\n \t\tip_to = ip;\n \t}\n \n-\tif (ip_to > map->last_ip)\n+\tif (ip < map->first_ip || ip_to > map->last_ip)\n \t\treturn -IPSET_ERR_BITMAP_RANGE;\n \n \tfor (; !before(ip_to, ip); ip += map->hosts) {",
+          "explanation": "classic_swe step 27 #1",
+          "filename": "net/netfilter/ipset/ip_set_bitmap_ip.c",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 27
+        }
+      ],
+      "end_step": 27,
+      "revision_index": 2,
+      "start_step": 26
+    }
+  ],
+  "success_step": 27
+}

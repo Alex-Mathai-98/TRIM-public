@@ -1,0 +1,37 @@
+diff --git a/include/linux/trace_events.h b/include/linux/trace_events.h
+index 04307a19cde3..465fc7e5e5ca 100644
+--- a/include/linux/trace_events.h
++++ b/include/linux/trace_events.h
+@@ -138,6 +138,7 @@ enum trace_iter_flags {
+ 	TRACE_FILE_LAT_FMT	= 1,
+ 	TRACE_FILE_ANNOTATE	= 2,
+ 	TRACE_FILE_TIME_IN_NS	= 4,
++	TRACE_FILE_STOPPED	= 8,
+ };
+ 
+ 
+diff --git a/kernel/trace/trace.c b/kernel/trace/trace.c
+index c9fbb316dcbd..a90c7f89b4b8 100644
+--- a/kernel/trace/trace.c
++++ b/kernel/trace/trace.c
+@@ -4709,8 +4709,10 @@ __tracing_open(struct inode *inode, struct file *file, bool snapshot)
+ 	 * If pause-on-trace is enabled, then stop the trace while
+ 	 * dumping, unless this is the "snapshot" file
+ 	 */
+-	if (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE)))
++	if (!iter->snapshot && (tr->trace_flags & TRACE_ITER(PAUSE_ON_TRACE))) {
+ 		tracing_stop_tr(tr);
++		iter->iter_flags |= TRACE_FILE_STOPPED;
++	}
+ 
+ 	if (iter->cpu_file == RING_BUFFER_ALL_CPUS) {
+ 		for_each_tracing_cpu(cpu) {
+@@ -4842,7 +4844,7 @@ static int tracing_release(struct inode *inode, struct file *file)
+ 	if (iter->trace && iter->trace->close)
+ 		iter->trace->close(iter);
+ 
+-	if (!iter->snapshot && tr->stop_count)
++	if (!iter->snapshot && (iter->iter_flags & TRACE_FILE_STOPPED))
+ 		/* reenable tracing if it was previously enabled */
+ 		tracing_start_tr(tr);
+ 

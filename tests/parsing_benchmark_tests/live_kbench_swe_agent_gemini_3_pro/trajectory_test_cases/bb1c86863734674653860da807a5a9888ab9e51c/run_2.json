@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n\t\tif (!folio_trylock(folio))\n\t\t\tcontinue;\n\t\t/* split_huge_page() removes page from list on success */\n\t\tif (!split_folio(folio)) {\n\t\t\tsplit++;\n\t\t\tfolio_put(folio);\n\t\t}\n\t\tfolio_unlock(folio);\n\t}\n\n\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n\t\tspin_lock_irqsave(&ds_queue->split_queue_lock, flags);\n\t\tlist_move_tail(&folio->_deferred_list, &ds_queue->split_queue);\n\t\tspin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);\n\t\tfolio_put(folio);\n\t}",
+          "before": "\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n\t\tif (!folio_trylock(folio))\n\t\t\tgoto next;\n\t\t/* split_huge_page() removes page from list on success */\n\t\tif (!split_folio(folio))\n\t\t\tsplit++;\n\t\tfolio_unlock(folio);\nnext:\n\t\tfolio_put(folio);\n\t}\n\n\tspin_lock_irqsave(&ds_queue->split_queue_lock, flags);\n\tlist_splice_tail(&list, &ds_queue->split_queue);\n\tspin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/huge_memory.c b/mm/huge_memory.c\nindex 2120f7478e55..c6a835a81461 100644\n--- a/mm/huge_memory.c\n+++ b/mm/huge_memory.c\n@@ -3305,18 +3305,21 @@ static unsigned long deferred_split_scan(struct shrinker *shrink,\n \n \tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n \t\tif (!folio_trylock(folio))\n-\t\t\tgoto next;\n+\t\t\tcontinue;\n \t\t/* split_huge_page() removes page from list on success */\n-\t\tif (!split_folio(folio))\n+\t\tif (!split_folio(folio)) {\n \t\t\tsplit++;\n+\t\t\tfolio_put(folio);\n+\t\t}\n \t\tfolio_unlock(folio);\n-next:\n-\t\tfolio_put(folio);\n \t}\n \n-\tspin_lock_irqsave(&ds_queue->split_queue_lock, flags);\n-\tlist_splice_tail(&list, &ds_queue->split_queue);\n-\tspin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);\n+\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n+\t\tspin_lock_irqsave(&ds_queue->split_queue_lock, flags);\n+\t\tlist_move_tail(&folio->_deferred_list, &ds_queue->split_queue);\n+\t\tspin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);\n+\t\tfolio_put(folio);\n+\t}\n \n \t/*\n \t * Stop shrinker if we didn't split any page, but the queue is empty.",
+          "explanation": "classic_swe step 19 #1",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 19
+        }
+      ],
+      "end_step": 19,
+      "revision_index": 0,
+      "start_step": 19
+    },
+    {
+      "edits": [
+        {
+          "after": "\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n\t\tif (!folio_trylock(folio))\n\t\t\tgoto next;\n\t\t/* split_huge_page() removes page from list on success */\n\t\tif (!split_folio(folio))\n\t\t\tsplit++;\n\t\tfolio_unlock(folio);\nnext:\n\t\tfolio_put(folio);\n\t}\n\n\tspin_lock_irqsave(&ds_queue->split_queue_lock, flags);\n\tlist_splice_tail(&list, &ds_queue->split_queue);\n\tspin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);",
+          "before": "\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n\t\tif (!folio_trylock(folio))\n\t\t\tcontinue;\n\t\t/* split_huge_page() removes page from list on success */\n\t\tif (!split_folio(folio)) {\n\t\t\tsplit++;\n\t\t\tfolio_put(folio);\n\t\t}\n\t\tfolio_unlock(folio);\n\t}\n\n\tlist_for_each_entry_safe(folio, next, &list, _deferred_list) {\n\t\tspin_lock_irqsave(&ds_queue->split_queue_lock, flags);\n\t\tlist_move_tail(&folio->_deferred_list, &ds_queue->split_queue);\n\t\tspin_unlock_irqrestore(&ds_queue->split_queue_lock, flags);\n\t\tfolio_put(folio);\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "mm/huge_memory.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "\t\t/* Take off deferred split queue while frozen and memcg set */\n\t\tif (folio_test_large(folio) &&\n\t\t    folio_test_large_rmappable(folio) &&\n\t\t    !folio_test_hugetlb(folio)) {\n\t\t\tif (!folio_ref_freeze(folio, expected_count))\n\t\t\t\treturn -EAGAIN;\n\t\t\tfolio_undo_large_rmappable(folio);\n\t\t\tfolio_ref_unfreeze(folio, expected_count);\n\t\t}",
+          "before": "\t\t/* Take off deferred split queue while frozen and memcg set */\n\t\tif (folio_test_large(folio) &&\n\t\t    folio_test_large_rmappable(folio)) {\n\t\t\tif (!folio_ref_freeze(folio, expected_count))\n\t\t\t\treturn -EAGAIN;\n\t\t\tfolio_undo_large_rmappable(folio);\n\t\t\tfolio_ref_unfreeze(folio, expected_count);\n\t\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/migrate.c b/mm/migrate.c\nindex a8c6f466e33a..3bb136a3699d 100644\n--- a/mm/migrate.c\n+++ b/mm/migrate.c\n@@ -417,7 +417,8 @@ int folio_migrate_mapping(struct address_space *mapping,\n \n \t\t/* Take off deferred split queue while frozen and memcg set */\n \t\tif (folio_test_large(folio) &&\n-\t\t    folio_test_large_rmappable(folio)) {\n+\t\t    folio_test_large_rmappable(folio) &&\n+\t\t    !folio_test_hugetlb(folio)) {\n \t\t\tif (!folio_ref_freeze(folio, expected_count))\n \t\t\t\treturn -EAGAIN;\n \t\t\tfolio_undo_large_rmappable(folio);",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "mm/migrate.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        },
+        {
+          "after": "\t/* Take off deferred split queue while frozen and memcg set */\n\tif (folio_test_large(folio) && folio_test_large_rmappable(folio) &&\n\t    !folio_test_hugetlb(folio))\n\t\tfolio_undo_large_rmappable(folio);",
+          "before": "\t/* Take off deferred split queue while frozen and memcg set */\n\tif (folio_test_large(folio) && folio_test_large_rmappable(folio))\n\t\tfolio_undo_large_rmappable(folio);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/mm/migrate.c b/mm/migrate.c\nindex a8c6f466e33a..751226cfca63 100644\n--- a/mm/migrate.c\n+++ b/mm/migrate.c\n@@ -417,7 +417,8 @@ int folio_migrate_mapping(struct address_space *mapping,\n \n \t\t/* Take off deferred split queue while frozen and memcg set */\n \t\tif (folio_test_large(folio) &&\n-\t\t    folio_test_large_rmappable(folio)) {\n+\t\t    folio_test_large_rmappable(folio) &&\n+\t\t    !folio_test_hugetlb(folio)) {\n \t\t\tif (!folio_ref_freeze(folio, expected_count))\n \t\t\t\treturn -EAGAIN;\n \t\t\tfolio_undo_large_rmappable(folio);\n@@ -443,7 +444,8 @@ int folio_migrate_mapping(struct address_space *mapping,\n \t}\n \n \t/* Take off deferred split queue while frozen and memcg set */\n-\tif (folio_test_large(folio) && folio_test_large_rmappable(folio))\n+\tif (folio_test_large(folio) && folio_test_large_rmappable(folio) &&\n+\t    !folio_test_hugetlb(folio))\n \t\tfolio_undo_large_rmappable(folio);\n \n \t/*",
+          "explanation": "classic_swe step 36 #1",
+          "filename": "mm/migrate.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 36
+        }
+      ],
+      "end_step": 36,
+      "revision_index": 1,
+      "start_step": 30
+    }
+  ],
+  "success_step": 36
+}

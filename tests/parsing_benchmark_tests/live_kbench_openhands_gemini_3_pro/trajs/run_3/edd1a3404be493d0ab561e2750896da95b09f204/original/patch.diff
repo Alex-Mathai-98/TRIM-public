@@ -1,0 +1,44 @@
+diff --git a/drivers/hid/hid-core.c b/drivers/hid/hid-core.c
+index 1a231dd9e4bc..9787ae62657d 100644
+--- a/drivers/hid/hid-core.c
++++ b/drivers/hid/hid-core.c
+@@ -1980,12 +1980,14 @@ int __hid_request(struct hid_device *hid, struct hid_report *report,
+ 	int ret;
+ 	u32 len;
+ 
+-	buf = hid_alloc_report_buf(report, GFP_KERNEL);
++	unsigned int size = READ_ONCE(report->size);
++	unsigned int id = READ_ONCE(report->id);
++
++	len = DIV_ROUND_UP(size, 8) + (id > 0);
++	buf = kzalloc(len + 7 + (id == 0), GFP_KERNEL);
+ 	if (!buf)
+ 		return -ENOMEM;
+ 
+-	len = hid_report_len(report);
+-
+ 	if (reqtype == HID_REQ_SET_REPORT)
+ 		hid_output_report(report, buf);
+ 
+diff --git a/drivers/hid/usbhid/hid-core.c b/drivers/hid/usbhid/hid-core.c
+index d4cbecc668ec..1f247c7b91be 100644
+--- a/drivers/hid/usbhid/hid-core.c
++++ b/drivers/hid/usbhid/hid-core.c
+@@ -918,7 +918,7 @@ static int usbhid_set_raw_report(struct hid_device *hid, unsigned int reportnum,
+ 	else
+ 		buf[0] = reportnum;
+ 
+-	if (buf[0] == 0x0) {
++	if (count > 0 && buf[0] == 0x0) {
+ 		/* Don't send the Report ID */
+ 		buf++;
+ 		count--;
+@@ -947,7 +947,7 @@ static int usbhid_output_report(struct hid_device *hid, __u8 *buf, size_t count)
+ 	if (!usbhid->urbout)
+ 		return -ENOSYS;
+ 
+-	if (buf[0] == 0x0) {
++	if (count > 0 && buf[0] == 0x0) {
+ 		/* Don't send the Report ID */
+ 		buf++;
+ 		count--;

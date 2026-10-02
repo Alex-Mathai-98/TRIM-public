@@ -1,0 +1,24 @@
+diff --git a/fs/bcachefs/journal.c b/fs/bcachefs/journal.c
+index 95cccda3b22c..f0d94c443330 100644
+--- a/fs/bcachefs/journal.c
++++ b/fs/bcachefs/journal.c
+@@ -1277,9 +1277,19 @@ int bch2_fs_journal_start(struct journal *j, u64 cur_seq)
+ 			continue;
+ 
+ 		last_seq = le64_to_cpu(i->j.last_seq);
++		if (last_seq > cur_seq) {
++			bch_err(c, "journal entry last_seq > cur_seq (%llu > %llu)",
++				last_seq, cur_seq);
++			return -EINVAL;
++		}
+ 		break;
+ 	}
+ 
++	if (cur_seq >= U64_MAX) {
++		bch_err(c, "journal cur_seq too large (%llu)", cur_seq);
++		return -EINVAL;
++	}
++
+ 	nr = cur_seq - last_seq;
+ 
+ 	if (nr + 1 > j->pin.size) {

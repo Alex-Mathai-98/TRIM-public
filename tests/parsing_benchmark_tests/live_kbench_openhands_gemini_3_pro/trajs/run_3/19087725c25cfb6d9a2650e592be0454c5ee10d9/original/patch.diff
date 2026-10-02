@@ -1,0 +1,48 @@
+diff --git a/net/wireless/scan.c b/net/wireless/scan.c
+index a8339ed52404..4d1970ed6a0d 100644
+--- a/net/wireless/scan.c
++++ b/net/wireless/scan.c
+@@ -1791,6 +1791,9 @@ static bool cfg80211_combine_bsses(struct cfg80211_registered_device *rdev,
+ 		list_add(&bss->hidden_list, &new->hidden_list);
+ 		bss->pub.hidden_beacon_bss = &new->pub;
+ 		new->refcount += bss->refcount;
++		if (rcu_access_pointer(bss->pub.ies) ==
++		    rcu_access_pointer(bss->pub.beacon_ies))
++			rcu_assign_pointer(bss->pub.ies, new->pub.beacon_ies);
+ 		rcu_assign_pointer(bss->pub.beacon_ies,
+ 				   new->pub.beacon_ies);
+ 	}
+@@ -1816,6 +1819,8 @@ static void cfg80211_update_hidden_bsses(struct cfg80211_internal_bss *known,
+ 		WARN_ON(ies != old_ies);
+ 
+ 		rcu_assign_pointer(bss->pub.beacon_ies, new_ies);
++		if (rcu_access_pointer(bss->pub.ies) == old_ies)
++			rcu_assign_pointer(bss->pub.ies, new_ies);
+ 	}
+ }
+ 
+@@ -1916,7 +1921,6 @@ cfg80211_update_known_bss(struct cfg80211_registered_device *rdev,
+ 			 */
+ 
+ 			f = rcu_access_pointer(new->pub.beacon_ies);
+-			kfree_rcu((struct cfg80211_bss_ies *)f, rcu_head);
+ 			return false;
+ 		}
+ 
+@@ -1932,7 +1936,7 @@ cfg80211_update_known_bss(struct cfg80211_registered_device *rdev,
+ 					     rcu_access_pointer(new->pub.beacon_ies),
+ 					     old);
+ 
+-		if (old)
++		if (old && !known->pub.hidden_beacon_bss)
+ 			kfree_rcu((struct cfg80211_bss_ies *)old, rcu_head);
+ 	}
+ 
+@@ -3454,6 +3458,7 @@ void cfg80211_update_assoc_bss_entry(struct wireless_dev *wdev,
+ 		cfg80211_update_known_bss(rdev, cbss, new, false);
+ 		new->pub.proberesp_ies = NULL;
+ 		new->pub.beacon_ies = NULL;
++		rcu_assign_pointer(new->pub.ies, NULL);
+ 
+ 		list_for_each_entry_safe(nontrans_bss, tmp,
+ 					 &new->pub.nontrans_list,

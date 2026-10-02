@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (lcn >= sbi->used.bitmap.nbits) {\n\t\t/* This case includes resident/compressed/sparse. */\n\t\tif (!create) {\n\t\t\tif (bh->b_size > bytes)\n\t\t\t\tbh->b_size = bytes;\n\t\t\treturn 0;\n\t\t}\n\t\tWARN_ON(1);\n\t}\n\n\tif (!create && vbo >= ni->i_valid)\n\t\treturn 0;\n\n\tif (new)\n\t\tset_buffer_new(bh);\n",
+          "before": "\tif (lcn >= sbi->used.bitmap.nbits) {\n\t\t/* This case includes resident/compressed/sparse. */\n\t\tif (!create) {\n\t\t\tif (bh->b_size > bytes)\n\t\t\t\tbh->b_size = bytes;\n\t\t\treturn 0;\n\t\t}\n\t\tWARN_ON(1);\n\t}\n\n\tif (new)\n\t\tset_buffer_new(bh);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c\nindex 4f9020df8912..5a47628f65bf 100644\n--- a/fs/ntfs3/inode.c\n+++ b/fs/ntfs3/inode.c\n@@ -622,6 +622,9 @@ static noinline int ntfs_get_block_vbo(struct inode *inode, u64 vbo,\n \t\tWARN_ON(1);\n \t}\n \n+\tif (!create && vbo >= ni->i_valid)\n+\t\treturn 0;\n+\n \tif (new)\n \t\tset_buffer_new(bh);",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/ntfs3/inode.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "\t\t/*\n\t\t * There is no need to extend initialized size of file,\n\t\t * because we can rely on proper handling of uninitialized\n\t\t * parts in read_folio (see ntfs_get_block_vbo).\n\t\t * And we cannot take inode lock here because of potential\n\t\t * AB-BA deadlock with mmap_lock.\n\t\t */\n",
+          "before": "\t\tif (ni->i_valid < to) {\n\t\t\tinode_lock(inode);\n\t\t\terr = ntfs_extend_initialized_size(file, ni,\n\t\t\t\t\t\t\t   ni->i_valid, to);\n\t\t\tinode_unlock(inode);\n\t\t\tif (err)\n\t\t\t\tgoto out;\n\t\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/ntfs3/file.c b/fs/ntfs3/file.c\nindex 65fb27d1e17c..e3174b01825e 100644\n--- a/fs/ntfs3/file.c\n+++ b/fs/ntfs3/file.c\n@@ -321,14 +321,13 @@ static int ntfs_file_mmap(struct file *file, struct vm_area_struct *vma)\n \t\t\t}\n \t\t}\n \n-\t\tif (ni->i_valid < to) {\n-\t\t\tinode_lock(inode);\n-\t\t\terr = ntfs_extend_initialized_size(file, ni,\n-\t\t\t\t\t\t\t   ni->i_valid, to);\n-\t\t\tinode_unlock(inode);\n-\t\t\tif (err)\n-\t\t\t\tgoto out;\n-\t\t}\n+\t\t/*\n+\t\t * There is no need to extend initialized size of file,\n+\t\t * because we can rely on proper handling of uninitialized\n+\t\t * parts in read_folio (see ntfs_get_block_vbo).\n+\t\t * And we cannot take inode lock here because of potential\n+\t\t * AB-BA deadlock with mmap_lock.\n+\t\t */\n \t}\n \n \terr = generic_file_mmap(file, vma);\ndiff --git a/fs/ntfs3/inode.c b/fs/ntfs3/inode.c\nindex 4f9020df8912..5a47628f65bf 100644\n--- a/fs/ntfs3/inode.c\n+++ b/fs/ntfs3/inode.c\n@@ -622,6 +622,9 @@ static noinline int ntfs_get_block_vbo(struct inode *inode, u64 vbo,\n \t\tWARN_ON(1);\n \t}\n \n+\tif (!create && vbo >= ni->i_valid)\n+\t\treturn 0;\n+\n \tif (new)\n \t\tset_buffer_new(bh);",
+          "explanation": "classic_swe step 18 #1",
+          "filename": "fs/ntfs3/file.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 18
+        }
+      ],
+      "end_step": 18,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 18
+}

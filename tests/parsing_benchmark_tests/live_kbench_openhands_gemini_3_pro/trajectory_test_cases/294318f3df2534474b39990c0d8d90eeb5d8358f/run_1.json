@@ -1,0 +1,140 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1,
+      2
+    ],
+    [
+      3,
+      4
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\n\t/*\n\t * Take an active reference on the owner namespace. This ensures\n\t * that the owner remains visible while any of its child namespaces\n\t * are active. For init namespaces this is a no-op as ns_owner()\n\t * returns NULL for namespaces owned by init_user_ns.\n\t */\n\tif (__ns_ref_active_read(ns))\n\t\t__ns_ref_active_get_owner(ns);\n",
+          "before": "\n\t/*\n\t * Take an active reference on the owner namespace. This ensures\n\t * that the owner remains visible while any of its child namespaces\n\t * are active. For init namespaces this is a no-op as ns_owner()\n\t * returns NULL for namespaces owned by init_user_ns.\n\t */\n\t__ns_ref_active_get_owner(ns);\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/nstree.c\n+++ /linux/kernel/nstree.c\n@@ -183 +183,2 @@\n-\t__ns_ref_active_get_owner(ns);\n+\tif (__ns_ref_active_read(ns))\n+\t\t__ns_ref_active_get_owner(ns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 241",
+          "filename": "kernel/nstree.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 241
+        },
+        {
+          "after": "\n\nstatic __always_inline void __ns_ref_active_get(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\t__ns_ref_active_resurrect(ns);\n}\n\n",
+          "before": "\n\nstatic __always_inline void __ns_ref_active_get(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\tif (!is_ns_init_id(ns))\n\t\tWARN_ON_ONCE(atomic_add_negative(1, &ns->__ns_ref_active));\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -295,2 +295 @@\n-\tif (!is_ns_init_id(ns))\n-\t\tWARN_ON_ONCE(atomic_add_negative(1, &ns->__ns_ref_active));\n+\t__ns_ref_active_resurrect(ns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 249",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 249
+        },
+        {
+          "after": "\n\nvoid __ns_ref_active_resurrect(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\tif (is_ns_init_id(ns))\n\t\treturn;\n\n\t/* If we didn't resurrect the namespace we're done. */\n\tif (atomic_fetch_add(1, &ns->__ns_ref_active))\n\t\treturn;\n\n\t/*\n\t * We did resurrect it. Walk the ownership hierarchy upwards\n\t * until we found an owning user namespace that is active.\n\t */\n\tfor (;;) {\n\t\tns = ns_owner(ns);\n\t\tif (!ns)\n\t\t\treturn;\n\n\t\tVFS_WARN_ON_ONCE(is_ns_init_id(ns));\n\t\tif (atomic_fetch_add(1, &ns->__ns_ref_active))\n\t\t\treturn;\n\t}\n}\nEXPORT_SYMBOL_GPL(__ns_ref_active_resurrect);\n\n",
+          "before": "\n\nvoid __ns_ref_active_resurrect(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\tif (is_ns_init_id(ns))\n\t\treturn;\n\n\t/* If we didn't resurrect the namespace we're done. */\n\tif (atomic_fetch_add(1, &ns->__ns_ref_active))\n\t\treturn;\n\n\t/*\n\t * We did resurrect it. Walk the ownership hierarchy upwards\n\t * until we found an owning user namespace that is active.\n\t */\n\tfor (;;) {\n\t\tns = ns_owner(ns);\n\t\tif (!ns)\n\t\t\treturn;\n\n\t\tVFS_WARN_ON_ONCE(is_ns_init_id(ns));\n\t\tif (atomic_fetch_add(1, &ns->__ns_ref_active))\n\t\t\treturn;\n\t}\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/kernel/nscommon.c\n+++ /linux/kernel/nscommon.c\n@@ -302 +302,2 @@\n-\n+EXPORT_SYMBOL_GPL(__ns_ref_active_resurrect);\n+",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 251",
+          "filename": "kernel/nscommon.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 251
+        }
+      ],
+      "end_step": 251,
+      "revision_index": 0,
+      "start_step": 241
+    },
+    {
+      "edits": [
+        {
+          "after": "\n\nvoid __ns_ref_active_get_owner(struct ns_common *ns);\nvoid __ns_ref_active_resurrect(struct ns_common *ns);\n\nstatic __always_inline void __ns_ref_active_get(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\t__ns_ref_active_resurrect(ns);\n}\n\n",
+          "before": "\n\nvoid __ns_ref_active_get_owner(struct ns_common *ns);\n\nstatic __always_inline void __ns_ref_active_get(struct ns_common *ns)\n{\n\t/* Initial namespaces are always active. */\n\t__ns_ref_active_resurrect(ns);\n}\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -290,0 +291 @@\n+void __ns_ref_active_resurrect(struct ns_common *ns);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 257",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 257
+        },
+        {
+          "after": "\n\n\n#define ns_ref_active_resurrect(__ns) \\\n\tdo { if (__ns) __ns_ref_active_resurrect(to_ns_common(__ns)); } while (0)\n\n#endif\n\n\n",
+          "before": "\n\n\nvoid __ns_ref_active_resurrect(struct ns_common *ns);\n\n#define ns_ref_active_resurrect(__ns) \\\n\tdo { if (__ns) __ns_ref_active_resurrect(to_ns_common(__ns)); } while (0)\n\n#endif\n\n\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/include/linux/ns_common.h\n+++ /linux/include/linux/ns_common.h\n@@ -346,2 +345,0 @@\n-void __ns_ref_active_resurrect(struct ns_common *ns);\n-",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 260",
+          "filename": "include/linux/ns_common.h",
+          "global_edit_idx": 4,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 260
+        }
+      ],
+      "end_step": 260,
+      "revision_index": 1,
+      "start_step": 257
+    }
+  ],
+  "success_step": 260
+}

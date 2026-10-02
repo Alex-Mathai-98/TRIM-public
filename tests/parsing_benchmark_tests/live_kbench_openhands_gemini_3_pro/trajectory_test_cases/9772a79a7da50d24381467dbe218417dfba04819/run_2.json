@@ -1,0 +1,39 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "int jfs_ioc_trim(struct inode *ip, struct fstrim_range *range)\n{\n\tstruct super_block *sb = ip->i_sb;\n\tstruct bmap *bmp;\n\tint agno, agno_end;\n\tu64 start, end, minlen;\n\tu64 trimmed = 0;\n\tint ret = 0;\n\n\t/**\n\t * convert byte values to block size of filesystem:\n\t * start:\tFirst Byte to trim\n\t * len:\t\tnumber of Bytes to trim from start\n\t * minlen:\tminimum extent length in Bytes\n\t */\n\tstart = range->start >> sb->s_blocksize_bits;\n\tend = start + (range->len >> sb->s_blocksize_bits) - 1;\n\tminlen = range->minlen >> sb->s_blocksize_bits;\n\tif (minlen == 0)\n\t\tminlen = 1;\n\n\tdown_read(&sb->s_umount);\n\tif (sb_rdonly(sb)) {\n\t\tret = -EROFS;\n\t\tgoto out;\n\t}\n\n\tbmp = JFS_SBI(sb)->bmap;\n\tif (!bmp) {\n\t\tret = -EIO;\n\t\tgoto out;\n\t}\n\n\tif (minlen > bmp->db_agsize ||\n\t    start >= bmp->db_mapsize ||\n\t    range->len < sb->s_blocksize) {\n\t\tret = -EINVAL;\n\t\tgoto out;\n\t}\n\n\tif (end >= bmp->db_mapsize)\n\t\tend = bmp->db_mapsize - 1;\n\n\t/**\n\t * we trim all ag's within the range\n\t */\n\tagno = BLKTOAG(start, JFS_SBI(ip->i_sb));\n\tagno_end = BLKTOAG(end, JFS_SBI(ip->i_sb));\n\twhile (agno <= agno_end) {\n\t\ttrimmed += dbDiscardAG(ip, agno, minlen);\n\t\tagno++;\n\t}\n\trange->len = trimmed << sb->s_blocksize_bits;\n\nout:\n\tup_read(&sb->s_umount);\n\treturn ret;\n}",
+          "before": "int jfs_ioc_trim(struct inode *ip, struct fstrim_range *range)\n{\n\tstruct inode *ipbmap = JFS_SBI(ip->i_sb)->ipbmap;\n\tstruct bmap *bmp = JFS_SBI(ip->i_sb)->bmap;\n\tstruct super_block *sb = ipbmap->i_sb;\n\tint agno, agno_end;\n\tu64 start, end, minlen;\n\tu64 trimmed = 0;\n\n\t/**\n\t * convert byte values to block size of filesystem:\n\t * start:\tFirst Byte to trim\n\t * len:\t\tnumber of Bytes to trim from start\n\t * minlen:\tminimum extent length in Bytes\n\t */\n\tstart = range->start >> sb->s_blocksize_bits;\n\tend = start + (range->len >> sb->s_blocksize_bits) - 1;\n\tminlen = range->minlen >> sb->s_blocksize_bits;\n\tif (minlen == 0)\n\t\tminlen = 1;\n\n\tif (minlen > bmp->db_agsize ||\n\t    start >= bmp->db_mapsize ||\n\t    range->len < sb->s_blocksize)\n\t\treturn -EINVAL;\n\n\tif (end >= bmp->db_mapsize)\n\t\tend = bmp->db_mapsize - 1;\n\n\t/**\n\t * we trim all ag's within the range\n\t */\n\tagno = BLKTOAG(start, JFS_SBI(ip->i_sb));\n\tagno_end = BLKTOAG(end, JFS_SBI(ip->i_sb));\n\twhile (agno <= agno_end) {\n\t\ttrimmed += dbDiscardAG(ip, agno, minlen);\n\t\tagno++;\n\t}\n\trange->len = trimmed << sb->s_blocksize_bits;\n\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/fs/jfs/jfs_discard.c\n+++ /linux/fs/jfs/jfs_discard.c\n@@ -67,3 +67,2 @@\n-\tstruct inode *ipbmap = JFS_SBI(ip->i_sb)->ipbmap;\n-\tstruct bmap *bmp = JFS_SBI(ip->i_sb)->bmap;\n-\tstruct super_block *sb = ipbmap->i_sb;\n+\tstruct super_block *sb = ip->i_sb;\n+\tstruct bmap *bmp;\n@@ -72,0 +72 @@\n+\tint ret = 0;\n@@ -85,0 +86,12 @@\n+\tdown_read(&sb->s_umount);\n+\tif (sb_rdonly(sb)) {\n+\t\tret = -EROFS;\n+\t\tgoto out;\n+\t}\n+\n+\tbmp = JFS_SBI(sb)->bmap;\n+\tif (!bmp) {\n+\t\tret = -EIO;\n+\t\tgoto out;\n+\t}\n+\n@@ -88,2 +100,4 @@\n-\t    range->len < sb->s_blocksize)\n-\t\treturn -EINVAL;\n+\t    range->len < sb->s_blocksize) {\n+\t\tret = -EINVAL;\n+\t\tgoto out;\n+\t}\n@@ -105 +119,3 @@\n-\treturn 0;\n+out:\n+\tup_read(&sb->s_umount);\n+\treturn ret;",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 40",
+          "filename": "fs/jfs/jfs_discard.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 40
+        }
+      ],
+      "end_step": 40,
+      "revision_index": 0,
+      "start_step": 40
+    }
+  ],
+  "success_step": 40
+}

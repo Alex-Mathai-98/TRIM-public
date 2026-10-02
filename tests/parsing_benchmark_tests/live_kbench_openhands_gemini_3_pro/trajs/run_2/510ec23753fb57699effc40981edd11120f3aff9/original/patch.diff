@@ -1,0 +1,27 @@
+diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
+index 5cf698785fae..8521d3e717ce 100644
+--- a/fs/ocfs2/alloc.c
++++ b/fs/ocfs2/alloc.c
+@@ -6171,6 +6171,22 @@ static int ocfs2_get_truncate_log_info(struct ocfs2_super *osb,
+ 		goto bail;
+ 	}
+ 
++	{
++		struct ocfs2_dinode *di = (struct ocfs2_dinode *) bh->b_data;
++		struct ocfs2_truncate_log *tl = &di->id2.i_dealloc;
++		unsigned int tl_count = le16_to_cpu(tl->tl_count);
++
++		if (tl_count > ocfs2_truncate_recs_per_inode(osb->sb) ||
++		    tl_count == 0) {
++			status = -EINVAL;
++			mlog(ML_ERROR, "Invalid truncate log count: %u\n",
++			     tl_count);
++			brelse(bh);
++			iput(inode);
++			goto bail;
++		}
++	}
++
+ 	*tl_inode = inode;
+ 	*tl_bh    = bh;
+ bail:

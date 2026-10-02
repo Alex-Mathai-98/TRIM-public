@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tif (new_inode) {\n\t\tinode_set_ctime_current(new_inode);\n\t\tif (new_inode->i_nlink == 0) {\n\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n\t\t\t\t  new_inode->i_ino, new_inode->i_nlink);\n\t\t\tset_nlink(new_inode, 1);\n\t\t}\n\t\tinode_dec_link_count(new_inode);\n\t\tudf_add_fid_counter(old_dir->i_sb, S_ISDIR(new_inode->i_mode),\n\t\t\t\t    -1);\n\t}\n",
+          "before": "\tif (new_inode) {\n\t\tinode_set_ctime_current(new_inode);\n\t\tinode_dec_link_count(new_inode);\n\t\tudf_add_fid_counter(old_dir->i_sb, S_ISDIR(new_inode->i_mode),\n\t\t\t\t    -1);\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/udf/namei.c b/fs/udf/namei.c\nindex 2be775d30ac1..3d3ecf25f957 100644\n--- a/fs/udf/namei.c\n+++ b/fs/udf/namei.c\n@@ -868,6 +868,11 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,\n \n \tif (new_inode) {\n \t\tinode_set_ctime_current(new_inode);\n+\t\tif (new_inode->i_nlink == 0) {\n+\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n+\t\t\t\t  new_inode->i_ino, new_inode->i_nlink);\n+\t\t\tset_nlink(new_inode, 1);\n+\t\t}\n \t\tinode_dec_link_count(new_inode);\n \t\tudf_add_fid_counter(old_dir->i_sb, S_ISDIR(new_inode->i_mode),\n \t\t\t\t    -1);",
+          "explanation": "classic_swe step 16 #1",
+          "filename": "fs/udf/namei.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 16
+        },
+        {
+          "after": "\tif (is_dir) {\n\t\tif (old_dir->i_nlink == 0) {\n\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n\t\t\t\t  old_dir->i_ino, old_dir->i_nlink);\n\t\t\tset_nlink(old_dir, 1);\n\t\t}\n\t\tinode_dec_link_count(old_dir);\n\t\tif (new_inode) {\n\t\t\tif (new_inode->i_nlink == 0) {\n\t\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n\t\t\t\t\t  new_inode->i_ino, new_inode->i_nlink);\n\t\t\t\tset_nlink(new_inode, 1);\n\t\t\t}\n\t\t\tinode_dec_link_count(new_inode);\n\t\t} else {\n\t\t\tinc_nlink(new_dir);\n\t\t\tmark_inode_dirty(new_dir);\n\t\t}\n\t}\n",
+          "before": "\tif (is_dir) {\n\t\tinode_dec_link_count(old_dir);\n\t\tif (new_inode)\n\t\t\tinode_dec_link_count(new_inode);\n\t\telse {\n\t\t\tinc_nlink(new_dir);\n\t\t\tmark_inode_dirty(new_dir);\n\t\t}\n\t}\n",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/fs/udf/namei.c b/fs/udf/namei.c\nindex 2be775d30ac1..12c1a1bb051c 100644\n--- a/fs/udf/namei.c\n+++ b/fs/udf/namei.c\n@@ -868,6 +868,11 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,\n \n \tif (new_inode) {\n \t\tinode_set_ctime_current(new_inode);\n+\t\tif (new_inode->i_nlink == 0) {\n+\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n+\t\t\t\t  new_inode->i_ino, new_inode->i_nlink);\n+\t\t\tset_nlink(new_inode, 1);\n+\t\t}\n \t\tinode_dec_link_count(new_inode);\n \t\tudf_add_fid_counter(old_dir->i_sb, S_ISDIR(new_inode->i_mode),\n \t\t\t\t    -1);\n@@ -885,10 +890,20 @@ static int udf_rename(struct mnt_idmap *idmap, struct inode *old_dir,\n \t}\n \n \tif (is_dir) {\n+\t\tif (old_dir->i_nlink == 0) {\n+\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n+\t\t\t\t  old_dir->i_ino, old_dir->i_nlink);\n+\t\t\tset_nlink(old_dir, 1);\n+\t\t}\n \t\tinode_dec_link_count(old_dir);\n-\t\tif (new_inode)\n+\t\tif (new_inode) {\n+\t\t\tif (new_inode->i_nlink == 0) {\n+\t\t\t\tudf_debug(\"Deleting nonexistent file (%lu), %u\\n\",\n+\t\t\t\t\t  new_inode->i_ino, new_inode->i_nlink);\n+\t\t\t\tset_nlink(new_inode, 1);\n+\t\t\t}\n \t\t\tinode_dec_link_count(new_inode);\n-\t\telse {\n+\t\t} else {\n \t\t\tinc_nlink(new_dir);\n \t\t\tmark_inode_dirty(new_dir);\n \t\t}",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "fs/udf/namei.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        }
+      ],
+      "end_step": 17,
+      "revision_index": 0,
+      "start_step": 16
+    }
+  ],
+  "success_step": 17
+}

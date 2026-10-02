@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "static int atmtcp_recv_control(const struct atmtcp_control *msg,\n\t\t\t       struct atm_dev *dev)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\tstruct atm_vcc *check;\n\tstruct hlist_head *head;\n\tstruct sock *s;\n\tint i;\n\n\tread_lock(&vcc_sklist_lock);\n\tfor (i = 0; i < VCC_HTABLE_SIZE; ++i) {\n\t\thead = &vcc_hash[i];\n\t\tsk_for_each(s, head) {\n\t\t\tcheck = atm_sk(s);\n\t\t\tif (check->dev != dev)\n\t\t\t\tcontinue;\n\t\t\tif (check == vcc) {\n\t\t\t\tvcc->vpi = msg->addr.sap_addr.vpi;\n\t\t\t\tvcc->vci = msg->addr.sap_addr.vci;\n\t\t\t\tvcc->qos = msg->qos;\n\t\t\t\tsk_atm(vcc)->sk_err = -msg->result;\n\t\t\t\tswitch (msg->type) {\n\t\t\t\t    case ATMTCP_CTRL_OPEN:\n\t\t\t\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n\t\t\t\t\tbreak;\n\t\t\t\t    case ATMTCP_CTRL_CLOSE:\n\t\t\t\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n\t\t\t\t\tbreak;\n\t\t\t\t    default:\n\t\t\t\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n\t\t\t\t\t    msg->type);\n\t\t\t\t\tread_unlock(&vcc_sklist_lock);\n\t\t\t\t\treturn -EINVAL;\n\t\t\t\t}\n\t\t\t\tread_unlock(&vcc_sklist_lock);\n\t\t\t\twake_up(sk_sleep(sk_atm(vcc)));\n\t\t\t\treturn 0;\n\t\t\t}\n\t\t}\n\t}\n\tread_unlock(&vcc_sklist_lock);\n\treturn -EINVAL;\n}",
+          "before": "static int atmtcp_recv_control(const struct atmtcp_control *msg)\n{\n\tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n\n\tvcc->vpi = msg->addr.sap_addr.vpi;\n\tvcc->vci = msg->addr.sap_addr.vci;\n\tvcc->qos = msg->qos;\n\tsk_atm(vcc)->sk_err = -msg->result;\n\tswitch (msg->type) {\n\t    case ATMTCP_CTRL_OPEN:\n\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n\t\tbreak;\n\t    case ATMTCP_CTRL_CLOSE:\n\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n\t\tbreak;\n\t    default:\n\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n\t\t    msg->type);\n\t\treturn -EINVAL;\n\t}\n\twake_up(sk_sleep(sk_atm(vcc)));\n\treturn 0;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..9d6db58358ed 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -86,28 +86,48 @@ static int atmtcp_send_control(struct atm_vcc *vcc,int type,\n }\n \n \n-static int atmtcp_recv_control(const struct atmtcp_control *msg)\n+static int atmtcp_recv_control(const struct atmtcp_control *msg,\n+\t\t\t       struct atm_dev *dev)\n {\n \tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n+\tstruct atm_vcc *check;\n+\tstruct hlist_head *head;\n+\tstruct sock *s;\n+\tint i;\n \n-\tvcc->vpi = msg->addr.sap_addr.vpi;\n-\tvcc->vci = msg->addr.sap_addr.vci;\n-\tvcc->qos = msg->qos;\n-\tsk_atm(vcc)->sk_err = -msg->result;\n-\tswitch (msg->type) {\n-\t    case ATMTCP_CTRL_OPEN:\n-\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n-\t\tbreak;\n-\t    case ATMTCP_CTRL_CLOSE:\n-\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n-\t\tbreak;\n-\t    default:\n-\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n-\t\t    msg->type);\n-\t\treturn -EINVAL;\n+\tread_lock(&vcc_sklist_lock);\n+\tfor (i = 0; i < VCC_HTABLE_SIZE; ++i) {\n+\t\thead = &vcc_hash[i];\n+\t\tsk_for_each(s, head) {\n+\t\t\tcheck = atm_sk(s);\n+\t\t\tif (check->dev != dev)\n+\t\t\t\tcontinue;\n+\t\t\tif (check == vcc) {\n+\t\t\t\tvcc->vpi = msg->addr.sap_addr.vpi;\n+\t\t\t\tvcc->vci = msg->addr.sap_addr.vci;\n+\t\t\t\tvcc->qos = msg->qos;\n+\t\t\t\tsk_atm(vcc)->sk_err = -msg->result;\n+\t\t\t\tswitch (msg->type) {\n+\t\t\t\t    case ATMTCP_CTRL_OPEN:\n+\t\t\t\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n+\t\t\t\t\tbreak;\n+\t\t\t\t    case ATMTCP_CTRL_CLOSE:\n+\t\t\t\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n+\t\t\t\t\tbreak;\n+\t\t\t\t    default:\n+\t\t\t\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n+\t\t\t\t\t    msg->type);\n+\t\t\t\t\tread_unlock(&vcc_sklist_lock);\n+\t\t\t\t\treturn -EINVAL;\n+\t\t\t\t}\n+\t\t\t\tread_unlock(&vcc_sklist_lock);\n+\t\t\t\twake_up(sk_sleep(sk_atm(vcc)));\n+\t\t\t\treturn 0;\n+\t\t\t}\n+\t\t}\n \t}\n-\twake_up(sk_sleep(sk_atm(vcc)));\n-\treturn 0;\n+\tread_unlock(&vcc_sklist_lock);\n+\treturn -EINVAL;\n }",
+          "explanation": "classic_swe step 17 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 17
+        },
+        {
+          "after": "\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data, dev);\n\t\tgoto done;\n\t}",
+          "before": "\tif (hdr->length == ATMTCP_HDR_MAGIC) {\n\t\tresult = atmtcp_recv_control(\n\t\t    (struct atmtcp_control *) skb->data);\n\t\tgoto done;\n\t}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/atm/atmtcp.c b/drivers/atm/atmtcp.c\nindex eeae160c898d..9b945307c988 100644\n--- a/drivers/atm/atmtcp.c\n+++ b/drivers/atm/atmtcp.c\n@@ -86,28 +86,48 @@ static int atmtcp_send_control(struct atm_vcc *vcc,int type,\n }\n \n \n-static int atmtcp_recv_control(const struct atmtcp_control *msg)\n+static int atmtcp_recv_control(const struct atmtcp_control *msg,\n+\t\t\t       struct atm_dev *dev)\n {\n \tstruct atm_vcc *vcc = *(struct atm_vcc **) &msg->vcc;\n+\tstruct atm_vcc *check;\n+\tstruct hlist_head *head;\n+\tstruct sock *s;\n+\tint i;\n \n-\tvcc->vpi = msg->addr.sap_addr.vpi;\n-\tvcc->vci = msg->addr.sap_addr.vci;\n-\tvcc->qos = msg->qos;\n-\tsk_atm(vcc)->sk_err = -msg->result;\n-\tswitch (msg->type) {\n-\t    case ATMTCP_CTRL_OPEN:\n-\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n-\t\tbreak;\n-\t    case ATMTCP_CTRL_CLOSE:\n-\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n-\t\tbreak;\n-\t    default:\n-\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n-\t\t    msg->type);\n-\t\treturn -EINVAL;\n+\tread_lock(&vcc_sklist_lock);\n+\tfor (i = 0; i < VCC_HTABLE_SIZE; ++i) {\n+\t\thead = &vcc_hash[i];\n+\t\tsk_for_each(s, head) {\n+\t\t\tcheck = atm_sk(s);\n+\t\t\tif (check->dev != dev)\n+\t\t\t\tcontinue;\n+\t\t\tif (check == vcc) {\n+\t\t\t\tvcc->vpi = msg->addr.sap_addr.vpi;\n+\t\t\t\tvcc->vci = msg->addr.sap_addr.vci;\n+\t\t\t\tvcc->qos = msg->qos;\n+\t\t\t\tsk_atm(vcc)->sk_err = -msg->result;\n+\t\t\t\tswitch (msg->type) {\n+\t\t\t\t    case ATMTCP_CTRL_OPEN:\n+\t\t\t\t\tchange_bit(ATM_VF_READY,&vcc->flags);\n+\t\t\t\t\tbreak;\n+\t\t\t\t    case ATMTCP_CTRL_CLOSE:\n+\t\t\t\t\tchange_bit(ATM_VF_ADDR,&vcc->flags);\n+\t\t\t\t\tbreak;\n+\t\t\t\t    default:\n+\t\t\t\t\tprintk(KERN_ERR \"atmtcp_recv_control: unknown type %d\\n\",\n+\t\t\t\t\t    msg->type);\n+\t\t\t\t\tread_unlock(&vcc_sklist_lock);\n+\t\t\t\t\treturn -EINVAL;\n+\t\t\t\t}\n+\t\t\t\tread_unlock(&vcc_sklist_lock);\n+\t\t\t\twake_up(sk_sleep(sk_atm(vcc)));\n+\t\t\t\treturn 0;\n+\t\t\t}\n+\t\t}\n \t}\n-\twake_up(sk_sleep(sk_atm(vcc)));\n-\treturn 0;\n+\tread_unlock(&vcc_sklist_lock);\n+\treturn -EINVAL;\n }\n \n \n@@ -295,7 +315,7 @@ static int atmtcp_c_send(struct atm_vcc *vcc,struct sk_buff *skb)\n \thdr = (struct atmtcp_hdr *) skb->data;\n \tif (hdr->length == ATMTCP_HDR_MAGIC) {\n \t\tresult = atmtcp_recv_control(\n-\t\t    (struct atmtcp_control *) skb->data);\n+\t\t    (struct atmtcp_control *) skb->data, dev);\n \t\tgoto done;\n \t}\n \tread_lock(&vcc_sklist_lock);",
+          "explanation": "classic_swe step 21 #1",
+          "filename": "drivers/atm/atmtcp.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 21
+        }
+      ],
+      "end_step": 21,
+      "revision_index": 0,
+      "start_step": 17
+    }
+  ],
+  "success_step": 21
+}

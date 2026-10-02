@@ -1,0 +1,104 @@
+{
+  "bug_id": "scikit-learn__scikit-learn-25931",
+  "short_path": [
+    [
+      {
+        "filename": "sklearn/ensemble/_iforest.py",
+        "before": "    def fit(self, X, y=None, sample_weight=None):\n        \"\"\"\n        Fit estimator.\n\n        Parameters\n        ----------\n        X : {array-like, sparse matrix} of shape (n_samples, n_features)\n            The input samples. Use ``dtype=np.float32`` for maximum\n            efficiency. Sparse matrices are also supported, use sparse\n            ``csc_matrix`` for maximum efficiency.\n\n        y : Ignored\n            Not used, present for API consistency by convention.\n\n        sample_weight : array-like of shape (n_samples,), default=None\n            Sample weights. If None, then samples are equally weighted.\n\n        Returns\n        -------\n        self : object\n            Fitted estimator.\n        \"\"\"\n        self._validate_params()\n        X = self._validate_data(X, accept_sparse=[\"csc\"], dtype=tree_dtype)\n        if issparse(X):\n            # Pre-sort indices to avoid that each individual tree of the\n            # ensemble sorts the indices.\n            X.sort_indices()\n\n        rnd = check_random_state(self.random_state)\n        y = rnd.uniform(size=X.shape[0])\n\n        # ensure that max_sample is in [1, n_samples]:\n        n_samples = X.shape[0]\n\n        if isinstance(self.max_samples, str) and self.max_samples == \"auto\":\n            max_samples = min(256, n_samples)\n\n        elif isinstance(self.max_samples, numbers.Integral):\n            if self.max_samples > n_samples:\n                warn(\n                    \"max_samples (%s) is greater than the \"\n                    \"total number of samples (%s). max_samples \"\n                    \"will be set to n_samples for estimation.\"\n                    % (self.max_samples, n_samples)\n                )\n                max_samples = n_samples\n            else:\n                max_samples = self.max_samples\n        else:  # max_samples is float\n            max_samples = int(self.max_samples * X.shape[0])\n\n        self.max_samples_ = max_samples\n        max_depth = int(np.ceil(np.log2(max(max_samples, 2))))\n        super()._fit(\n            X,\n            y,\n            max_samples,\n            max_depth=max_depth,\n            sample_weight=sample_weight,\n            check_input=False,\n        )\n\n        self._average_path_length_per_tree, self._decision_path_lengths = zip(\n            *[\n                (\n                    _average_path_length(tree.tree_.n_node_samples),\n                    tree.tree_.compute_node_depths(),\n                )\n                for tree in self.estimators_\n            ]\n        )\n\n        if self.contamination == \"auto\":\n            # 0.5 plays a special role as described in the original paper.\n            # we take the opposite as we consider the opposite of their score.\n            self.offset_ = -0.5\n            return self\n\n        # else, define offset_ wrt contamination parameter\n        self.offset_ = np.percentile(self.score_samples(X), 100.0 * self.contamination)\n\n        return self",
+        "after": "    def fit(self, X, y=None, sample_weight=None):\n        \"\"\"\n        Fit estimator.\n\n        Parameters\n        ----------\n        X : {array-like, sparse matrix} of shape (n_samples, n_features)\n            The input samples. Use ``dtype=np.float32`` for maximum\n            efficiency. Sparse matrices are also supported, use sparse\n            ``csc_matrix`` for maximum efficiency.\n\n        y : Ignored\n            Not used, present for API consistency by convention.\n\n        sample_weight : array-like of shape (n_samples,), default=None\n            Sample weights. If None, then samples are equally weighted.\n\n        Returns\n        -------\n        self : object\n            Fitted estimator.\n        \"\"\"\n        self._validate_params()\n        # Store the original input for later use in score_samples\n        X_original = X\n        X = self._validate_data(X, accept_sparse=[\"csc\"], dtype=tree_dtype)\n        if issparse(X):\n            # Pre-sort indices to avoid that each individual tree of the\n            # ensemble sorts the indices.\n            X.sort_indices()\n\n        rnd = check_random_state(self.random_state)\n        y = rnd.uniform(size=X.shape[0])\n\n        # ensure that max_sample is in [1, n_samples]:\n        n_samples = X.shape[0]\n\n        if isinstance(self.max_samples, str) and self.max_samples == \"auto\":\n            max_samples = min(256, n_samples)\n\n        elif isinstance(self.max_samples, numbers.Integral):\n            if self.max_samples > n_samples:\n                warn(\n                    \"max_samples (%s) is greater than the \"\n                    \"total number of samples (%s). max_samples \"\n                    \"will be set to n_samples for estimation.\"\n                    % (self.max_samples, n_samples)\n                )\n                max_samples = n_samples\n            else:\n                max_samples = self.max_samples\n        else:  # max_samples is float\n            max_samples = int(self.max_samples * X.shape[0])\n\n        self.max_samples_ = max_samples\n        max_depth = int(np.ceil(np.log2(max(max_samples, 2))))\n        super()._fit(\n            X,\n            y,\n            max_samples,\n            max_depth=max_depth,\n            sample_weight=sample_weight,\n            check_input=False,\n        )\n\n        self._average_path_length_per_tree, self._decision_path_lengths = zip(\n            *[\n                (\n                    _average_path_length(tree.tree_.n_node_samples),\n                    tree.tree_.compute_node_depths(),\n                )\n                for tree in self.estimators_\n            ]\n        )\n\n        if self.contamination == \"auto\":\n            # 0.5 plays a special role as described in the original paper.\n            # we take the opposite as we consider the opposite of their score.\n            self.offset_ = -0.5\n            return self\n\n        # else, define offset_ wrt contamination parameter\n        # Use the original input to preserve feature names for score_samples\n        self.offset_ = np.percentile(self.score_samples(X_original), 100.0 * self.contamination)\n\n        return self",
+        "explanation": "classic_swe step 23 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/sklearn/ensemble/_iforest.py b/sklearn/ensemble/_iforest.py\nindex 4d6c1c3f0b..1e182f8e56 100644\n--- a/sklearn/ensemble/_iforest.py\n+++ b/sklearn/ensemble/_iforest.py\n@@ -288,6 +288,8 @@ class IsolationForest(OutlierMixin, BaseBagging):\n             Fitted estimator.\n         \"\"\"\n         self._validate_params()\n+        # Store the original input for later use in score_samples\n+        X_original = X\n         X = self._validate_data(X, accept_sparse=[\"csc\"], dtype=tree_dtype)\n         if issparse(X):\n             # Pre-sort indices to avoid that each individual tree of the\n@@ -345,7 +347,8 @@ class IsolationForest(OutlierMixin, BaseBagging):\n             return self\n \n         # else, define offset_ wrt contamination parameter\n-        self.offset_ = np.percentile(self.score_samples(X), 100.0 * self.contamination)\n+        # Use the original input to preserve feature names for score_samples\n+        self.offset_ = np.percentile(self.score_samples(X_original), 100.0 * self.contamination)\n \n         return self\n \n",
+  "feedback_stats": {
+    "edit_list_original": [
+      4
+    ],
+    "nodes_original_count": 1,
+    "node_list_original": [
+      0
+    ],
+    "node_list_after_phase1": [
+      0
+    ],
+    "node_list_after_phase2": [
+      0
+    ],
+    "node_list_after_refinement": [
+      0
+    ],
+    "node_refinement_passes": 0,
+    "edit_list_after_node_min": [
+      4
+    ],
+    "edit_list_after_file_min": [
+      4
+    ],
+    "edit_list_after_greedy": [
+      4
+    ],
+    "edit_list_after_refinement": [
+      4
+    ],
+    "edits_after_node_min": 1,
+    "edits_after_file_min": 1
+  },
+  "original_edit_count": 1,
+  "minimized_edit_count": 1,
+  "reduction": "1_to_1",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "sklearn/ensemble/_iforest.py",
+          "before": "    def fit(self, X, y=None, sample_weight=None):\n        \"\"\"\n        Fit estimator.\n\n        Parameters\n        ----------\n        X : {array-like, sparse matrix} of shape (n_samples, n_features)\n            The input samples. Use ``dtype=np.float32`` for maximum\n            efficiency. Sparse matrices are also supported, use sparse\n            ``csc_matrix`` for maximum efficiency.\n\n        y : Ignored\n            Not used, present for API consistency by convention.\n\n        sample_weight : array-like of shape (n_samples,), default=None\n            Sample weights. If None, then samples are equally weighted.\n\n        Returns\n        -------\n        self : object\n            Fitted estimator.\n        \"\"\"\n        self._validate_params()\n        X = self._validate_data(X, accept_sparse=[\"csc\"], dtype=tree_dtype)\n        if issparse(X):\n            # Pre-sort indices to avoid that each individual tree of the\n            # ensemble sorts the indices.\n            X.sort_indices()\n\n        rnd = check_random_state(self.random_state)\n        y = rnd.uniform(size=X.shape[0])\n\n        # ensure that max_sample is in [1, n_samples]:\n        n_samples = X.shape[0]\n\n        if isinstance(self.max_samples, str) and self.max_samples == \"auto\":\n            max_samples = min(256, n_samples)\n\n        elif isinstance(self.max_samples, numbers.Integral):\n            if self.max_samples > n_samples:\n                warn(\n                    \"max_samples (%s) is greater than the \"\n                    \"total number of samples (%s). max_samples \"\n                    \"will be set to n_samples for estimation.\"\n                    % (self.max_samples, n_samples)\n                )\n                max_samples = n_samples\n            else:\n                max_samples = self.max_samples\n        else:  # max_samples is float\n            max_samples = int(self.max_samples * X.shape[0])\n\n        self.max_samples_ = max_samples\n        max_depth = int(np.ceil(np.log2(max(max_samples, 2))))\n        super()._fit(\n            X,\n            y,\n            max_samples,\n            max_depth=max_depth,\n            sample_weight=sample_weight,\n            check_input=False,\n        )\n\n        self._average_path_length_per_tree, self._decision_path_lengths = zip(\n            *[\n                (\n                    _average_path_length(tree.tree_.n_node_samples),\n                    tree.tree_.compute_node_depths(),\n                )\n                for tree in self.estimators_\n            ]\n        )\n\n        if self.contamination == \"auto\":\n            # 0.5 plays a special role as described in the original paper.\n            # we take the opposite as we consider the opposite of their score.\n            self.offset_ = -0.5\n            return self\n\n        # else, define offset_ wrt contamination parameter\n        self.offset_ = np.percentile(self.score_samples(X), 100.0 * self.contamination)\n\n        return self",
+          "after": "    def fit(self, X, y=None, sample_weight=None):\n        \"\"\"\n        Fit estimator.\n\n        Parameters\n        ----------\n        X : {array-like, sparse matrix} of shape (n_samples, n_features)\n            The input samples. Use ``dtype=np.float32`` for maximum\n            efficiency. Sparse matrices are also supported, use sparse\n            ``csc_matrix`` for maximum efficiency.\n\n        y : Ignored\n            Not used, present for API consistency by convention.\n\n        sample_weight : array-like of shape (n_samples,), default=None\n            Sample weights. If None, then samples are equally weighted.\n\n        Returns\n        -------\n        self : object\n            Fitted estimator.\n        \"\"\"\n        self._validate_params()\n        # Store the original input for later use in score_samples\n        X_original = X\n        X = self._validate_data(X, accept_sparse=[\"csc\"], dtype=tree_dtype)\n        if issparse(X):\n            # Pre-sort indices to avoid that each individual tree of the\n            # ensemble sorts the indices.\n            X.sort_indices()\n\n        rnd = check_random_state(self.random_state)\n        y = rnd.uniform(size=X.shape[0])\n\n        # ensure that max_sample is in [1, n_samples]:\n        n_samples = X.shape[0]\n\n        if isinstance(self.max_samples, str) and self.max_samples == \"auto\":\n            max_samples = min(256, n_samples)\n\n        elif isinstance(self.max_samples, numbers.Integral):\n            if self.max_samples > n_samples:\n                warn(\n                    \"max_samples (%s) is greater than the \"\n                    \"total number of samples (%s). max_samples \"\n                    \"will be set to n_samples for estimation.\"\n                    % (self.max_samples, n_samples)\n                )\n                max_samples = n_samples\n            else:\n                max_samples = self.max_samples\n        else:  # max_samples is float\n            max_samples = int(self.max_samples * X.shape[0])\n\n        self.max_samples_ = max_samples\n        max_depth = int(np.ceil(np.log2(max(max_samples, 2))))\n        super()._fit(\n            X,\n            y,\n            max_samples,\n            max_depth=max_depth,\n            sample_weight=sample_weight,\n            check_input=False,\n        )\n\n        self._average_path_length_per_tree, self._decision_path_lengths = zip(\n            *[\n                (\n                    _average_path_length(tree.tree_.n_node_samples),\n                    tree.tree_.compute_node_depths(),\n                )\n                for tree in self.estimators_\n            ]\n        )\n\n        if self.contamination == \"auto\":\n            # 0.5 plays a special role as described in the original paper.\n            # we take the opposite as we consider the opposite of their score.\n            self.offset_ = -0.5\n            return self\n\n        # else, define offset_ wrt contamination parameter\n        # Use the original input to preserve feature names for score_samples\n        self.offset_ = np.percentile(self.score_samples(X_original), 100.0 * self.contamination)\n\n        return self",
+          "explanation": "classic_swe step 23 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 21,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 21,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "sklearn/ensemble/_iforest.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "sklearn/ensemble/_iforest.py"
+    ],
+    "gold_files": [
+      "sklearn/ensemble/_iforest.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 4,
+    "minimized_deleted_lines": 1,
+    "gold_added_lines": 16,
+    "gold_deleted_lines": 8
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

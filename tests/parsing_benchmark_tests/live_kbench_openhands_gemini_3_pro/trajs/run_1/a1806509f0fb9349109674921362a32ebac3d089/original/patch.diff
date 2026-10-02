@@ -1,0 +1,68 @@
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 77db3b5fe4ac..ffb5a72e70aa 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -38,6 +38,8 @@
+ 	rcu_dereference_check((table), lockdep_is_held(&(net)->xfrm.xfrm_state_lock))
+ 
+ static void xfrm_state_gc_task(struct work_struct *work);
++static void xfrm_state_delete_tunnel(struct xfrm_state *x);
++
+ 
+ /* Each xfrm_state may be linked to two tables:
+ 
+@@ -594,6 +596,8 @@ EXPORT_SYMBOL(xfrm_state_free);
+ 
+ static void xfrm_state_gc_destroy(struct xfrm_state *x)
+ {
++	xfrm_state_delete_tunnel(x);
++
+ 	if (x->mode_cbs && x->mode_cbs->destroy_state)
+ 		x->mode_cbs->destroy_state(x);
+ 	hrtimer_cancel(&x->mtimer);
+@@ -3086,8 +3090,9 @@ static void xfrm_state_delete_tunnel(struct xfrm_state *x)
+ {
+ 	if (x->tunnel) {
+ 		struct xfrm_state *t = x->tunnel;
++		int users = atomic_dec_return(&t->tunnel_users);
+ 
+-		if (atomic_dec_return(&t->tunnel_users) == 1)
++		if (users == 1 || users == 0)
+ 			xfrm_state_delete(t);
+ 		xfrm_state_put(t);
+ 		x->tunnel = NULL;
+@@ -3297,7 +3302,33 @@ void xfrm_state_fini(struct net *net)
+ 	unsigned int sz;
+ 
+ 	flush_work(&net->xfrm.state_hash_work);
+-	xfrm_state_flush(net, IPSEC_PROTO_ANY, false);
++
++	{
++		struct xfrm_state *x;
++		int err;
++
++		spin_lock_bh(&net->xfrm.xfrm_state_lock);
++		while (!list_empty(&net->xfrm.state_all)) {
++			x = list_first_entry(&net->xfrm.state_all, struct xfrm_state, km.all);
++			if (x->km.state == XFRM_STATE_DEAD) {
++				list_del(&x->km.all);
++				spin_unlock_bh(&net->xfrm.xfrm_state_lock);
++				xfrm_state_put(x);
++				spin_lock_bh(&net->xfrm.xfrm_state_lock);
++				continue;
++			}
++			xfrm_state_hold(x);
++			spin_unlock_bh(&net->xfrm.xfrm_state_lock);
++
++			err = xfrm_state_delete(x);
++			xfrm_audit_state_delete(x, err ? 0 : 1, false);
++			xfrm_state_put(x);
++
++			spin_lock_bh(&net->xfrm.xfrm_state_lock);
++		}
++		spin_unlock_bh(&net->xfrm.xfrm_state_lock);
++	}
++
+ 	flush_work(&xfrm_state_gc_work);
+ 
+ 	WARN_ON(!list_empty(&net->xfrm.state_all));

@@ -1,0 +1,42 @@
+diff --git a/fs/bcachefs/btree_io.c b/fs/bcachefs/btree_io.c
+index 6abc9f17ea3c..573265ac969b 100644
+--- a/fs/bcachefs/btree_io.c
++++ b/fs/bcachefs/btree_io.c
+@@ -1085,6 +1085,21 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 				break;
+ 		}
+ 
++		if (first) {
++			sectors = vstruct_sectors(b->data, c->block_bits);
++		} else {
++			sectors = vstruct_sectors(bne, c->block_bits);
++		}
++
++		/* Validate bset size before checksum to avoid reading beyond buffer */
++		if (btree_err_on(b->written + sectors > (ptr_written ?: btree_sectors(c)),
++				 -BCH_ERR_btree_node_read_err_fixable,
++				 c, ca, b, i, NULL,
++				 bset_past_end_of_btree_node,
++				 "bset past end of btree node (offset %u sectors %u)",
++				 b->written, sectors))
++			i->u64s = 0;
++
+ 		struct nonce nonce = btree_nonce(i, b->written << 9);
+ 		bool good_csum_type = bch2_checksum_type_valid(c, BSET_CSUM_TYPE(i));
+ 
+@@ -1125,7 +1140,6 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 				     btree_node_unsupported_version,
+ 				     "btree node does not have NEW_EXTENT_OVERWRITE set");
+ 
+-			sectors = vstruct_sectors(b->data, c->block_bits);
+ 		} else {
+ 			if (good_csum_type) {
+ 				struct bch_csum csum = csum_vstruct(c, BSET_CSUM_TYPE(i), nonce, bne);
+@@ -1148,7 +1162,6 @@ int bch2_btree_node_read_done(struct bch_fs *c, struct bch_dev *ca,
+ 					goto fsck_err;
+ 			}
+ 
+-			sectors = vstruct_sectors(bne, c->block_bits);
+ 		}
+ 
+ 		b->version_ondisk = min(b->version_ondisk,

@@ -1,0 +1,48 @@
+diff --git a/fs/erofs/zmap.c b/fs/erofs/zmap.c
+index a93efd95c555..30ff91bb69f6 100644
+--- a/fs/erofs/zmap.c
++++ b/fs/erofs/zmap.c
+@@ -726,6 +726,30 @@ static int z_erofs_fill_inode(struct inode *inode, struct erofs_map_blocks *map)
+ 	return err;
+ }
+ 
++static int z_erofs_map_sanity_check(struct inode *inode,
++				    struct erofs_map_blocks *map)
++{
++	struct erofs_sb_info *sbi = EROFS_I_SB(inode);
++
++	if (!(map->m_flags & EROFS_MAP_ENCODED))
++		return 0;
++	if (unlikely(map->m_algorithmformat >= Z_EROFS_COMPRESSION_RUNTIME_MAX)) {
++		erofs_err(inode->i_sb, "unknown algorithm %d @ pos %llu for nid %llu, please upgrade kernel",
++			  map->m_algorithmformat, map->m_la, EROFS_I(inode)->nid);
++		return -EOPNOTSUPP;
++	}
++	if (unlikely(map->m_algorithmformat < Z_EROFS_COMPRESSION_MAX &&
++		     !(sbi->available_compr_algs & (1 << map->m_algorithmformat)))) {
++		erofs_err(inode->i_sb, "inconsistent algorithmtype %u for nid %llu",
++			  map->m_algorithmformat, EROFS_I(inode)->nid);
++		return -EFSCORRUPTED;
++	}
++	if (unlikely(map->m_plen > Z_EROFS_PCLUSTER_MAX_SIZE ||
++		     map->m_llen > Z_EROFS_PCLUSTER_MAX_DSIZE))
++		return -EOPNOTSUPP;
++	return 0;
++}
++
+ int z_erofs_map_blocks_iter(struct inode *inode, struct erofs_map_blocks *map,
+ 			    int flags)
+ {
+@@ -746,10 +770,8 @@ int z_erofs_map_blocks_iter(struct inode *inode, struct erofs_map_blocks *map,
+ 			else
+ 				err = z_erofs_map_blocks_fo(inode, map, flags);
+ 		}
+-		if (!err && (map->m_flags & EROFS_MAP_ENCODED) &&
+-		    unlikely(map->m_plen > Z_EROFS_PCLUSTER_MAX_SIZE ||
+-			     map->m_llen > Z_EROFS_PCLUSTER_MAX_DSIZE))
+-			err = -EOPNOTSUPP;
++		if (!err)
++			err = z_erofs_map_sanity_check(inode, map);
+ 		if (err)
+ 			map->m_llen = 0;
+ 	}

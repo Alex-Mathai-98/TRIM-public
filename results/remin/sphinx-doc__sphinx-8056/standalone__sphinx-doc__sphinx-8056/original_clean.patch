@@ -1,0 +1,37 @@
+diff --git a/sphinx/ext/napoleon/docstring.py b/sphinx/ext/napoleon/docstring.py
+index b3daa06f1..c80a01711 100644
+--- a/sphinx/ext/napoleon/docstring.py
++++ b/sphinx/ext/napoleon/docstring.py
+@@ -392,15 +392,25 @@ class GoogleDocstring:
+         lines = []
+         for _name, _type, _desc in fields:
+             _desc = self._strip_empty(_desc)
+-            if any(_desc):
+-                _desc = self._fix_field_desc(_desc)
+-                field = ':%s %s: ' % (field_role, _name)
+-                lines.extend(self._format_block(field, _desc))
++            
++            # Check if _name contains multiple parameter names separated by commas
++            if ',' in _name:
++                # Split parameter names and strip whitespace
++                param_names = [name.strip() for name in _name.split(',')]
+             else:
+-                lines.append(':%s %s:' % (field_role, _name))
++                param_names = [_name]
++            
++            # Process each parameter name
++            for param_name in param_names:
++                if any(_desc):
++                    fixed_desc = self._fix_field_desc(_desc)
++                    field = ':%s %s: ' % (field_role, param_name)
++                    lines.extend(self._format_block(field, fixed_desc))
++                else:
++                    lines.append(':%s %s:' % (field_role, param_name))
+ 
+-            if _type:
+-                lines.append(':%s %s: %s' % (type_role, _name, _type))
++                if _type:
++                    lines.append(':%s %s: %s' % (type_role, param_name, _type))
+         return lines + ['']
+ 
+     def _format_field(self, _name: str, _type: str, _desc: List[str]) -> List[str]:

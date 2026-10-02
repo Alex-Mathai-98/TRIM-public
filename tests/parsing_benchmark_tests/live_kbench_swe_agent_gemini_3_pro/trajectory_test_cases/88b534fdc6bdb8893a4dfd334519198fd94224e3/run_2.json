@@ -1,0 +1,94 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tsobj->idev.idev = idev;\n\trefcount_inc(&idev->obj.users);\n\n\trc = iommufd_device_attach(idev, &pt_id);",
+          "before": "\tsobj->idev.idev = idev;\n\n\trc = iommufd_device_attach(idev, &pt_id);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/selftest.c b/drivers/iommu/iommufd/selftest.c\nindex d40deb0a4f06..44f233853038 100644\n--- a/drivers/iommu/iommufd/selftest.c\n+++ b/drivers/iommu/iommufd/selftest.c\n@@ -920,6 +920,7 @@ static int iommufd_test_mock_domain(struct iommufd_ucmd *ucmd,\n \t\tgoto out_mdev;\n \t}\n \tsobj->idev.idev = idev;\n+\trefcount_inc(&idev->obj.users);\n \n \trc = iommufd_device_attach(idev, &pt_id);\n \tif (rc)",
+          "explanation": "classic_swe step 35 #1",
+          "filename": "drivers/iommu/iommufd/selftest.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 35
+        }
+      ],
+      "end_step": 35,
+      "revision_index": 0,
+      "start_step": 35
+    },
+    {
+      "edits": [
+        {
+          "after": "\tsobj->idev.idev = idev;\n\n\trc = iommufd_device_attach(idev, &pt_id);",
+          "before": "\tsobj->idev.idev = idev;\n\trefcount_inc(&idev->obj.users);\n\n\trc = iommufd_device_attach(idev, &pt_id);",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 43 #1",
+          "filename": "drivers/iommu/iommufd/selftest.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 43
+        },
+        {
+          "after": "\tcmd->out_capabilities = 0;\n\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\n\tcopy_len = min(cmd->data_len, data_len);\n\tif (copy_to_user(user_ptr, data, copy_len)) {\n\t\trc = -EFAULT;\n\t\tgoto out_free_noput;\n\t}\n\n\t/*\n\t * Zero the trailing bytes if the user buffer is bigger than the\n\t * data size kernel actually has.\n\t */\n\tif (copy_len < cmd->data_len) {\n\t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n\t\t\trc = -EFAULT;\n\t\t\tgoto out_free_noput;\n\t\t}\n\t}\n\n\t/*\n\t * We return the length the kernel supports so userspace may know what\n\t * the kernel capability is. It could be larger than the input buffer.\n\t */\n\tcmd->data_len = data_len;\n\n\trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\nout_free_noput:\n\tkfree(data);\n\treturn rc;\n\nout_free:\n\tkfree(data);\nout_put:\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\treturn rc;",
+          "before": "\tcopy_len = min(cmd->data_len, data_len);\n\tif (copy_to_user(user_ptr, data, copy_len)) {\n\t\trc = -EFAULT;\n\t\tgoto out_free;\n\t}\n\n\t/*\n\t * Zero the trailing bytes if the user buffer is bigger than the\n\t * data size kernel actually has.\n\t */\n\tif (copy_len < cmd->data_len) {\n\t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n\t\t\trc = -EFAULT;\n\t\t\tgoto out_free;\n\t\t}\n\t}\n\n\t/*\n\t * We return the length the kernel supports so userspace may know what\n\t * the kernel capability is. It could be larger than the input buffer.\n\t */\n\tcmd->data_len = data_len;\n\n\tcmd->out_capabilities = 0;\n\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n\n\trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\nout_free:\n\tkfree(data);\nout_put:\n\tiommufd_put_object(ucmd->ictx, &idev->obj);\n\treturn rc;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/drivers/iommu/iommufd/device.c b/drivers/iommu/iommufd/device.c\nindex dfd0898fb6c1..2fa2ed302b41 100644\n--- a/drivers/iommu/iommufd/device.c\n+++ b/drivers/iommu/iommufd/device.c\n@@ -1213,10 +1213,16 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)\n \t\tdata = NULL;\n \t}\n \n+\tcmd->out_capabilities = 0;\n+\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n+\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n+\n+\tiommufd_put_object(ucmd->ictx, &idev->obj);\n+\n \tcopy_len = min(cmd->data_len, data_len);\n \tif (copy_to_user(user_ptr, data, copy_len)) {\n \t\trc = -EFAULT;\n-\t\tgoto out_free;\n+\t\tgoto out_free_noput;\n \t}\n \n \t/*\n@@ -1226,7 +1232,7 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)\n \tif (copy_len < cmd->data_len) {\n \t\tif (clear_user(user_ptr + copy_len, cmd->data_len - copy_len)) {\n \t\t\trc = -EFAULT;\n-\t\t\tgoto out_free;\n+\t\t\tgoto out_free_noput;\n \t\t}\n \t}\n \n@@ -1236,11 +1242,11 @@ int iommufd_get_hw_info(struct iommufd_ucmd *ucmd)\n \t */\n \tcmd->data_len = data_len;\n \n-\tcmd->out_capabilities = 0;\n-\tif (device_iommu_capable(idev->dev, IOMMU_CAP_DIRTY_TRACKING))\n-\t\tcmd->out_capabilities |= IOMMU_HW_CAP_DIRTY_TRACKING;\n-\n \trc = iommufd_ucmd_respond(ucmd, sizeof(*cmd));\n+out_free_noput:\n+\tkfree(data);\n+\treturn rc;\n+\n out_free:\n \tkfree(data);\n out_put:",
+          "explanation": "classic_swe step 47 #1",
+          "filename": "drivers/iommu/iommufd/device.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 47
+        }
+      ],
+      "end_step": 47,
+      "revision_index": 1,
+      "start_step": 43
+    }
+  ],
+  "success_step": 47
+}

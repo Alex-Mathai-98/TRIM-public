@@ -1,0 +1,161 @@
+{
+  "bug_id": "django__django-13346",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "class KeyTransformGte(KeyTransformNumericLookupMixin, lookups.GreaterThanOrEqual):\n    pass\n\n\nKeyTransform.register_lookup(KeyTransformExact)",
+        "after": "class KeyTransformGte(KeyTransformNumericLookupMixin, lookups.GreaterThanOrEqual):\n    pass\n\n\nclass KeyTransformIn(lookups.In):\n    def process_rhs(self, compiler, connection):\n        if self.rhs_is_direct_value():\n            # Handle direct values (lists)\n            rhs = self.rhs\n            if not connection.features.has_native_json_field:\n                # For databases without native JSON support, we need to JSON-encode the values\n                rhs = [json.dumps(value) for value in rhs]\n            # Use the parent's batch_process_rhs to handle the list properly\n            sqls, sqls_params = self.batch_process_rhs(compiler, connection, rhs)\n            placeholder = '(' + ', '.join(sqls) + ')'\n            return (placeholder, sqls_params)\n        else:\n            # Handle subqueries\n            return super().process_rhs(compiler, connection)\n\n\nKeyTransform.register_lookup(KeyTransformExact)",
+        "explanation": "classic_swe step 27 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "KeyTransform.register_lookup(KeyTransformLt)\nKeyTransform.register_lookup(KeyTransformLte)\nKeyTransform.register_lookup(KeyTransformGt)\nKeyTransform.register_lookup(KeyTransformGte)",
+        "after": "KeyTransform.register_lookup(KeyTransformLt)\nKeyTransform.register_lookup(KeyTransformLte)\nKeyTransform.register_lookup(KeyTransformGt)\nKeyTransform.register_lookup(KeyTransformGte)\nKeyTransform.register_lookup(KeyTransformIn)",
+        "explanation": "classic_swe step 28 #1"
+      }
+    ],
+    [
+      {
+        "filename": "django/db/models/fields/json.py",
+        "before": "class KeyTransformIn(lookups.In):\n    def process_rhs(self, compiler, connection):\n        if self.rhs_is_direct_value():\n            # Handle direct values (lists)\n            rhs = self.rhs\n            if not connection.features.has_native_json_field:\n                # For databases without native JSON support, we need to JSON-encode the values\n                rhs = [json.dumps(value) for value in rhs]\n            # Use the parent's batch_process_rhs to handle the list properly\n            sqls, sqls_params = self.batch_process_rhs(compiler, connection, rhs)\n            placeholder = '(' + ', '.join(sqls) + ')'\n            return (placeholder, sqls_params)\n        else:\n            # Handle subqueries\n            return super().process_rhs(compiler, connection)",
+        "after": "class KeyTransformIn(lookups.In):\n    def process_rhs(self, compiler, connection):\n        if self.rhs_is_direct_value():\n            # Handle direct values (lists)\n            rhs, rhs_params = super().process_rhs(compiler, connection)\n            \n            # Apply database-specific transformations similar to KeyTransformExact\n            if connection.vendor == 'oracle':\n                func = []\n                for value in rhs_params:\n                    value = json.loads(value)\n                    function = 'JSON_QUERY' if isinstance(value, (list, dict)) else 'JSON_VALUE'\n                    func.append(\"%s('%s', '$.value')\" % (\n                        function,\n                        json.dumps({'value': value}),\n                    ))\n                rhs = rhs % tuple(func)\n                rhs_params = []\n            elif connection.vendor == 'sqlite':\n                func = [\"JSON_EXTRACT(%s, '$')\" if value != 'null' else '%s' for value in rhs_params]\n                rhs = rhs % tuple(func)\n            elif connection.vendor == 'mysql':\n                func = [\"JSON_EXTRACT(%s, '$')\" for _ in rhs_params]\n                rhs = rhs % tuple(func)\n                \n            return rhs, rhs_params\n        else:\n            # Handle subqueries\n            return super().process_rhs(compiler, connection)",
+        "explanation": "classic_swe step 34 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/models/fields/json.py b/django/db/models/fields/json.py\nindex fafc1beee8..e99778370c 100644\n--- a/django/db/models/fields/json.py\n+++ b/django/db/models/fields/json.py\n@@ -479,6 +479,37 @@ class KeyTransformGte(KeyTransformNumericLookupMixin, lookups.GreaterThanOrEqual\n     pass\n \n \n+class KeyTransformIn(lookups.In):\n+    def process_rhs(self, compiler, connection):\n+        if self.rhs_is_direct_value():\n+            # Handle direct values (lists)\n+            rhs, rhs_params = super().process_rhs(compiler, connection)\n+            \n+            # Apply database-specific transformations similar to KeyTransformExact\n+            if connection.vendor == 'oracle':\n+                func = []\n+                for value in rhs_params:\n+                    value = json.loads(value)\n+                    function = 'JSON_QUERY' if isinstance(value, (list, dict)) else 'JSON_VALUE'\n+                    func.append(\"%s('%s', '$.value')\" % (\n+                        function,\n+                        json.dumps({'value': value}),\n+                    ))\n+                rhs = rhs % tuple(func)\n+                rhs_params = []\n+            elif connection.vendor == 'sqlite':\n+                func = [\"JSON_EXTRACT(%s, '$')\" if value != 'null' else '%s' for value in rhs_params]\n+                rhs = rhs % tuple(func)\n+            elif connection.vendor == 'mysql':\n+                func = [\"JSON_EXTRACT(%s, '$')\" for _ in rhs_params]\n+                rhs = rhs % tuple(func)\n+                \n+            return rhs, rhs_params\n+        else:\n+            # Handle subqueries\n+            return super().process_rhs(compiler, connection)\n+\n+\n KeyTransform.register_lookup(KeyTransformExact)\n KeyTransform.register_lookup(KeyTransformIExact)\n KeyTransform.register_lookup(KeyTransformIsNull)\n@@ -494,6 +525,7 @@ KeyTransform.register_lookup(KeyTransformLt)\n KeyTransform.register_lookup(KeyTransformLte)\n KeyTransform.register_lookup(KeyTransformGt)\n KeyTransform.register_lookup(KeyTransformGte)\n+KeyTransform.register_lookup(KeyTransformIn)\n \n \n class KeyTransformFactory:\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      3,
+      4,
+      6
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_not_applicable": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_not_applicable": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      3,
+      4,
+      6
+    ],
+    "edit_list_after_file_min": [
+      3,
+      4,
+      6
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 3,
+    "greedy_removal_edit_still_crashes": 1,
+    "greedy_removal_edit_not_applicable": 2,
+    "edit_list_after_greedy": [
+      3,
+      4,
+      6
+    ],
+    "edit_list_after_refinement": [
+      3,
+      4,
+      6
+    ],
+    "edits_after_node_min": 3,
+    "edits_after_file_min": 3,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 3,
+  "minimized_edit_count": 3,
+  "reduction": "3_to_3",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "class KeyTransformGte(KeyTransformNumericLookupMixin, lookups.GreaterThanOrEqual):\n    pass\n\n\nKeyTransform.register_lookup(KeyTransformExact)",
+          "after": "class KeyTransformGte(KeyTransformNumericLookupMixin, lookups.GreaterThanOrEqual):\n    pass\n\n\nclass KeyTransformIn(lookups.In):\n    def process_rhs(self, compiler, connection):\n        if self.rhs_is_direct_value():\n            # Handle direct values (lists)\n            rhs = self.rhs\n            if not connection.features.has_native_json_field:\n                # For databases without native JSON support, we need to JSON-encode the values\n                rhs = [json.dumps(value) for value in rhs]\n            # Use the parent's batch_process_rhs to handle the list properly\n            sqls, sqls_params = self.batch_process_rhs(compiler, connection, rhs)\n            placeholder = '(' + ', '.join(sqls) + ')'\n            return (placeholder, sqls_params)\n        else:\n            # Handle subqueries\n            return super().process_rhs(compiler, connection)\n\n\nKeyTransform.register_lookup(KeyTransformExact)",
+          "explanation": "classic_swe step 27 #1"
+        },
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "KeyTransform.register_lookup(KeyTransformLt)\nKeyTransform.register_lookup(KeyTransformLte)\nKeyTransform.register_lookup(KeyTransformGt)\nKeyTransform.register_lookup(KeyTransformGte)",
+          "after": "KeyTransform.register_lookup(KeyTransformLt)\nKeyTransform.register_lookup(KeyTransformLte)\nKeyTransform.register_lookup(KeyTransformGt)\nKeyTransform.register_lookup(KeyTransformGte)\nKeyTransform.register_lookup(KeyTransformIn)",
+          "explanation": "classic_swe step 28 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "django/db/models/fields/json.py",
+          "before": "class KeyTransformIn(lookups.In):\n    def process_rhs(self, compiler, connection):\n        if self.rhs_is_direct_value():\n            # Handle direct values (lists)\n            rhs = self.rhs\n            if not connection.features.has_native_json_field:\n                # For databases without native JSON support, we need to JSON-encode the values\n                rhs = [json.dumps(value) for value in rhs]\n            # Use the parent's batch_process_rhs to handle the list properly\n            sqls, sqls_params = self.batch_process_rhs(compiler, connection, rhs)\n            placeholder = '(' + ', '.join(sqls) + ')'\n            return (placeholder, sqls_params)\n        else:\n            # Handle subqueries\n            return super().process_rhs(compiler, connection)",
+          "after": "class KeyTransformIn(lookups.In):\n    def process_rhs(self, compiler, connection):\n        if self.rhs_is_direct_value():\n            # Handle direct values (lists)\n            rhs, rhs_params = super().process_rhs(compiler, connection)\n            \n            # Apply database-specific transformations similar to KeyTransformExact\n            if connection.vendor == 'oracle':\n                func = []\n                for value in rhs_params:\n                    value = json.loads(value)\n                    function = 'JSON_QUERY' if isinstance(value, (list, dict)) else 'JSON_VALUE'\n                    func.append(\"%s('%s', '$.value')\" % (\n                        function,\n                        json.dumps({'value': value}),\n                    ))\n                rhs = rhs % tuple(func)\n                rhs_params = []\n            elif connection.vendor == 'sqlite':\n                func = [\"JSON_EXTRACT(%s, '$')\" if value != 'null' else '%s' for value in rhs_params]\n                rhs = rhs % tuple(func)\n            elif connection.vendor == 'mysql':\n                func = [\"JSON_EXTRACT(%s, '$')\" for _ in rhs_params]\n                rhs = rhs % tuple(func)\n                \n            return rhs, rhs_params\n        else:\n            # Handle subqueries\n            return super().process_rhs(compiler, connection)",
+          "explanation": "classic_swe step 34 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 65,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 2,
+    "f2p_fail": 0,
+    "p2p_pass": 65,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": true,
+    "files_subset_of_gold": true,
+    "common_files": [
+      "django/db/models/fields/json.py"
+    ],
+    "extra_files_in_minimized": [],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/models/fields/json.py"
+    ],
+    "gold_files": [
+      "django/db/models/fields/json.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 2,
+    "minimized_added_lines": 32,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 25,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "same_files_diff_content"
+}

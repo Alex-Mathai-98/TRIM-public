@@ -1,0 +1,117 @@
+{
+  "patch_list_shape": [
+    [
+      0
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\tstruct socket *clcsock;\n\tint rc;\n\n\trc = sock_create_kern(net, family, SOCK_STREAM, IPPROTO_TCP,\n\t\t\t      &clcsock);\n\tif (rc)\n\t\treturn rc;\n\n\tsmc->clcsock = clcsock;\n\n\t/* smc_clcsock_release() does not wait smc->clcsock->sk's\n\t * destruction;  its sk_state might not be TCP_CLOSE after\n\t * smc->sk is close()d, and TCP timers can be fired later,\n\t * which need net ref.\n\t */\n\tsk = clcsock->sk;",
+          "before": "\tint rc;\n\n\trc = sock_create_kern(net, family, SOCK_STREAM, IPPROTO_TCP,\n\t\t\t      &smc->clcsock);\n\tif (rc)\n\t\treturn rc;\n\n\t/* smc_clcsock_release() does not wait smc->clcsock->sk's\n\t * destruction;  its sk_state might not be TCP_CLOSE after\n\t * smc->sk is close()d, and TCP timers can be fired later,\n\t * which need net ref.\n\t */\n\tsk = smc->clcsock->sk;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/af_smc.c b/net/smc/af_smc.c\nindex 3760131f1484..c4f539bcb5e0 100644\n--- a/net/smc/af_smc.c\n+++ b/net/smc/af_smc.c\n@@ -3329,19 +3329,22 @@ static const struct proto_ops smc_sock_ops = {\n int smc_create_clcsk(struct net *net, struct sock *sk, int family)\n {\n \tstruct smc_sock *smc = smc_sk(sk);\n+\tstruct socket *clcsock;\n \tint rc;\n \n \trc = sock_create_kern(net, family, SOCK_STREAM, IPPROTO_TCP,\n-\t\t\t      &smc->clcsock);\n+\t\t\t      &clcsock);\n \tif (rc)\n \t\treturn rc;\n \n+\tsmc->clcsock = clcsock;\n+\n \t/* smc_clcsock_release() does not wait smc->clcsock->sk's\n \t * destruction;  its sk_state might not be TCP_CLOSE after\n \t * smc->sk is close()d, and TCP timers can be fired later,\n \t * which need net ref.\n \t */\n-\tsk = smc->clcsock->sk;\n+\tsk = clcsock->sk;\n \tsk_net_refcnt_upgrade(sk);\n \treturn 0;\n }",
+          "explanation": "classic_swe step 23 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 23
+        }
+      ],
+      "end_step": 23,
+      "revision_index": 0,
+      "start_step": 23
+    },
+    {
+      "edits": [
+        {
+          "after": "\tint rc;\n\n\trc = sock_create_kern(net, family, SOCK_STREAM, IPPROTO_TCP,\n\t\t\t      &smc->clcsock);\n\tif (rc)\n\t\treturn rc;\n\n\t/* smc_clcsock_release() does not wait smc->clcsock->sk's\n\t * destruction;  its sk_state might not be TCP_CLOSE after\n\t * smc->sk is close()d, and TCP timers can be fired later,\n\t * which need net ref.\n\t */\n\tsk = smc->clcsock->sk;",
+          "before": "\tstruct socket *clcsock;\n\tint rc;\n\n\trc = sock_create_kern(net, family, SOCK_STREAM, IPPROTO_TCP,\n\t\t\t      &clcsock);\n\tif (rc)\n\t\treturn rc;\n\n\tsmc->clcsock = clcsock;\n\n\t/* smc_clcsock_release() does not wait smc->clcsock->sk's\n\t * destruction;  its sk_state might not be TCP_CLOSE after\n\t * smc->sk is close()d, and TCP timers can be fired later,\n\t * which need net ref.\n\t */\n\tsk = clcsock->sk;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "",
+          "explanation": "classic_swe step 30 #1",
+          "filename": "net/smc/af_smc.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 30
+        },
+        {
+          "after": "#include <linux/mm.h>",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c\nindex 6fdb2d96777a..656249a24c87 100644\n--- a/net/smc/smc_diag.c\n+++ b/net/smc/smc_diag.c\n@@ -18,6 +18,7 @@\n #include <linux/smc_diag.h>\n #include <net/netlink.h>\n #include <net/smc.h>\n+#include <linux/mm.h>\n \n #include \"smc.h\"\n #include \"smc_core.h\"",
+          "explanation": "classic_swe step 31 insert #1",
+          "filename": "net/smc/smc_diag.c",
+          "global_edit_idx": 2,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": true,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 21,
+          "step_index": 31
+        },
+        {
+          "after": "\tif (!smc->clcsock || !virt_addr_valid(smc->clcsock))\n\t\treturn;",
+          "before": "\tif (!smc->clcsock)\n\t\treturn;",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": null,
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": "diff --git a/net/smc/smc_diag.c b/net/smc/smc_diag.c\nindex 6fdb2d96777a..3d30fba85f6c 100644\n--- a/net/smc/smc_diag.c\n+++ b/net/smc/smc_diag.c\n@@ -18,6 +18,7 @@\n #include <linux/smc_diag.h>\n #include <net/netlink.h>\n #include <net/smc.h>\n+#include <linux/mm.h>\n \n #include \"smc.h\"\n #include \"smc_core.h\"\n@@ -39,7 +40,7 @@ static void smc_diag_msg_common_fill(struct smc_diag_msg *r, struct sock *sk)\n \tmemset(r, 0, sizeof(*r));\n \tr->diag_family = sk->sk_family;\n \tsock_diag_save_cookie(sk, r->id.idiag_cookie);\n-\tif (!smc->clcsock)\n+\tif (!smc->clcsock || !virt_addr_valid(smc->clcsock))\n \t\treturn;\n \tr->id.idiag_sport = htons(smc->clcsock->sk->sk_num);\n \tr->id.idiag_dport = smc->clcsock->sk->sk_dport;",
+          "explanation": "classic_swe step 32 #1",
+          "filename": "net/smc/smc_diag.c",
+          "global_edit_idx": 3,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "exact",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 32
+        }
+      ],
+      "end_step": 32,
+      "revision_index": 1,
+      "start_step": 30
+    }
+  ],
+  "success_step": 32
+}

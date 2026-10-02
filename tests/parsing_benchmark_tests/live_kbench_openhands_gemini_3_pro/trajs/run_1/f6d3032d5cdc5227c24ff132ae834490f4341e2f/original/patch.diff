@@ -1,0 +1,23 @@
+diff --git a/kernel/events/uprobes.c b/kernel/events/uprobes.c
+index f11ceb8be8c4..9c32a6532efc 100644
+--- a/kernel/events/uprobes.c
++++ b/kernel/events/uprobes.c
+@@ -1049,6 +1049,18 @@ static int __copy_insn(struct address_space *mapping, struct file *filp,
+ 			void *insn, int nbytes, loff_t offset)
+ {
+ 	struct page *page;
++
++	if (!filp)
++		return -EINVAL;
++
++	if (IS_DAX(filp->f_inode)) {
++		loff_t pos = offset;
++
++		if (kernel_read(filp, insn, nbytes, &pos) == nbytes)
++			return 0;
++		return -EIO;
++	}
++
+ 	/*
+ 	 * Ensure that the page that has the original instruction is populated
+ 	 * and in page-cache. If ->read_folio == NULL it must be shmem_mapping(),

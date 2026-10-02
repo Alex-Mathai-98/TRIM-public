@@ -1,0 +1,34 @@
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index e384ef6ff050..482dd7c42920 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -4278,21 +4278,26 @@ static int btusb_probe(struct usb_interface *intf,
+ 	if (!data)
+ 		return -ENOMEM;
+ 
++	struct usb_device *udev = interface_to_usbdev(intf);
++
+ 	for (i = 0; i < intf->cur_altsetting->desc.bNumEndpoints; i++) {
+ 		ep_desc = &intf->cur_altsetting->endpoint[i].desc;
+ 
+ 		if (!data->intr_ep && usb_endpoint_is_int_in(ep_desc)) {
+-			data->intr_ep = ep_desc;
++			if (!usb_pipe_type_check(udev, usb_rcvintpipe(udev, ep_desc->bEndpointAddress)))
++				data->intr_ep = ep_desc;
+ 			continue;
+ 		}
+ 
+ 		if (!data->bulk_tx_ep && usb_endpoint_is_bulk_out(ep_desc)) {
+-			data->bulk_tx_ep = ep_desc;
++			if (!usb_pipe_type_check(udev, usb_sndbulkpipe(udev, ep_desc->bEndpointAddress)))
++				data->bulk_tx_ep = ep_desc;
+ 			continue;
+ 		}
+ 
+ 		if (!data->bulk_rx_ep && usb_endpoint_is_bulk_in(ep_desc)) {
+-			data->bulk_rx_ep = ep_desc;
++			if (!usb_pipe_type_check(udev, usb_rcvbulkpipe(udev, ep_desc->bEndpointAddress)))
++				data->bulk_rx_ep = ep_desc;
+ 			continue;
+ 		}
+ 	}

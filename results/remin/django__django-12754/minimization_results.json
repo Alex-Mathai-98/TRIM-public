@@ -1,0 +1,145 @@
+{
+  "bug_id": "django__django-12754",
+  "short_path": [
+    [
+      {
+        "filename": "django/db/migrations/autodetector.py",
+        "before": "            # Depend on the other end of the primary key if it's a relation\n            if primary_key_rel:\n                dependencies.append((\n                    primary_key_rel._meta.app_label,\n                    primary_key_rel._meta.object_name,\n                    None,\n                    True\n                ))\n            # Generate creation operation",
+        "after": "            # Depend on the other end of the primary key if it's a relation\n            if primary_key_rel:\n                dependencies.append((\n                    primary_key_rel._meta.app_label,\n                    primary_key_rel._meta.object_name,\n                    None,\n                    True\n                ))\n            # Check if any fields in this model are being removed from a base model\n            # If so, we need to depend on the removal of those fields\n            for field_name, field in model_state.fields.items():\n                if field_name not in related_fields:  # Skip related fields as they're handled separately\n                    for base in model_state.bases:\n                        if isinstance(base, str) and \".\" in base:\n                            base_app_label, base_name = base.split(\".\", 1)\n                            # Check if this field is being removed from the base model\n                            if (base_app_label, base_name.lower(), field_name) in (self.old_field_keys - self.new_field_keys):\n                                # Add dependency on the field removal\n                                dependencies.append((base_app_label, base_name.lower(), field_name, False))\n            # Generate creation operation",
+        "explanation": "classic_swe step 57 #1"
+      }
+    ],
+    [
+      {
+        "filename": "tests/migrations/test_autodetector.py",
+        "before": "    def test_mti_inheritance_model_removal(self):\n        Animal = ModelState('app', 'Animal', [\n            (\"id\", models.AutoField(primary_key=True)),\n        ])\n        Dog = ModelState('app', 'Dog', [], bases=('app.Animal',))\n        changes = self.get_changes([Animal, Dog], [Animal])\n        self.assertNumberMigrations(changes, 'app', 1)\n        self.assertOperationTypes(changes, 'app', 0, ['DeleteModel'])\n        self.assertOperationAttributes(changes, 'app', 0, 0, name='Dog')",
+        "after": "    def test_mti_inheritance_model_removal(self):\n        Animal = ModelState('app', 'Animal', [\n            (\"id\", models.AutoField(primary_key=True)),\n        ])\n        Dog = ModelState('app', 'Dog', [], bases=('app.Animal',))\n        changes = self.get_changes([Animal, Dog], [Animal])\n        self.assertNumberMigrations(changes, 'app', 1)\n        self.assertOperationTypes(changes, 'app', 0, ['DeleteModel'])\n        self.assertOperationAttributes(changes, 'app', 0, 0, name='Dog')\n\n    def test_mti_inheritance_field_move_to_subclass(self):\n        \"\"\"\n        Test that moving a field from a parent model to a child model\n        generates migrations in the correct order (RemoveField before CreateModel).\n        \"\"\"\n        # Parent model with field\n        Readable = ModelState('app', 'Readable', [\n            (\"id\", models.AutoField(primary_key=True)),\n            (\"title\", models.CharField(max_length=200)),\n        ])\n        # Parent model without field\n        ReadableWithoutTitle = ModelState('app', 'Readable', [\n            (\"id\", models.AutoField(primary_key=True)),\n        ])\n        # Child model with the field\n        Book = ModelState('app', 'Book', [\n            (\"readable_ptr\", models.OneToOneField(\n                \"app.Readable\",\n                on_delete=models.CASCADE,\n                parent_link=True,\n                primary_key=True,\n            )),\n            (\"title\", models.CharField(max_length=200)),\n        ], bases=('app.readable',))\n        \n        changes = self.get_changes([Readable], [ReadableWithoutTitle, Book])\n        self.assertNumberMigrations(changes, 'app', 1)\n        self.assertOperationTypes(changes, 'app', 0, ['RemoveField', 'CreateModel'])\n        self.assertOperationAttributes(changes, 'app', 0, 0, model_name='readable', name='title')\n        self.assertOperationAttributes(changes, 'app', 0, 1, name='Book')",
+        "explanation": "classic_swe step 72 #1"
+      }
+    ]
+  ],
+  "minimized_patch": "diff --git a/django/db/migrations/autodetector.py b/django/db/migrations/autodetector.py\nindex 30616c0172..c26899221d 100644\n--- a/django/db/migrations/autodetector.py\n+++ b/django/db/migrations/autodetector.py\n@@ -571,6 +571,17 @@ class MigrationAutodetector:\n                     None,\n                     True\n                 ))\n+            # Check if any fields in this model are being removed from a base model\n+            # If so, we need to depend on the removal of those fields\n+            for field_name, field in model_state.fields.items():\n+                if field_name not in related_fields:  # Skip related fields as they're handled separately\n+                    for base in model_state.bases:\n+                        if isinstance(base, str) and \".\" in base:\n+                            base_app_label, base_name = base.split(\".\", 1)\n+                            # Check if this field is being removed from the base model\n+                            if (base_app_label, base_name.lower(), field_name) in (self.old_field_keys - self.new_field_keys):\n+                                # Add dependency on the field removal\n+                                dependencies.append((base_app_label, base_name.lower(), field_name, False))\n             # Generate creation operation\n             self.add_operation(\n                 app_label,\ndiff --git a/tests/migrations/test_autodetector.py b/tests/migrations/test_autodetector.py\nindex daff57fc2c..1661bf7ff4 100644\n--- a/tests/migrations/test_autodetector.py\n+++ b/tests/migrations/test_autodetector.py\n@@ -2454,3 +2454,34 @@ class AutodetectorTests(TestCase):\n         self.assertNumberMigrations(changes, 'app', 1)\n         self.assertOperationTypes(changes, 'app', 0, ['DeleteModel'])\n         self.assertOperationAttributes(changes, 'app', 0, 0, name='Dog')\n+\n+    def test_mti_inheritance_field_move_to_subclass(self):\n+        \"\"\"\n+        Test that moving a field from a parent model to a child model\n+        generates migrations in the correct order (RemoveField before CreateModel).\n+        \"\"\"\n+        # Parent model with field\n+        Readable = ModelState('app', 'Readable', [\n+            (\"id\", models.AutoField(primary_key=True)),\n+            (\"title\", models.CharField(max_length=200)),\n+        ])\n+        # Parent model without field\n+        ReadableWithoutTitle = ModelState('app', 'Readable', [\n+            (\"id\", models.AutoField(primary_key=True)),\n+        ])\n+        # Child model with the field\n+        Book = ModelState('app', 'Book', [\n+            (\"readable_ptr\", models.OneToOneField(\n+                \"app.Readable\",\n+                on_delete=models.CASCADE,\n+                parent_link=True,\n+                primary_key=True,\n+            )),\n+            (\"title\", models.CharField(max_length=200)),\n+        ], bases=('app.readable',))\n+        \n+        changes = self.get_changes([Readable], [ReadableWithoutTitle, Book])\n+        self.assertNumberMigrations(changes, 'app', 1)\n+        self.assertOperationTypes(changes, 'app', 0, ['RemoveField', 'CreateModel'])\n+        self.assertOperationAttributes(changes, 'app', 0, 0, model_name='readable', name='title')\n+        self.assertOperationAttributes(changes, 'app', 0, 1, name='Book')\n",
+  "feedback_stats": {
+    "edit_list_original": [
+      14,
+      18
+    ],
+    "nodes_original_count": 2,
+    "node_list_original": [
+      0,
+      1
+    ],
+    "find_minimum_substring_node_no_crash": 1,
+    "find_minimum_substring_node_still_crashes": 1,
+    "node_list_after_phase1": [
+      0,
+      1
+    ],
+    "node_list_after_phase2": [
+      0,
+      1
+    ],
+    "node_refinement_passes": 1,
+    "greedy_removal_node_no_crash_cache_hit": 1,
+    "greedy_removal_node_still_crashes": 1,
+    "greedy_removal_node_still_crashes_cache_hit": 1,
+    "node_list_after_refinement": [
+      0,
+      1
+    ],
+    "edit_list_after_node_min": [
+      14,
+      18
+    ],
+    "greedy_removal_file_no_crash_cache_hit": 1,
+    "greedy_removal_file_still_crashes_cache_hit": 2,
+    "edit_list_after_file_min": [
+      14,
+      18
+    ],
+    "greedy_removal_edit_no_crash_cache_hit": 2,
+    "greedy_removal_edit_still_crashes_cache_hit": 4,
+    "edit_list_after_greedy": [
+      14,
+      18
+    ],
+    "edit_list_after_refinement": [
+      14,
+      18
+    ],
+    "edits_after_node_min": 2,
+    "edits_after_file_min": 2,
+    "edit_refinement_passes": 1
+  },
+  "original_edit_count": 2,
+  "minimized_edit_count": 2,
+  "reduction": "2_to_2",
+  "original_patch_list": [
+    [
+      null,
+      [
+        {
+          "filename": "django/db/migrations/autodetector.py",
+          "before": "            # Depend on the other end of the primary key if it's a relation\n            if primary_key_rel:\n                dependencies.append((\n                    primary_key_rel._meta.app_label,\n                    primary_key_rel._meta.object_name,\n                    None,\n                    True\n                ))\n            # Generate creation operation",
+          "after": "            # Depend on the other end of the primary key if it's a relation\n            if primary_key_rel:\n                dependencies.append((\n                    primary_key_rel._meta.app_label,\n                    primary_key_rel._meta.object_name,\n                    None,\n                    True\n                ))\n            # Check if any fields in this model are being removed from a base model\n            # If so, we need to depend on the removal of those fields\n            for field_name, field in model_state.fields.items():\n                if field_name not in related_fields:  # Skip related fields as they're handled separately\n                    for base in model_state.bases:\n                        if isinstance(base, str) and \".\" in base:\n                            base_app_label, base_name = base.split(\".\", 1)\n                            # Check if this field is being removed from the base model\n                            if (base_app_label, base_name.lower(), field_name) in (self.old_field_keys - self.new_field_keys):\n                                # Add dependency on the field removal\n                                dependencies.append((base_app_label, base_name.lower(), field_name, False))\n            # Generate creation operation",
+          "explanation": "classic_swe step 57 #1"
+        }
+      ]
+    ],
+    [
+      null,
+      [
+        {
+          "filename": "tests/migrations/test_autodetector.py",
+          "before": "    def test_mti_inheritance_model_removal(self):\n        Animal = ModelState('app', 'Animal', [\n            (\"id\", models.AutoField(primary_key=True)),\n        ])\n        Dog = ModelState('app', 'Dog', [], bases=('app.Animal',))\n        changes = self.get_changes([Animal, Dog], [Animal])\n        self.assertNumberMigrations(changes, 'app', 1)\n        self.assertOperationTypes(changes, 'app', 0, ['DeleteModel'])\n        self.assertOperationAttributes(changes, 'app', 0, 0, name='Dog')",
+          "after": "    def test_mti_inheritance_model_removal(self):\n        Animal = ModelState('app', 'Animal', [\n            (\"id\", models.AutoField(primary_key=True)),\n        ])\n        Dog = ModelState('app', 'Dog', [], bases=('app.Animal',))\n        changes = self.get_changes([Animal, Dog], [Animal])\n        self.assertNumberMigrations(changes, 'app', 1)\n        self.assertOperationTypes(changes, 'app', 0, ['DeleteModel'])\n        self.assertOperationAttributes(changes, 'app', 0, 0, name='Dog')\n\n    def test_mti_inheritance_field_move_to_subclass(self):\n        \"\"\"\n        Test that moving a field from a parent model to a child model\n        generates migrations in the correct order (RemoveField before CreateModel).\n        \"\"\"\n        # Parent model with field\n        Readable = ModelState('app', 'Readable', [\n            (\"id\", models.AutoField(primary_key=True)),\n            (\"title\", models.CharField(max_length=200)),\n        ])\n        # Parent model without field\n        ReadableWithoutTitle = ModelState('app', 'Readable', [\n            (\"id\", models.AutoField(primary_key=True)),\n        ])\n        # Child model with the field\n        Book = ModelState('app', 'Book', [\n            (\"readable_ptr\", models.OneToOneField(\n                \"app.Readable\",\n                on_delete=models.CASCADE,\n                parent_link=True,\n                primary_key=True,\n            )),\n            (\"title\", models.CharField(max_length=200)),\n        ], bases=('app.readable',))\n        \n        changes = self.get_changes([Readable], [ReadableWithoutTitle, Book])\n        self.assertNumberMigrations(changes, 'app', 1)\n        self.assertOperationTypes(changes, 'app', 0, ['RemoveField', 'CreateModel'])\n        self.assertOperationAttributes(changes, 'app', 0, 0, model_name='readable', name='title')\n        self.assertOperationAttributes(changes, 'app', 0, 1, name='Book')",
+          "explanation": "classic_swe step 72 #1"
+        }
+      ]
+    ]
+  ],
+  "oracle_pre": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 112,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "oracle_post": {
+    "resolved": true,
+    "f2p_pass": 1,
+    "f2p_fail": 0,
+    "p2p_pass": 112,
+    "p2p_fail": 0,
+    "patch_applied": true,
+    "error": null
+  },
+  "gold_comparison": {
+    "byte_equivalent_mod_index": false,
+    "same_file_set": false,
+    "files_subset_of_gold": false,
+    "common_files": [
+      "django/db/migrations/autodetector.py"
+    ],
+    "extra_files_in_minimized": [
+      "tests/migrations/test_autodetector.py"
+    ],
+    "missing_files_vs_gold": [],
+    "minimized_files": [
+      "django/db/migrations/autodetector.py",
+      "tests/migrations/test_autodetector.py"
+    ],
+    "gold_files": [
+      "django/db/migrations/autodetector.py"
+    ],
+    "minimized_hunks": 2,
+    "gold_hunks": 1,
+    "minimized_added_lines": 42,
+    "minimized_deleted_lines": 0,
+    "gold_added_lines": 10,
+    "gold_deleted_lines": 0
+  },
+  "gold_equivalence": "overlap_with_extras"
+}

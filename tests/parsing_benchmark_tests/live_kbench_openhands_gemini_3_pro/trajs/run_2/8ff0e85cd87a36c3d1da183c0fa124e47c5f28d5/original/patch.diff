@@ -1,0 +1,22 @@
+diff --git a/fs/f2fs/gc.c b/fs/f2fs/gc.c
+index 8b8025772340..a9577ae624cd 100644
+--- a/fs/f2fs/gc.c
++++ b/fs/f2fs/gc.c
+@@ -67,6 +67,8 @@ static int gc_thread_func(void *data)
+ 			break;
+ 
+ 		if (sbi->sb->s_writers.frozen >= SB_FREEZE_WRITE) {
++			if (foreground)
++				wake_up_all(&gc_th->fggc_wq);
+ 			increase_sleep_time(gc_th, &wait_ms);
+ 			stat_other_skip_bggc_count(sbi);
+ 			continue;
+@@ -77,6 +79,8 @@ static int gc_thread_func(void *data)
+ 					STOP_CP_REASON_FAULT_INJECT);
+ 
+ 		if (!sb_start_write_trylock(sbi->sb)) {
++			if (foreground)
++				wake_up_all(&gc_th->fggc_wq);
+ 			stat_other_skip_bggc_count(sbi);
+ 			continue;
+ 		}

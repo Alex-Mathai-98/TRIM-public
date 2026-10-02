@@ -1,0 +1,50 @@
+diff --git a/io_uring/io_uring.c b/io_uring/io_uring.c
+index 296667ba712c..74a4c3a218ea 100644
+--- a/io_uring/io_uring.c
++++ b/io_uring/io_uring.c
+@@ -351,8 +351,7 @@ static __cold struct io_ring_ctx *io_ring_ctx_alloc(struct io_uring_params *p)
+ 			    sizeof(struct io_async_msghdr),
+ 			    offsetof(struct io_async_msghdr, clear));
+ 	ret |= io_alloc_cache_init(&ctx->rw_cache, IO_ALLOC_CACHE_MAX,
+-			    sizeof(struct io_async_rw),
+-			    offsetof(struct io_async_rw, clear));
++			    sizeof(struct io_async_rw), 0);
+ 	ret |= io_alloc_cache_init(&ctx->cmd_cache, IO_ALLOC_CACHE_MAX,
+ 			    sizeof(struct io_async_cmd),
+ 			    sizeof(struct io_async_cmd));
+diff --git a/io_uring/rw.c b/io_uring/rw.c
+index 5b2241a5813c..d5a85211fb16 100644
+--- a/io_uring/rw.c
++++ b/io_uring/rw.c
+@@ -101,8 +101,15 @@ static int io_import_vec(int ddir, struct io_kiocb *req,
+ 	if (unlikely(ret < 0))
+ 		return ret;
+ 	if (iov) {
++		struct iovec *old_iov = io->vec.iovec;
++
++		if (old_iov != iov) {
++			if (old_iov && old_iov != &io->fast_iov)
++				kfree(old_iov);
++			io->vec.iovec = iov;
++		}
++		io->vec.nr = io->iter.nr_segs;
+ 		req->flags |= REQ_F_NEED_CLEANUP;
+-		io_vec_reset_iovec(&io->vec, iov, io->iter.nr_segs);
+ 	}
+ 	return 0;
+ }
+@@ -155,8 +162,13 @@ static void io_rw_recycle(struct io_kiocb *req, unsigned int issue_flags)
+ 	if (rw->vec.nr > IO_VEC_CACHE_SOFT_CAP)
+ 		io_vec_free(&rw->vec);
+ 
+-	if (io_alloc_cache_put(&req->ctx->rw_cache, rw))
++	if (io_alloc_cache_put(&req->ctx->rw_cache, rw)) {
++		io_req_async_data_clear(req, 0);
++	} else {
++		io_vec_free(&rw->vec);
++		kfree(rw);
+ 		io_req_async_data_clear(req, 0);
++	}
+ }
+ 
+ static void io_req_rw_cleanup(struct io_kiocb *req, unsigned int issue_flags)

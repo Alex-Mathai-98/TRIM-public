@@ -1,0 +1,43 @@
+diff --git a/fs/erofs/data.c b/fs/erofs/data.c
+index 8ca29962a3dd..f25605d1dd98 100644
+--- a/fs/erofs/data.c
++++ b/fs/erofs/data.c
+@@ -416,6 +416,10 @@ const struct address_space_operations erofs_aops = {
+ };
+ 
+ #ifdef CONFIG_FS_DAX
++const struct address_space_operations erofs_dax_aops = {
++        .bmap = erofs_bmap,
++};
++
+ static vm_fault_t erofs_dax_huge_fault(struct vm_fault *vmf,
+ 		unsigned int order)
+ {
+diff --git a/fs/erofs/inode.c b/fs/erofs/inode.c
+index cb780c095d28..1040dd965e97 100644
+--- a/fs/erofs/inode.c
++++ b/fs/erofs/inode.c
+@@ -246,6 +246,11 @@ static int erofs_fill_inode(struct inode *inode)
+ #endif
+ 	} else {
+ 		inode->i_mapping->a_ops = &erofs_aops;
++
++#ifdef CONFIG_FS_DAX
++		if (IS_DAX(inode))
++			inode->i_mapping->a_ops = &erofs_dax_aops;
++#endif
+ #ifdef CONFIG_EROFS_FS_ONDEMAND
+ 		if (erofs_is_fscache_mode(inode->i_sb))
+ 			inode->i_mapping->a_ops = &erofs_fscache_access_aops;
+diff --git a/fs/erofs/internal.h b/fs/erofs/internal.h
+index f7f622836198..cc8377ad65d3 100644
+--- a/fs/erofs/internal.h
++++ b/fs/erofs/internal.h
+@@ -395,6 +395,7 @@ struct erofs_map_dev {
+ extern const struct super_operations erofs_sops;
+ 
+ extern const struct address_space_operations erofs_aops;
++extern const struct address_space_operations erofs_dax_aops;
+ extern const struct address_space_operations erofs_fileio_aops;
+ extern const struct address_space_operations z_erofs_aops;
+ extern const struct address_space_operations erofs_fscache_access_aops;

@@ -1,0 +1,62 @@
+{
+  "patch_list_shape": [
+    [
+      0,
+      1
+    ]
+  ],
+  "revisions": [
+    {
+      "edits": [
+        {
+          "after": "\nstatic struct vm_area_struct *find_remap_vma(struct mm_struct *mm,\n\t\tunsigned long start, unsigned long size)\n{\n\tstruct vm_area_struct *vma = vma_lookup(mm, start);\n\tstruct vm_area_struct *next, *prev;\n\tstruct vma_iterator vmi;\n\n\tif (!vma || !(vma->vm_flags & VM_SHARED))\n\t\treturn ERR_PTR(-EINVAL);\n\n\tif (start + size <= vma->vm_end)\n\t\treturn vma;\n\n\tprev = vma;\n\tvma_iter_init(&vmi, mm, vma->vm_end);\n\tfor_each_vma_range(vmi, next, start + size) {\n\t\t/* hole between vmas ? */\n\t\tif (next->vm_start != prev->vm_end)\n\t\t\treturn ERR_PTR(-EINVAL);\n\n\t\tif (next->vm_file != vma->vm_file)\n\t\t\treturn ERR_PTR(-EINVAL);\n\n\t\tif (next->vm_flags != vma->vm_flags)\n\t\t\treturn ERR_PTR(-EINVAL);\n\n\t\tif (start + size <= next->vm_end)\n\t\t\tbreak;\n\n\t\tprev = next;\n\t}\n\n\tif (!next)\n\t\treturn ERR_PTR(-EINVAL);\n\n\treturn vma;\n}\n",
+          "before": "",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mmap.c\n+++ /linux/mm/mmap.c\n@@ -1635,0 +1636,39 @@\n+\n+static struct vm_area_struct *find_remap_vma(struct mm_struct *mm,\n+\t\tunsigned long start, unsigned long size)\n+{\n+\tstruct vm_area_struct *vma = vma_lookup(mm, start);\n+\tstruct vm_area_struct *next, *prev;\n+\tstruct vma_iterator vmi;\n+\n+\tif (!vma || !(vma->vm_flags & VM_SHARED))\n+\t\treturn ERR_PTR(-EINVAL);\n+\n+\tif (start + size <= vma->vm_end)\n+\t\treturn vma;\n+\n+\tprev = vma;\n+\tvma_iter_init(&vmi, mm, vma->vm_end);\n+\tfor_each_vma_range(vmi, next, start + size) {\n+\t\t/* hole between vmas ? */\n+\t\tif (next->vm_start != prev->vm_end)\n+\t\t\treturn ERR_PTR(-EINVAL);\n+\n+\t\tif (next->vm_file != vma->vm_file)\n+\t\t\treturn ERR_PTR(-EINVAL);\n+\n+\t\tif (next->vm_flags != vma->vm_flags)\n+\t\t\treturn ERR_PTR(-EINVAL);\n+\n+\t\tif (start + size <= next->vm_end)\n+\t\t\tbreak;\n+\n+\t\tprev = next;\n+\t}\n+\n+\tif (!next)\n+\t\treturn ERR_PTR(-EINVAL);\n+\n+\treturn vma;\n+}\n+",
+          "edit_type": "insert_after_line",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands insert step 53",
+          "filename": "mm/mmap.c",
+          "global_edit_idx": 0,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": 1636,
+          "step_index": 53
+        },
+        {
+          "after": "{\n\n\tstruct mm_struct *mm = current->mm;\n\tstruct vm_area_struct *vma;\n\tunsigned long populate = 0;\n\tunsigned long ret = -EINVAL;\n\tstruct file *file;\n\n\tpr_warn_once(\"%s (%d) uses deprecated remap_file_pages() syscall. See Documentation/mm/remap_file_pages.rst.\\n\",\n\t\t     current->comm, current->pid);\n\n\tif (prot)\n\t\treturn ret;\n\tstart = start & PAGE_MASK;\n\tsize = size & PAGE_MASK;\n\n\tif (start + size <= start)\n\t\treturn ret;\n\n\t/* Does pgoff wrap? */\n\tif (pgoff + (size >> PAGE_SHIFT) < pgoff)\n\t\treturn ret;\n\n\tif (mmap_read_lock_killable(mm))\n\t\treturn -EINTR;\n\n\tvma = find_remap_vma(mm, start, size);\n\tif (IS_ERR(vma)) {\n\t\tret = PTR_ERR(vma);\n\t\tmmap_read_unlock(mm);\n\t\treturn ret;\n\t}\n\n\tprot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n\tprot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n\tprot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n\n\tflags &= MAP_NONBLOCK;\n\tflags |= MAP_SHARED | MAP_FIXED | MAP_POPULATE;\n\tif (vma->vm_flags & VM_LOCKED)\n\t\tflags |= MAP_LOCKED;\n\n\tfile = get_file(vma->vm_file);\n\tmmap_read_unlock(mm);\n\n\tret = security_mmap_file(file, prot, flags);\n\tif (ret) {\n\t\tfput(file);\n\t\treturn ret;\n\t}\n\n\tret = -EINTR;\n\tif (mmap_write_lock_killable(mm)) {\n\t\tfput(file);\n\t\treturn ret;\n\t}\n\n\tvma = find_remap_vma(mm, start, size);\n\tif (IS_ERR(vma)) {\n\t\tret = PTR_ERR(vma);\n\t\tgoto out;\n\t}\n\n\tif (vma->vm_file != file) {\n\t\tret = -EINVAL;\n\t\tgoto out;\n\t}\n\n\tret = do_mmap(file, start, size,\n\t\t\tprot, flags, 0, pgoff, &populate, NULL);\nout:\n\tmmap_write_unlock(mm);\n\tfput(file);\n\tif (populate)\n\t\tmm_populate(ret, populate);\n\tif (!IS_ERR_VALUE(ret))\n\t\tret = 0;\n\treturn ret;\n}",
+          "before": "{\n\n\tstruct mm_struct *mm = current->mm;\n\tstruct vm_area_struct *vma;\n\tunsigned long populate = 0;\n\tunsigned long ret = -EINVAL;\n\tstruct file *file;\n\n\tpr_warn_once(\"%s (%d) uses deprecated remap_file_pages() syscall. See Documentation/mm/remap_file_pages.rst.\\n\",\n\t\t     current->comm, current->pid);\n\n\tif (prot)\n\t\treturn ret;\n\tstart = start & PAGE_MASK;\n\tsize = size & PAGE_MASK;\n\n\tif (start + size <= start)\n\t\treturn ret;\n\n\t/* Does pgoff wrap? */\n\tif (pgoff + (size >> PAGE_SHIFT) < pgoff)\n\t\treturn ret;\n\n\tif (mmap_write_lock_killable(mm))\n\t\treturn -EINTR;\n\n\tvma = vma_lookup(mm, start);\n\n\tif (!vma || !(vma->vm_flags & VM_SHARED))\n\t\tgoto out;\n\n\tif (start + size > vma->vm_end) {\n\t\tVMA_ITERATOR(vmi, mm, vma->vm_end);\n\t\tstruct vm_area_struct *next, *prev = vma;\n\n\t\tfor_each_vma_range(vmi, next, start + size) {\n\t\t\t/* hole between vmas ? */\n\t\t\tif (next->vm_start != prev->vm_end)\n\t\t\t\tgoto out;\n\n\t\t\tif (next->vm_file != vma->vm_file)\n\t\t\t\tgoto out;\n\n\t\t\tif (next->vm_flags != vma->vm_flags)\n\t\t\t\tgoto out;\n\n\t\t\tif (start + size <= next->vm_end)\n\t\t\t\tbreak;\n\n\t\t\tprev = next;\n\t\t}\n\n\t\tif (!next)\n\t\t\tgoto out;\n\t}\n\n\tprot |= vma->vm_flags & VM_READ ? PROT_READ : 0;\n\tprot |= vma->vm_flags & VM_WRITE ? PROT_WRITE : 0;\n\tprot |= vma->vm_flags & VM_EXEC ? PROT_EXEC : 0;\n\n\tflags &= MAP_NONBLOCK;\n\tflags |= MAP_SHARED | MAP_FIXED | MAP_POPULATE;\n\tif (vma->vm_flags & VM_LOCKED)\n\t\tflags |= MAP_LOCKED;\n\n\tfile = get_file(vma->vm_file);\n\tret = security_mmap_file(vma->vm_file, prot, flags);\n\tif (ret)\n\t\tgoto out_fput;\n\tret = do_mmap(vma->vm_file, start, size,\n\t\t\tprot, flags, 0, pgoff, &populate, NULL);\nout_fput:\n\tfput(file);\nout:\n\tmmap_write_unlock(mm);\n\tif (populate)\n\t\tmm_populate(ret, populate);\n\tif (!IS_ERR_VALUE(ret))\n\t\tret = 0;\n\treturn ret;\n}",
+          "best_effort": false,
+          "delete_anchor": false,
+          "edit_diff": "--- /linux/mm/mmap.c\n+++ /linux/mm/mmap.c\n@@ -1700 +1700 @@\n-\tif (mmap_write_lock_killable(mm))\n+\tif (mmap_read_lock_killable(mm))\n@@ -1703,28 +1703,5 @@\n-\tvma = vma_lookup(mm, start);\n-\n-\tif (!vma || !(vma->vm_flags & VM_SHARED))\n-\t\tgoto out;\n-\n-\tif (start + size > vma->vm_end) {\n-\t\tVMA_ITERATOR(vmi, mm, vma->vm_end);\n-\t\tstruct vm_area_struct *next, *prev = vma;\n-\n-\t\tfor_each_vma_range(vmi, next, start + size) {\n-\t\t\t/* hole between vmas ? */\n-\t\t\tif (next->vm_start != prev->vm_end)\n-\t\t\t\tgoto out;\n-\n-\t\t\tif (next->vm_file != vma->vm_file)\n-\t\t\t\tgoto out;\n-\n-\t\t\tif (next->vm_flags != vma->vm_flags)\n-\t\t\t\tgoto out;\n-\n-\t\t\tif (start + size <= next->vm_end)\n-\t\t\t\tbreak;\n-\n-\t\t\tprev = next;\n-\t\t}\n-\n-\t\tif (!next)\n-\t\t\tgoto out;\n+\tvma = find_remap_vma(mm, start, size);\n+\tif (IS_ERR(vma)) {\n+\t\tret = PTR_ERR(vma);\n+\t\tmmap_read_unlock(mm);\n+\t\treturn ret;\n@@ -1743,4 +1720,26 @@\n-\tret = security_mmap_file(vma->vm_file, prot, flags);\n-\tif (ret)\n-\t\tgoto out_fput;\n-\tret = do_mmap(vma->vm_file, start, size,\n+\tmmap_read_unlock(mm);\n+\n+\tret = security_mmap_file(file, prot, flags);\n+\tif (ret) {\n+\t\tfput(file);\n+\t\treturn ret;\n+\t}\n+\n+\tret = -EINTR;\n+\tif (mmap_write_lock_killable(mm)) {\n+\t\tfput(file);\n+\t\treturn ret;\n+\t}\n+\n+\tvma = find_remap_vma(mm, start, size);\n+\tif (IS_ERR(vma)) {\n+\t\tret = PTR_ERR(vma);\n+\t\tgoto out;\n+\t}\n+\n+\tif (vma->vm_file != file) {\n+\t\tret = -EINVAL;\n+\t\tgoto out;\n+\t}\n+\n+\tret = do_mmap(file, start, size,\n@@ -1748,2 +1746,0 @@\n-out_fput:\n-\tfput(file);\n@@ -1751,0 +1749 @@\n+\tfput(file);",
+          "edit_type": "replace",
+          "ending_line": null,
+          "expected_diff": null,
+          "explanation": "openhands edit step 57",
+          "filename": "mm/mmap.c",
+          "global_edit_idx": 1,
+          "is_dd_hunk": false,
+          "is_str_replace_cmd": false,
+          "match_mode": "semi_fuzzy",
+          "n_count": null,
+          "pattern_address": null,
+          "pattern_address_end": null,
+          "pattern_address_start": null,
+          "starting_line": null,
+          "step_index": 57
+        }
+      ],
+      "end_step": 57,
+      "revision_index": 0,
+      "start_step": 53
+    }
+  ],
+  "success_step": 57
+}

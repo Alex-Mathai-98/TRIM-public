@@ -11,9 +11,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## 0. Always run prelude.sh
-Always run the .claude/prelude.sh file - it helps in setting up the correct environment.
-
 ## 1. Non-negotiable golden rules
 
 | #:  | AI *may* do                                                                                                                                                                       | AI *must NOT* do                                                                                                                                     |

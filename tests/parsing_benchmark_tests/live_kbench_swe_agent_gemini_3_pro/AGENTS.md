@@ -19,8 +19,6 @@
 ## Usage
 
 ```bash
-. .claude/prelude.sh
-
 # 1. Parser regression (no repos, no network)
 python tests/parsing_benchmark_tests/live_kbench_swe_agent_gemini_3_pro/parser_baseline.py verify
 

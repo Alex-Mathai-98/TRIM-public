@@ -14,6 +14,22 @@ set -euo pipefail
 HOME_DIR="${SCBENCH_METRIC_HOME:-$HOME/.cache/scbench_metric}"
 SCB_REPO="${SCB_REPO:-https://github.com/SprocketLab/slop-code-bench.git}"
 ASTGREP_VER="${ASTGREP_VER:-0.39.6}"
+
+# AIDEV-NOTE: Match ast-grep's release archive to the host architecture before setup.
+case "$(uname -s):$(uname -m)" in
+  Linux:x86_64|Linux:amd64)
+    ASTGREP_TARGET="x86_64-unknown-linux-gnu"
+    ;;
+  Darwin:arm64|Darwin:aarch64)
+    ASTGREP_TARGET="aarch64-apple-darwin"
+    ;;
+  *)
+    echo "[setup] unsupported host: $(uname -s) $(uname -m)" >&2
+    echo "[setup] supported hosts: Linux x86-64 and macOS Apple Silicon" >&2
+    exit 1
+    ;;
+esac
+
 WORK="$(mktemp -d)"
 mkdir -p "$HOME_DIR/bin"
 
@@ -43,7 +59,7 @@ git clone --depth 1 "$SCB_REPO" "$WORK/slop-code-bench"
 
 # 4) ast-grep binary (prebuilt; no npm/cargo needed) ----------------------
 curl -sSL \
-  "https://github.com/ast-grep/ast-grep/releases/download/${ASTGREP_VER}/app-x86_64-unknown-linux-gnu.zip" \
+  "https://github.com/ast-grep/ast-grep/releases/download/${ASTGREP_VER}/app-${ASTGREP_TARGET}.zip" \
   -o "$WORK/ag.zip"
 python3 -c "import zipfile; zipfile.ZipFile('$WORK/ag.zip').extractall('$HOME_DIR/bin')"
 chmod +x "$HOME_DIR/bin/sg" "$HOME_DIR/bin/ast-grep"

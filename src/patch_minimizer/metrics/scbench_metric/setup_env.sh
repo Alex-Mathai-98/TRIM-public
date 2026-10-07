@@ -3,6 +3,7 @@
 #
 # Creates $SCBENCH_METRIC_HOME (default ~/.cache/scbench_metric) containing:
 #   venv/            Python 3.12 venv with slop_code + its metric deps
+#   slop-code-bench/ pinned SlopCodeBench source checkout
 #   bin/sg,ast-grep  the ast-grep binary (214-rule "slop" ruleset engine)
 #   bin/uv           shim so slop_code's `uv run ruff/ty` resolves the venv tools
 #   slop_rules.yaml  the bundled 214-rule slop ruleset
@@ -13,6 +14,7 @@ set -euo pipefail
 
 HOME_DIR="${SCBENCH_METRIC_HOME:-$HOME/.cache/scbench_metric}"
 SCB_REPO="${SCB_REPO:-https://github.com/SprocketLab/slop-code-bench.git}"
+SCB_REF="${SCB_REF:-v0.3}"
 ASTGREP_VER="${ASTGREP_VER:-0.39.6}"
 
 # AIDEV-NOTE: Match ast-grep's release archive to the host architecture before setup.
@@ -46,10 +48,10 @@ fi
 "$UV" python install 3.12
 
 # 2) clone slop-code-bench (for the package source + slop_rules.yaml) ------
-git clone --depth 1 "$SCB_REPO" "$WORK/slop-code-bench"
+git clone --depth 1 --branch "$SCB_REF" "$SCB_REPO" "$WORK/slop-code-bench"
 
 # 3) 3.12 venv + metric deps (pinned tree-sitter pair from uv.lock) --------
-"$UV" venv --python 3.12 "$HOME_DIR/venv"
+"$UV" venv --clear --python 3.12 "$HOME_DIR/venv"
 "$UV" pip install --python "$HOME_DIR/venv/bin/python" -q \
   pydantic structlog radon "tree-sitter==0.25.2" "tree-sitter-language-pack==0.13.0" \
   networkx numpy scipy click typer rich pyyaml ruff ty \
@@ -72,6 +74,8 @@ exec "$@"
 EOF
 chmod +x "$HOME_DIR/bin/uv"
 cp "$WORK/slop-code-bench/configs/slop_rules.yaml" "$HOME_DIR/slop_rules.yaml"
+rm -rf "$HOME_DIR/slop-code-bench"
+cp -R "$WORK/slop-code-bench" "$HOME_DIR/slop-code-bench"
 
 # 6) ENV.sh ----------------------------------------------------------------
 cat > "$HOME_DIR/ENV.sh" <<EOF

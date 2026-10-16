@@ -18,8 +18,6 @@
 ## Usage
 
 ```bash
-. .claude/prelude.sh
-
 # 1. Parser regression (no repos, no network)
 python tests/parsing_benchmark_tests/live_kbench_mini_swe_claude_opus_4_5/parser_baseline.py verify
 

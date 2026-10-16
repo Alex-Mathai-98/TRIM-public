@@ -3,7 +3,6 @@
 # against each suite's best_score.json — exits non-zero on any regression.
 #
 # Usage:
-#   . .claude/prelude.sh
 #   bash tests/run_parsing_benchmarks.sh          # run all suites
 #   bash tests/run_parsing_benchmarks.sh swe_bench_swe_agent live_kbench_swe_agent_gemini_3_pro  # specific suites
 set -euo pipefail

@@ -14,6 +14,7 @@ set -euo pipefail
 
 HOME_DIR="${SCBENCH_METRIC_HOME:-$HOME/.cache/scbench_metric}"
 SCB_REPO="${SCB_REPO:-https://github.com/SprocketLab/slop-code-bench.git}"
+# AIDEV-NOTE: v0.3 is the only compatible tag; v0.2 and main lack required metric helpers and slop_rules.yaml.
 SCB_REF="${SCB_REF:-v0.3}"
 ASTGREP_VER="${ASTGREP_VER:-0.39.6}"
 

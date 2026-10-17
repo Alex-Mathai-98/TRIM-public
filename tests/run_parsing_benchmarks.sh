@@ -3,7 +3,6 @@
 # against each suite's best_score.json — exits non-zero on any regression.
 #
 # Usage:
-#   . .claude/prelude.sh
 #   bash tests/run_parsing_benchmarks.sh          # run all suites
 #   bash tests/run_parsing_benchmarks.sh swe_bench_swe_agent live_kbench_swe_agent_gemini_3_pro  # specific suites
 set -euo pipefail
@@ -66,9 +65,9 @@ for suite in "${SUITES[@]}"; do
         continue
     fi
 
-    # AIDEV-NOTE: \b is required — a bare 'matched=' also matches inside 'mismatched='.
-    current_total=$(echo "$verify_line" | grep -oP '\btotal=\K[0-9]+')
-    current_matched=$(echo "$verify_line" | grep -oP '\bmatched=\K[0-9]+')
+    # AIDEV-NOTE: Portable sed; space-delimited fields prevent matching 'matched=' inside 'mismatched='.
+    current_total=$(echo "$verify_line" | sed -nE 's/.* total=([0-9]+).*/\1/p')
+    current_matched=$(echo "$verify_line" | sed -nE 's/.* matched=([0-9]+).*/\1/p')
 
     # AIDEV-NOTE: non-integers make [ -lt ] error silently and fall through to PASS; fail instead.
     if ! [[ "$current_matched" =~ ^[0-9]+$ && "$current_total" =~ ^[0-9]+$ ]]; then
